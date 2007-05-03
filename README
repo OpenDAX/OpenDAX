@@ -1,0 +1,116 @@
+OpenDCS (c) 2007 Phil Birkelbach
+
+OpenDCS is an Open Source Distributed Control System.
+
+At this point the code is at best, pre-alpha quality and it is not ready to be 
+installed on production systems.
+
+The system is meant to be flexible and scalable, it should utilize the 
+strength of the underlying operating system as much as possible.  The modern
+Open Source operating system kernels are fantastic pieces of software that 
+do their jobs very well.  There is no sense in duplicating any of the
+functions that they perform.
+
+With that in mind OpenDCS uses separate processes for modules.  Almost all
+of the tasks of the system are handled by these modules.  They interact with
+each other through a service that runs on each machine in the system.  Each
+module communicates with this core service through one of two libraries.
+
+The first library is an I/O module library.  This module has limited 
+capabilty to communicate with the core.  It is licensed under the 
+Lesser Gnu Public License (LGPL).  This will allow hardware vendors to 
+build proprietary modules that communicate with the OpenDCS core.  
+This will probably be a controversial aspect of this program but if 
+OpenDCS is to ever have any hope of being mainstream it will need to 
+have the abiltiy to communicate with all of the different types and
+brands of hardware that have become industry standard.  Besides we
+aren't trying to build any hardware so this communication is absolutely
+necessary for the usefulness of the project.
+
+The nature of OpenDCS would allow any company to build a proprietary driver
+for their hardware anyway since each module is implemented as a separate 
+process.  It'd be possible for these hardware vendors to build the 
+modules without linking to any of our libraries.  Since it's that linking
+that forces 'derived works' to abide by the GPL they would be exempt. 
+So we are just making it easier for them to do so by supplying a 
+library that can be linked to the proprietary modules without requiring 
+source code distribution.
+
+The other library would have full access to the OpenDCS system and it would
+be licensed under the GPL.  All types of modules could use this library
+and have a simple interface into all the features of the OpenDCS system.
+These modules would be considered 'derived works' and would have to distribute
+their source code.
+
+The OpenDCS system is intended to provide many different mechanisms for 
+modules to communiate with one another.  The details haven't quite been
+worked out yet but there are a few requirements that we think must be a 
+part of the system.
+
+The system should be network transparent.  It has not been decided whether 
+this feature will be implemented in the core system or in a module.
+
+The system should be able to handle all manner of datatypes, including 
+arrays and custom designed datatypes.  The data map should be dynamic, able
+to grow and shrink as the program runs.
+
+Modules should also be dynamic, able to be loaded and unloaded at runtime 
+with no requirement for any central configuration.  It should be possible
+for programs that don't even know they are modules to be used as such. 
+The central service could open pipes to a program's stdin, stdout and 
+stderr file descriptors so that they can be manipulated by the DCS.  This 
+will probably have limited usefulness but it's conceivable that some
+programs could find a place.  One idea that comes to mind would be running
+mpg123 for playing alarm sounds.  No sense in writing a custom module to 
+play sounds when programs already exist to do the job.  Besides this makes
+OpenDCS a good *nix program since it allows modular software to be used
+in applications that the original designers never envisioned.
+
+The DCS should have a native messaging interfae where modules can send 
+messages to one another or to the central system.  I suspect that the vast
+majority of the library interfaces to the central system will be implemented
+with this messaging infrastructure.  There is no need to reinvent the wheel
+here as the underlying operating system should have all of the facilities
+that we need to handle message queues.  We just need to figure out how
+we will implement it.
+
+One feature that the system will need that may be quite difficult is 
+redundancy.  If the system is truely distributed then it should be capable of
+losing network nodes and remain in control.  This is probably going to be
+more difficult than any other requirement.  Frankly I don't really know how to
+even begin thinking about this requirement.  It seems that some kind of 
+syncronization between logic modules and failover of I/O modules would be
+needed.  This may be more of a module design issue than a central core issue
+but it must be considered throughout the design process, so that we don't
+paint ourselves into a corner.
+
+Once the core system is built and the libraries are functional then all
+of the work will take place in the modules.  There would be modules for I/O.
+This I/O could be some kind of hardwired I/O, networked I/O using Modbus or
+ControlNet.  Even the PC serial or parallel port could be used as I/O.
+
+There would have to be some kind of logic modules.  These could be as simple
+as a small Ruby script (assuming we have some Ruby bindings for the library)
+or something as elaborate as a full featured ladder logic interpreter.
+
+Other modules would include Alarming, Logging, Trending and some kind of HMI.
+The HMI modules could be web based, X11 based or even simple text based
+HMIs written with ncurses or readline.
+
+A little note on licensing.  It is very tempting to use programs like bison to
+create logic modules or programs like glade to produce HMI modules but these
+programs will generate C code that will have to be compiled.  There is nothing
+wrong with this but it should be noted that any program that is linked with
+the GPL'd libraries of OpenDCS will have to also be distributed under the 
+terms of the GPL.  If the logic library were itself an interpreter then the
+end user program would be seen more as a configuration and would not have 
+to be distributed in source code.  This is probably okay for the vast 
+majority of the projects out there but we need to consider the end client 
+(the guy that owns the equipment we control) or we will find ourselves 
+with a piece of software and no market.
+
+The Free Software Foundation has many good resources to read regarding 
+these kinds of issues and it would be beneficial for all users of this 
+system to understand the licensing freedoms associated with the GPL.
+
+Okay enough README file stuff.  Back to coding.

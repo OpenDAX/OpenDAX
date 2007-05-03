@@ -1,0 +1,7 @@
+OpenDCS To do list
+
+Possibly need to allow the start_module() function to set the processes
+environment before launching the module.
+
+Need to have the start_module() function set a lesser UID for the module
+before exec()ing the process.  What UID will opendcs run as???
