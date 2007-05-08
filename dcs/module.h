@@ -1,5 +1,5 @@
 /*  opendcs - An open source distributed control system 
- *  Copyright (c) 1997 Phil Birkelbach
+ *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,14 +26,19 @@
 #define MFLAG_NORESTART 0x01
 #define MFLAG_OPENPIPES 0x02
 
+#define MSTATE_RUNNING      0x00 /* Running normally */
+#define MSTATE_WAITING      0x01 /* Waiting for restart */
+
+
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dcs_Module {
     unsigned int handle;
     pid_t pid;
-    int status;         /* modules exit status */
+    int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
     char **arglist;     /* exec() ready array of arguments */
     unsigned int flags;
+    unsigned int state; /* Modules Current Running State */
     int pipe_in;        /* Redirected to the modules stdin */
     int pipe_out;       /* Redirected to the modules stdout */
     int pipe_err;       /* Redirected to the modules stderr */
@@ -41,18 +46,22 @@ typedef struct dcs_Module {
     struct dcs_Module *next,*prev;
 } dcs_module;
 
+typedef struct DeadModule {
+    pid_t pid;
+    int status;
+} dead_module;
+
 /* Module List Handling Functions */
 unsigned int add_module(char *, char *, unsigned int);
 int del_module(unsigned int);
-/* Module Query Functions */
-//char *get_module_path(unsigned int);
-//char *get_module_arglist(unsigned int);
-//char *get_module_flags(unsigned int);
-
-//dcs_module *get_module(int);
+dcs_module *get_module(unsigned int);
 
 /* Module runtime functions */
 pid_t start_module (unsigned int);
 int stop_module(unsigned int);
+void scan_modules(void);
+int cleanup_module(pid_t,int);
+
+void dead_module_add(pid_t,int);
 
 #endif /* !__MODULE_H */

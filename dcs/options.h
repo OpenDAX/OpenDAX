@@ -1,5 +1,5 @@
 /*  opendcs - An open source distributed control system 
- *  Copyright (c) 1997 Phil Birkelbach
+ *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

@@ -65,10 +65,11 @@ LIB = @LIB@
 LTLIB = @LTLIB@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
+RANLIB = @RANLIB@
 VERSION = @VERSION@
 ac_aux_dir = @ac_aux_dir@
 
-SUBDIRS = dcs
+SUBDIRS = dcs modules lib
 
 AUX_DIST = $(ac_aux_dir)/install-sh
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4

@@ -1,5 +1,5 @@
 /*  opendcs - An open source distributed control system 
- *  Copyright (c) 1997 Phil Birkelbach
+ *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,11 +31,22 @@
     then SIGKILL if they stick around.
 */
 
-static dcs_module *module_current=NULL;
-static int module_count=0;
+static dcs_module *_current_mod=NULL;
+static int _module_count=0;
 
 static char **arglist_tok(char *,char *);
-dcs_module *get_module(unsigned int);
+//dcs_module *get_module(unsigned int);
+static dcs_module *get_module_pid(pid_t);
+
+/* This array is the dead module list.
+   TODO: This should be improved to allow it to grow when needed.
+*/
+#ifndef DMQ_SIZE
+  #define DMQ_SIZE 10
+#endif
+static dead_module _dmq[DMQ_SIZE];
+//static int _dmq_count=DMQ_SIZE;
+//static int _dmq_index=0;
 
 
 /* The module list is implemented as a circular double linked list.
@@ -64,17 +75,17 @@ unsigned int add_module(char *path, char *arglist, unsigned int flags) {
         /* tokenize and set arglist */
         new->arglist=arglist_tok(path,arglist);
         
-        if(module_current==NULL) { /* List is empty */
+        if(_current_mod==NULL) { /* List is empty */
             new->next=new;
             new->prev=new;
         } else {
-            new->next = module_current->next;
-            new->prev = module_current;
-            module_current->next->prev = new;
-            module_current->next = new;
+            new->next = _current_mod->next;
+            new->prev = _current_mod;
+            _current_mod->next->prev = new;
+            _current_mod->next = new;
         }
-        module_current = new;
-        module_count++;
+        _current_mod = new;
+        _module_count++;
         return handle;
     } else {
         return 0;
@@ -142,17 +153,17 @@ int del_module(unsigned int handle) {
     mod=get_module(handle);
     if(mod) {
         if(mod->next==mod) { /* Last module */
-            module_current=NULL;
+            _current_mod=NULL;
         } else {
             /* disconnect module */
             (mod->next)->prev = mod->prev;
             (mod->prev)->next = mod->next;
             /* don't want current to be pointing to the one we are deleting */
-            if(module_current==mod) {
-                module_current=mod->next;
+            if(_current_mod==mod) {
+                _current_mod=mod->next;
             }
         }
-        module_count--;
+        _module_count--;
         /* free allocated memory */
         if(mod->path) free(mod->path);
         if(mod->arglist) {
@@ -170,8 +181,8 @@ int del_module(unsigned int handle) {
 }
 
 /* Static function definitions */
-unsigned int get_module_count() {
-    return module_count;
+unsigned int get__module_count() {
+    return _module_count;
 }
 
 /* These are only used for the star_module() to handle the pipes.
@@ -195,9 +206,9 @@ pid_t start_module(unsigned int handle) {
 
         child_pid = fork();
         if(child_pid>0) { /* This is the parent */
-            xlog(1,"Starting Module - %s",mod->path);
-            mod->starttime=time(NULL);
             mod->pid = child_pid;
+            xlog(1,"Starting Module - %s - %d",mod->path,child_pid);
+            mod->starttime=time(NULL);
 
             if(result) { /* do we have any pipes set */
                 close(pipes[0]); /* close the write pipe on childs stdin */
@@ -212,10 +223,16 @@ pid_t start_module(unsigned int handle) {
             return child_pid;
         } else if(child_pid==0) { /* Child */
             if(result) childpipes(pipes);
+            mod->state=MSTATE_RUNNING;
+            mod->exit_status=0;
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
-            execvp(mod->path,mod->arglist);
-            xerror("start_module exec failed - %s - %s",mod->path,strerror(errno));
+            if(execvp(mod->path,mod->arglist)) {
+                xerror("start_module exec failed - %s - %s",
+                       mod->path,strerror(errno));
+
+                exit(errno);
+            }
         } else { /* Error on the fork */
             xerror("start_module fork failed - %s - %s",mod->path,strerror(errno));
         }
@@ -233,7 +250,7 @@ pid_t start_module(unsigned int handle) {
    pipes[4]=stderr read fd
    pipes[5]=stderr write fd
 */
-static int getpipes(int *pipes) {
+inline static int getpipes(int *pipes) {
 
     if(pipe(&pipes[0])) {
         xerror("Unable to create pipe - %s",strerror(errno));
@@ -272,28 +289,109 @@ inline static int childpipes(int *pipes) {
     return 1;
 }
 
+
+/* TODO: Program stop_module */
+int stop_module(unsigned int handle) {
+    return 0;
+}
+
+/* This function scans the modules to see if there are any that need
+   to be cleaned up or restarted.  This function should never be called
+   from the start_module process or the child signal handler to avoid a
+   race condition. */
+void scan_modules(void) {
+    int n;
+    /* Check the dead module queue for pid's that need cleaning */
+    for(n=0;n<DMQ_SIZE;n++) {
+        if(_dmq[n].pid!=0) {
+            if(cleanup_module(_dmq[n].pid,_dmq[n].status)) {
+                _dmq[n].pid=0;
+            }
+        }
+    }
+    /* TODO: Restart modules if necessary */
+}
+
+/* Find and cleanup the module after it has died.  This function
+   is designed to be called from the signal handler so it is as
+   short and sweet as possible */
+int cleanup_module(pid_t pid,int status) {
+    dcs_module *mod;
+    mod=get_module_pid(pid);
+    /* at this point _current_mod should be pointing to a module with
+    the PID that we passed but we should check because there may not 
+    be a module with our PID */
+    if(mod) {
+        printf("Cleaning up Module %d\n",pid);
+        /* Close the stdio pipe fd's */
+        close(mod->pipe_in);
+        close(mod->pipe_out);
+        close(mod->pipe_err);
+        mod->pid=0;
+        mod->exit_status=status;
+        mod->state=MSTATE_WAITING;
+        return 1;
+    } else printf("Module %d not found \n",pid);
+    return 0;
+}
+
+
+/* Adds the dead module to the first blank spot in the list.  If the list
+   is overflowed then it'll just overwrite the last one.
+   TODO: If more than DMQ_SIZE modules dies all at once this will cause
+         problems.  Should be fixed. */
+void dead_module_add(pid_t pid,int status) {
+    int n=0;
+    while(_dmq[n].pid!=0 && n<DMQ_SIZE) {
+        n++;
+    }
+    xlog(10,"Adding Dead Module pid=%d index=%d",pid,n);
+    _dmq[n].pid=pid;
+    _dmq[n].status=status;
+}
+
+
+/***************** PRIVATE FUNCTIONS **************************/
 /* TODO: If this function is public it should return a handle */
 dcs_module *get_next_module() {
-    if(module_current) {
-        module_current=module_current->next;
+    if(_current_mod) {
+        _current_mod=_current_mod->next;
     }
-    return module_current;
+    return _current_mod;
 }
 
 /* static function to get a module pointer from a handle */
 dcs_module *get_module(unsigned int handle) {
     dcs_module *last;
     /* In case we ain't go no list */
-    if(module_current==NULL) return NULL;
+    if(_current_mod==NULL) return NULL;
     /* Figure out where we need to stop */
-    last=module_current->prev;
+    last=_current_mod->prev;
     if(last->handle==handle) return last;
 
-    while(module_current->handle != handle) {
-        module_current = module_current->next;
-        if(module_current==last) {
+    while(_current_mod->handle != handle) {
+        _current_mod = _current_mod->next;
+        if(_current_mod==last) {
             return NULL;
         }
     }
-    return module_current;
+    return _current_mod;
+}
+
+/* Lookup and return the pointer to the module with pid */
+static dcs_module *get_module_pid(pid_t pid) {
+    dcs_module *last;
+    /* In case we ain't go no list */
+    if(_current_mod==NULL) return NULL;
+    /* Figure out where we need to stop */
+    last=_current_mod->prev;
+    if(last->pid==pid) return last;
+
+    while(_current_mod->pid != pid) {
+        _current_mod = _current_mod->next;
+        if(_current_mod==last) {
+            return NULL;
+        }
+    }
+    return _current_mod;
 }

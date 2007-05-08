@@ -1,5 +1,5 @@
 /*  opendcs - An open source distributed control system
- *  Copyright (c) 1997 Phil Birkelbach
+ *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include <stdarg.h>
 #include "func.h"
 
-static int __verbosity=0;
+static int _verbosity=0;
 
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
@@ -38,6 +38,7 @@ static int __verbosity=0;
 
 void *xmalloc(size_t num) {
     void *new = malloc(num);
+    if(new) memset(new,0,num);
     return new;
 }
 
@@ -86,17 +87,18 @@ void xnotice(const char *format,...) {
 
 void setverbosity(int verbosity) {
     if(verbosity < 0)
-        __verbosity = 0;
+        _verbosity = 0;
     else if(verbosity > 10)
-        __verbosity = 10;
+        _verbosity = 10;
     else 
-        __verbosity = verbosity;
-    xlog(0,"Set Verbosity to %d",__verbosity);
+        _verbosity = verbosity;
+    xlog(0,"Set Verbosity to %d",_verbosity);
 }
 
+/* Sends the string to the logger verbosity is greater than __verbosity */
 void xlog(int verbosity, const char *format,...) {
     va_list val;
-    if(verbosity >= __verbosity) {
+    if(verbosity >= _verbosity) {
         va_start(val,format);
         vprintf(format,val);
         printf("\n");

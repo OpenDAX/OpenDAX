@@ -97,9 +97,12 @@ m4trace:configure.in:10: -1- AC_SUBST([CC])
 m4trace:configure.in:10: -1- AC_SUBST([ac_ct_CC])
 m4trace:configure.in:10: -1- AC_SUBST([EXEEXT], [$ac_cv_exeext])
 m4trace:configure.in:10: -1- AC_SUBST([OBJEXT], [$ac_cv_objext])
-m4trace:configure.in:14: -1- AC_SUBST([ac_aux_dir])
-m4trace:configure.in:16: -1- AC_CONFIG_FILES([dcs/Makefile Makefile])
-m4trace:configure.in:16: -1- _m4_warn([obsolete], [AC_OUTPUT should be used without arguments.
+m4trace:configure.in:11: -1- AC_PROG_RANLIB
+m4trace:configure.in:11: -1- AC_SUBST([RANLIB])
+m4trace:configure.in:11: -1- AC_SUBST([ac_ct_RANLIB])
+m4trace:configure.in:15: -1- AC_SUBST([ac_aux_dir])
+m4trace:configure.in:17: -1- AC_CONFIG_FILES([dcs/Makefile lib/Makefile modules/Makefile modules/test/Makefile Makefile])
+m4trace:configure.in:17: -1- _m4_warn([obsolete], [AC_OUTPUT should be used without arguments.
 You should run autoupdate.], [])
-m4trace:configure.in:16: -1- AC_SUBST([LIB@&t@OBJS], [$ac_libobjs])
-m4trace:configure.in:16: -1- AC_SUBST([LTLIBOBJS], [$ac_ltlibobjs])
+m4trace:configure.in:17: -1- AC_SUBST([LIB@&t@OBJS], [$ac_libobjs])
+m4trace:configure.in:17: -1- AC_SUBST([LTLIBOBJS], [$ac_ltlibobjs])

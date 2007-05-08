@@ -1,5 +1,5 @@
 /*  opendcs - An open source distributed control system 
- *  Copyright (c) 1997 Phil Birkelbach
+ *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ void *xcalloc(size_t, size_t);
 void xfatal(const char *,...);
 void xerror(const char *,...);
 void xnotice(const char *,...);
+void setverbosity(int);
 void xlog(int,const char *,...);
 char *xstrcpy(const char *);
 int daemonize(char *);

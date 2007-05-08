@@ -4,4 +4,12 @@ Possibly need to allow the start_module() function to set the processes
 environment before launching the module.
 
 Need to have the start_module() function set a lesser UID for the module
-before exec()ing the process.  What UID will opendcs run as???
+before exec()ing the process.  What UID will opendcs run as??? This may not be
+the best idea in the world.  It depends on how we wind up signaling the modules.
+
+Fix the dead module queue to be dynamic so that if too many modules die at
+once it won't fill up and the system can get cleaned up properly.
+
+Set up the module restarting in the scan_modules() function.
+
+Read the configuration file.  What is there to configure yet??

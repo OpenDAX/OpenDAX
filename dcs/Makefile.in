@@ -65,11 +65,12 @@ LIB = @LIB@
 LTLIB = @LTLIB@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
+RANLIB = @RANLIB@
 VERSION = @VERSION@
 ac_aux_dir = @ac_aux_dir@
 
 bin_PROGRAMS = opendcs
-opendcs_SOURCES = main.c options.c options.h func.c func.h module.c module.h 
+opendcs_SOURCES = main.c options.c options.h func.c func.h module.c module.h message.h message.c 
 mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_HEADER = ../config.h
 CONFIG_CLEAN_FILES = 
@@ -80,7 +81,7 @@ DEFS = @DEFS@ -I. -I$(srcdir) -I..
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
-opendcs_OBJECTS =  main.o options.o func.o module.o
+opendcs_OBJECTS =  main.o options.o func.o module.o message.o
 opendcs_LDADD = $(LDADD)
 opendcs_DEPENDENCIES = 
 opendcs_LDFLAGS = 
@@ -88,14 +89,15 @@ CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
-DIST_COMMON =  Makefile.am Makefile.in
+DIST_COMMON =  Makefile.am Makefile.in TODO
 
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-DEP_FILES =  .deps/func.P .deps/main.P .deps/module.P .deps/options.P
+DEP_FILES =  .deps/func.P .deps/main.P .deps/message.P .deps/module.P \
+.deps/options.P
 SOURCES = $(opendcs_SOURCES)
 OBJECTS = $(opendcs_OBJECTS)
 

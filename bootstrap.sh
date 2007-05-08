@@ -1,3 +1,3 @@
 #!/bin/sh
 
-aclocal && automake --gnu --add-missing && autoconf
+aclocal && automake --gnu --copy --add-missing && autoconf

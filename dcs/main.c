@@ -1,5 +1,5 @@
 /*  opendcs - An open source distributed control system 
- *  Copyright (c) 1997 Phil Birkelbach
+ *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ int main(int argc, const char * argv[]) {
     struct sigaction sa;
     dcs_module *mod;
     int temp,n;
-    long int rnum;
+    //long int rnum;
     char buff[256];
     
     memset (&sa,0,sizeof(struct sigaction));
@@ -39,16 +39,17 @@ int main(int argc, const char * argv[]) {
     xlog(0,"OpenDCS started");
     
     temp=add_module("/bin/ls","-l",MFLAG_OPENPIPES);
+    temp=add_module("/home/phil/opendcs/test",NULL,0);
     
     for(n=0;n<20;n++) {
-        temp=add_module("/home/phil/opendcs/test",NULL,0);
-        printf("Added Module Handle %d\n",temp);
+        temp=add_module("/home/phil/opendcs/test33",NULL,0);
+        //printf("Added Module Handle %d\n",temp);
     }
     setverbosity(10);
     start_module(1);
     start_module(2);
     start_module(3);
-    start_module(4);
+    //start_module(4);
     while(1) {
         mod=get_module(1);
         if((temp=read(mod->pipe_out,buff,200)) > 0) {
@@ -56,7 +57,8 @@ int main(int argc, const char * argv[]) {
             printf("DUDE: %s\n",buff);
         }
         else {
-            printf("Sleeping \n");
+            printf("Scaning Modules \n");
+            scan_modules();
             sleep(1);
         }
     }
@@ -98,16 +100,10 @@ int main(int argc, const char * argv[]) {
 
 /* This handles the shutting down of a module */
 void child_signal(int sig) {
-  int status;
-  pid_t pid;
-  
-  switch(sig) {
-    case SIGCHLD:
-      pid=wait(&status);
-      /* No IO in a signal handler!!!! */
-      printf("Module %d has died\n",pid);
-      
-      /* Write the status into the module stuct for the pid */
-      break;
-  }
+    int status;
+    pid_t pid;
+
+    pid=wait(&status);
+    printf("Caught Child Dying %d\n",pid);
+    dead_module_add(pid,status);
 }
