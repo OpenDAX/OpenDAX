@@ -17,17 +17,32 @@
  */
 
 
+#ifndef __FUNC_H
+#define __FUNC_H
+
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
  * something createive with them later. */
 
+
 void *xmalloc(size_t);
 void *xrealloc(void *, size_t);
 void *xcalloc(size_t, size_t);
+
+/* Error handling and logging functions */
+
 void xfatal(const char *,...);
 void xerror(const char *,...);
 void xnotice(const char *,...);
 void setverbosity(int);
 void xlog(int,const char *,...);
+
+/* Portability functions */
+
 char *xstrcpy(const char *);
+
+/* Stuff */
+
 int daemonize(char *);
+
+#endif /* !__FUNC_H */

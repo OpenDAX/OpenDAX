@@ -20,5 +20,41 @@
 #ifndef __OPENDCS_H
 #define __OPENDCS_H
 
+/* For now we'll use this as the key for all the SysV IPC stuff */
+#define DCS_IPC_KEY 0x707070
 
-#endif
+/* Data type definitions */
+#define DCS_BOOL    0x0010
+/* 8 Bits */
+#define DCS_BYTE    0x0003
+#define DCS_SINT    0x0013
+/* 16 Bits */
+#define DCS_WORD    0x0004
+#define DCS_INT     0x0014
+#define DCS_UINT    0x0024
+/* 32 Bits */
+#define DCS_DWORD   0x0005
+#define DCS_DINT    0x0015
+#define DCS_UDINT   0x0025
+#define DCS_TIME    0x0035
+#define DCS_REAL    0x0045
+/* 64 Bits */
+#define DCS_LWORD   0x0006
+#define DCS_LINT    0x0016
+#define DCS_ULINT   0x0026
+#define DCS_LREAL   0x0036
+
+
+/* The highest order bit shows that it's a custom datatype */
+#define DCS_CUSTOM  0x80000000
+
+/* The size of the base datatypes are based on the lower 4 bits.  A
+   simple bit shift will give the size of the datatype */
+#define DCS_1BIT    0x0000
+#define DCS_8BITS   0x0003
+#define DCS_16BITS  0x0004
+#define DCS_32BITS  0x0005
+#define DCS_64BITS  0x0006
+
+
+#endif /* !__OPENDCS_H */

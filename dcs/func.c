@@ -28,6 +28,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <stdarg.h>
+#include <signal.h>
 #include "func.h"
 
 static int _verbosity=0;
@@ -66,7 +67,7 @@ void xfatal(const char *format,...) {
     vfprintf(stderr,format,val);
     fprintf(stderr,"\n");
     va_end(val);
-    exit(-1);
+    kill(getpid(),SIGQUIT);
 }
 
 void xerror(const char *format,...) {
@@ -98,7 +99,7 @@ void setverbosity(int verbosity) {
 /* Sends the string to the logger verbosity is greater than __verbosity */
 void xlog(int verbosity, const char *format,...) {
     va_list val;
-    if(verbosity >= _verbosity) {
+    if(verbosity <= _verbosity) {
         va_start(val,format);
         vprintf(format,val);
         printf("\n");

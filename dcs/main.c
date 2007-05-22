@@ -23,44 +23,58 @@
 #include "module.h"
 #include "options.h"
 #include "func.h"
+#include "message.h"
 
 void child_signal(int);
+void quit_signal(int);
 
-int main(int argc, const char * argv[]) {
+int main(int argc, const char *argv[]) {
     struct sigaction sa;
     dcs_module *mod;
     int temp,n;
     //long int rnum;
     char buff[256];
     
+    
+    /* Set up the signal handlers */
     memset (&sa,0,sizeof(struct sigaction));
     sa.sa_handler=&child_signal;
     sigaction (SIGCHLD,&sa,NULL);
+    sa.sa_handler=&quit_signal;
+    sigaction (SIGQUIT,&sa,NULL);
+    sigaction (SIGINT,&sa,NULL);
+    
+    setverbosity(10);
+    
+    msg_create_queue(); /* This creates the message queue */
+    
     xlog(0,"OpenDCS started");
     
-    temp=add_module("/bin/ls","-l",MFLAG_OPENPIPES);
-    temp=add_module("/home/phil/opendcs/test",NULL,0);
+    temp=add_module("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
+    temp=add_module("test","/home/phil/opendcs/modules/test/test",NULL,0);
+    temp=add_module("testmod2","/home/phil/opendcs/test",NULL,0);
+    temp=add_module("testmod3","/home/phil/opendcs/test",NULL,0);
+    temp=add_module("testmod4","/home/phil/opendcs/test",NULL,0);
+    temp=add_module("testmod5","/home/phil/opendcs/test",NULL,0);
     
-    for(n=0;n<20;n++) {
-        temp=add_module("/home/phil/opendcs/test33",NULL,0);
-        //printf("Added Module Handle %d\n",temp);
-    }
-    setverbosity(10);
-    start_module(1);
-    start_module(2);
+    
+    //start_module(2);
     start_module(3);
     //start_module(4);
+    //start_module(5);
+    
     while(1) {
-        mod=get_module(1);
-        if((temp=read(mod->pipe_out,buff,200)) > 0) {
-            buff[temp]=0;
-            printf("DUDE: %s\n",buff);
-        }
-        else {
+        //mod=get_module(2); /* thou shalt not follow the NULL pointer */
+        //if((temp=read(mod->pipe_out,buff,200)) > 0) {
+        //    buff[temp]=0;
+        //    printf("DUDE: %s\n",buff);
+        //}
+        //else {
             printf("Scaning Modules \n");
+            msg_receive();
             scan_modules();
             sleep(1);
-        }
+        //}
     }
     
 #ifdef ASDFLKJHALSKDJHFLAKJSHDFLKJHA
@@ -104,6 +118,13 @@ void child_signal(int sig) {
     pid_t pid;
 
     pid=wait(&status);
-    printf("Caught Child Dying %d\n",pid);
+    xlog(1,"Caught Child Dying %d\n",pid);
     dead_module_add(pid,status);
+}
+
+void quit_signal(int sig) {
+    xlog(0,"Quitting due to signal %d",sig);
+    /* TODO: Should stop all running modules */
+    msg_destroy_queue(); /* Destroy the message queue */
+    exit(-1);
 }

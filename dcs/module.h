@@ -33,6 +33,7 @@
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dcs_Module {
     unsigned int handle;
+    char *name;
     pid_t pid;
     int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
@@ -52,7 +53,7 @@ typedef struct DeadModule {
 } dead_module;
 
 /* Module List Handling Functions */
-unsigned int add_module(char *, char *, unsigned int);
+unsigned int add_module(char *, char *, char *, unsigned int);
 int del_module(unsigned int);
 dcs_module *get_module(unsigned int);
 

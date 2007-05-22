@@ -12,4 +12,6 @@ once it won't fill up and the system can get cleaned up properly.
 
 Set up the module restarting in the scan_modules() function.
 
+Write the stop_module() function.
+
 Read the configuration file.  What is there to configure yet??

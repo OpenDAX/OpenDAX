@@ -37,6 +37,7 @@ static int _module_count=0;
 static char **arglist_tok(char *,char *);
 //dcs_module *get_module(unsigned int);
 static dcs_module *get_module_pid(pid_t);
+static dcs_module *get_module_name(char *);
 
 /* This array is the dead module list.
    TODO: This should be improved to allow it to grow when needed.
@@ -59,11 +60,16 @@ static dead_module _dmq[DMQ_SIZE];
    Returns the new handle on success and 0 on failure.  (zero is reserved
    for the opendcs main process.)
 */
-unsigned int add_module(char *path, char *arglist, unsigned int flags) {
-    static unsigned int handle=0;
+unsigned int 
+add_module(char *name, char *path, char *arglist, unsigned int flags) {
+    /* The handle is incremented before first use.  The first added module
+       will be handle 2 so that the core process can always be one */
+    static unsigned int handle=1;
     dcs_module *new;
-
+    xlog(10,"Adding module %s",name);
+    /* TODO: Handle the errors for the following somehow */
     if(!path) return 0; /* No path / No Module */
+    if(get_module_name(name)) return 0; /* Name already used */
     new=(dcs_module *)xmalloc(sizeof(dcs_module));
     if(new) {
         new->handle = ++handle;
@@ -74,7 +80,8 @@ unsigned int add_module(char *path, char *arglist, unsigned int flags) {
         
         /* tokenize and set arglist */
         new->arglist=arglist_tok(path,arglist);
-        
+        /* name the module */
+        new->name=strdup(name);
         if(_current_mod==NULL) { /* List is empty */
             new->next=new;
             new->prev=new;
@@ -166,6 +173,7 @@ int del_module(unsigned int handle) {
         _module_count--;
         /* free allocated memory */
         if(mod->path) free(mod->path);
+        if(mod->name) free(mod->name);
         if(mod->arglist) {
             node=mod->arglist;
             while(*node) {
@@ -388,6 +396,24 @@ static dcs_module *get_module_pid(pid_t pid) {
     if(last->pid==pid) return last;
 
     while(_current_mod->pid != pid) {
+        _current_mod = _current_mod->next;
+        if(_current_mod==last) {
+            return NULL;
+        }
+    }
+    return _current_mod;
+}
+
+/* Retrieves a pointer to module given name */
+static dcs_module *get_module_name(char *name) {
+    dcs_module *last;
+    /* In case we ain't go no list */
+    if(_current_mod==NULL) return NULL;
+    /* Figure out where we need to stop */
+    last=_current_mod->prev;
+    if(!strcmp(_current_mod->name,name)) return last;
+
+    while(strcmp(_current_mod->name,name)) {
         _current_mod = _current_mod->next;
         if(_current_mod==last) {
             return NULL;
