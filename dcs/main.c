@@ -20,10 +20,11 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <string.h>
-#include "module.h"
-#include "options.h"
-#include "func.h"
-#include "message.h"
+#include <module.h>
+#include <options.h>
+#include <func.h>
+#include <message.h>
+#include <tagbase.h>
 
 void child_signal(int);
 void quit_signal(int);
@@ -32,7 +33,7 @@ int main(int argc, const char *argv[]) {
     struct sigaction sa;
     dcs_module *mod;
     int temp,n;
-    //long int rnum;
+    long int handle;
     char buff[256];
     
     
@@ -47,15 +48,23 @@ int main(int argc, const char *argv[]) {
     setverbosity(10);
     
     msg_create_queue(); /* This creates the message queue */
-    
+    initialize_tagbase(); /* initiallize the tagname list and database */
+
     xlog(0,"OpenDCS started");
     
     temp=add_module("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
-    temp=add_module("test","/home/phil/opendcs/modules/test/test",NULL,0);
+    temp=add_module("test","/home/phil/trunk/modules/test/test",NULL,0);
     temp=add_module("testmod2","/home/phil/opendcs/test",NULL,0);
     temp=add_module("testmod3","/home/phil/opendcs/test",NULL,0);
     temp=add_module("testmod4","/home/phil/opendcs/test",NULL,0);
     temp=add_module("testmod5","/home/phil/opendcs/test",NULL,0);
+    
+    handle=tag_add("Tag1",DCS_BOOL,1);
+    printf("Tag1 = %ld\n",handle);
+    handle=tag_add("Tag2",DCS_BOOL,4);
+    printf("Tag2 = %ld\n",handle);
+    handle=tag_add("Tag3",DCS_BOOL,2);
+    printf("Tag3 = %ld\n",handle);
     
     
     //start_module(2);

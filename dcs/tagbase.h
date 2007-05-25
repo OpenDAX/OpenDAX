@@ -18,6 +18,9 @@
  * This is the header file for the tagname database handling routines
  */
 
+#include <opendcs.h>
+#include <sys/types.h>
+
 #ifndef __TAGBASE_H
 #define __TAGBASE_H
 
@@ -27,30 +30,30 @@
 
 /* This is the initial size of the tagname list array */
 #ifndef DCS_TAGLIST_SIZE
- #ifndef DCS_TAGLIST_SIZE 1024
+ #define DCS_TAGLIST_SIZE 1024
 #endif
 
 /* This is the size that the tagname list array will grow when
    the size is exceeded */
 #ifndef DCS_TAGLIST_INC
- #ifndef DCS_TAGLIST_INC 1024
+ #define DCS_TAGLIST_INC 1024
 #endif
 
 /* The initial size of the database */
 #ifndef DCS_DATABASE_SIZE
- #ifndef DCS_DATABASE_SIZE 1024
+ #define DCS_DATABASE_SIZE 1024
 #endif
 
 /* This is the increment by which the database will grow when
    the size is exceeded */
 #ifndef DCS_DATABASE_INC
- #ifndef DCS_DATABASE_INC 1024
+ #define DCS_DATABASE_INC 1024
 #endif
 
 
 
 typedef struct Dcs_Tag {
-    char [DCS_TAGNAME_SIZE +1];
+    char name[DCS_TAGNAME_SIZE + 1];
     long int handle;
     unsigned int type;
     unsigned int count;
@@ -58,7 +61,7 @@ typedef struct Dcs_Tag {
 
 
 void initialize_tagbase(void);
-long int tagbase_add(char *name,unsigned int type, unsigned int count);
-int tagbase_del(char *name);
+long int tag_add(char *name,unsigned int type, unsigned int count);
+int tag_del(char *name);
 
 #endif /* !__TAGBASE_H */

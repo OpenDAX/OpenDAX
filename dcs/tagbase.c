@@ -19,6 +19,10 @@
  */
 
 #include <tagbase.h>
+#include <func.h>
+//#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 /* Notes:
  * The tagname symbol table list is implemented as a simple array that
@@ -43,8 +47,7 @@ dcs_tag *__taglist;
 static long int __tagindex=0;
 static long int __taglistsize=0;
 
-u_int32_t *__database;
-static int __databaseindex=0
+u_int32_t *__db; /* Primary Point Database */
 static int __databasesize=0;
 
 /* Non public function declarations */
@@ -56,34 +59,33 @@ static long int gethandle(unsigned int, unsigned int);
 static long int gethandle_16(unsigned int);
 static long int gethandle_32(unsigned int);
 static long int gethandle_64(unsigned int);*/
-static int tagbase_grow(void);
+static int taglist_grow(void);
 static int database_grow(void);
 
 /* Allocates the symbol table and the database array */
 void initialize_tagbase(void) {
-    int n;
     __taglist=(dcs_tag *)xmalloc(sizeof(dcs_tag)*DCS_TAGLIST_SIZE);
-    if(!__tagbase) {
+    if(!__taglist) {
         xfatal("Unable to allocate the symbol table");
     }
     __taglistsize=DCS_TAGLIST_SIZE;
     /* Allocate the primary database */
-    __database=(u_int32_t *)xmalloc(sizeof(u_int32_t)*DCS_DATABASE_SIZE);
-    if(!__database) {
+    __db=(u_int32_t *)xmalloc(sizeof(u_int32_t)*DCS_DATABASE_SIZE);
+    if(!__db) {
         xfatal("Unable to allocate the database");
     }
-    __datbasesize=DCS_DATABASE_SIZE;
+    __databasesize=DCS_DATABASE_SIZE;
     /* Set all the memory to zero */
     memset(__taglist,0x00,sizeof(dcs_tag)*DCS_TAGLIST_SIZE);
-    memset(__database,0x00,sizeof(u_int32_t)*DCS_DATABASE_SIZE);
+    memset(__db,0x00,sizeof(u_int32_t)*DCS_DATABASE_SIZE);
 }
 
 
 /* This adds a tag to the database. */
-long int tagbase_add(char *name,unsigned int type, unsigned int count) {
-    int n;
+long int tag_add(char *name,unsigned int type, unsigned int count) {
+    long handle;
     if(__tagindex >= __taglistsize) {
-        if(!tagbase_grow()) {
+        if(!taglist_grow()) {
             xerror("Out of memory for symbol table");
             return -1;
         }
@@ -101,28 +103,26 @@ long int tagbase_add(char *name,unsigned int type, unsigned int count) {
         return -4;
     }
     /* Get the first available handle for the size of the type */
-    if(__tagindex==0) handle = 0;
-    else gethandle(type,count);
-    /*else if(type & DCS_1BIT)   handle = gethandle_1(count);
-    else if(type & DCS_8BITS)  handle = gethandle_8(count);
-    else if(type & DCS_16BITS) handle = gethandle_16(count);
-    else if(type & DCS_32BITS) handle = gethandle_32(count);
-    else if(type & DCS_64BITS) handle = gethandle_64(count);*/
-    __taglist[__tagindex].handle=handle;
-    __taglist[__tagindex].count=count;
-    __taglist[__tagindex].type=type;
+    if(__tagindex==0)   handle = 0;
+    else                handle=gethandle(type,count);
     if(handle<0) {
         xerror("Problem allocating room");
         return -5;
+    }
+    /* Assign everything to the new tag, copy the string and git */
+    __taglist[__tagindex].handle=handle;
+    __taglist[__tagindex].count=count;
+    __taglist[__tagindex].type=type;
     if(!strncpy(__taglist[__tagindex].name,name,DCS_TAGNAME_SIZE)) {
         xerror("Unable to copy tagname %s");
         return -6;
     }
     __tagindex++;
+    return handle;
 }
 
 /* TODO: Make this function do something */
-int tagbase_del(char *name) {
+int tag_del(char *name) {
     return 0; /* Return good for now */
 }
 
@@ -169,36 +169,59 @@ static int checktype(unsigned int type) {
 /* Find the next handle for a single bit or bit array */
 static long int gethandle(unsigned int type,unsigned int count) {
     int n,size;
+    dcs_tag *this,*next;
     long nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = 0x01 << (type & 0x0F);
-    for(n=0;n<__taglistsize-1;n++) {
+    for(n=0;n<__taglistsize-2;n++) {
+        this=&__taglist[n]; next=&__taglist[n+1]; /* just to make it easier */
         /* this is the handle of the bit following this bits allocation */
-        nextbit=__tagbase[n].handle + 
-                (__tagbase[n].count * (0x01 << (__tagbase[n].type & 0x0F)));
-        /* check if there are enough bits. */
-        if((__tagbase[n+1].handle - nextbit) > (size * count)) {
+        nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
         
+        if((type & DCS_1BIT) && ((next->handle - nextbit) > (size * count))) {
+            return nextbit;
+        /* The database is an array of 32bit numbers this code sets the nextbit
+            handle to the next even 8,16 0r 32 bit offset within the database */
+        } else if((type & DCS_8BITS)) {
+            if((nextbit & 0x07) == 0x00) { /* Even 8 bit number */
+                return nextbit;
+            }
+            nextbit |= 0x07; /* turn last three bits to 1's */
+            nextbit++;      /* increment to the next even number */
+        } else if((type & DCS_16BITS)) {
+            if((nextbit & 0x0F) == 0x00) { /* Even 16 bit number */
+                return nextbit;
+            }
+            nextbit |= 0x0F; /* turn last four bits to 1's */
+            nextbit++;      /* increment to the next even number */
+        } else if((type & DCS_32BITS) || (type & DCS_64BITS)) {
+            if((nextbit & 0x1F) == 0x00) { /* Even 32 bit number */
+                return nextbit;
+            }
+            nextbit |= 0x1F; /* turn last five bits to 1's */
+            nextbit++;      /* increment to the next even number */
+        }
+        /* Now see if we have enough room */
+        if((next->handle - nextbit) > (size * count)) {
+            return nextbit;
         }
     }
+    /* We are at the end of the loops so there are no gaps large enough for our
+        new point.  We need to make sure that there is enough room left the 
+        database, grow it if necessary, and assign the handle to the end */
+    this=&__taglist[__taglistsize-1]; /* Get the last tag in the list */
+    nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
+    if(nextbit > (__databasesize * 32)) { /* We need more room */
+        if(!database_grow()) { /* Make the database bigger */
+            xerror("Unable to allocate more database memory");
+            return -1;
+        }
+    }
+    return nextbit;
 }
-
-/* I don't think we'll need these
-static long int gethandle_8(unsigned int) count {
-}
-
-static long int gethandle_16(unsigned int count) {
-}
-
-static long int gethandle_32(unsigned int count) {
-}
-
-static long int gethandle_64(unsigned int count) {
-}
-*/
 
 /* Grow the tagname database when necessary */
-static int tagbase_grow(void) {
+static int taglist_grow(void) {
     return 0; /* Just return error for now */
 }
 
