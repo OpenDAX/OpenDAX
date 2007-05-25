@@ -51,12 +51,11 @@ static int __databasesize=0;
 static int validate_name(char *);
 static long int get_by_name(char *);
 static int checktype(unsigned int);
-static long int gettypesize(unsigned int);
-static long int gethandle_1(unsigned int);
-static long int gethandle_8(unsigned int);
+static long int gethandle(unsigned int, unsigned int);
+/*static long int gethandle_8(unsigned int);
 static long int gethandle_16(unsigned int);
 static long int gethandle_32(unsigned int);
-static long int gethandle_64(unsigned int);
+static long int gethandle_64(unsigned int);*/
 static int tagbase_grow(void);
 static int database_grow(void);
 
@@ -103,11 +102,12 @@ long int tagbase_add(char *name,unsigned int type, unsigned int count) {
     }
     /* Get the first available handle for the size of the type */
     if(__tagindex==0) handle = 0;
-    else if(type & DCS_1BIT)   handle = gethandle_1(count);
+    else gethandle(type,count);
+    /*else if(type & DCS_1BIT)   handle = gethandle_1(count);
     else if(type & DCS_8BITS)  handle = gethandle_8(count);
     else if(type & DCS_16BITS) handle = gethandle_16(count);
     else if(type & DCS_32BITS) handle = gethandle_32(count);
-    else if(type & DCS_64BITS) handle = gethandle_64(count);
+    else if(type & DCS_64BITS) handle = gethandle_64(count);*/
     __taglist[__tagindex].handle=handle;
     __taglist[__tagindex].count=count;
     __taglist[__tagindex].type=type;
@@ -165,18 +165,25 @@ static int checktype(unsigned int type) {
 }
 
 
-static long int gettypesize(unsigned int type) {
-    
-}
 
 /* Find the next handle for a single bit or bit array */
-static long int gethandle_1(unsigned int count) {
-    int n;
-    long lastbit;
-    
+static long int gethandle(unsigned int type,unsigned int count) {
+    int n,size;
+    long nextbit;
+    /* The lower four bits of type are the size in 2^n format */
+    size = 0x01 << (type & 0x0F);
+    for(n=0;n<__taglistsize-1;n++) {
+        /* this is the handle of the bit following this bits allocation */
+        nextbit=__tagbase[n].handle + 
+                (__tagbase[n].count * (0x01 << (__tagbase[n].type & 0x0F)));
+        /* check if there are enough bits. */
+        if((__tagbase[n+1].handle - nextbit) > (size * count)) {
+        
+        }
+    }
 }
 
-
+/* I don't think we'll need these
 static long int gethandle_8(unsigned int) count {
 }
 
@@ -188,6 +195,7 @@ static long int gethandle_32(unsigned int count) {
 
 static long int gethandle_64(unsigned int count) {
 }
+*/
 
 /* Grow the tagname database when necessary */
 static int tagbase_grow(void) {
