@@ -59,13 +59,19 @@ int main(int argc, const char *argv[]) {
     temp=add_module("testmod4","/home/phil/opendcs/test",NULL,0);
     temp=add_module("testmod5","/home/phil/opendcs/test",NULL,0);
     
-    handle=tag_add("Tag1",DCS_BOOL,1);
-    printf("Tag1 = %ld\n",handle);
-    handle=tag_add("Tag2",DCS_BOOL,4);
+    handle=tag_add("Tag1",DCS_BOOL,253);
+    printf("Tag1 = %ld\n",handle);    
+    handle=tag_add("Tag2",DCS_BOOL,1);
     printf("Tag2 = %ld\n",handle);
-    handle=tag_add("Tag3",DCS_BOOL,2);
+    handle=tag_add("Tag3",DCS_BOOL,1);
     printf("Tag3 = %ld\n",handle);
-    
+    handle=tag_add("Tag4",DCS_BOOL,1);
+    printf("Tag4 = %ld\n",handle);
+    handle=tag_add("Tag5",DCS_BOOL,1);
+    printf("Tag5 = %ld\n",handle);
+    handle=tag_add("Tag6",DCS_BOOL,1);
+    printf("Tag6 = %ld\n",handle);
+
     
     //start_module(2);
     start_module(3);

@@ -168,49 +168,56 @@ static int checktype(unsigned int type) {
 
 /* Find the next handle for a single bit or bit array */
 static long int gethandle(unsigned int type,unsigned int count) {
-    int n,size;
+    int n,size,mask;
     dcs_tag *this,*next;
     long nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = 0x01 << (type & 0x0F);
-    for(n=0;n<__taglistsize-2;n++) {
+    for(n=0;n<__tagindex-2;n++) {
         this=&__taglist[n]; next=&__taglist[n+1]; /* just to make it easier */
         /* this is the handle of the bit following this bits allocation */
         nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
-        
+
+        /* If it's not a single bit type then we need to even up nextbit
+            We do this by first calculating a mask to see if we are already
+            even and if we are then return.  If not then set the mask bits into
+            nextbit and then increment by one to get the even number */
         if((type & DCS_1BIT) && ((next->handle - nextbit) > (size * count))) {
+            xlog(10,"Returning single bit in gap %ld",nextbit);
             return nextbit;
-        /* The database is an array of 32bit numbers this code sets the nextbit
-            handle to the next even 8,16 0r 32 bit offset within the database */
-        } else if((type & DCS_8BITS)) {
-            if((nextbit & 0x07) == 0x00) { /* Even 8 bit number */
+        } else {
+            mask=(0x0001 << (type & 0x0f))-1;
+            if((nextbit & mask) == 0x00) {
+                xlog(10,"Returning dumb luck even number %ld",nextbit);
                 return nextbit;
             }
-            nextbit |= 0x07; /* turn last three bits to 1's */
-            nextbit++;      /* increment to the next even number */
-        } else if((type & DCS_16BITS)) {
-            if((nextbit & 0x0F) == 0x00) { /* Even 16 bit number */
-                return nextbit;
-            }
-            nextbit |= 0x0F; /* turn last four bits to 1's */
-            nextbit++;      /* increment to the next even number */
-        } else if((type & DCS_32BITS) || (type & DCS_64BITS)) {
-            if((nextbit & 0x1F) == 0x00) { /* Even 32 bit number */
-                return nextbit;
-            }
-            nextbit |= 0x1F; /* turn last five bits to 1's */
-            nextbit++;      /* increment to the next even number */
+            nextbit |= mask;
+            nextbit ++;
         }
         /* Now see if we have enough room */
         if((next->handle - nextbit) > (size * count)) {
+            xlog(10,"Don't know why this is here");
             return nextbit;
         }
     }
     /* We are at the end of the loops so there are no gaps large enough for our
         new point.  We need to make sure that there is enough room left the 
         database, grow it if necessary, and assign the handle to the end */
-    this=&__taglist[__taglistsize-1]; /* Get the last tag in the list */
+    
+    if(!(type & DCS_BOOL)) {/* If it's not a single bit */
+        /* ...then even it up */
+        mask=(0x0001 << (type & 0x0f))-1;
+        if((nextbit & mask) == 0x00) {
+            return nextbit;
+        }
+        nextbit |= mask;
+        nextbit ++;
+    }
+
+
+    this=&__taglist[__tagindex-1]; /* Get the last tag in the list */
     nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
+    
     if(nextbit > (__databasesize * 32)) { /* We need more room */
         if(!database_grow()) { /* Make the database bigger */
             xerror("Unable to allocate more database memory");
@@ -222,10 +229,12 @@ static long int gethandle(unsigned int type,unsigned int count) {
 
 /* Grow the tagname database when necessary */
 static int taglist_grow(void) {
+    xlog(8,"Growing the size of the taglist");
     return 0; /* Just return error for now */
 }
 
 /* Grow the database when necessary */
 static int database_grow(void) {
+    xlog(8,"Growing the size of the database");
     return 0; /* Just return error for now */
 }
