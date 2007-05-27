@@ -44,7 +44,7 @@
  */
 
 dcs_tag *__taglist;
-static long int __tagindex=0;
+static long int __tagcount=0;
 static long int __taglistsize=0;
 
 u_int32_t *__db; /* Primary Point Database */
@@ -54,11 +54,7 @@ static int __databasesize=0;
 static int validate_name(char *);
 static long int get_by_name(char *);
 static int checktype(unsigned int);
-static long int gethandle(unsigned int, unsigned int);
-/*static long int gethandle_8(unsigned int);
-static long int gethandle_16(unsigned int);
-static long int gethandle_32(unsigned int);
-static long int gethandle_64(unsigned int);*/
+static inline long int gethandle(unsigned int, unsigned int);
 static int taglist_grow(void);
 static int database_grow(void);
 
@@ -83,8 +79,10 @@ void initialize_tagbase(void) {
 
 /* This adds a tag to the database. */
 long int tag_add(char *name,unsigned int type, unsigned int count) {
+    int n,x,j;
     long handle;
-    if(__tagindex >= __taglistsize) {
+    dcs_tag store;
+    if(__tagcount >= __taglistsize) {
         if(!taglist_grow()) {
             xerror("Out of memory for symbol table");
             return -1;
@@ -103,21 +101,57 @@ long int tag_add(char *name,unsigned int type, unsigned int count) {
         return -4;
     }
     /* Get the first available handle for the size of the type */
-    if(__tagindex==0)   handle = 0;
+    if(__tagcount==0)   handle = 0;
     else                handle=gethandle(type,count);
     if(handle<0) {
         xerror("Problem allocating room");
         return -5;
     }
+
+    if((handle > __taglist[__tagcount-1].handle) || __tagcount==0) {
+        xlog(10,"First or last");
+        n=__tagcount;
+    } else {
+        for(n=1;n<__tagcount;n++) {
+            xlog(10,"We're at %d",n);
+            xlog(10,"n=%d : handle = 0x%x : __taglist[n-1].handle = 0x%x",n,handle,__taglist[n-1].handle);
+            //getchar();
+            
+            if((handle > __taglist[n-1].handle) && handle < __taglist[n].handle) {
+                /* Make a hole in the array */
+                xlog(10,"taglistsize = %d",__taglistsize);
+                memmove(&__taglist[n+1],&__taglist[n],(__taglistsize-n-2)*sizeof(dcs_tag));
+                break;
+            }
+        }
+    }
+    xlog(10,"Adding %s handle 0x%x at index %d",name,handle,n);
     /* Assign everything to the new tag, copy the string and git */
-    __taglist[__tagindex].handle=handle;
-    __taglist[__tagindex].count=count;
-    __taglist[__tagindex].type=type;
-    if(!strncpy(__taglist[__tagindex].name,name,DCS_TAGNAME_SIZE)) {
+    __taglist[n].handle=handle;
+    __taglist[n].count=count;
+    __taglist[n].type=type;
+    if(!strncpy(__taglist[n].name,name,DCS_TAGNAME_SIZE)) {
         xerror("Unable to copy tagname %s");
         return -6;
     }
-    __tagindex++;
+    __tagcount++;
+    
+    /* Need to sort the list here */
+    /* This is a bubble sort and is waaaaayyyy too inefficient but
+       I feel like I am fighting too many problems.  I need to get
+       something working and then I can refine. */
+    /* TODO: Get rid of this crap!!!!!! */
+    
+    //~ for(i=0;i<__tagcount;i++) {
+        //~ for(j=0;j<__tagcount-1;j++) {
+            //~ if(__taglist[j].handle > __taglist[j+1].handle) {
+                //~ memcpy(&store,&__taglist[j],sizeof(dcs_tag));
+                //~ memcpy(&__taglist[j],&__taglist[j+1],sizeof(dcs_tag));
+                //~ memcpy(&__taglist[j+1],&store,sizeof(dcs_tag));
+            //~ }
+        //~ }
+    //~ }
+    
     return handle;
 }
 
@@ -166,45 +200,61 @@ static int checktype(unsigned int type) {
 
 
 
-/* Find the next handle for a single bit or bit array */
-static long int gethandle(unsigned int type,unsigned int count) {
+/* Find the next handle for a single bit or bit array.  It starts by
+   running through the __taglist[] and looking to see if it can find
+   any room between the existing data points.  It does this by figuring
+   the size of the new tag and if it's a bit it does a simple subtraction
+   if it's bigger than a byte then it rounds the number up to it's proper
+   place.  Having the larger datatypes aligned will help with reading and
+   writing of the data later.  If it can't find a gap then it'll put the
+   handle at the end of the database and then check to see if the database
+   is big enough.  If not it grows the database.
+
+   This function assumes that the taglist is sorted by handle lowest first
+
+   TODO: May need to rewrite this thing to accept a size instead of a
+         datatype.  That way it could handle custom datatypes later.
+         Or may have to write another for custom datatypes.
+*/
+static inline long int gethandle(unsigned int type,unsigned int count) {
     int n,size,mask;
     dcs_tag *this,*next;
     long nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = 0x01 << (type & 0x0F);
-    for(n=0;n<__tagindex-2;n++) {
+    for(n=0;n<__tagcount-1;n++) {
         this=&__taglist[n]; next=&__taglist[n+1]; /* just to make it easier */
         /* this is the handle of the bit following this bits allocation */
-        nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
-
+        nextbit = this->handle + (long)(this->count * (0x01 << (this->type & 0x0F)));
         /* If it's not a single bit type then we need to even up nextbit
             We do this by first calculating a mask to see if we are already
             even and if we are then return.  If not then set the mask bits into
             nextbit and then increment by one to get the even number */
-        if((type & DCS_1BIT) && ((next->handle - nextbit) > (size * count))) {
-            xlog(10,"Returning single bit in gap %ld",nextbit);
-            return nextbit;
-        } else {
-            mask=(0x0001 << (type & 0x0f))-1;
-            if((nextbit & mask) == 0x00) {
-                xlog(10,"Returning dumb luck even number %ld",nextbit);
+        if((type & 0x0F) == DCS_1BIT) {
+            if((next->handle - nextbit) >= (long)(size * count)) {
                 return nextbit;
             }
-            nextbit |= mask;
-            nextbit ++;
+        } else {
+            mask=(0x0001 << (type & 0x0F))-1;
+            if((nextbit & mask) != 0x00) { /* If not even number */
+                nextbit |= mask; /* Round up */
+                nextbit ++;
+            }
+            /* Now see if we have enough room */
+            if((next->handle - nextbit) >= (long)(size * count)) {
+                return nextbit;
+            }
         }
-        /* Now see if we have enough room */
-        if((next->handle - nextbit) > (size * count)) {
-            xlog(10,"Don't know why this is here");
-            return nextbit;
-        }
+        
     }
     /* We are at the end of the loops so there are no gaps large enough for our
         new point.  We need to make sure that there is enough room left the 
         database, grow it if necessary, and assign the handle to the end */
+
+    this=&__taglist[__tagcount-1]; /* Get the last tag in the list */
+    nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
     
-    if(!(type & DCS_BOOL)) {/* If it's not a single bit */
+    if((type & 0x0F) != DCS_1BIT) {/* If it's not a single bit */
         /* ...then even it up */
         mask=(0x0001 << (type & 0x0f))-1;
         if((nextbit & mask) == 0x00) {
@@ -213,10 +263,6 @@ static long int gethandle(unsigned int type,unsigned int count) {
         nextbit |= mask;
         nextbit ++;
     }
-
-
-    this=&__taglist[__tagindex-1]; /* Get the last tag in the list */
-    nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
     
     if(nextbit > (__databasesize * 32)) { /* We need more room */
         if(!database_grow()) { /* Make the database bigger */
@@ -237,4 +283,13 @@ static int taglist_grow(void) {
 static int database_grow(void) {
     xlog(8,"Growing the size of the database");
     return 0; /* Just return error for now */
+}
+
+/* mostly for debugging */
+void tags_list(void) {
+    int n;
+    for(n=0;n<__tagcount;n++) {
+        xlog(0,"%s handle = (%ld,0x%lx) count = %d",__taglist[n].name,
+             __taglist[n].handle,__taglist[n].handle,__taglist[n].count);
+    }
 }

@@ -32,6 +32,7 @@ void quit_signal(int);
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
     dcs_module *mod;
+    dcs_tag list[24];
     int temp,n;
     long int handle;
     char buff[256];
@@ -53,25 +54,33 @@ int main(int argc, const char *argv[]) {
     xlog(0,"OpenDCS started");
     
     temp=add_module("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
-    temp=add_module("test","/home/phil/trunk/modules/test/test",NULL,0);
+    temp=add_module("test","/home/phil/opendcs/modules/test/test",NULL,0);
     temp=add_module("testmod2","/home/phil/opendcs/test",NULL,0);
     temp=add_module("testmod3","/home/phil/opendcs/test",NULL,0);
     temp=add_module("testmod4","/home/phil/opendcs/test",NULL,0);
     temp=add_module("testmod5","/home/phil/opendcs/test",NULL,0);
     
-    handle=tag_add("Tag1",DCS_BOOL,253);
-    printf("Tag1 = %ld\n",handle);    
-    handle=tag_add("Tag2",DCS_BOOL,1);
-    printf("Tag2 = %ld\n",handle);
-    handle=tag_add("Tag3",DCS_BOOL,1);
-    printf("Tag3 = %ld\n",handle);
-    handle=tag_add("Tag4",DCS_BOOL,1);
-    printf("Tag4 = %ld\n",handle);
-    handle=tag_add("Tag5",DCS_BOOL,1);
-    printf("Tag5 = %ld\n",handle);
-    handle=tag_add("Tag6",DCS_BOOL,1);
-    printf("Tag6 = %ld\n",handle);
-
+    n=0;
+    strcpy(list[n].name,"Bool1"); list[n].type=DCS_BOOL; list[n++].count = 17;
+    strcpy(list[n].name,"Byte2"); list[n].type=DCS_BYTE; list[n++].count = 1;
+    strcpy(list[n].name,"Bool3"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Bool4"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Dword5"); list[n].type=DCS_DWORD; list[n++].count = 1;
+    strcpy(list[n].name,"Bool6"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Bool7"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Bool8"); list[n].type=DCS_BOOL; list[n++].count = 10;
+    strcpy(list[n].name,"Bool9"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Bool10"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Bool11"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Bool12"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"LReal13"); list[n].type=DCS_LREAL; list[n++].count = 1;
+    strcpy(list[n].name,"Dword14"); list[n].type=DCS_REAL; list[n++].count = 1;
+    strcpy(list[n].name,"Dword15"); list[n].type=DCS_REAL; list[n++].count = 1;
+    
+    for(n=0;n<15;n++) {
+        tag_add(list[n].name,list[n].type,list[n].count);
+    }
+    tags_list();
     
     //start_module(2);
     start_module(3);

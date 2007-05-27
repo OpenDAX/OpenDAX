@@ -63,5 +63,6 @@ typedef struct Dcs_Tag {
 void initialize_tagbase(void);
 long int tag_add(char *name,unsigned int type, unsigned int count);
 int tag_del(char *name);
+void tags_list(void);
 
 #endif /* !__TAGBASE_H */
