@@ -44,7 +44,6 @@
 #define DCS_ULINT   0x0026
 #define DCS_LREAL   0x0036
 
-
 /* The highest order bit shows that it's a custom datatype */
 #define DCS_CUSTOM  0x80000000
 

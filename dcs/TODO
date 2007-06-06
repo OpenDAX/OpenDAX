@@ -15,3 +15,6 @@ Set up the module restarting in the scan_modules() function.
 Write the stop_module() function.
 
 Read the configuration file.  What is there to configure yet??
+
+Tagname list and database will both fail to grow now.  Both functions need
+to be written and tested.

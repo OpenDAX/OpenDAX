@@ -33,7 +33,7 @@ int main(int argc, const char *argv[]) {
     struct sigaction sa;
     dcs_module *mod;
     dcs_tag list[24];
-    int temp,n;
+    int temp,n,i,j;
     long int handle;
     char buff[256];
     
@@ -72,15 +72,41 @@ int main(int argc, const char *argv[]) {
     strcpy(list[n].name,"Bool9"); list[n].type=DCS_BOOL; list[n++].count = 1;
     strcpy(list[n].name,"Bool10"); list[n].type=DCS_BOOL; list[n++].count = 1;
     strcpy(list[n].name,"Bool11"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Bool12"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    strcpy(list[n].name,"Word12"); list[n].type=DCS_WORD; list[n++].count = 50;
     strcpy(list[n].name,"LReal13"); list[n].type=DCS_LREAL; list[n++].count = 1;
     strcpy(list[n].name,"Dword14"); list[n].type=DCS_REAL; list[n++].count = 1;
     strcpy(list[n].name,"Dword15"); list[n].type=DCS_REAL; list[n++].count = 1;
+    strcpy(list[n].name,"Bool16"); list[n].type=DCS_BOOL; list[n++].count = 1;
     
-    for(n=0;n<15;n++) {
+    for(n=0;n<16;n++) {
         tag_add(list[n].name,list[n].type,list[n].count);
     }
     tags_list();
+    
+    buff[0]=0x55;
+    tag_write_bytes(tag_get_handle("Byte2"),buff,1);
+    *((u_int16_t *)buff)=22222;
+    handle=tag_get_handle("Word12");
+    tag_write_bytes(handle,buff,2);
+    print_database();
+    
+    tag_read_bytes(handle,&temp,2);
+    printf("Retrieved %d from handle %ld\n",temp,handle);
+    
+    /* This is just a dumb routine to show the database */
+    //~ printf("         0               1\n");
+    //~ printf("         0123456789ABCDEF0123456789ABCDEF\n");
+    //~ for(i=0;i<120;i++) {
+        //~ printf("0x%4x : ",i*32);
+        //~ for(j=0;j<32;j++) {
+            //~ if((n=tag_get_type(i*32 + j))>=0) {
+                //~ printf("%d", n%10);
+            //~ } else {
+                //~ printf("_");
+            //~ }
+        //~ }
+        //~ printf("\n");
+    //~ }
     
     //start_module(2);
     start_module(3);
@@ -100,40 +126,6 @@ int main(int argc, const char *argv[]) {
             sleep(1);
         //}
     }
-    
-#ifdef ASDFLKJHALSKDJHFLAKJSHDFLKJHA
-    while(1) {
-        //usleep(10000);
-        mod=get_next_module();
-        
-        rnum=random();
-        
-        if(get_module_count()==2000) {
-            n=add_module("/sup/diddly",NULL,0);
-            printf("DELETING ALL MODULES - %u M\n",n/1000000);
-            while(mod=get_next_module()) {
-                //printf("Deleting Module %d - %d\n",mod->handle,get_module_count());
-                del_module(mod->handle);
-            }
-            sleep(1);
-        }
-        rnum=random();
-        if(!(rnum%3)) {
-            n=add_module("/home/phil/opendcs/test","a b d what --hello",0);
-            //printf("Added Module Handle %d\n",n);
-        }
-        rnum=random();
-        if(!(rnum%3)) {
-            mod=get_next_module();
-            if(mod)
-                n=del_module(mod->handle);
-        }
-        //DO SOME CRAP.......
-        //Fix modules
-    }
-    
-#endif
-
 }
 
 /* This handles the shutting down of a module */
@@ -146,6 +138,7 @@ void child_signal(int sig) {
     dead_module_add(pid,status);
 }
 
+/* this handles shutting down of the core */
 void quit_signal(int sig) {
     xlog(0,"Quitting due to signal %d",sig);
     /* TODO: Should stop all running modules */

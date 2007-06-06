@@ -50,19 +50,29 @@
  #define DCS_DATABASE_INC 1024
 #endif
 
+#define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
+typedef int handle_t;
 
 typedef struct Dcs_Tag {
     char name[DCS_TAGNAME_SIZE + 1];
-    long int handle;
+    handle_t handle;
     unsigned int type;
     unsigned int count;
 } dcs_tag;
 
 
 void initialize_tagbase(void);
-long int tag_add(char *name,unsigned int type, unsigned int count);
+handle_t tag_add(char *name,unsigned int type, unsigned int count);
 int tag_del(char *name);
+handle_t tag_get_handle(char *name);
+int tag_get_type(handle_t handle);
+int tag_read_bytes(handle_t handle, void *data,size_t size);
+int tag_write_bytes(handle_t handle, void *data, size_t size);
+int tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
+
+/* debug stuff */
 void tags_list(void);
+void print_database(void);
 
 #endif /* !__TAGBASE_H */

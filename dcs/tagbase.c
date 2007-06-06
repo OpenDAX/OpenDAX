@@ -20,7 +20,7 @@
 
 #include <tagbase.h>
 #include <func.h>
-//#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -52,13 +52,14 @@ static int __databasesize=0;
 
 /* Non public function declarations */
 static int validate_name(char *);
-static long int get_by_name(char *);
+static int get_by_name(char *);
 static int checktype(unsigned int);
-static inline long int gethandle(unsigned int, unsigned int);
+static inline handle_t gethandle(unsigned int, unsigned int);
 static int taglist_grow(void);
 static int database_grow(void);
 
-/* Allocates the symbol table and the database array */
+/* Allocates the symbol table and the database array.  There's no return
+   value because failure of this function is fatal */
 void initialize_tagbase(void) {
     __taglist=(dcs_tag *)xmalloc(sizeof(dcs_tag)*DCS_TAGLIST_SIZE);
     if(!__taglist) {
@@ -78,10 +79,9 @@ void initialize_tagbase(void) {
 
 
 /* This adds a tag to the database. */
-long int tag_add(char *name,unsigned int type, unsigned int count) {
-    int n,x,j;
-    long handle;
-    dcs_tag store;
+handle_t tag_add(char *name,unsigned int type, unsigned int count) {
+    int n;
+    handle_t handle;
     if(__tagcount >= __taglistsize) {
         if(!taglist_grow()) {
             xerror("Out of memory for symbol table");
@@ -107,25 +107,19 @@ long int tag_add(char *name,unsigned int type, unsigned int count) {
         xerror("Problem allocating room");
         return -5;
     }
-
+    /* The taglist must be sorted by handle for all of this stuff to work */
     if((handle > __taglist[__tagcount-1].handle) || __tagcount==0) {
-        xlog(10,"First or last");
-        n=__tagcount;
+        n=__tagcount; /* First or last in the list */
     } else {
         for(n=1;n<__tagcount;n++) {
-            xlog(10,"We're at %d",n);
-            xlog(10,"n=%d : handle = 0x%x : __taglist[n-1].handle = 0x%x",n,handle,__taglist[n-1].handle);
-            //getchar();
-            
-            if((handle > __taglist[n-1].handle) && handle < __taglist[n].handle) {
+            if(handle > __taglist[n-1].handle && handle < __taglist[n].handle) {
                 /* Make a hole in the array */
-                xlog(10,"taglistsize = %d",__taglistsize);
-                memmove(&__taglist[n+1],&__taglist[n],(__taglistsize-n-2)*sizeof(dcs_tag));
+                memmove(&__taglist[n+1],&__taglist[n],
+                       (__taglistsize-n-2)*sizeof(dcs_tag));
                 break;
             }
         }
     }
-    xlog(10,"Adding %s handle 0x%x at index %d",name,handle,n);
     /* Assign everything to the new tag, copy the string and git */
     __taglist[n].handle=handle;
     __taglist[n].count=count;
@@ -135,25 +129,81 @@ long int tag_add(char *name,unsigned int type, unsigned int count) {
         return -6;
     }
     __tagcount++;
-    
-    /* Need to sort the list here */
-    /* This is a bubble sort and is waaaaayyyy too inefficient but
-       I feel like I am fighting too many problems.  I need to get
-       something working and then I can refine. */
-    /* TODO: Get rid of this crap!!!!!! */
-    
-    //~ for(i=0;i<__tagcount;i++) {
-        //~ for(j=0;j<__tagcount-1;j++) {
-            //~ if(__taglist[j].handle > __taglist[j+1].handle) {
-                //~ memcpy(&store,&__taglist[j],sizeof(dcs_tag));
-                //~ memcpy(&__taglist[j],&__taglist[j+1],sizeof(dcs_tag));
-                //~ memcpy(&__taglist[j+1],&store,sizeof(dcs_tag));
-            //~ }
-        //~ }
-    //~ }
-    
     return handle;
 }
+
+/* Find the next handle for a single bit or bit array.  It starts by
+   running through the __taglist[] and looking to see if it can find
+   any room between the existing data points.  It does this by figuring
+   the size of the new tag and if it's a bit it does a simple subtraction
+   if it's bigger than a byte then it rounds the number up to it's proper
+   place.  Having the larger datatypes aligned will help with reading and
+   writing of the data later.  If it can't find a gap then it'll put the
+   handle at the end of the database and then check to see if the database
+   is big enough.  If not it grows the database.
+
+   This function assumes that the taglist is sorted by handle lowest first
+
+   TODO: May need to rewrite this thing to accept a size instead of a
+         datatype.  That way it could handle custom datatypes later.
+         Or may have to write another for custom datatypes.
+*/
+static inline handle_t gethandle(unsigned int type,unsigned int count) {
+    int n,size,mask;
+    dcs_tag *this,*next;
+    handle_t nextbit;
+    /* The lower four bits of type are the size in 2^n format */
+    size = TYPESIZE(type);
+    for(n=0;n<__tagcount-1;n++) {
+        this=&__taglist[n]; next=&__taglist[n+1]; /* just to make it easier */
+        /* this is the handle of the bit following this bits allocation */
+        nextbit = this->handle + (long)(this->count * (0x01 << (this->type & 0x0F)));
+        /* If it's not a single bit type then we need to even up nextbit
+            We do this by first calculating a mask to see if we are already
+            even and if we are then return.  If not then set the mask bits into
+            nextbit and then increment by one to get the even number */
+        if((type & 0x0F) == DCS_1BIT) {
+            if((next->handle - nextbit) >= (long)(size * count)) {
+                return nextbit;
+            }
+        } else {
+            mask=TYPESIZE(type)-1;
+            if((nextbit & mask) != 0x00) { /* If not even number */
+                nextbit |= mask; /* Round up */
+                nextbit ++;
+            }
+            /* Now see if we have enough room */
+            if((next->handle - nextbit) >= (long)(size * count)) {
+                return nextbit;
+            }
+        }
+    }
+    /* We are at the end of the loops so there are no gaps large enough for our
+        new point.  We need to make sure that there is enough room left the 
+        database, grow it if necessary, and assign the handle to the end */
+
+    this=&__taglist[__tagcount-1]; /* Get the last tag in the list */
+    nextbit=this->handle + (this->count * TYPESIZE(this->type));
+    
+    if((type & 0x0F) != DCS_1BIT) {/* If it's not a single bit */
+        /* ...then even it up */
+        mask=(0x0001 << (type & 0x0f))-1;
+        if((nextbit & mask) == 0x00) {
+            return nextbit;
+        }
+        nextbit |= mask;
+        nextbit ++;
+    }
+    
+    if(nextbit > (__databasesize * 32)) { /* We need more room */
+        if(!database_grow()) { /* Make the database bigger */
+            xerror("Unable to allocate more database memory");
+            return -1;
+        }
+    }
+    return nextbit;
+}
+
 
 /* TODO: Make this function do something */
 int tag_del(char *name) {
@@ -166,15 +216,47 @@ static int validate_name(char *name) {
     return 0; /* Return good for now */
 }
 
-
 /* This function retrieves the index of the tag identified by name */
-static long int get_by_name(char *name) {
-    long int i;
-    for(i=0;i<__taglistsize;i++) {
+static int get_by_name(char *name) {
+    int i;
+    for(i=0;i<__tagcount;i++) {
         if(!strcmp(name,__taglist[i].name))
             return i;
     }
     return -1;
+}
+
+/* This function searches the taglist for the handle.  It uses a bisection
+   search and returns the array index of the point that contains the handle.
+   The handle may be the handle of a bit within the tag point too. */
+static int get_by_handle(handle_t handle) {
+    int lime,try,high,low;
+    low=lime=0;
+    high=__tagcount-1;
+    try=high/2;
+    if(handle < 0) {
+        return -1; /* handle does not exist */
+    } else if(handle >= __taglist[__tagcount-1].handle) {
+        try=__tagcount-1; /* if the given handle is beyond the array */
+    } else {
+        while(!(handle > __taglist[try].handle && handle < __taglist[try+1].handle)) {
+            try=low+(high-low)/2;
+            if(__taglist[try].handle < handle) {
+                low=try;
+            } else if(__taglist[try].handle > handle) {
+                high=try;
+            } else {
+                return try;
+            }
+        }
+    }
+    
+    if(handle < __taglist[try].handle + 
+             (TYPESIZE(__taglist[try].type) * __taglist[try].count)) {
+        return try;
+    } else {
+        return -1;
+    }
 }
 
 /* checks whether type is a valid datatype */
@@ -198,81 +280,6 @@ static int checktype(unsigned int type) {
     return 0;
 }
 
-
-
-/* Find the next handle for a single bit or bit array.  It starts by
-   running through the __taglist[] and looking to see if it can find
-   any room between the existing data points.  It does this by figuring
-   the size of the new tag and if it's a bit it does a simple subtraction
-   if it's bigger than a byte then it rounds the number up to it's proper
-   place.  Having the larger datatypes aligned will help with reading and
-   writing of the data later.  If it can't find a gap then it'll put the
-   handle at the end of the database and then check to see if the database
-   is big enough.  If not it grows the database.
-
-   This function assumes that the taglist is sorted by handle lowest first
-
-   TODO: May need to rewrite this thing to accept a size instead of a
-         datatype.  That way it could handle custom datatypes later.
-         Or may have to write another for custom datatypes.
-*/
-static inline long int gethandle(unsigned int type,unsigned int count) {
-    int n,size,mask;
-    dcs_tag *this,*next;
-    long nextbit;
-    /* The lower four bits of type are the size in 2^n format */
-    size = 0x01 << (type & 0x0F);
-    for(n=0;n<__tagcount-1;n++) {
-        this=&__taglist[n]; next=&__taglist[n+1]; /* just to make it easier */
-        /* this is the handle of the bit following this bits allocation */
-        nextbit = this->handle + (long)(this->count * (0x01 << (this->type & 0x0F)));
-        /* If it's not a single bit type then we need to even up nextbit
-            We do this by first calculating a mask to see if we are already
-            even and if we are then return.  If not then set the mask bits into
-            nextbit and then increment by one to get the even number */
-        if((type & 0x0F) == DCS_1BIT) {
-            if((next->handle - nextbit) >= (long)(size * count)) {
-                return nextbit;
-            }
-        } else {
-            mask=(0x0001 << (type & 0x0F))-1;
-            if((nextbit & mask) != 0x00) { /* If not even number */
-                nextbit |= mask; /* Round up */
-                nextbit ++;
-            }
-            /* Now see if we have enough room */
-            if((next->handle - nextbit) >= (long)(size * count)) {
-                return nextbit;
-            }
-        }
-        
-    }
-    /* We are at the end of the loops so there are no gaps large enough for our
-        new point.  We need to make sure that there is enough room left the 
-        database, grow it if necessary, and assign the handle to the end */
-
-    this=&__taglist[__tagcount-1]; /* Get the last tag in the list */
-    nextbit=this->handle + (this->count * (0x01 << (this->type & 0x0F)));
-    
-    if((type & 0x0F) != DCS_1BIT) {/* If it's not a single bit */
-        /* ...then even it up */
-        mask=(0x0001 << (type & 0x0f))-1;
-        if((nextbit & mask) == 0x00) {
-            return nextbit;
-        }
-        nextbit |= mask;
-        nextbit ++;
-    }
-    
-    if(nextbit > (__databasesize * 32)) { /* We need more room */
-        if(!database_grow()) { /* Make the database bigger */
-            xerror("Unable to allocate more database memory");
-            return -1;
-        }
-    }
-    return nextbit;
-}
-
 /* Grow the tagname database when necessary */
 static int taglist_grow(void) {
     xlog(8,"Growing the size of the taglist");
@@ -285,11 +292,77 @@ static int database_grow(void) {
     return 0; /* Just return error for now */
 }
 
+/* Get's a handle from a tagname */
+handle_t tag_get_handle(char *name) {
+    int x;
+    x=get_by_name(name);
+    if(x>=0) return __taglist[x].handle;
+    else return x;
+}
+
+/* Retrieves the type of the point at the given handle */
+int tag_get_type(handle_t handle) {
+    int x;
+    x=get_by_handle(handle);
+    if(x<0) return x;
+    else return __taglist[x].type;
+}
+
+/* This function reads the data starting with handle.  Size is in
+ * bytes.  If *data doesn't have enough room we'll be in big trouble.
+ * basically this thing shifts handle 3 bits right to make handle a byte
+ * index into the __db.  Then we cast __db to a byte and add handle to that
+ * to get a pointer to the data that we want.  Then a good 'ol memcpy does 
+ * the trick.
+ */
+int tag_read_bytes(handle_t handle, void *data,size_t size) {
+    u_int8_t *src;
+    handle /= 8;
+    /* Make sure we don't overflow the database */
+    if((__databasesize*4)-handle < size) {
+        return -1;  /* asking for too much data */
+    }
+    src=(u_int8_t *)__db; /* Cast __db to byte and set src */
+    src+=handle; /* index dest */
+    if(memcpy(data,src,size)==NULL) {
+        return -2;
+    }
+    return size;
+}
+
+/* This function writes data to the __db just like the above function reads it */
+int tag_write_bytes(handle_t handle, void *data, size_t size) {
+    u_int8_t *dest;
+    handle /= 8; /* ditch the bottom three bits */
+    if((__databasesize*4)-handle < size) {
+        return -1; /* Whoa don't overflow my buffer */
+    }
+    dest=(u_int8_t *)__db; /* Cast __db to byte */
+    dest += handle;
+    if(memcpy(dest,data,size)==NULL) {
+        return -2;
+    }
+    return size;
+}
+
+/* TODO: Make this function do something */
+int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
+    return -1; /* just return error for now */
+}
+
+
 /* mostly for debugging */
 void tags_list(void) {
     int n;
     for(n=0;n<__tagcount;n++) {
         xlog(0,"%s handle = (%ld,0x%lx) count = %d",__taglist[n].name,
              __taglist[n].handle,__taglist[n].handle,__taglist[n].count);
+    }
+}
+
+void print_database(void) {
+    int n;
+    for(n=0;n<20;n++) {
+        printf("0x%08x\n",__db[n]);
     }
 }

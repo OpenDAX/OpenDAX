@@ -26,24 +26,17 @@
 
 
 /* Size for the DCS message buffer.  Do I really need this? */
-#define DCS_MSG_SZ 512
+#define DCS_MSG_SZ 1024
 /* Message functions */
-#define MSG_MOD_REG  0x0001 /* Register the module with the core */
-#define MSG_TAG_GET  0x0002 /* Get the handle, type, size etc for the tag */
-#define MSG_TAG_LIST 0x0003 /* Retrieve a list of all the tagnames */
-#define MSG_READ_TAG 0x0004 /* Read the value of a tag */
-#define MSG_WRIT_TAG 0x0005 /* Write the value to a tag */
-#define MSG_GET_MOD  0x0006 /* Get the module handle by name */
+#define MSG_MOD_REG   0x0001 /* Register the module with the core */
+#define MSG_TAG_ADD   0x0002 /* Add a tag */
+#define MSG_TAG_DEL   0x0003 /* Delete a tag from the database */
+#define MSG_TAG_GET   0x0004 /* Get the handle, type, size etc for the tag */
+#define MSG_TAG_LIST  0x0005 /* Retrieve a list of all the tagnames */
+#define MSG_TAG_READ  0x0006 /* Read the value of a tag */
+#define MSG_TAG_WRITE 0x0007 /* Write the value to a tag */
+#define MSG_MOD_GET   0x0008 /* Get the module handle by name */
 /* More to come */
-
-
-/* handle   = the pid of the module to receive the 
-              message except the core which is 1
-   function = this is the command part of the structure
-   size     = size of the buff part of the message 
-              that is stored on the queue
-   buff     = this is the actual payload of the message
-*/
 
 typedef struct Dcs_Message {
     long int handle;

@@ -25,7 +25,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <syslog.h>
-#include <malloc.h>
 #include <string.h>
 #include <stdarg.h>
 #include <signal.h>
