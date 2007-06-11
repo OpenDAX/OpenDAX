@@ -1,4 +1,4 @@
-SUBDIRS = dcs modules lib
+SUBDIRS = lib dcs modules
 
 AUX_DIST = $(ac_aux_dir)/install-sh
 

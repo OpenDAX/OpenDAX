@@ -1,2 +1,2 @@
 lib_LIBRARIES = libopendcs.a
-libopendcs_a_SOURCES = message.c
+libopendcs_a_SOURCES = libmsg.c

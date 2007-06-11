@@ -25,6 +25,7 @@
 #include <dcs/message.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <string.h>
 
 static int __msqid;
 
@@ -35,23 +36,28 @@ static int mod_reg(char *name) {
     
     __msqid=msgget(DCS_IPC_KEY,0660);
     if(__msqid < 0) {
-        perror("msgget");
-        return -1;
+        return ERR_NO_QUEUE;
     }
-    
     outmsg.handle=1;
     outmsg.command=MSG_MOD_REG;
     outmsg.pid=getpid();
     if(name) {
-        
+        if(strlen(name) > 254) {
+            return ERR_2BIG;
+        }
+        outmsg.size=strlen(name)+1;
+        strcpy(outmsg.buff,name);
     } else {
         outmsg.size=0;
     }
-    result=msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_SIZE + sizeof(char),0);
-    if(result) {
-        xerror("dcs_mod_register: %s",strerror(errno));
-        return -1;
+    /* TODO: gotta this call will block if queue is full.  Should also check
+             for exit status that would be caused by signals EINTR.  Now do
+             we return on EINTR or do we wait in a loop here? */
+    result=msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_SIZE + sizeof(char)*outmsg.size,0);
+    if(result) { 
+        return -2;
     }
+    return 0;
 }
 
 int dcs_mod_register(char *name) {

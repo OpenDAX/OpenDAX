@@ -55,8 +55,13 @@
 #define DCS_32BITS  0x0005
 #define DCS_64BITS  0x0006
 
+/* Library function errors */
+#define ERR_NO_QUEUE -1 /* The Message Queue does not exist */
+#define ERR_2BIG     -2 /* The argument is too big */
+
+
 /* Only registered modules will get responses from the core */
 int dcs_mod_register(char *);   /* Registers the Module with the core */
-int dcs_mod_unregister(void); /* Unregister the Module with the core */
+int dcs_mod_unregister(void);   /* Unregister the Module with the core */
 
 #endif /* !__OPENDCS_H */

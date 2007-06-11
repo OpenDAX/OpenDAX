@@ -108,37 +108,50 @@ int msg_receive(void) {
 
 
 int msg_mod_register(dcs_message *msg) {
-    xlog(10,"Register Module Message from %d",msg->pid);
+    if(msg->size) {
+        xlog(10,"Register Module %s from %d",msg->buff,msg->pid);
+    } else {
+        xlog(10,"Unregister Module %d",msg->pid);
+    }
+    return 0;
 }
 
 int msg_tag_add(dcs_message *msg) {
     xlog(10,"Tag Add Message from %d",msg->pid);
+    return 0;
 }
 
 int msg_tag_del(dcs_message *msg) {
     xlog(10,"Tag Delete Message from %d",msg->pid);
+    return 0;
 }
 
 int msg_tag_get(dcs_message *msg) {
     xlog(10,"Tag Get Message from %d",msg->pid);
+    return 0;
 }
 
 int msg_tag_list(dcs_message *msg) {
     xlog(10,"Tag List Message from %d",msg->pid);
+    return 0;
 }
 
 int msg_tag_read(dcs_message *msg) {
     xlog(10,"Tag Read Message from %d",msg->pid);
+    return 0;
 }
 
 int msg_tag_write(dcs_message *msg) {
     xlog(10,"Tag Write Message from %d",msg->pid);
+    return 0;
 }
 
 int msg_tag_masked_write(dcs_message *msg) {
     xlog(10,"Tag Masked Write Message from %d",msg->pid);
+    return 0;
 }
 
 int msg_mod_get(dcs_message *msg) {
     xlog(10,"Get Module Handle Message from %d",msg->pid);
+    return 0;
 }

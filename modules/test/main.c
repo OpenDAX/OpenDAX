@@ -27,28 +27,11 @@
 #include <string.h>
 
 int main(int argc,char *argv[]) {
-    int msgid;
-    int n=0;
-    dcs_message outmsg;
-    struct msgbuff *msg;
-    msg=xmalloc(sizeof(dcs_message));
-    
-    msgid=msgget(DCS_IPC_KEY,0660);
-    if(msgid < 0) {
-        perror("msgget");
-        exit(1);
-    }
-    
+
     while(1) {
-        outmsg.handle=1;
-        outmsg.command=2;
-        outmsg.pid=getpid();
-        outmsg.size=strlen("Hello DCS World  \n");
-        sprintf(outmsg.buff,"Hello DCS World %d\n",n++);
-        memcpy(msg,&outmsg,sizeof(dcs_message));
-        msgsnd(msgid,msg,sizeof(dcs_message),0);
-    
+        dcs_mod_register("Test");
         sleep(3);
-        //printf("Waiting to die\n");
+        dcs_mod_unregister();
+        sleep(3);
     }
 }
