@@ -41,8 +41,9 @@ int main(int argc,char *argv[]) {
     
     while(1) {
         outmsg.handle=1;
-        outmsg.function=0;
-        outmsg.size=0;
+        outmsg.command=2;
+        outmsg.pid=getpid();
+        outmsg.size=strlen("Hello DCS World  \n");
         sprintf(outmsg.buff,"Hello DCS World %d\n",n++);
         memcpy(msg,&outmsg,sizeof(dcs_message));
         msgsnd(msgid,msg,sizeof(dcs_message),0);

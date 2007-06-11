@@ -48,7 +48,8 @@ int main(int argc, const char *argv[]) {
     
     setverbosity(10);
     
-    msg_create_queue(); /* This creates the message queue */
+    temp=msg_setup_queue();    /* This creates and sets up the message queue */
+    xlog(10,"msg_setup_queue() returned %d",temp);
     initialize_tagbase(); /* initiallize the tagname list and database */
 
     xlog(0,"OpenDCS started");
@@ -61,37 +62,37 @@ int main(int argc, const char *argv[]) {
     temp=add_module("testmod5","/home/phil/opendcs/test",NULL,0);
     
     n=0;
-    strcpy(list[n].name,"Bool1"); list[n].type=DCS_BOOL; list[n++].count = 17;
-    strcpy(list[n].name,"Byte2"); list[n].type=DCS_BYTE; list[n++].count = 1;
-    strcpy(list[n].name,"Bool3"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Bool4"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Dword5"); list[n].type=DCS_DWORD; list[n++].count = 1;
-    strcpy(list[n].name,"Bool6"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Bool7"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Bool8"); list[n].type=DCS_BOOL; list[n++].count = 10;
-    strcpy(list[n].name,"Bool9"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Bool10"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Bool11"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    strcpy(list[n].name,"Word12"); list[n].type=DCS_WORD; list[n++].count = 50;
-    strcpy(list[n].name,"LReal13"); list[n].type=DCS_LREAL; list[n++].count = 1;
-    strcpy(list[n].name,"Dword14"); list[n].type=DCS_REAL; list[n++].count = 1;
-    strcpy(list[n].name,"Dword15"); list[n].type=DCS_REAL; list[n++].count = 1;
-    strcpy(list[n].name,"Bool16"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool1"); list[n].type=DCS_BOOL; list[n++].count = 17;
+    //~ strcpy(list[n].name,"Byte2"); list[n].type=DCS_BYTE; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool3"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool4"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Dword5"); list[n].type=DCS_DWORD; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool6"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool7"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool8"); list[n].type=DCS_BOOL; list[n++].count = 10;
+    //~ strcpy(list[n].name,"Bool9"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool10"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool11"); list[n].type=DCS_BOOL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Word12"); list[n].type=DCS_WORD; list[n++].count = 50;
+    //~ strcpy(list[n].name,"LReal13"); list[n].type=DCS_LREAL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Dword14"); list[n].type=DCS_REAL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Dword15"); list[n].type=DCS_REAL; list[n++].count = 1;
+    //~ strcpy(list[n].name,"Bool16"); list[n].type=DCS_BOOL; list[n++].count = 1;
     
-    for(n=0;n<16;n++) {
-        tag_add(list[n].name,list[n].type,list[n].count);
-    }
-    tags_list();
+    //~ for(n=0;n<16;n++) {
+        //~ tag_add(list[n].name,list[n].type,list[n].count);
+    //~ }
+    //~ tags_list();
     
-    buff[0]=0x55;
-    tag_write_bytes(tag_get_handle("Byte2"),buff,1);
-    *((u_int16_t *)buff)=22222;
-    handle=tag_get_handle("Word12");
-    tag_write_bytes(handle,buff,2);
-    print_database();
+    //~ buff[0]=0x55;
+    //~ tag_write_bytes(tag_get_handle("Byte2"),buff,1);
+    //~ *((u_int16_t *)buff)=22222;
+    //~ handle=tag_get_handle("Word12");
+    //~ tag_write_bytes(handle,buff,2);
+    //~ print_database();
     
-    tag_read_bytes(handle,&temp,2);
-    printf("Retrieved %d from handle %ld\n",temp,handle);
+    //~ tag_read_bytes(handle,&temp,2);
+    //~ printf("Retrieved %d from handle %ld\n",temp,handle);
     
     /* This is just a dumb routine to show the database */
     //~ printf("         0               1\n");

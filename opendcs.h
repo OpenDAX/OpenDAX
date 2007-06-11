@@ -55,5 +55,8 @@
 #define DCS_32BITS  0x0005
 #define DCS_64BITS  0x0006
 
+/* Only registered modules will get responses from the core */
+int dcs_mod_register(char *);   /* Registers the Module with the core */
+int dcs_mod_unregister(void); /* Unregister the Module with the core */
 
 #endif /* !__OPENDCS_H */

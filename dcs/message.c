@@ -29,15 +29,42 @@
 
 static int __msqid;
 
-/* Creates the main message queue for the program.  It's a fatal error if
-   we cannot create this queue */
-int msg_create_queue(void) {
-    __msqid = msgget(DCS_IPC_KEY, (IPC_CREAT | IPC_EXCL | 0660));
+/* This array holds the functions for each message command */
+#define NUM_COMMANDS 10
+int (*cmd_arr[NUM_COMMANDS])(dcs_message *) = {NULL};
+
+int msg_mod_register(dcs_message *msg);
+int msg_tag_add(dcs_message *msg);
+int msg_tag_del(dcs_message *msg);
+int msg_tag_get(dcs_message *msg);
+int msg_tag_list(dcs_message *msg);
+int msg_tag_read(dcs_message *msg);
+int msg_tag_write(dcs_message *msg);
+int msg_tag_masked_write(dcs_message *msg);
+int msg_mod_get(dcs_message *msg);
+
+
+/* Creates and sets up the main message queue for the program.
+   It's a fatal error if we cannot create this queue */
+int msg_setup_queue(void) {
+    __msqid = msgget(DCS_IPC_KEY, (IPC_CREAT | 0660));
+    //__msqid = msgget(DCS_IPC_KEY, (IPC_CREAT | IPC_EXCL | 0660));
     if(__msqid < 0) {
         __msqid=0;
         xfatal("Message Queue Cannot Be Created - %s",strerror(errno));
     }
     xlog(2,"Message Queue Created - id = %d",__msqid);
+
+    cmd_arr[MSG_MOD_REG] = &msg_mod_register;
+    cmd_arr[MSG_TAG_ADD] = &msg_tag_add;
+    cmd_arr[MSG_TAG_DEL] = &msg_tag_del;
+    cmd_arr[MSG_TAG_GET] = &msg_tag_get;
+    cmd_arr[MSG_TAG_LIST]=&msg_tag_list;
+    cmd_arr[MSG_TAG_READ]=&msg_tag_read;
+    cmd_arr[MSG_TAG_WRITE]=&msg_tag_write;
+    cmd_arr[MSG_TAG_MWRITE]=&msg_tag_masked_write;
+    cmd_arr[MSG_MOD_GET]=&msg_mod_get;
+
     return __msqid;
 }
 
@@ -49,22 +76,69 @@ void msg_destroy_queue(void) {
         result=msgctl(__msqid,IPC_RMID,NULL);
     }
     if(result) {
-        xerror("Unable to delete message queue");
+        xerror("Unable to delete message queue %d",__msqid);
+    } else {
+        xlog(2,"Message queue %d being destroyed",__msqid);
     }
-    xlog(2,"Message queue %d being destroyed",__msqid);
 }
 
-void msg_receive(void) {
+/* This function blocks waiting for a message to be received.  Once a message
+   is retrieved from the system the proper handling function is called */
+int msg_receive(void) {
     dcs_message dcsmsg;
-    struct msgbuff *msg;
     int result;
-    
-    msg=xmalloc(sizeof(dcs_message));
-    result=msgrcv(__msqid,msg,sizeof(dcs_message),1,0);
-    if(result > 0) {
-        memcpy(&dcsmsg,msg,sizeof(dcs_message));
-        printf(dcsmsg.buff);
-    } else {
-        perror("msg_receive");
+    result=msgrcv(__msqid,(struct msgbuff *)(&dcsmsg),sizeof(dcs_message),1,0);
+    if(result < 0) {
+        xerror("msg_receive - %s",strerror(errno));
+        return result;
     }
+    if(result < (sizeof(int)+sizeof(pid_t)+sizeof(size_t)+sizeof(char)*dcsmsg.size)) {
+        xerror("message received is not of the specified size.");
+        return -1;
+    }
+    if(dcsmsg.command > 0 && dcsmsg.command <= NUM_COMMANDS) {
+        /* Call the command function from the array */
+        (*cmd_arr[dcsmsg.command])(&dcsmsg);
+    } else {
+        xerror("unknown message command received %d",dcsmsg.command);
+        return -2;
+    }
+    return 0;
+}
+
+
+int msg_mod_register(dcs_message *msg) {
+    xlog(10,"Register Module Message from %d",msg->pid);
+}
+
+int msg_tag_add(dcs_message *msg) {
+    xlog(10,"Tag Add Message from %d",msg->pid);
+}
+
+int msg_tag_del(dcs_message *msg) {
+    xlog(10,"Tag Delete Message from %d",msg->pid);
+}
+
+int msg_tag_get(dcs_message *msg) {
+    xlog(10,"Tag Get Message from %d",msg->pid);
+}
+
+int msg_tag_list(dcs_message *msg) {
+    xlog(10,"Tag List Message from %d",msg->pid);
+}
+
+int msg_tag_read(dcs_message *msg) {
+    xlog(10,"Tag Read Message from %d",msg->pid);
+}
+
+int msg_tag_write(dcs_message *msg) {
+    xlog(10,"Tag Write Message from %d",msg->pid);
+}
+
+int msg_tag_masked_write(dcs_message *msg) {
+    xlog(10,"Tag Masked Write Message from %d",msg->pid);
+}
+
+int msg_mod_get(dcs_message *msg) {
+    xlog(10,"Get Module Handle Message from %d",msg->pid);
 }

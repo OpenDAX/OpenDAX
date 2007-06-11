@@ -24,29 +24,32 @@
 
 #include <common.h>
 
-
 /* Size for the DCS message buffer.  Do I really need this? */
 #define DCS_MSG_SZ 1024
 /* Message functions */
-#define MSG_MOD_REG   0x0001 /* Register the module with the core */
-#define MSG_TAG_ADD   0x0002 /* Add a tag */
-#define MSG_TAG_DEL   0x0003 /* Delete a tag from the database */
-#define MSG_TAG_GET   0x0004 /* Get the handle, type, size etc for the tag */
-#define MSG_TAG_LIST  0x0005 /* Retrieve a list of all the tagnames */
-#define MSG_TAG_READ  0x0006 /* Read the value of a tag */
-#define MSG_TAG_WRITE 0x0007 /* Write the value to a tag */
-#define MSG_MOD_GET   0x0008 /* Get the module handle by name */
+#define MSG_MOD_REG    0x0001 /* Register the module with the core */
+#define MSG_TAG_ADD    0x0002 /* Add a tag */
+#define MSG_TAG_DEL    0x0003 /* Delete a tag from the database */
+#define MSG_TAG_GET    0x0004 /* Get the handle, type, size etc for the tag */
+#define MSG_TAG_LIST   0x0005 /* Retrieve a list of all the tagnames */
+#define MSG_TAG_READ   0x0006 /* Read the value of a tag */
+#define MSG_TAG_WRITE  0x0007 /* Write the value to a tag */
+#define MSG_TAG_MWRITE 0x0008 /* Masked Write */
+#define MSG_MOD_GET    0x0009 /* Get the module handle by name */
 /* More to come */
 
 typedef struct Dcs_Message {
     long int handle;
-    int function;
-    size_t size; 
+    int command;
+    pid_t pid;
+    size_t size;
     char buff[DCS_MSG_SZ];
 } dcs_message;
 
-int msg_create_queue(void);
+#define MSG_SIZE sizeof(int)+sizeof(pid_t)+sizeof(size_t)
+
+int msg_setup_queue(void);
 void msg_destroy_queue(void);
-void msg_receive(void);
+int msg_receive(void);
 
 #endif /* !__MESSAGE_H */
