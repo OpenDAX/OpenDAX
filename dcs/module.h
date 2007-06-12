@@ -61,7 +61,6 @@ dcs_module *get_module(unsigned int);
 pid_t start_module (unsigned int);
 int stop_module(unsigned int);
 void scan_modules(void);
-int cleanup_module(pid_t,int);
 
 void dead_module_add(pid_t,int);
 

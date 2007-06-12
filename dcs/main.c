@@ -20,6 +20,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <syslog.h>
 #include <module.h>
 #include <options.h>
 #include <func.h>
@@ -31,11 +32,11 @@ void quit_signal(int);
 
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
-    dcs_module *mod;
-    dcs_tag list[24];
-    int temp,n,i,j;
-    long int handle;
-    char buff[256];
+    //dcs_module *mod;
+    //dcs_tag list[24];
+    int temp,n; //,i,j;
+    //long int handle;
+    //char buff[256];
     
     
     /* Set up the signal handlers */
@@ -45,7 +46,13 @@ int main(int argc, const char *argv[]) {
     sa.sa_handler=&quit_signal;
     sigaction (SIGQUIT,&sa,NULL);
     sigaction (SIGINT,&sa,NULL);
+    sigaction (SIGTERM,&sa,NULL);
     
+    openlog("OpenDCS",LOG_NDELAY,LOG_DAEMON);
+    if(daemonize("OpenDCS")) {
+        xerror("Unable to go to the background");
+    }
+
     setverbosity(10);
     
     temp=msg_setup_queue();    /* This creates and sets up the message queue */
@@ -115,17 +122,9 @@ int main(int argc, const char *argv[]) {
     //start_module(5);
     
     while(1) {
-        //mod=get_module(2); /* thou shalt not follow the NULL pointer */
-        //if((temp=read(mod->pipe_out,buff,200)) > 0) {
-        //    buff[temp]=0;
-        //    printf("DUDE: %s\n",buff);
-        //}
-        //else {
-            printf("Scaning Modules \n");
-            msg_receive();
-            scan_modules();
-            sleep(1);
-        //}
+        msg_receive();
+        scan_modules();
+        sleep(1);
     }
 }
 
@@ -143,6 +142,7 @@ void child_signal(int sig) {
 void quit_signal(int sig) {
     xlog(0,"Quitting due to signal %d",sig);
     /* TODO: Should stop all running modules */
+    kill(0,SIGTERM); /* ...this'll do for now */
     msg_destroy_queue(); /* Destroy the message queue */
     exit(-1);
 }

@@ -63,8 +63,9 @@ void *xcalloc(size_t count, size_t size) {
 void xfatal(const char *format,...) {
     va_list val;
     va_start(val,format);
-    vfprintf(stderr,format,val);
-    fprintf(stderr,"\n");
+    vsyslog(LOG_ERR,format,val);
+    //vfprintf(stderr,format,val);
+    //fprintf(stderr,"\n");
     va_end(val);
     kill(getpid(),SIGQUIT);
 }
@@ -72,16 +73,18 @@ void xfatal(const char *format,...) {
 void xerror(const char *format,...) {
     va_list val;
     va_start(val,format);
-    vfprintf(stderr,format,val);
-    fprintf(stderr,"\n");
+    vsyslog(LOG_ERR,format,val);
+    //vfprintf(stderr,format,val);
+    //fprintf(stderr,"\n");
     va_end(val);
 }
 
 void xnotice(const char *format,...) {
     va_list val;
     va_start(val,format);
-    vfprintf(stderr,format,val);
-    fprintf(stderr,"\n");
+    vsyslog(LOG_NOTICE,format,val);
+    //vfprintf(stderr,format,val);
+    //fprintf(stderr,"\n");
     va_end(val);
 }
 
@@ -100,8 +103,9 @@ void xlog(int verbosity, const char *format,...) {
     va_list val;
     if(verbosity <= _verbosity) {
         va_start(val,format);
-        vprintf(format,val);
-        printf("\n");
+        vsyslog(LOG_NOTICE,format,val);
+        //vprintf(format,val);
+        //printf("\n");
         va_end(val);
     }
 }
@@ -171,7 +175,7 @@ int daemonize(char *progname) {
     for (n=getdtablesize();n>=0;--n) close(n);
     /*reopen stdout stdin and stderr to /dev/null */
     n=open("/dev/null",O_RDWR);
-    dup(n); dup(n); dup(n);
+    dup(n); dup(n);
     /* reopen the logger */
     openlog(progname,LOG_NDELAY,LOG_DAEMON);
     return 0;

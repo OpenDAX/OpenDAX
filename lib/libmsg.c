@@ -50,7 +50,7 @@ static int mod_reg(char *name) {
     } else {
         outmsg.size=0;
     }
-    /* TODO: gotta this call will block if queue is full.  Should also check
+    /* TODO: this call will block if queue is full.  Should also check
              for exit status that would be caused by signals EINTR.  Now do
              we return on EINTR or do we wait in a loop here? */
     result=msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_SIZE + sizeof(char)*outmsg.size,0);

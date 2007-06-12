@@ -38,6 +38,7 @@ static char **arglist_tok(char *,char *);
 //dcs_module *get_module(unsigned int);
 static dcs_module *get_module_pid(pid_t);
 static dcs_module *get_module_name(char *);
+static int cleanup_module(pid_t,int);
 
 /* This array is the dead module list.
    TODO: This should be improved to allow it to grow when needed.
@@ -320,17 +321,16 @@ void scan_modules(void) {
     /* TODO: Restart modules if necessary */
 }
 
-/* Find and cleanup the module after it has died.  This function
-   is designed to be called from the signal handler so it is as
-   short and sweet as possible */
-int cleanup_module(pid_t pid,int status) {
+/* This function is called from the scan_modules function and is used 
+   to find and cleanup the module after it has died.  */
+static int cleanup_module(pid_t pid,int status) {
     dcs_module *mod;
     mod=get_module_pid(pid);
     /* at this point _current_mod should be pointing to a module with
     the PID that we passed but we should check because there may not 
     be a module with our PID */
     if(mod) {
-        printf("Cleaning up Module %d\n",pid);
+        xlog(2,"Cleaning up Module %d\n",pid);
         /* Close the stdio pipe fd's */
         close(mod->pipe_in);
         close(mod->pipe_out);
@@ -339,8 +339,10 @@ int cleanup_module(pid_t pid,int status) {
         mod->exit_status=status;
         mod->state=MSTATE_WAITING;
         return 1;
-    } else printf("Module %d not found \n",pid);
-    return 0;
+    } else { 
+        xerror("Module %d not found \n",pid);
+        return 0;
+    }
 }
 
 
