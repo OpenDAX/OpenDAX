@@ -35,7 +35,7 @@ static dcs_module *_current_mod=NULL;
 static int _module_count=0;
 
 static char **arglist_tok(char *,char *);
-//dcs_module *get_module(unsigned int);
+static dcs_module *get_module(mod_handle_t);
 static dcs_module *get_module_pid(pid_t);
 static dcs_module *get_module_name(char *);
 static int cleanup_module(pid_t,int);
@@ -47,9 +47,6 @@ static int cleanup_module(pid_t,int);
   #define DMQ_SIZE 10
 #endif
 static dead_module _dmq[DMQ_SIZE];
-//static int _dmq_count=DMQ_SIZE;
-//static int _dmq_index=0;
-
 
 /* The module list is implemented as a circular double linked list.
    There is no ordering of the list.  Handles are of type int and will
@@ -61,26 +58,28 @@ static dead_module _dmq[DMQ_SIZE];
    Returns the new handle on success and 0 on failure.  (zero is reserved
    for the opendcs main process.)
 */
-unsigned int 
-add_module(char *name, char *path, char *arglist, unsigned int flags) {
+mod_handle_t 
+module_add(char *name, char *path, char *arglist, unsigned int flags) {
     /* The handle is incremented before first use.  The first added module
        will be handle 2 so that the core process can always be one */
     static unsigned int handle=1;
     dcs_module *new;
     xlog(10,"Adding module %s",name);
-    /* TODO: Handle the errors for the following somehow */
-    if(!path) return 0; /* No path / No Module */
+    /* ??? Maybe this should return the handle that it finds instead of an error */
     if(get_module_name(name)) return 0; /* Name already used */
+    /* TODO: Handle the errors for the following somehow */
     new=(dcs_module *)xmalloc(sizeof(dcs_module));
     if(new) {
         new->handle = ++handle;
         new->flags = flags;
         
         /* Add the module path to the struct */
-        new->path=strdup(path);
-        
-        /* tokenize and set arglist */
-        new->arglist=arglist_tok(path,arglist);
+        if(path) {
+            new->path=strdup(path);
+            
+            /* tokenize and set arglist */
+            new->arglist=arglist_tok(path,arglist);
+        }
         /* name the module */
         new->name=strdup(name);
         if(_current_mod==NULL) { /* List is empty */
@@ -154,7 +153,7 @@ static char **arglist_tok(char *path,char *str) {
 
 /* uses get_module to locate the module identified as 'handle' and removes
    it from the list. */
-int del_module(unsigned int handle) {
+int module_del(mod_handle_t handle) {
     dcs_module *mod;
     char **node;
 
@@ -189,18 +188,13 @@ int del_module(unsigned int handle) {
     return -1;
 }
 
-/* Static function definitions */
-unsigned int get__module_count() {
-    return _module_count;
-}
-
-/* These are only used for the star_module() to handle the pipes.
+/* These are only used for the module_start() to handle the pipes.
    it was getting a little messy */
 inline static int getpipes(int *);
 inline static int childpipes(int *);
 
 /* This function is used to start a module */
-pid_t start_module(unsigned int handle) {
+pid_t module_start(mod_handle_t handle) {
     pid_t child_pid;
     dcs_module *mod;
     int result=0;
@@ -300,7 +294,7 @@ inline static int childpipes(int *pipes) {
 
 
 /* TODO: Program stop_module */
-int stop_module(unsigned int handle) {
+int module_stop(mod_handle_t handle) {
     return 0;
 }
 
@@ -308,7 +302,7 @@ int stop_module(unsigned int handle) {
    to be cleaned up or restarted.  This function should never be called
    from the start_module process or the child signal handler to avoid a
    race condition. */
-void scan_modules(void) {
+void module_scan(void) {
     int n;
     /* Check the dead module queue for pid's that need cleaning */
     for(n=0;n<DMQ_SIZE;n++) {
@@ -350,7 +344,7 @@ static int cleanup_module(pid_t pid,int status) {
    is overflowed then it'll just overwrite the last one.
    TODO: If more than DMQ_SIZE modules dies all at once this will cause
          problems.  Should be fixed. */
-void dead_module_add(pid_t pid,int status) {
+void module_dmq_add(pid_t pid,int status) {
     int n=0;
     while(_dmq[n].pid!=0 && n<DMQ_SIZE) {
         n++;
@@ -361,17 +355,9 @@ void dead_module_add(pid_t pid,int status) {
 }
 
 
-/***************** PRIVATE FUNCTIONS **************************/
-/* TODO: If this function is public it should return a handle */
-dcs_module *get_next_module() {
-    if(_current_mod) {
-        _current_mod=_current_mod->next;
-    }
-    return _current_mod;
-}
 
 /* static function to get a module pointer from a handle */
-dcs_module *get_module(unsigned int handle) {
+static dcs_module *get_module(mod_handle_t handle) {
     dcs_module *last;
     /* In case we ain't go no list */
     if(_current_mod==NULL) return NULL;

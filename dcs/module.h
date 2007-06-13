@@ -28,17 +28,20 @@
 
 #define MSTATE_RUNNING      0x00 /* Running normally */
 #define MSTATE_WAITING      0x01 /* Waiting for restart */
+#define MSTATE_REGISTERED   0x02 /* Module is registered */
+#define MSTATE_CHILD        0x04 /* Module was started by this program */
 
+typedef unsigned int mod_handle_t;
 
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dcs_Module {
-    unsigned int handle;
+    mod_handle_t handle;
     char *name;
     pid_t pid;
     int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
     char **arglist;     /* exec() ready array of arguments */
-    unsigned int flags;
+    unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
     int pipe_in;        /* Redirected to the modules stdin */
     int pipe_out;       /* Redirected to the modules stdout */
@@ -53,15 +56,14 @@ typedef struct DeadModule {
 } dead_module;
 
 /* Module List Handling Functions */
-unsigned int add_module(char *, char *, char *, unsigned int);
-int del_module(unsigned int);
-dcs_module *get_module(unsigned int);
+mod_handle_t module_add(char *, char *, char *, unsigned int);
+int module_del(mod_handle_t);
 
 /* Module runtime functions */
-pid_t start_module (unsigned int);
-int stop_module(unsigned int);
-void scan_modules(void);
+pid_t module_start (mod_handle_t);
+int module_stop(mod_handle_t);
+void module_scan(void);
 
-void dead_module_add(pid_t,int);
+void module_dmq_add(pid_t,int);
 
 #endif /* !__MODULE_H */

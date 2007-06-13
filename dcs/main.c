@@ -24,21 +24,22 @@
 #include <module.h>
 #include <options.h>
 #include <func.h>
+#include <pthread.h>
 #include <message.h>
 #include <tagbase.h>
 
+static void messagethread(void);
 void child_signal(int);
 void quit_signal(int);
 
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
-    //dcs_module *mod;
-    //dcs_tag list[24];
-    int temp,n; //,i,j;
-    //long int handle;
-    //char buff[256];
-    
-    
+    pthread_t message_thread;
+    int temp;
+
+    openlog("OpenDCS",LOG_NDELAY,LOG_DAEMON);
+    xlog(0,"OpenDCS started");
+
     /* Set up the signal handlers */
     memset (&sa,0,sizeof(struct sigaction));
     sa.sa_handler=&child_signal;
@@ -47,84 +48,46 @@ int main(int argc, const char *argv[]) {
     sigaction (SIGQUIT,&sa,NULL);
     sigaction (SIGINT,&sa,NULL);
     sigaction (SIGTERM,&sa,NULL);
-    
-    openlog("OpenDCS",LOG_NDELAY,LOG_DAEMON);
+
     if(daemonize("OpenDCS")) {
         xerror("Unable to go to the background");
     }
 
-    setverbosity(10);
+    setverbosity(10); /*TODO: Needs to be configuration */
     
     temp=msg_setup_queue();    /* This creates and sets up the message queue */
     xlog(10,"msg_setup_queue() returned %d",temp);
-    initialize_tagbase(); /* initiallize the tagname list and database */
 
-    xlog(0,"OpenDCS started");
+    initialize_tagbase(); /* initiallize the tagname list and database */
+    /* Start the message handling thread */
+    if(pthread_create(&message_thread,NULL,(void *)&messagethread,NULL)) {
+        xfatal("Unable to create message thread");
+    }
     
-    temp=add_module("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
-    temp=add_module("test","/home/phil/opendcs/modules/test/test",NULL,0);
-    temp=add_module("testmod2","/home/phil/opendcs/test",NULL,0);
-    temp=add_module("testmod3","/home/phil/opendcs/test",NULL,0);
-    temp=add_module("testmod4","/home/phil/opendcs/test",NULL,0);
-    temp=add_module("testmod5","/home/phil/opendcs/test",NULL,0);
+    // TODO: Module addition should be handled from the configuration file
+    temp=module_add("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
+    temp=module_add("test","/home/phil/opendcs/modules/test/test",NULL,0);
+    temp=module_add("testmod2","/home/phil/opendcs/test",NULL,0);
     
-    n=0;
-    //~ strcpy(list[n].name,"Bool1"); list[n].type=DCS_BOOL; list[n++].count = 17;
-    //~ strcpy(list[n].name,"Byte2"); list[n].type=DCS_BYTE; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool3"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool4"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Dword5"); list[n].type=DCS_DWORD; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool6"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool7"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool8"); list[n].type=DCS_BOOL; list[n++].count = 10;
-    //~ strcpy(list[n].name,"Bool9"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool10"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool11"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Word12"); list[n].type=DCS_WORD; list[n++].count = 50;
-    //~ strcpy(list[n].name,"LReal13"); list[n].type=DCS_LREAL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Dword14"); list[n].type=DCS_REAL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Dword15"); list[n].type=DCS_REAL; list[n++].count = 1;
-    //~ strcpy(list[n].name,"Bool16"); list[n].type=DCS_BOOL; list[n++].count = 1;
-    
-    //~ for(n=0;n<16;n++) {
-        //~ tag_add(list[n].name,list[n].type,list[n].count);
-    //~ }
-    //~ tags_list();
-    
-    //~ buff[0]=0x55;
-    //~ tag_write_bytes(tag_get_handle("Byte2"),buff,1);
-    //~ *((u_int16_t *)buff)=22222;
-    //~ handle=tag_get_handle("Word12");
-    //~ tag_write_bytes(handle,buff,2);
-    //~ print_database();
-    
-    //~ tag_read_bytes(handle,&temp,2);
-    //~ printf("Retrieved %d from handle %ld\n",temp,handle);
-    
-    /* This is just a dumb routine to show the database */
-    //~ printf("         0               1\n");
-    //~ printf("         0123456789ABCDEF0123456789ABCDEF\n");
-    //~ for(i=0;i<120;i++) {
-        //~ printf("0x%4x : ",i*32);
-        //~ for(j=0;j<32;j++) {
-            //~ if((n=tag_get_type(i*32 + j))>=0) {
-                //~ printf("%d", n%10);
-            //~ } else {
-                //~ printf("_");
-            //~ }
-        //~ }
-        //~ printf("\n");
-    //~ }
-    
-    //start_module(2);
-    start_module(3);
-    //start_module(4);
-    //start_module(5);
+    module_start(3);
     
     while(1) {
+        xlog(10,"Main Loop Scan");
+        module_scan();
+        sleep(5);
+    }
+}
+
+/* This is the main message handling thread.  It should never return. */
+static void messagethread(void) {
+    /*TODO: So far this function just blocks to receive messages.  It should
+    handle cases where the message reception was interrupted by signals and
+    alarms.  Occasionally it should check the message queue for orphaned
+    messages that may have been left by some misbehaving modules.  This
+    algorithm should increase in frequency when it finds lost messages and
+    decrease in frequency when it doesn't.*/
+    while(1) {
         msg_receive();
-        scan_modules();
-        sleep(1);
     }
 }
 
@@ -135,7 +98,7 @@ void child_signal(int sig) {
 
     pid=wait(&status);
     xlog(1,"Caught Child Dying %d\n",pid);
-    dead_module_add(pid,status);
+    module_dmq_add(pid,status);
 }
 
 /* this handles shutting down of the core */
