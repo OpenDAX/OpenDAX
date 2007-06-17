@@ -1,9 +1,9 @@
-AC_INIT(dcs/main.c)
+AC_INIT(dax/main.c)
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(config.h)
 
 VERSION="0.1"
-PACKAGE=opendcs
+PACKAGE=opendax
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 
@@ -14,4 +14,4 @@ CFLAGS="-Wall -g"
 
 AC_SUBST(ac_aux_dir)
 
-AC_OUTPUT(dcs/Makefile lib/Makefile modules/Makefile modules/test/Makefile Makefile)
+AC_OUTPUT(dax/Makefile lib/Makefile modules/Makefile modules/test/Makefile Makefile)

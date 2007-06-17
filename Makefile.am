@@ -1,8 +1,8 @@
-SUBDIRS = lib dcs modules
+SUBDIRS = lib dax modules
 
 AUX_DIST = $(ac_aux_dir)/install-sh
 
-include_HEADERS = opendcs.h
+include_HEADERS = opendax.h
 
 dist-hook:
 	(cd $(distdir) && mkdir $(ac_aux_dir))

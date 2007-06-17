@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system
+/*  OpenDAX - An open source distributed control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -17,7 +17,7 @@
  *
 
  * This file contains general functions that are used throughout the
- * OpenDCS program for things like logging, error reporting and 
+ * OpenDAX program for things like logging, error reporting and 
  * memory allocation.
  */
 
@@ -28,7 +28,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <signal.h>
-#include "func.h"
+#include <func.h>
 
 static int _verbosity=0;
 

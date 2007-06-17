@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system 
+/*  OpenDAX - An open source distributed control system 
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -43,7 +43,7 @@
  * This may create some fragmentation but it'll make the logic simpler.
  */
 
-dcs_tag *__taglist;
+dax_tag *__taglist;
 static long int __tagcount=0;
 static long int __taglistsize=0;
 
@@ -61,20 +61,20 @@ static int database_grow(void);
 /* Allocates the symbol table and the database array.  There's no return
    value because failure of this function is fatal */
 void initialize_tagbase(void) {
-    __taglist=(dcs_tag *)xmalloc(sizeof(dcs_tag)*DCS_TAGLIST_SIZE);
+    __taglist=(dax_tag *)xmalloc(sizeof(dax_tag)*DAX_TAGLIST_SIZE);
     if(!__taglist) {
         xfatal("Unable to allocate the symbol table");
     }
-    __taglistsize=DCS_TAGLIST_SIZE;
+    __taglistsize=DAX_TAGLIST_SIZE;
     /* Allocate the primary database */
-    __db=(u_int32_t *)xmalloc(sizeof(u_int32_t)*DCS_DATABASE_SIZE);
+    __db=(u_int32_t *)xmalloc(sizeof(u_int32_t)*DAX_DATABASE_SIZE);
     if(!__db) {
         xfatal("Unable to allocate the database");
     }
-    __databasesize=DCS_DATABASE_SIZE;
+    __databasesize=DAX_DATABASE_SIZE;
     /* Set all the memory to zero */
-    memset(__taglist,0x00,sizeof(dcs_tag)*DCS_TAGLIST_SIZE);
-    memset(__db,0x00,sizeof(u_int32_t)*DCS_DATABASE_SIZE);
+    memset(__taglist,0x00,sizeof(dax_tag)*DAX_TAGLIST_SIZE);
+    memset(__db,0x00,sizeof(u_int32_t)*DAX_DATABASE_SIZE);
 }
 
 
@@ -115,7 +115,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
             if(handle > __taglist[n-1].handle && handle < __taglist[n].handle) {
                 /* Make a hole in the array */
                 memmove(&__taglist[n+1],&__taglist[n],
-                       (__taglistsize-n-2)*sizeof(dcs_tag));
+                       (__taglistsize-n-2)*sizeof(dax_tag));
                 break;
             }
         }
@@ -124,7 +124,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
     __taglist[n].handle=handle;
     __taglist[n].count=count;
     __taglist[n].type=type;
-    if(!strncpy(__taglist[n].name,name,DCS_TAGNAME_SIZE)) {
+    if(!strncpy(__taglist[n].name,name,DAX_TAGNAME_SIZE)) {
         xerror("Unable to copy tagname %s");
         return -6;
     }
@@ -150,7 +150,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
 */
 static inline handle_t gethandle(unsigned int type,unsigned int count) {
     int n,size,mask;
-    dcs_tag *this,*next;
+    dax_tag *this,*next;
     handle_t nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = TYPESIZE(type);
@@ -162,7 +162,7 @@ static inline handle_t gethandle(unsigned int type,unsigned int count) {
             We do this by first calculating a mask to see if we are already
             even and if we are then return.  If not then set the mask bits into
             nextbit and then increment by one to get the even number */
-        if((type & 0x0F) == DCS_1BIT) {
+        if((type & 0x0F) == DAX_1BIT) {
             if((next->handle - nextbit) >= (long)(size * count)) {
                 return nextbit;
             }
@@ -185,7 +185,7 @@ static inline handle_t gethandle(unsigned int type,unsigned int count) {
     this=&__taglist[__tagcount-1]; /* Get the last tag in the list */
     nextbit=this->handle + (this->count * TYPESIZE(this->type));
     
-    if((type & 0x0F) != DCS_1BIT) {/* If it's not a single bit */
+    if((type & 0x0F) != DAX_1BIT) {/* If it's not a single bit */
         /* ...then even it up */
         mask=(0x0001 << (type & 0x0f))-1;
         if((nextbit & mask) == 0x00) {
@@ -261,21 +261,21 @@ static int get_by_handle(handle_t handle) {
 
 /* checks whether type is a valid datatype */
 static int checktype(unsigned int type) {
-    if(type & DCS_BOOL)  return 1;
-    if(type & DCS_BYTE)  return 1;
-    if(type & DCS_SINT)  return 1;
-    if(type & DCS_WORD)  return 1;
-    if(type & DCS_INT)   return 1;
-    if(type & DCS_UINT)  return 1;
-    if(type & DCS_DWORD) return 1;
-    if(type & DCS_DINT)  return 1;
-    if(type & DCS_UDINT) return 1;
-    if(type & DCS_TIME)  return 1;
-    if(type & DCS_REAL)  return 1;
-    if(type & DCS_LWORD) return 1;
-    if(type & DCS_LINT)  return 1;
-    if(type & DCS_ULINT) return 1;
-    if(type & DCS_LREAL) return 1;
+    if(type & DAX_BOOL)  return 1;
+    if(type & DAX_BYTE)  return 1;
+    if(type & DAX_SINT)  return 1;
+    if(type & DAX_WORD)  return 1;
+    if(type & DAX_INT)   return 1;
+    if(type & DAX_UINT)  return 1;
+    if(type & DAX_DWORD) return 1;
+    if(type & DAX_DINT)  return 1;
+    if(type & DAX_UDINT) return 1;
+    if(type & DAX_TIME)  return 1;
+    if(type & DAX_REAL)  return 1;
+    if(type & DAX_LWORD) return 1;
+    if(type & DAX_LINT)  return 1;
+    if(type & DAX_ULINT) return 1;
+    if(type & DAX_LREAL) return 1;
     /* TODO: Should add custom datatype handling here */
     return 0;
 }

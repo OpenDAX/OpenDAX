@@ -1,2 +1,2 @@
-lib_LIBRARIES = libopendcs.a
-libopendcs_a_SOURCES = libmsg.c
+lib_LIBRARIES = libdax.a
+libdax_a_SOURCES = libmsg.c

@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system 
+/*  OpenDAX - An open source distributed control system 
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -34,7 +34,7 @@
 typedef unsigned int mod_handle_t;
 
 /* Modules are implemented as a circular doubly linked list */
-typedef struct dcs_Module {
+typedef struct dax_Module {
     mod_handle_t handle;
     char *name;
     pid_t pid;
@@ -47,8 +47,8 @@ typedef struct dcs_Module {
     int pipe_out;       /* Redirected to the modules stdout */
     int pipe_err;       /* Redirected to the modules stderr */
     time_t starttime;
-    struct dcs_Module *next,*prev;
-} dcs_module;
+    struct dax_Module *next,*prev;
+} dax_module;
 
 typedef struct DeadModule {
     pid_t pid;

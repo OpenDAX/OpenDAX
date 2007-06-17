@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system 
+/*  OpenDAX - An open source distributed control system 
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 #include <common.h>
 #include <time.h>
 #include <string.h>
-#include <opendcs.h>
+#include <opendax.h>
 #include "module.h"
 #include "func.h"
 
@@ -31,13 +31,13 @@
     then SIGKILL if they stick around.
 */
 
-static dcs_module *_current_mod=NULL;
+static dax_module *_current_mod=NULL;
 static int _module_count=0;
 
 static char **_arglist_tok(char *,char *);
-static dcs_module *_get_module(mod_handle_t);
-static dcs_module *_get_module_pid(pid_t);
-static dcs_module *_get_module_name(char *);
+static dax_module *_get_module(mod_handle_t);
+static dax_module *_get_module_pid(pid_t);
+static dax_module *_get_module_name(char *);
 static int _cleanup_module(pid_t,int);
 
 /* This array is the dead module list.
@@ -65,12 +65,12 @@ module_add(char *name, char *path, char *arglist, unsigned int flags) {
        will be handle 2 so that the core process can always be one */
     static mod_handle_t handle=1;
 
-    dcs_module *new, *try;
+    dax_module *new, *try;
     xlog(10,"Adding module %s",name);
     
     if((try=_get_module_name(name))) return try->handle; /* Name already used */
     /* TODO: Handle the errors for the following somehow */
-    new=(dcs_module *)xmalloc(sizeof(dcs_module));
+    new=(dax_module *)xmalloc(sizeof(dax_module));
     if(new) {
         new->handle = ++handle;
         new->flags = flags;
@@ -156,7 +156,7 @@ static char **_arglist_tok(char *path,char *str) {
 /* uses get_module to locate the module identified as 'handle' and removes
    it from the list. */
 int module_del(mod_handle_t handle) {
-    dcs_module *mod;
+    dax_module *mod;
     char **node;
 
     mod=_get_module(handle);
@@ -198,7 +198,7 @@ inline static int _childpipes(int *);
 /* This function is used to start a module */
 pid_t module_start(mod_handle_t handle) {
     pid_t child_pid;
-    dcs_module *mod;
+    dax_module *mod;
     int result=0;
     int pipes[6];
     mod=_get_module(handle);
@@ -303,7 +303,7 @@ int module_stop(mod_handle_t handle) {
    modules that are not started by the core need a way to announce themselves.
    name can be passed as NULL for modules that were started from DAX */
 void module_register(char *name ,pid_t pid) {
-    dcs_module *mod;
+    dax_module *mod;
     mod_handle_t handle;
     
     /* First see if we already have a module of the given PID
@@ -333,7 +333,7 @@ void module_register(char *name ,pid_t pid) {
 }
 
 void module_unregister(pid_t pid) {
-    dcs_module *mod;
+    dax_module *mod;
     mod=_get_module_pid(pid);
     if(mod) {
         //mod->pid=0;
@@ -343,10 +343,12 @@ void module_unregister(pid_t pid) {
 
 
 mod_handle_t module_get_pid(pid_t pid) {
-    dcs_module *mod;
+    dax_module *mod;
     mod=_get_module_pid(pid);
     if(mod)
         return mod->handle;
+    else
+        return -1;
 }
 
 
@@ -370,7 +372,7 @@ void module_scan(void) {
 /* This function is called from the scan_modules function and is used 
    to find and cleanup the module after it has died.  */
 static int _cleanup_module(pid_t pid,int status) {
-    dcs_module *mod;
+    dax_module *mod;
     mod=_get_module_pid(pid);
     /* at this point _current_mod should be pointing to a module with
     the PID that we passed but we should check because there may not 
@@ -409,8 +411,8 @@ void module_dmq_add(pid_t pid,int status) {
 
 
 /* static function to get a module pointer from a handle */
-static dcs_module *_get_module(mod_handle_t handle) {
-    dcs_module *last;
+static dax_module *_get_module(mod_handle_t handle) {
+    dax_module *last;
     /* In case we ain't go no list */
     if(_current_mod==NULL) return NULL;
     /* Figure out where we need to stop */
@@ -427,8 +429,8 @@ static dcs_module *_get_module(mod_handle_t handle) {
 }
 
 /* Lookup and return the pointer to the module with pid */
-static dcs_module *_get_module_pid(pid_t pid) {
-    dcs_module *last;
+static dax_module *_get_module_pid(pid_t pid) {
+    dax_module *last;
     /* In case we ain't go no list */
     if(_current_mod==NULL) return NULL;
     /* Figure out where we need to stop */
@@ -445,8 +447,8 @@ static dcs_module *_get_module_pid(pid_t pid) {
 }
 
 /* Retrieves a pointer to module given name */
-static dcs_module *_get_module_name(char *name) {
-    dcs_module *last;
+static dax_module *_get_module_name(char *name) {
+    dax_module *last;
     /* In case we ain't go no list */
     if(_current_mod==NULL) return NULL;
     /* Figure out where we need to stop */

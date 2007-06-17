@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system 
+/*  OpenDAX - An open source distributed control system 
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -18,45 +18,45 @@
  * This is the header file for the tagname database handling routines
  */
 
-#include <opendcs.h>
+#include <opendax.h>
 #include <sys/types.h>
 
 #ifndef __TAGBASE_H
 #define __TAGBASE_H
 
-#ifndef DCS_TAGNAME_SIZE
- #define DCS_TAGNAME_SIZE 32
+#ifndef DAX_TAGNAME_SIZE
+ #define DAX_TAGNAME_SIZE 32
 #endif
 
 /* This is the initial size of the tagname list array */
-#ifndef DCS_TAGLIST_SIZE
- #define DCS_TAGLIST_SIZE 1024
+#ifndef DAX_TAGLIST_SIZE
+ #define DAX_TAGLIST_SIZE 1024
 #endif
 
 /* This is the size that the tagname list array will grow when
    the size is exceeded */
-#ifndef DCS_TAGLIST_INC
- #define DCS_TAGLIST_INC 1024
+#ifndef DAX_TAGLIST_INC
+ #define DAX_TAGLIST_INC 1024
 #endif
 
 /* The initial size of the database */
-#ifndef DCS_DATABASE_SIZE
- #define DCS_DATABASE_SIZE 1024
+#ifndef DAX_DATABASE_SIZE
+ #define DAX_DATABASE_SIZE 1024
 #endif
 
 /* This is the increment by which the database will grow when
    the size is exceeded */
-#ifndef DCS_DATABASE_INC
- #define DCS_DATABASE_INC 1024
+#ifndef DAX_DATABASE_INC
+ #define DAX_DATABASE_INC 1024
 #endif
 
 
 typedef struct Dcs_Tag {
     handle_t handle;
-    char name[DCS_TAGNAME_SIZE + 1];
+    char name[DAX_TAGNAME_SIZE + 1];
     unsigned int type;
     unsigned int count;
-} dcs_tag;
+} dax_tag;
 
 
 void initialize_tagbase(void);

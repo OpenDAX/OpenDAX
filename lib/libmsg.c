@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system
+/*  OpenDAX - An open source distributed control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -20,9 +20,9 @@
  */
  
 #include <common.h>
-#include <dcs/tagbase.h>
-#include <opendcs.h>
-#include <dcs/message.h>
+#include <dax/tagbase.h>
+#include <opendax.h>
+#include <dax/message.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <string.h>
@@ -31,10 +31,10 @@ static int __msqid;
 
 /* Connects to the message queue and sends a registration to the core */
 static int mod_reg(char *name) {
-    dcs_message outmsg;
+    dax_message outmsg;
     int result;
     
-    __msqid=msgget(DCS_IPC_KEY,0660);
+    __msqid=msgget(DAX_IPC_KEY,0660);
     if(__msqid < 0) {
         return ERR_NO_QUEUE;
     }
@@ -60,27 +60,27 @@ static int mod_reg(char *name) {
     return 0;
 }
 
-int dcs_mod_register(char *name) {
+int dax_mod_register(char *name) {
     return mod_reg(name);
 }
 
-int dcs_mod_unregister(void) {
+int dax_mod_unregister(void) {
     return mod_reg(NULL);
 }
 
-handle_t dcs_tag_add(char *name,unsigned int type, unsigned int count) {
-    dcs_message outmsg;
-    dcs_tag tag;
+handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
+    dax_message outmsg;
+    dax_tag tag;
     int result;
     
     outmsg.module=1;
     outmsg.command=MSG_TAG_ADD;
     outmsg.pid=getpid();
     if(name) {
-        if(strlen(name) > DCS_TAGNAME_SIZE) {
+        if(strlen(name) > DAX_TAGNAME_SIZE) {
             return ERR_2BIG;
         }
-        outmsg.size=sizeof(dcs_tag)-sizeof(handle_t);
+        outmsg.size=sizeof(dax_tag)-sizeof(handle_t);
         /* TODO Need to do some more error checking here */
         strcpy(tag.name,name);
         tag.type=type;

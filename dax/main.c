@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system 
+/*  OpenDAX - An open source distributed control system 
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -37,8 +37,8 @@ int main(int argc, const char *argv[]) {
     pthread_t message_thread;
     int temp;
 
-    openlog("OpenDCS",LOG_NDELAY,LOG_DAEMON);
-    xlog(0,"OpenDCS started");
+    openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
+    xlog(0,"OpenDAX started");
 
     /* Set up the signal handlers */
     memset (&sa,0,sizeof(struct sigaction));
@@ -49,7 +49,7 @@ int main(int argc, const char *argv[]) {
     sigaction (SIGINT,&sa,NULL);
     sigaction (SIGTERM,&sa,NULL);
 
-    if(daemonize("OpenDCS")) {
+    if(daemonize("OpenDAX")) {
         xerror("Unable to go to the background");
     }
 

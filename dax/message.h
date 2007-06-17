@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system
+/*  OpenDAX - An open source distributed control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -24,8 +24,8 @@
 
 #include <common.h>
 
-/* Size for the DCS message buffer.  Do I really need this? */
-#define DCS_MSG_SZ 1024
+/* Size for the DAX message buffer.  Do I really need this? */
+#define DAX_MSG_SZ 1024
 /* Message functions */
 #define MSG_MOD_REG    0x0001 /* Register the module with the core */
 #define MSG_TAG_ADD    0x0002 /* Add a tag */
@@ -43,8 +43,8 @@ typedef struct Dcs_Message {
     int command;
     pid_t pid;
     size_t size;
-    char data[DCS_MSG_SZ];
-} dcs_message;
+    char data[DAX_MSG_SZ];
+} dax_message;
 
 #define MSG_SIZE sizeof(int)+sizeof(pid_t)+sizeof(size_t)
 

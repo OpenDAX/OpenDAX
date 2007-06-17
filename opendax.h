@@ -1,4 +1,4 @@
-/*  opendcs - An open source distributed control system 
+/*  OpenDAX - An open source distributed control system 
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -17,43 +17,43 @@
  */
 
 
-#ifndef __OPENDCS_H
-#define __OPENDCS_H
+#ifndef __OPENDAX_H
+#define __OPENDAX_H
 
 /* For now we'll use this as the key for all the SysV IPC stuff */
-#define DCS_IPC_KEY 0x707070
+#define DAX_IPC_KEY 0x707070
 
 /* Data type definitions */
-#define DCS_BOOL    0x0010
+#define DAX_BOOL    0x0010
 /* 8 Bits */
-#define DCS_BYTE    0x0003
-#define DCS_SINT    0x0013
+#define DAX_BYTE    0x0003
+#define DAX_SINT    0x0013
 /* 16 Bits */
-#define DCS_WORD    0x0004
-#define DCS_INT     0x0014
-#define DCS_UINT    0x0024
+#define DAX_WORD    0x0004
+#define DAX_INT     0x0014
+#define DAX_UINT    0x0024
 /* 32 Bits */
-#define DCS_DWORD   0x0005
-#define DCS_DINT    0x0015
-#define DCS_UDINT   0x0025
-#define DCS_TIME    0x0035
-#define DCS_REAL    0x0045
+#define DAX_DWORD   0x0005
+#define DAX_DINT    0x0015
+#define DAX_UDINT   0x0025
+#define DAX_TIME    0x0035
+#define DAX_REAL    0x0045
 /* 64 Bits */
-#define DCS_LWORD   0x0006
-#define DCS_LINT    0x0016
-#define DCS_ULINT   0x0026
-#define DCS_LREAL   0x0036
+#define DAX_LWORD   0x0006
+#define DAX_LINT    0x0016
+#define DAX_ULINT   0x0026
+#define DAX_LREAL   0x0036
 
 /* The highest order bit shows that it's a custom datatype */
-#define DCS_CUSTOM  0x80000000
+#define DAX_CUSTOM  0x80000000
 
 /* The size of the base datatypes are based on the lower 4 bits.  A
    simple bit shift will give the size of the datatype */
-#define DCS_1BIT    0x0000
-#define DCS_8BITS   0x0003
-#define DCS_16BITS  0x0004
-#define DCS_32BITS  0x0005
-#define DCS_64BITS  0x0006
+#define DAX_1BIT    0x0000
+#define DAX_8BITS   0x0003
+#define DAX_16BITS  0x0004
+#define DAX_32BITS  0x0005
+#define DAX_64BITS  0x0006
 
 /* Library function errors */
 #define ERR_NO_QUEUE -1 /* The Message Queue does not exist */
@@ -66,8 +66,8 @@
 typedef int handle_t;
 
 /* Only registered modules will get responses from the core */
-int dcs_mod_register(char *);   /* Registers the Module with the core */
-int dcs_mod_unregister(void);   /* Unregister the Module with the core */
-handle_t dcs_tag_add(char *name,unsigned int type, unsigned int count);
+int dax_mod_register(char *);   /* Registers the Module with the core */
+int dax_mod_unregister(void);   /* Unregister the Module with the core */
+handle_t dax_tag_add(char *name,unsigned int type, unsigned int count);
 
-#endif /* !__OPENDCS_H */
+#endif /* !__OPENDAX_H */

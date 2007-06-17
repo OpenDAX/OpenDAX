@@ -1,6 +1,6 @@
-OpenDCS (c) 2007 Phil Birkelbach
+OpenDAX (c) 2007 Phil Birkelbach
 
-OpenDCS is an Open Source Distributed Control System.
+OpenDAX is an Open Source Distributed Control System.
 
 At this point the code is at best, pre-alpha quality and it is not ready to be 
 installed on production systems.
@@ -11,7 +11,7 @@ Open Source operating system kernels are fantastic pieces of software that
 do their jobs very well.  There is no sense in duplicating any of the
 functions that they perform.
 
-With that in mind OpenDCS uses separate processes for modules.  Almost all
+With that in mind OpenDAX uses separate processes for modules.  Almost all
 of the tasks of the system are handled by these modules.  They interact with
 each other through a service that runs on each machine in the system.  Each
 module communicates with this core service through one of two libraries.
@@ -19,15 +19,15 @@ module communicates with this core service through one of two libraries.
 The first library is an I/O module library.  This module has limited 
 capabilty to communicate with the core.  It is licensed under the 
 Lesser Gnu Public License (LGPL).  This will allow hardware vendors to 
-build proprietary modules that communicate with the OpenDCS core.  
+build proprietary modules that communicate with the OpenDAX core.  
 This will probably be a controversial aspect of this program but if 
-OpenDCS is to ever have any hope of being mainstream it will need to 
+OpenDAX is to ever have any hope of being mainstream it will need to 
 have the abiltiy to communicate with all of the different types and
 brands of hardware that have become industry standard.  Besides we
 aren't trying to build any hardware so this communication is absolutely
 necessary for the usefulness of the project.
 
-The nature of OpenDCS would allow any company to build a proprietary driver
+The nature of OpenDAX would allow any company to build a proprietary driver
 for their hardware anyway since each module is implemented as a separate 
 process.  It'd be possible for these hardware vendors to build the 
 modules without linking to any of our libraries.  Since it's that linking
@@ -36,13 +36,13 @@ So we are just making it easier for them to do so by supplying a
 library that can be linked to the proprietary modules without requiring 
 source code distribution.
 
-The other library would have full access to the OpenDCS system and it would
+The other library would have full access to the OpenDAX system and it would
 be licensed under the GPL.  All types of modules could use this library
-and have a simple interface into all the features of the OpenDCS system.
+and have a simple interface into all the features of the OpenDAX system.
 These modules would be considered 'derived works' and would have to distribute
 their source code.
 
-The OpenDCS system is intended to provide many different mechanisms for 
+The OpenDAX system is intended to provide many different mechanisms for 
 modules to communiate with one another.  The details haven't quite been
 worked out yet but there are a few requirements that we think must be a 
 part of the system.
@@ -58,15 +58,15 @@ Modules should also be dynamic, able to be loaded and unloaded at runtime
 with no requirement for any central configuration.  It should be possible
 for programs that don't even know they are modules to be used as such. 
 The central service could open pipes to a program's stdin, stdout and 
-stderr file descriptors so that they can be manipulated by the DCS.  This 
+stderr file descriptors so that they can be manipulated by the DAX.  This 
 will probably have limited usefulness but it's conceivable that some
 programs could find a place.  One idea that comes to mind would be running
 mpg123 for playing alarm sounds.  No sense in writing a custom module to 
 play sounds when programs already exist to do the job.  Besides this makes
-OpenDCS a good *nix program since it allows modular software to be used
+OpenDAX a good *nix program since it allows modular software to be used
 in applications that the original designers never envisioned.
 
-The DCS should have a native messaging interfae where modules can send 
+The DAX should have a native messaging interfae where modules can send 
 messages to one another or to the central system.  I suspect that the vast
 majority of the library interfaces to the central system will be implemented
 with this messaging infrastructure.  There is no need to reinvent the wheel
@@ -101,7 +101,7 @@ A little note on licensing.  It is very tempting to use programs like bison to
 create logic modules or programs like glade to produce HMI modules but these
 programs will generate C code that will have to be compiled.  There is nothing
 wrong with this but it should be noted that any program that is linked with
-the GPL'd libraries of OpenDCS will have to also be distributed under the 
+the GPL'd libraries of OpenDAX will have to also be distributed under the 
 terms of the GPL.  If the logic library were itself an interpreter then the
 end user program would be seen more as a configuration and would not have 
 to be distributed in source code.  This is probably okay for the vast 
