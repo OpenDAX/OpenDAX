@@ -50,13 +50,10 @@
  #define DCS_DATABASE_INC 1024
 #endif
 
-#define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
-
-typedef int handle_t;
 
 typedef struct Dcs_Tag {
-    char name[DCS_TAGNAME_SIZE + 1];
     handle_t handle;
+    char name[DCS_TAGNAME_SIZE + 1];
     unsigned int type;
     unsigned int count;
 } dcs_tag;

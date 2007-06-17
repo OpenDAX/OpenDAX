@@ -39,11 +39,11 @@
 /* More to come */
 
 typedef struct Dcs_Message {
-    long int handle;
+    long int module; /* Destination module */
     int command;
     pid_t pid;
     size_t size;
-    char buff[DCS_MSG_SZ];
+    char data[DCS_MSG_SZ];
 } dcs_message;
 
 #define MSG_SIZE sizeof(int)+sizeof(pid_t)+sizeof(size_t)

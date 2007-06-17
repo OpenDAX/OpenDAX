@@ -34,11 +34,11 @@
 static dcs_module *_current_mod=NULL;
 static int _module_count=0;
 
-static char **arglist_tok(char *,char *);
-static dcs_module *get_module(mod_handle_t);
-static dcs_module *get_module_pid(pid_t);
-static dcs_module *get_module_name(char *);
-static int cleanup_module(pid_t,int);
+static char **_arglist_tok(char *,char *);
+static dcs_module *_get_module(mod_handle_t);
+static dcs_module *_get_module_pid(pid_t);
+static dcs_module *_get_module_name(char *);
+static int _cleanup_module(pid_t,int);
 
 /* This array is the dead module list.
    TODO: This should be improved to allow it to grow when needed.
@@ -55,18 +55,20 @@ static dead_module _dmq[DMQ_SIZE];
    will not be moved as this will make the list more efficient if 
    successive queries are made.
    
-   Returns the new handle on success and 0 on failure.  (zero is reserved
-   for the opendcs main process.)
+   Returns the new handle on success and 0 on failure.  (1 is reserved
+   for the opendcs main process.)  If an existing module with the same
+   name is found the handle of that module will be returned instead.
 */
 mod_handle_t 
 module_add(char *name, char *path, char *arglist, unsigned int flags) {
     /* The handle is incremented before first use.  The first added module
        will be handle 2 so that the core process can always be one */
-    static unsigned int handle=1;
-    dcs_module *new;
+    static mod_handle_t handle=1;
+
+    dcs_module *new, *try;
     xlog(10,"Adding module %s",name);
-    /* ??? Maybe this should return the handle that it finds instead of an error */
-    if(get_module_name(name)) return 0; /* Name already used */
+    
+    if((try=_get_module_name(name))) return try->handle; /* Name already used */
     /* TODO: Handle the errors for the following somehow */
     new=(dcs_module *)xmalloc(sizeof(dcs_module));
     if(new) {
@@ -78,7 +80,7 @@ module_add(char *name, char *path, char *arglist, unsigned int flags) {
             new->path=strdup(path);
             
             /* tokenize and set arglist */
-            new->arglist=arglist_tok(path,arglist);
+            new->arglist=_arglist_tok(path,arglist);
         }
         /* name the module */
         new->name=strdup(name);
@@ -102,7 +104,7 @@ module_add(char *name, char *path, char *arglist, unsigned int flags) {
 /* Convert a string like "-d -x -y" to a NULL terminated array of
    strings suitable as an arg list for the arg_list of an exec??()
    function. */
-static char **arglist_tok(char *path,char *str) {
+static char **_arglist_tok(char *path,char *str) {
     char *temp,*token,*save;
     char **arr;
     int count=1;
@@ -157,7 +159,7 @@ int module_del(mod_handle_t handle) {
     dcs_module *mod;
     char **node;
 
-    mod=get_module(handle);
+    mod=_get_module(handle);
     if(mod) {
         if(mod->next==mod) { /* Last module */
             _current_mod=NULL;
@@ -190,8 +192,8 @@ int module_del(mod_handle_t handle) {
 
 /* These are only used for the module_start() to handle the pipes.
    it was getting a little messy */
-inline static int getpipes(int *);
-inline static int childpipes(int *);
+inline static int _getpipes(int *);
+inline static int _childpipes(int *);
 
 /* This function is used to start a module */
 pid_t module_start(mod_handle_t handle) {
@@ -199,12 +201,12 @@ pid_t module_start(mod_handle_t handle) {
     dcs_module *mod;
     int result=0;
     int pipes[6];
-    mod=get_module(handle);
+    mod=_get_module(handle);
     if(mod) {
         /* Check the Open Pipes flag of the module */
         if(mod->flags & MFLAG_OPENPIPES) {
             /* from here on out if result is TRUE then deal with the pipes */
-            result=getpipes(pipes);
+            result=_getpipes(pipes);
         }
 
         child_pid = fork();
@@ -225,8 +227,8 @@ pid_t module_start(mod_handle_t handle) {
             }
             return child_pid;
         } else if(child_pid==0) { /* Child */
-            if(result) childpipes(pipes);
-            mod->state=MSTATE_RUNNING;
+            if(result) _childpipes(pipes);
+            mod->state=MSTATE_RUNNING | MSTATE_CHILD;
             mod->exit_status=0;
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
@@ -253,7 +255,7 @@ pid_t module_start(mod_handle_t handle) {
    pipes[4]=stderr read fd
    pipes[5]=stderr write fd
 */
-inline static int getpipes(int *pipes) {
+inline static int _getpipes(int *pipes) {
 
     if(pipe(&pipes[0])) {
         xerror("Unable to create pipe - %s",strerror(errno));
@@ -279,7 +281,7 @@ inline static int getpipes(int *pipes) {
 /* This function handles the dup()ing and closing of
    the stdin/stdout/stderr file descriptors in the child */
 /* TODO: check for errors and return appropriately. */
-inline static int childpipes(int *pipes) {
+inline static int _childpipes(int *pipes) {
     close(pipes[1]);
     close(pipes[2]);
     close(pipes[4]);
@@ -297,6 +299,56 @@ inline static int childpipes(int *pipes) {
 int module_stop(mod_handle_t handle) {
     return 0;
 }
+/* The dax core will not send messages to modules that are not register.  Also
+   modules that are not started by the core need a way to announce themselves.
+   name can be passed as NULL for modules that were started from DAX */
+void module_register(char *name ,pid_t pid) {
+    dcs_module *mod;
+    mod_handle_t handle;
+    
+    /* First see if we already have a module of the given PID
+       This should happen if DAX started the module */
+    mod=_get_module_pid(pid);
+    if(mod) {
+        if(name) {
+            if(strcmp(name,mod->name)) { /* New name given */
+                xlog(6,"Changing the name of module %s to %s",mod->name,name);
+                free(mod->name);
+                mod->name=xstrdup(name);
+            }
+        }
+    } else {
+        /* Does the module exist in in the handle list */
+        mod=_get_module_name(name);
+        if(!mod) {
+            handle=module_add(name,NULL,NULL,0);
+            mod=_get_module(handle);
+        }
+    }
+    if(mod) {
+        mod->pid = pid;
+        mod->state |= MSTATE_RUNNING;
+        mod->state |= MSTATE_REGISTERED;
+    }
+}
+
+void module_unregister(pid_t pid) {
+    dcs_module *mod;
+    mod=_get_module_pid(pid);
+    if(mod) {
+        //mod->pid=0;
+        mod->state &= (~MSTATE_REGISTERED);
+    }
+}
+
+
+mod_handle_t module_get_pid(pid_t pid) {
+    dcs_module *mod;
+    mod=_get_module_pid(pid);
+    if(mod)
+        return mod->handle;
+}
+
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called
@@ -307,7 +359,7 @@ void module_scan(void) {
     /* Check the dead module queue for pid's that need cleaning */
     for(n=0;n<DMQ_SIZE;n++) {
         if(_dmq[n].pid!=0) {
-            if(cleanup_module(_dmq[n].pid,_dmq[n].status)) {
+            if(_cleanup_module(_dmq[n].pid,_dmq[n].status)) {
                 _dmq[n].pid=0;
             }
         }
@@ -317,9 +369,9 @@ void module_scan(void) {
 
 /* This function is called from the scan_modules function and is used 
    to find and cleanup the module after it has died.  */
-static int cleanup_module(pid_t pid,int status) {
+static int _cleanup_module(pid_t pid,int status) {
     dcs_module *mod;
-    mod=get_module_pid(pid);
+    mod=_get_module_pid(pid);
     /* at this point _current_mod should be pointing to a module with
     the PID that we passed but we should check because there may not 
     be a module with our PID */
@@ -357,7 +409,7 @@ void module_dmq_add(pid_t pid,int status) {
 
 
 /* static function to get a module pointer from a handle */
-static dcs_module *get_module(mod_handle_t handle) {
+static dcs_module *_get_module(mod_handle_t handle) {
     dcs_module *last;
     /* In case we ain't go no list */
     if(_current_mod==NULL) return NULL;
@@ -375,7 +427,7 @@ static dcs_module *get_module(mod_handle_t handle) {
 }
 
 /* Lookup and return the pointer to the module with pid */
-static dcs_module *get_module_pid(pid_t pid) {
+static dcs_module *_get_module_pid(pid_t pid) {
     dcs_module *last;
     /* In case we ain't go no list */
     if(_current_mod==NULL) return NULL;
@@ -393,7 +445,7 @@ static dcs_module *get_module_pid(pid_t pid) {
 }
 
 /* Retrieves a pointer to module given name */
-static dcs_module *get_module_name(char *name) {
+static dcs_module *_get_module_name(char *name) {
     dcs_module *last;
     /* In case we ain't go no list */
     if(_current_mod==NULL) return NULL;

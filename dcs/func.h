@@ -40,6 +40,7 @@ void xlog(int,const char *,...);
 /* Portability functions */
 
 char *xstrcpy(const char *);
+char *xstrdup(char *);
 
 /* Stuff */
 

@@ -58,10 +58,16 @@
 /* Library function errors */
 #define ERR_NO_QUEUE -1 /* The Message Queue does not exist */
 #define ERR_2BIG     -2 /* The argument is too big */
+#define ERR_ARG      -3 /* Some argument is missing */
 
+/* Macro to get the size of the datatype */
+#define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
+
+typedef int handle_t;
 
 /* Only registered modules will get responses from the core */
 int dcs_mod_register(char *);   /* Registers the Module with the core */
 int dcs_mod_unregister(void);   /* Unregister the Module with the core */
+handle_t dcs_tag_add(char *name,unsigned int type, unsigned int count);
 
 #endif /* !__OPENDCS_H */

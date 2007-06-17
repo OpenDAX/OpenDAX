@@ -28,10 +28,12 @@
 
 int main(int argc,char *argv[]) {
 
-    while(1) {
+    //while(1) {
         dcs_mod_register("Test");
+        sleep(3);
+        dcs_tag_add("modbus",DCS_BOOL,200);
         sleep(3);
         dcs_mod_unregister();
         sleep(3);
-    }
+    //}
 }

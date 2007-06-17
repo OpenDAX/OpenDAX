@@ -38,7 +38,7 @@ static int mod_reg(char *name) {
     if(__msqid < 0) {
         return ERR_NO_QUEUE;
     }
-    outmsg.handle=1;
+    outmsg.module=1;
     outmsg.command=MSG_MOD_REG;
     outmsg.pid=getpid();
     if(name) {
@@ -46,7 +46,7 @@ static int mod_reg(char *name) {
             return ERR_2BIG;
         }
         outmsg.size=strlen(name)+1;
-        strcpy(outmsg.buff,name);
+        strcpy(outmsg.data,name);
     } else {
         outmsg.size=0;
     }
@@ -66,4 +66,34 @@ int dcs_mod_register(char *name) {
 
 int dcs_mod_unregister(void) {
     return mod_reg(NULL);
+}
+
+handle_t dcs_tag_add(char *name,unsigned int type, unsigned int count) {
+    dcs_message outmsg;
+    dcs_tag tag;
+    int result;
+    
+    outmsg.module=1;
+    outmsg.command=MSG_TAG_ADD;
+    outmsg.pid=getpid();
+    if(name) {
+        if(strlen(name) > DCS_TAGNAME_SIZE) {
+            return ERR_2BIG;
+        }
+        outmsg.size=sizeof(dcs_tag)-sizeof(handle_t);
+        /* TODO Need to do some more error checking here */
+        strcpy(tag.name,name);
+        tag.type=type;
+        tag.count=count;
+    } else {
+        return -1;
+    }
+    memcpy(outmsg.data,&(tag.name),outmsg.size);
+    result=msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_SIZE + sizeof(char)*outmsg.size,0);
+    if(result) { 
+        return -2;
+    }
+    /* Might need to centralize the receipt of messages */
+    result=msgrcv(__msqid,&outmsg,MSG_SIZE+sizeof(handle_t),(long)getpid(),0);
+    return 0;
 }

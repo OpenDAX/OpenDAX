@@ -28,8 +28,8 @@
 
 #define MSTATE_RUNNING      0x00 /* Running normally */
 #define MSTATE_WAITING      0x01 /* Waiting for restart */
-#define MSTATE_REGISTERED   0x02 /* Module is registered */
-#define MSTATE_CHILD        0x04 /* Module was started by this program */
+#define MSTATE_CHILD        0x02 /* Module was started by this program */
+#define MSTATE_REGISTERED   0x04 /* Is the module registered */
 
 typedef unsigned int mod_handle_t;
 
@@ -62,6 +62,11 @@ int module_del(mod_handle_t);
 /* Module runtime functions */
 pid_t module_start (mod_handle_t);
 int module_stop(mod_handle_t);
+void module_register(char *,pid_t);
+void module_unregister(pid_t);
+mod_handle_t module_get_pid(pid_t);
+
+/* module maintanance */
 void module_scan(void);
 
 void module_dmq_add(pid_t,int);
