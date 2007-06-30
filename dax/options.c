@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system 
+/*  OpenDAX - An open source data acquisition and control system 
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify

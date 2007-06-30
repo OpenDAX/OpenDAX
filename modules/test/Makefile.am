@@ -1,4 +1,3 @@
 bin_PROGRAMS = test
-test_SOURCES = main.c func.c
-
-LDADD = ../../lib/libdax.a
+test_SOURCES = main.c
+test_LDADD = ../../dax/func.o ../../lib/libdax.a

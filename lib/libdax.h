@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,32 +14,15 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+
+ * This file contains the global header stuff for the library
  */
 
+#ifndef __LIBDAX_H
+#define __LIBDAX_H  
 
-#ifndef __FUNC_H
-#define __FUNC_H
+//int _message_send(long int module,int command,void *payload, size_t size);
+//int _message_recv(int command, void *payload, size_t *size);
 
-/* Memory management functions.  These are just to override the
- * standard memory management functions in case I decide to do
- * something createive with them later. */
-
-
-void *xmalloc(size_t);
-void *xrealloc(void *, size_t);
-void *xcalloc(size_t, size_t);
-
-/* Error handling and logging functions */
-
-void xfatal(const char *,...);
-void xerror(const char *,...);
-void xnotice(const char *,...);
-void setverbosity(int);
-void xlog(int,const char *,...);
-
-/* Portability functions */
-
-char *xstrcpy(const char *);
-
-
-#endif /* !__FUNC_H */
+#endif /* !__LIBDAX_H */

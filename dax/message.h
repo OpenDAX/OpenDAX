@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -46,7 +46,8 @@ typedef struct Dcs_Message {
     char data[DAX_MSG_SZ];
 } dax_message;
 
-#define MSG_SIZE sizeof(int)+sizeof(pid_t)+sizeof(size_t)
+/* This defines the size of the message minus the actual data */
+#define MSG_SIZE (sizeof(int)+sizeof(pid_t)+sizeof(size_t))
 
 int msg_setup_queue(void);
 void msg_destroy_queue(void);

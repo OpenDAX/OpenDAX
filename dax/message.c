@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -58,15 +58,15 @@ int msg_setup_queue(void) {
     }
     xlog(2,"Message Queue Created - id = %d",__msqid);
 
-    cmd_arr[MSG_MOD_REG] = &msg_mod_register;
-    cmd_arr[MSG_TAG_ADD] = &msg_tag_add;
-    cmd_arr[MSG_TAG_DEL] = &msg_tag_del;
-    cmd_arr[MSG_TAG_GET] = &msg_tag_get;
-    cmd_arr[MSG_TAG_LIST]=&msg_tag_list;
-    cmd_arr[MSG_TAG_READ]=&msg_tag_read;
-    cmd_arr[MSG_TAG_WRITE]=&msg_tag_write;
-    cmd_arr[MSG_TAG_MWRITE]=&msg_tag_masked_write;
-    cmd_arr[MSG_MOD_GET]=&msg_mod_get;
+    cmd_arr[MSG_MOD_REG]    = &msg_mod_register;
+    cmd_arr[MSG_TAG_ADD]    = &msg_tag_add;
+    cmd_arr[MSG_TAG_DEL]    = &msg_tag_del;
+    cmd_arr[MSG_TAG_GET]    = &msg_tag_get;
+    cmd_arr[MSG_TAG_LIST]   = &msg_tag_list;
+    cmd_arr[MSG_TAG_READ]   = &msg_tag_read;
+    cmd_arr[MSG_TAG_WRITE]  = &msg_tag_write;
+    cmd_arr[MSG_TAG_MWRITE] = &msg_tag_masked_write;
+    cmd_arr[MSG_MOD_GET]    = &msg_mod_get;
 
     return __msqid;
 }
@@ -90,12 +90,12 @@ void msg_destroy_queue(void) {
 int msg_receive(void) {
     dax_message dcsmsg;
     int result;
-    result=msgrcv(__msqid,(struct msgbuff *)(&dcsmsg),sizeof(dax_message),1,0);
+    result = msgrcv(__msqid,(struct msgbuff *)(&dcsmsg),sizeof(dax_message),1,0);
     if(result < 0) {
         xerror("msg_receive - %s",strerror(errno));
         return result;
     }
-    if(result < (sizeof(int)+sizeof(pid_t)+sizeof(size_t)+sizeof(char)*dcsmsg.size)) {
+    if(result < (MSG_SIZE + dcsmsg.size)) {
         xerror("message received is not of the specified size.");
         return -1;
     }
@@ -123,12 +123,13 @@ int msg_mod_register(dax_message *msg) {
 int msg_tag_add(dax_message *msg) {
     dax_tag tag;
     handle_t handle;
-    memcpy(msg->data,tag.name,sizeof(dax_tag)-sizeof(handle_t));
+    
+    xlog(10,"Tag Add Message from %d",msg->pid);
+    memcpy(tag.name,msg->data,sizeof(dax_tag)-sizeof(handle_t));
     handle=tag_add(tag.name,tag.type,tag.count);
     if(handle >= 0) {
         _send_handle(handle,msg->pid);
     }
-    xlog(10,"Tag Add Message from %d",msg->pid);
     return 0;
 }
 
@@ -167,13 +168,15 @@ int msg_mod_get(dax_message *msg) {
     return 0;
 }
 
+/* Probably should write a generic message handling function or two */
 void _send_handle(handle_t handle,pid_t pid) {
     dax_message msg;
     int result;
     if(module_get_pid(pid)) {
         msg.module=pid;
-        msg.command=MSG_TAG_GET;
-        msg.pid=0; /* Doesn't really matter */
+        msg.command=MSG_TAG_ADD;
+        msg.pid=0; /* Doesn't really matter what PID we send here */
+        msg.size=sizeof(handle_t);
         *((handle_t *)msg.data)=handle; /* Type cast copy thing */
         result=msgsnd(__msqid,(struct msgbuff *)(&msg),MSG_SIZE + sizeof(handle_t),0);
         if(result)

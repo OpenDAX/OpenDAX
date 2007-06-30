@@ -1,3 +1,6 @@
 bin_PROGRAMS = opendax
-opendax_SOURCES = main.c options.c func.c module.c message.c tagbase.c 
+opendax_SOURCES = opendax.c options.c options.h \
+				  func.c func.h module.c module.h \
+				  message.c message.h tagbase.c tagbase.h 
 opendax_LDFLAGS = -lpthread
+opendax_DEPENDENCIES = ../common.h

@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system 
+/*  OpenDAX - An open source data acquisition and control system 
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -49,9 +49,10 @@ int main(int argc, const char *argv[]) {
     sigaction (SIGINT,&sa,NULL);
     sigaction (SIGTERM,&sa,NULL);
 
-    if(daemonize("OpenDAX")) {
-        xerror("Unable to go to the background");
-    }
+    /* TODO: Whether to go to the background should be an option */
+    //if(daemonize("OpenDAX")) {
+    //    xerror("Unable to go to the background");
+    //}
 
     setverbosity(10); /*TODO: Needs to be configuration */
     
@@ -66,9 +67,10 @@ int main(int argc, const char *argv[]) {
     
     // TODO: Module addition should be handled from the configuration file
     temp=module_add("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
-    temp=module_add("test","/home/phil/opendcs/modules/test/test",NULL,0);
-    temp=module_add("testmod2","/home/phil/opendcs/test",NULL,0);
+    temp=module_add("test","/Users/phil/opendax/modules/test/test",NULL,0);
+    temp=module_add("modbus","/Users/phil/opendax/modules/modbus/modbus","-C /Users/phil/opendax/etc/modbus.conf",0);
     
+    // TODO: There should be one giant global module starter
     module_start(3);
     
     while(1) {

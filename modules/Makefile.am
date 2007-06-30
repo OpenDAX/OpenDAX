@@ -1,4 +1,4 @@
-SUBDIRS = test
+SUBDIRS = modbus test
 
 #AUX_DIST = $(ac_aux_dir)/install-sh
 

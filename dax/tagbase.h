@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system 
+/*  OpenDAX - An open source data acquisition and control system 
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -41,15 +41,14 @@
 
 /* The initial size of the database */
 #ifndef DAX_DATABASE_SIZE
- #define DAX_DATABASE_SIZE 1024
+ #define DAX_DATABASE_SIZE 2048
 #endif
 
 /* This is the increment by which the database will grow when
    the size is exceeded */
 #ifndef DAX_DATABASE_INC
- #define DAX_DATABASE_INC 1024
+ #define DAX_DATABASE_INC 2048
 #endif
-
 
 typedef struct Dcs_Tag {
     handle_t handle;
@@ -57,7 +56,6 @@ typedef struct Dcs_Tag {
     unsigned int type;
     unsigned int count;
 } dax_tag;
-
 
 void initialize_tagbase(void);
 handle_t tag_add(char *name,unsigned int type, unsigned int count);

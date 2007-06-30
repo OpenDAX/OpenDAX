@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,36 +14,20 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+
+ * This file contains the database handling code for the library
  */
 
-
-#ifndef __FUNC_H
-#define __FUNC_H
-
-/* Memory management functions.  These are just to override the
- * standard memory management functions in case I decide to do
- * something createive with them later. */
+#include <common.h>
+#include <opendax.h>
+#include <dax/tagbase.h>
 
 
-void *xmalloc(size_t);
-void *xrealloc(void *, size_t);
-void *xcalloc(size_t, size_t);
+/* Use this tag type when we don't care about the name */
+typedef struct IO_Tag {
+    handle_t handle;
+    unsigned int type;
+    unsigned int count;
+} io_tag;
 
-/* Error handling and logging functions */
-
-void xfatal(const char *,...);
-void xerror(const char *,...);
-void xnotice(const char *,...);
-void setverbosity(int);
-void xlog(int,const char *,...);
-
-/* Portability functions */
-
-char *xstrcpy(const char *);
-char *xstrdup(char *);
-
-/* Stuff */
-
-int daemonize(char *);
-
-#endif /* !__FUNC_H */

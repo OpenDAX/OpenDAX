@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system 
+/*  OpenDAX - An open source data acquisition and control system 
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -21,20 +21,25 @@
 #include <common.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <syslog.h>
 #include <opendax.h>
 #include <dax/message.h>
 #include <dax/func.h>
 #include <string.h>
 
 int main(int argc,char *argv[]) {
+    handle_t handle;
 
-    //while(1) {
-        dax_mod_register("Test");
-        sleep(3);
-        dax_tag_add("modbus",DAX_BOOL,200);
-        sleep(3);
-        dax_mod_unregister();
-        sleep(3);
-    //}
+    openlog("test",LOG_NDELAY,LOG_DAEMON);
+    xnotice("starting module test");
+    dax_mod_register("test");
+    sleep(1);
+    handle=dax_tag_add("modbus",DAX_BOOL,200);
+    xlog(0,"modbus handle = %d",handle);
+    sleep(3);
+    
+    sleep(10);
+    dax_mod_unregister();
+    sleep(3);
     return 0;
 }

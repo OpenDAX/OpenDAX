@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system 
+/*  OpenDAX - An open source data acquisition and control system 
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -75,6 +75,10 @@ void initialize_tagbase(void) {
     /* Set all the memory to zero */
     memset(__taglist,0x00,sizeof(dax_tag)*DAX_TAGLIST_SIZE);
     memset(__db,0x00,sizeof(u_int32_t)*DAX_DATABASE_SIZE);
+    /* Create the _status tag at handle zero */
+    if(tag_add("_status",DAX_DWORD,1)) {
+        xfatal("_status not created properly");
+    }
 }
 
 
@@ -129,6 +133,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
         return -6;
     }
     __tagcount++;
+    xlog(10,"Tag %s added at handle %d",name,handle);
     return handle;
 }
 
@@ -207,6 +212,7 @@ static inline handle_t gethandle(unsigned int type,unsigned int count) {
 
 /* TODO: Make this function do something */
 int tag_del(char *name) {
+    /* TODO: No deleting handle 0x0000 */
     return 0; /* Return good for now */
 }
 
@@ -230,8 +236,8 @@ static int get_by_name(char *name) {
    search and returns the array index of the point that contains the handle.
    The handle may be the handle of a bit within the tag point too. */
 static int get_by_handle(handle_t handle) {
-    int lime,try,high,low;
-    low=lime=0;
+    int try,high,low;
+    low=0;
     high=__tagcount-1;
     try=high/2;
     if(handle < 0) {
@@ -257,6 +263,32 @@ static int get_by_handle(handle_t handle) {
     } else {
         return -1;
     }
+}
+
+/* This function finds the tag index of the tag that is defined by handle
+   If this handle is within the tag and not the starting handle of the tag
+   this function will return error. */
+static int find_handle(handle_t handle) {
+    int try,high,low,n;
+    low=n=0;
+    high=__tagcount-1;
+    try=high/2;
+    if(handle < 0 || handle > __taglist[__tagcount-1].handle) {
+        return -1; /* handle does not exist */
+    } else {
+        /* Bisection search */
+        while(__taglist[try].handle != handle && high != low) {
+            if(__taglist[try].handle < handle) {
+                low=try;
+            } else {
+                high=try;
+            }
+            xlog(10,"High = %d, Low = %d, Try = %d",high,low,try);
+            try=low+(high-low)/2;
+            if(n++ > 10) return -1;
+        }
+    }
+    return try;
 }
 
 /* checks whether type is a valid datatype */
@@ -303,10 +335,11 @@ handle_t tag_get_handle(char *name) {
 /* Retrieves the type of the point at the given handle */
 int tag_get_type(handle_t handle) {
     int x;
-    x=get_by_handle(handle);
+    x=find_handle(handle);
     if(x<0) return x;
     else return __taglist[x].type;
 }
+
 
 /* This function reads the data starting with handle.  Size is in
  * bytes.  If *data doesn't have enough room we'll be in big trouble.

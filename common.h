@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system 
+/*  OpenDAX - An open source data acquisition and control system 
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -32,8 +32,14 @@
 #include <errno.h>
 #include <sys/types.h>
 
+#include <dax/func.h>
+
 /* Global definitions. These can be overriden with a -D arguments
  * in the Makefile */
 #ifndef PID_FILE_PATH
   #define PID_FILE_PATH "/var/run"
 #endif /* !PID_FILE_PATH */
+
+#ifndef ETC_DIR
+  #define ETC_DIR "/etc/opendax"
+#endif

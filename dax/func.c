@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source distributed control system
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include "func.h"
 
 static int _verbosity=0;
+static int _background=0;
 
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
@@ -178,6 +179,7 @@ int daemonize(char *progname) {
     dup(n); dup(n);
     /* reopen the logger */
     openlog(progname,LOG_NDELAY,LOG_DAEMON);
+    _background=1;
     return 0;
 }
 
