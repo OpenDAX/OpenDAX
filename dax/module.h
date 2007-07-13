@@ -50,7 +50,7 @@ typedef struct dax_Module {
     struct dax_Module *next,*prev;
 } dax_module;
 
-typedef struct DeadModule {
+typedef struct {
     pid_t pid;
     int status;
 } dead_module;

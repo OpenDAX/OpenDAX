@@ -37,7 +37,7 @@ int _message_send(long int module,int command,void *payload, size_t size) {
     outmsg.pid=getpid();
     outmsg.size=size;
     memcpy(outmsg.data,payload,size);
-    result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_SIZE + size,0);
+    result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),DAX_HDR_SIZE + size,0);
     /* TODO: Yes this is redundant, the optimizer will destroy result but I may need to handle the
        case where the system call returns because of a signal.  This msgsnd will block if the
        queue is full and a signal will bail us out.  This may be good this may not but it'll
@@ -56,10 +56,10 @@ int _message_recv(int command, void *payload, size_t *size) {
     
     done=0;
     while(!done) {
-        result=msgrcv(__msqid,(struct msgbuff *)(&inmsg),MSG_SIZE+DAX_MSG_SZ,(long)getpid(),0);
+        result=msgrcv(__msqid,(struct msgbuff *)(&inmsg),DAX_MSGMAX,(long)getpid(),0);
         if(inmsg.command==command) {
             done=1;
-            *size = (size_t)(result-MSG_SIZE);
+            *size = (size_t)(result-DAX_HDR_SIZE);
             /* TODO: Might check the calculated size vs. the size sent in the message.
                 Its no checksum but it'll tell if something ain't right. */
             memcpy(payload,inmsg.data,*size);

@@ -24,8 +24,6 @@
 
 #include <common.h>
 
-/* Size for the DAX message buffer.  Do I really need this? */
-#define DAX_MSG_SZ 1024
 /* Message functions */
 #define MSG_MOD_REG    0x0001 /* Register the module with the core */
 #define MSG_TAG_ADD    0x0002 /* Add a tag */
@@ -38,16 +36,27 @@
 #define MSG_MOD_GET    0x0009 /* Get the module handle by name */
 /* More to come */
 
-typedef struct Dcs_Message {
+/* Maximum size allowed for a single message in the message queue */
+/* TODO: Maybe something can be done with Autoconf to get this */
+#ifdef MSGMAX
+  #define DAX_MSGMAX MSGMAX
+#else
+  #define DAX_MSGMAX 1024
+#endif
+
+/* This defines the size of the message minus the actual data */
+#define DAX_HDR_SIZE (sizeof(int)+sizeof(pid_t)+sizeof(size_t))
+#define DAX_DATA_SIZE (DAX_MSGMAX-DAX_HDR_SIZE)
+
+/* This is a full sized message.  It's the largest message allowed to be sent in the queue */
+typedef struct {
     long int module; /* Destination module */
     int command;
     pid_t pid;
     size_t size;
-    char data[DAX_MSG_SZ];
+    char data[DAX_DATA_SIZE];
 } dax_message;
 
-/* This defines the size of the message minus the actual data */
-#define MSG_SIZE (sizeof(int)+sizeof(pid_t)+sizeof(size_t))
 
 int msg_setup_queue(void);
 void msg_destroy_queue(void);

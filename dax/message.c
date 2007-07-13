@@ -95,7 +95,7 @@ int msg_receive(void) {
         xerror("msg_receive - %s",strerror(errno));
         return result;
     }
-    if(result < (MSG_SIZE + dcsmsg.size)) {
+    if(result < (DAX_HDR_SIZE + dcsmsg.size)) {
         xerror("message received is not of the specified size.");
         return -1;
     }
@@ -178,7 +178,7 @@ void _send_handle(handle_t handle,pid_t pid) {
         msg.pid=0; /* Doesn't really matter what PID we send here */
         msg.size=sizeof(handle_t);
         *((handle_t *)msg.data)=handle; /* Type cast copy thing */
-        result=msgsnd(__msqid,(struct msgbuff *)(&msg),MSG_SIZE + sizeof(handle_t),0);
+        result=msgsnd(__msqid,(struct msgbuff *)(&msg),DAX_HDR_SIZE + sizeof(handle_t),0);
         if(result)
             xerror("_send_handle() problem sending message");
     }

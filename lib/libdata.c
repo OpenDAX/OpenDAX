@@ -25,7 +25,7 @@
 
 
 /* Use this tag type when we don't care about the name */
-typedef struct IO_Tag {
+typedef struct {
     handle_t handle;
     unsigned int type;
     unsigned int count;

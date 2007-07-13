@@ -28,6 +28,8 @@
  #define DAX_TAGNAME_SIZE 32
 #endif
 
+/* This stuff may be better to belong in the configuration */
+
 /* This is the initial size of the tagname list array */
 #ifndef DAX_TAGLIST_SIZE
  #define DAX_TAGLIST_SIZE 1024
@@ -50,7 +52,7 @@
  #define DAX_DATABASE_INC 2048
 #endif
 
-typedef struct Dcs_Tag {
+typedef struct {
     handle_t handle;
     char name[DAX_TAGNAME_SIZE + 1];
     unsigned int type;
