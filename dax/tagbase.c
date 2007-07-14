@@ -380,6 +380,20 @@ int tag_write_bytes(handle_t handle, void *data, size_t size) {
 
 /* TODO: Make this function do something */
 int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
+    u_int8_t *db,*newdata,*newmask;
+    size_t n;
+    handle /= 8; /* ditch the bottom three bits */
+    if((__databasesize*4)-handle < size) {
+        return -1; /* Whoa don't overflow my buffer */
+    }
+    
+    db=(u_int8_t *)__db; /* Cast __db to byte */
+    newdata=(u_int8_t *)data;
+    newmask=(u_int8_t *)mask;
+    
+    for(n=0;n<size;n++) {
+        db[handle+n]=newdata[n] & newmask[n];
+    }
     return -1; /* just return error for now */
 }
 
