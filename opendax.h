@@ -16,6 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#include <sys/types.h>
 
 #ifndef __OPENDAX_H
 #define __OPENDAX_H
@@ -69,5 +70,10 @@ typedef int handle_t;
 int dax_mod_register(char *);   /* Registers the Module with the core */
 int dax_mod_unregister(void);   /* Unregister the Module with the core */
 handle_t dax_tag_add(char *name,unsigned int type, unsigned int count);
+/* simple untyped tag reading function */
+void dax_tag_read_bytes(handle_t handle, void *data, size_t size);
+/* simple untyped tag writing function */
+void dax_tag_write_bytes(handle_t handle, void *data, size_t size);
+
 
 #endif /* !__OPENDAX_H */

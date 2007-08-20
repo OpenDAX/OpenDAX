@@ -35,7 +35,10 @@ void quit_signal(int);
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
     pthread_t message_thread;
-    int temp;
+    //temp declares
+    int temp,handle,n;
+    unsigned char dummy[8];
+    unsigned char mask[8];
 
     openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
     xlog(0,"OpenDAX started");
@@ -57,7 +60,7 @@ int main(int argc, const char *argv[]) {
     setverbosity(10); /*TODO: Needs to be configuration */
     
     temp=msg_setup_queue();    /* This creates and sets up the message queue */
-    xlog(10,"msg_setup_queue() returned %d",temp);
+    //xlog(10,"msg_setup_queue() returned %d",temp);
 
     initialize_tagbase(); /* initiallize the tagname list and database */
     /* Start the message handling thread */
@@ -65,13 +68,39 @@ int main(int argc, const char *argv[]) {
         xfatal("Unable to create message thread");
     }
     
+    
+    
     // TODO: Module addition should be handled from the configuration file
     temp=module_add("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
     temp=module_add("test","/Users/phil/opendax/modules/test/test",NULL,0);
     temp=module_add("modbus","/Users/phil/opendax/modules/modbus/modbus","-C /Users/phil/opendax/etc/modbus.conf",0);
     
+    handle=tag_add("dummy",DAX_BYTE,8);
+    
+    for(n=0;n<8;n++) {
+        dummy[n]=n;
+        mask[n]=0;
+    }
+    
+    mask[2]=0xFF;
+    dummy[3]=0x55;
+    mask[3]=0xF0;
+    mask[4]=0xFF;
+    
+    temp=tag_mask_write(handle,dummy,mask,8);
+    temp=tag_read_bytes(handle,dummy,8);
+    
+    for(n=0;n<8;n++) {
+        printf("Dummy[%d] = %x\n",n,dummy[n]);
+    }
+    
     // TODO: There should be one giant global module starter
     module_start(3);
+    
+    // DUMMY STUFF
+    //printf("MSGMAX = %ld\n",MSGMAX)
+    printf("DAX_MSGMAX = %ld\n",DAX_MSGMAX);
+    printf("MSG_DATA_SIZE = %ld\n",MSG_DATA_SIZE);
     
     while(1) {
         xlog(10,"Main Loop Scan");

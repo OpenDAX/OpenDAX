@@ -29,7 +29,9 @@
 
 int main(int argc,char *argv[]) {
     handle_t handle;
-
+    int n;
+    u_int8_t buffer[3000];
+    
     openlog("test",LOG_NDELAY,LOG_DAEMON);
     xnotice("starting module test");
     dax_mod_register("test");
@@ -37,6 +39,13 @@ int main(int argc,char *argv[]) {
     handle=dax_tag_add("modbus",DAX_BOOL,200);
     xlog(0,"modbus handle = %d",handle);
     sleep(3);
+    
+    for(n=0;n<3000;n++) {
+        buffer[n]=n+6000;
+    }
+    
+    dax_tag_write_bytes(0,buffer,2050);
+    dax_tag_read_bytes(0,buffer,2050);
     
     sleep(10);
     dax_mod_unregister();

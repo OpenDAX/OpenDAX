@@ -29,7 +29,7 @@
 
 static int __msqid;
 
-int _message_send(long int module,int command,void *payload, size_t size) {
+int _message_send(long int module, int command, void *payload, size_t size) {
     dax_message outmsg;
     int result;
     outmsg.module=module;
@@ -37,7 +37,7 @@ int _message_send(long int module,int command,void *payload, size_t size) {
     outmsg.pid=getpid();
     outmsg.size=size;
     memcpy(outmsg.data,payload,size);
-    result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),DAX_HDR_SIZE + size,0);
+    result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
     /* TODO: Yes this is redundant, the optimizer will destroy result but I may need to handle the
        case where the system call returns because of a signal.  This msgsnd will block if the
        queue is full and a signal will bail us out.  This may be good this may not but it'll
@@ -59,7 +59,7 @@ int _message_recv(int command, void *payload, size_t *size) {
         result=msgrcv(__msqid,(struct msgbuff *)(&inmsg),DAX_MSGMAX,(long)getpid(),0);
         if(inmsg.command==command) {
             done=1;
-            *size = (size_t)(result-DAX_HDR_SIZE);
+            *size = (size_t)(result-MSG_HDR_SIZE);
             /* TODO: Might check the calculated size vs. the size sent in the message.
                 Its no checksum but it'll tell if something ain't right. */
             memcpy(payload,inmsg.data,*size);
@@ -129,7 +129,7 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     } else {
         return -1;
     }
-    result=_message_send(1,MSG_TAG_ADD,&(tag.name),size);
+    result = _message_send(1,MSG_TAG_ADD,&(tag.name),size);
     if(result) { 
         return -2;
     }
@@ -140,7 +140,50 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     return tag.handle;
 }
 
-/* This is a type neutral way to just write bytes to the data table */
+
 void dax_tag_read_bytes(handle_t handle, void *data, size_t size) {
+    size_t n,count,m_size,sendsize;
+    struct Payload {
+        handle_t handle;
+        size_t size;
+    } payload;
+    //dax_tag_message msg;
     
+    /* This calculates the amount of data that we can send with a single message
+        It subtracts a handle_t from the data size for use as the tag handle.*/
+    m_size = MSG_DATA_SIZE-sizeof(handle_t);
+    count=((size-1)/m_size)+1;
+    for(n=0;n<count;n++) {
+        if(n == (count-1)) { /* Last Packet */
+            sendsize = size % m_size; /* What's left over */
+        } else {
+            sendsize = m_size;
+        }
+        payload.handle = handle;
+        payload.size = size;
+        _message_send(1,MSG_TAG_READ,(void *)&payload,sizeof(struct Payload));
+    }   
+}
+
+/* This is a type neutral way to just write bytes to the data table */
+void dax_tag_write_bytes(handle_t handle, void *data, size_t size) {
+    size_t n,count,m_size,sendsize;
+    dax_tag_message msg;
+    
+    /* This calculates the amount of data that we can send with a single message
+       It subtracts a handle_t from the data size for use as the tag handle.*/
+    m_size = MSG_DATA_SIZE-sizeof(handle_t);
+    count=((size-1)/m_size)+1;
+    for(n=0;n<count;n++) {
+        if(n == (count-1)) { /* Last Packet */
+            sendsize = size % m_size; /* What's left over */
+        } else {
+            sendsize = m_size;
+        }
+        /* Write the data to the message structure */
+        msg.handle = handle + (m_size * 8 * n);
+        memcpy(msg.data,data+(m_size * n),sendsize);
+        
+        _message_send(1,MSG_TAG_WRITE,(void *)&msg,sendsize+sizeof(handle_t));
+    }
 }

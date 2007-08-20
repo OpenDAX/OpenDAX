@@ -25,4 +25,5 @@
 //int _message_send(long int module,int command,void *payload, size_t size);
 //int _message_recv(int command, void *payload, size_t *size);
 
+
 #endif /* !__LIBDAX_H */

@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * This file contains the messaging code
+ * This file contains the messaging code for the OpenDAX core
  */
 
 
@@ -25,8 +25,6 @@
 #include <opendax.h>
 #include <module.h>
 #include <string.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
 #include <func.h>
 
 static int __msqid;
@@ -50,6 +48,7 @@ void _send_handle(handle_t handle,pid_t pid);
 /* Creates and sets up the main message queue for the program.
    It's a fatal error if we cannot create this queue */
 int msg_setup_queue(void) {
+    /* TODO: Do we bail if the queue exists or use an existing one?  The latter for debugging. */
     __msqid = msgget(DAX_IPC_KEY, (IPC_CREAT | 0660));
     //__msqid = msgget(DAX_IPC_KEY, (IPC_CREAT | IPC_EXCL | 0660));
     if(__msqid < 0) {
@@ -57,7 +56,9 @@ int msg_setup_queue(void) {
         xfatal("Message Queue Cannot Be Created - %s",strerror(errno));
     }
     xlog(2,"Message Queue Created - id = %d",__msqid);
-
+    /* The functions are added to an array of function pointers with their
+        messsage type used as the index.  This makes it really easy to call
+        the handler functions from the messaging thread. */
     cmd_arr[MSG_MOD_REG]    = &msg_mod_register;
     cmd_arr[MSG_TAG_ADD]    = &msg_tag_add;
     cmd_arr[MSG_TAG_DEL]    = &msg_tag_del;
@@ -95,7 +96,7 @@ int msg_receive(void) {
         xerror("msg_receive - %s",strerror(errno));
         return result;
     }
-    if(result < (DAX_HDR_SIZE + dcsmsg.size)) {
+    if(result < (MSG_HDR_SIZE + dcsmsg.size)) {
         xerror("message received is not of the specified size.");
         return -1;
     }
@@ -109,6 +110,8 @@ int msg_receive(void) {
     return 0;
 }
 
+/* Each of these functions are matched to a message command.  These are called
+   from and array of function pointers so there should be one for each command defined. */
 int msg_mod_register(dax_message *msg) {
     if(msg->size) {
         xlog(4,"Registering Module %s pid = %d",msg->data,msg->pid);
@@ -153,8 +156,20 @@ int msg_tag_read(dax_message *msg) {
     return 0;
 }
 
+/* Generic write message */
 int msg_tag_write(dax_message *msg) {
-    xlog(10,"Tag Write Message from %d",msg->pid);
+    handle_t handle;
+    void *data;
+    size_t size;
+    
+    size = msg->size - sizeof(handle_t);
+    handle = ((dax_tag_message *)msg->data)->handle;
+    data = ((dax_tag_message *)msg->data)->data;
+    /* TODO: Need error check here */
+    if(tag_write_bytes(handle,data,size) != size) {
+        xerror("Unable to write tag 0x%X with size %d",handle, size);
+    }
+    xlog(10,"Tag Write Message from module %d, handle 0x%X size %d", msg->pid, handle, size);
     return 0;
 }
 
@@ -178,7 +193,7 @@ void _send_handle(handle_t handle,pid_t pid) {
         msg.pid=0; /* Doesn't really matter what PID we send here */
         msg.size=sizeof(handle_t);
         *((handle_t *)msg.data)=handle; /* Type cast copy thing */
-        result=msgsnd(__msqid,(struct msgbuff *)(&msg),DAX_HDR_SIZE + sizeof(handle_t),0);
+        result=msgsnd(__msqid,(struct msgbuff *)(&msg),MSG_HDR_SIZE + sizeof(handle_t),0);
         if(result)
             xerror("_send_handle() problem sending message");
     }

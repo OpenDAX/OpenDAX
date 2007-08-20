@@ -23,6 +23,10 @@
 #define __MESSAGE_H
 
 #include <common.h>
+#include <dax/tagbase.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+
 
 /* Message functions */
 #define MSG_MOD_REG    0x0001 /* Register the module with the core */
@@ -37,16 +41,18 @@
 /* More to come */
 
 /* Maximum size allowed for a single message in the message queue */
-/* TODO: Maybe something can be done with Autoconf to get this */
+/* TODO: I don't think this is working right.  Where is MSGMAX defined?
+         This sould be something for Autoconf to do */
 #ifdef MSGMAX
   #define DAX_MSGMAX MSGMAX
 #else
-  #define DAX_MSGMAX 1024
+  #define DAX_MSGMAX 2048
 #endif
 
 /* This defines the size of the message minus the actual data */
-#define DAX_HDR_SIZE (sizeof(int)+sizeof(pid_t)+sizeof(size_t))
-#define DAX_DATA_SIZE (DAX_MSGMAX-DAX_HDR_SIZE)
+#define MSG_HDR_SIZE (sizeof(int)+sizeof(pid_t)+sizeof(size_t))
+#define MSG_DATA_SIZE (DAX_MSGMAX-MSG_HDR_SIZE)
+#define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */
 typedef struct {
@@ -54,9 +60,15 @@ typedef struct {
     int command;
     pid_t pid;
     size_t size;
-    char data[DAX_DATA_SIZE];
+    char data[MSG_DATA_SIZE];
 } dax_message;
 
+/* This datatype can be copied into the data[] area of the main dax_message when
+   the first part of the message is a tag hangle. */
+typedef struct {
+    handle_t handle;
+    char data[MSG_TAG_DATA_SIZE];
+} dax_tag_message;
 
 int msg_setup_queue(void);
 void msg_destroy_queue(void);
