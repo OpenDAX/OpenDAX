@@ -29,7 +29,7 @@
 
 static int __msqid;
 
-int _message_send(long int module, int command, void *payload, size_t size) {
+static int _message_send(long int module, int command, void *payload, size_t size) {
     dax_message outmsg;
     int result;
     outmsg.module=module;
@@ -50,7 +50,7 @@ int _message_send(long int module, int command, void *payload, size_t size) {
    an asynchronous command handler.  This is due to a race condition that could
    happen if someone puts a message in the queue after we send a request but
    before we retrieve the result. */
-int _message_recv(int command, void *payload, size_t *size) {
+static int _message_recv(int command, void *payload, size_t *size) {
     dax_message inmsg;
     int result,done;
     
@@ -60,8 +60,6 @@ int _message_recv(int command, void *payload, size_t *size) {
         if(inmsg.command==command) {
             done=1;
             *size = (size_t)(result-MSG_HDR_SIZE);
-            /* TODO: Might check the calculated size vs. the size sent in the message.
-                Its no checksum but it'll tell if something ain't right. */
             memcpy(payload,inmsg.data,*size);
         } else {
             printf("Some other message received\n");
@@ -142,16 +140,16 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
 
 
 void dax_tag_read_bytes(handle_t handle, void *data, size_t size) {
-    size_t n,count,m_size,sendsize;
+    size_t n,count,m_size,sendsize,tmp;
+    dax_tag_message *msg;
+    int result;
     struct Payload {
         handle_t handle;
         size_t size;
     } payload;
-    //dax_tag_message msg;
-    
     /* This calculates the amount of data that we can send with a single message
         It subtracts a handle_t from the data size for use as the tag handle.*/
-    m_size = MSG_DATA_SIZE-sizeof(handle_t);
+    m_size = MSG_DATA_SIZE;
     count=((size-1)/m_size)+1;
     for(n=0;n<count;n++) {
         if(n == (count-1)) { /* Last Packet */
@@ -159,9 +157,10 @@ void dax_tag_read_bytes(handle_t handle, void *data, size_t size) {
         } else {
             sendsize = m_size;
         }
-        payload.handle = handle;
-        payload.size = size;
-        _message_send(1,MSG_TAG_READ,(void *)&payload,sizeof(struct Payload));
+        payload.handle = handle + (m_size * 8 * n);
+        payload.size = sendsize;
+        result = _message_send(1,MSG_TAG_READ,(void *)&payload,sizeof(struct Payload));
+        result = _message_recv(MSG_TAG_READ, &data[m_size * n], &tmp);
     }   
 }
 

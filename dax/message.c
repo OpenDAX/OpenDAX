@@ -45,6 +45,23 @@ int msg_mod_get(dax_message *msg);
 
 void _send_handle(handle_t handle,pid_t pid);
 
+static int _message_send(long int module, int command, void *payload, size_t size) {
+    dax_message outmsg;
+    int result;
+    outmsg.module=module;
+    outmsg.command=command;
+    outmsg.pid=getpid();
+    outmsg.size=size;
+    memcpy(outmsg.data,payload,size);
+    result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
+    /* TODO: Yes this is redundant, the optimizer will destroy result but I may need to handle the
+        case where the system call returns because of a signal.  This msgsnd will block if the
+    queue is full and a signal will bail us out.  This may be good this may not but it'll
+        need to be handled here somehow. */
+    return result;
+}
+
+
 /* Creates and sets up the main message queue for the program.
    It's a fatal error if we cannot create this queue */
 int msg_setup_queue(void) {
@@ -151,8 +168,25 @@ int msg_tag_list(dax_message *msg) {
     return 0;
 }
 
+/* The first part of the payload of the message is the handle
+   of the tag that we want to read and the next part is the size
+   of the buffer that we want to read */
 int msg_tag_read(dax_message *msg) {
-    xlog(10,"Tag Read Message from %d",msg->pid);
+    char data[MSG_DATA_SIZE];
+    handle_t handle;
+    size_t size;
+    /* These crazy cast move data things are nuts.  They work but their nuts. */
+    size = *(size_t *)((dax_tag_message *)msg->data)->data;
+    handle = ((dax_tag_message *)msg->data)->handle;
+    printf("size = %d\n",size);
+    
+    if(tag_read_bytes(handle, data, size) == size) { /* Good read from tagbase */
+        _message_send(msg->pid, MSG_TAG_READ, &data, size);
+    } else { /* Send Error */
+        _message_send(msg->pid, MSG_TAG_READ, &data, 0);
+    }
+    
+    xlog(10,"Tag Read Message from %d handle 0x%X size %d",msg->pid,handle,size);
     return 0;
 }
 

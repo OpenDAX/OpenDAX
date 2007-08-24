@@ -348,7 +348,7 @@ int tag_get_type(handle_t handle) {
  * to get a pointer to the data that we want.  Then a good 'ol memcpy does 
  * the trick.
  */
-int tag_read_bytes(handle_t handle, void *data,size_t size) {
+int tag_read_bytes(handle_t handle, void *data, size_t size) {
     u_int8_t *src;
     handle /= 8;
     /* Make sure we don't overflow the database */
