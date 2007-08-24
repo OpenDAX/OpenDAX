@@ -40,7 +40,7 @@ int msg_tag_get(dax_message *msg);
 int msg_tag_list(dax_message *msg);
 int msg_tag_read(dax_message *msg);
 int msg_tag_write(dax_message *msg);
-int msg_tag_masked_write(dax_message *msg);
+int msg_tag_mask_write(dax_message *msg);
 int msg_mod_get(dax_message *msg);
 
 void _send_handle(handle_t handle,pid_t pid);
@@ -83,7 +83,7 @@ int msg_setup_queue(void) {
     cmd_arr[MSG_TAG_LIST]   = &msg_tag_list;
     cmd_arr[MSG_TAG_READ]   = &msg_tag_read;
     cmd_arr[MSG_TAG_WRITE]  = &msg_tag_write;
-    cmd_arr[MSG_TAG_MWRITE] = &msg_tag_masked_write;
+    cmd_arr[MSG_TAG_MWRITE] = &msg_tag_mask_write;
     cmd_arr[MSG_MOD_GET]    = &msg_mod_get;
 
     return __msqid;
@@ -175,18 +175,18 @@ int msg_tag_read(dax_message *msg) {
     char data[MSG_DATA_SIZE];
     handle_t handle;
     size_t size;
-    /* These crazy cast move data things are nuts.  They work but their nuts. */
+    
+	/* These crazy cast move data things are nuts.  They work but their nuts. */
     size = *(size_t *)((dax_tag_message *)msg->data)->data;
     handle = ((dax_tag_message *)msg->data)->handle;
-    printf("size = %d\n",size);
+    
+	xlog(10,"Tag Read Message from %d, handle 0x%X, size %d",msg->pid,handle,size);
     
     if(tag_read_bytes(handle, data, size) == size) { /* Good read from tagbase */
         _message_send(msg->pid, MSG_TAG_READ, &data, size);
     } else { /* Send Error */
         _message_send(msg->pid, MSG_TAG_READ, &data, 0);
     }
-    
-    xlog(10,"Tag Read Message from %d handle 0x%X size %d",msg->pid,handle,size);
     return 0;
 }
 
@@ -199,16 +199,34 @@ int msg_tag_write(dax_message *msg) {
     size = msg->size - sizeof(handle_t);
     handle = ((dax_tag_message *)msg->data)->handle;
     data = ((dax_tag_message *)msg->data)->data;
+
+	xlog(10,"Tag Write Message from module %d, handle 0x%X, size %d", msg->pid, handle, size);
+
     /* TODO: Need error check here */
     if(tag_write_bytes(handle,data,size) != size) {
         xerror("Unable to write tag 0x%X with size %d",handle, size);
     }
-    xlog(10,"Tag Write Message from module %d, handle 0x%X size %d", msg->pid, handle, size);
     return 0;
 }
 
-int msg_tag_masked_write(dax_message *msg) {
-    xlog(10,"Tag Masked Write Message from %d",msg->pid);
+/* Generic write with bit mask */
+int msg_tag_mask_write(dax_message *msg) {
+    handle_t handle;
+    void *data;
+	void *mask;
+    size_t size;
+    
+    size = (msg->size - sizeof(handle_t)) / 2;
+    handle = ((dax_tag_message *)msg->data)->handle;
+    data = ((dax_tag_message *)msg->data)->data;
+	mask = (char *)data + size;
+	
+	xlog(10,"Tag Mask Write Message from module %d, handle 0x%X, size %d", msg->pid, handle, size);
+	
+	/* TODO: Need error check here */
+    if(tag_mask_write(handle, data, mask, size) != size) {
+        xerror("Unable to write tag 0x%X with size %d",handle, size);
+    }
     return 0;
 }
 
@@ -217,7 +235,7 @@ int msg_mod_get(dax_message *msg) {
     return 0;
 }
 
-/* Probably should write a generic message handling function or two */
+/* TODO:  Probably should write a generic message handling function or two */
 void _send_handle(handle_t handle,pid_t pid) {
     dax_message msg;
     int result;

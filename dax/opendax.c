@@ -39,7 +39,6 @@ int main(int argc, const char *argv[]) {
     int temp,handle,n;
     unsigned char dummy[8];
     unsigned char mask[8];
-    int ddd[1000];
     
     openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
     xlog(0,"OpenDAX started");
@@ -94,15 +93,17 @@ int main(int argc, const char *argv[]) {
     for(n=0;n<8;n++) {
         printf("Dummy[%d] = %x\n",n,dummy[n]);
     }
-    
+    sleep(2);
     // TODO: There should be one giant global module starter
     module_start(3);
     
     sleep(4);
-    temp=tag_read_bytes(0x60,ddd,sizeof(int)*1000);
+    /*
+	temp=tag_read_bytes(0x60,ddd,sizeof(int)*1000);
     for(n=0;n<1000;n++) {
         printf("ddd[%d] = %d\n",n,ddd[n]);
     }
+	*/
     while(1) {
         xlog(10,"Main Loop Scan");
         module_scan();

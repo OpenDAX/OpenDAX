@@ -74,6 +74,8 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count);
 void dax_tag_read_bytes(handle_t handle, void *data, size_t size);
 /* simple untyped tag writing function */
 void dax_tag_write_bytes(handle_t handle, void *data, size_t size);
+/* simple untyped masked tag write */
+void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
 
 
 #endif /* !__OPENDAX_H */

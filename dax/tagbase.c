@@ -378,7 +378,7 @@ int tag_write_bytes(handle_t handle, void *data, size_t size) {
     return size;
 }
 
-/* TODO: Make this function do something */
+/* Writes the data to the tagbase but only if the corresponding mask bit is set */
 int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
     u_int8_t *db,*newdata,*newmask;
     size_t n;
@@ -394,7 +394,7 @@ int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
     for(n=0;n<size;n++) {
         db[handle+n]=newdata[n] & newmask[n];
     }
-    return -1; /* just return error for now */
+    return size;
 }
 
 

@@ -27,12 +27,12 @@
 #include <dax/func.h>
 #include <string.h>
 
-#define TEST 2000
+#define TEST 1000
 
 int main(int argc,char *argv[]) {
     handle_t handle;
     int n;
-    int indata[TEST],outdata[TEST];
+    int indata[TEST],outdata[TEST],maskdata[TEST];
     
     openlog("test",LOG_NDELAY,LOG_DAEMON);
     xnotice("starting module test");
@@ -44,11 +44,14 @@ int main(int argc,char *argv[]) {
     
     for(n=0;n<TEST;n++) {
         outdata[n]=n+6000;
+		maskdata[n]=0xFFFFFFFE;
     }
     
-    dax_tag_write_bytes(handle,outdata,sizeof(int)*TEST);
-    dax_tag_read_bytes(handle,indata,sizeof(int)*TEST);
-    for(n=0;n<TEST;n++) {
+    //dax_tag_write_bytes(handle,outdata,sizeof(int)*TEST);
+    dax_tag_mask_write(handle,outdata,maskdata,sizeof(int)*TEST);
+	dax_tag_read_bytes(handle,indata,sizeof(int)*TEST);
+    sleep(2);
+	for(n=0;n<TEST;n++) {
         printf("outdata[%d] = %d : indata[%d] = %d\n",n,outdata[n],n,indata[n]);
     }
     

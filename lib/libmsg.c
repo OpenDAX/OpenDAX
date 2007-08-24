@@ -138,10 +138,10 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     return tag.handle;
 }
 
-
+/* TODO: This function should return some kind of error */
 void dax_tag_read_bytes(handle_t handle, void *data, size_t size) {
     size_t n,count,m_size,sendsize,tmp;
-    dax_tag_message *msg;
+    //dax_tag_message *msg;
     int result;
     struct Payload {
         handle_t handle;
@@ -160,11 +160,12 @@ void dax_tag_read_bytes(handle_t handle, void *data, size_t size) {
         payload.handle = handle + (m_size * 8 * n);
         payload.size = sendsize;
         result = _message_send(1,MSG_TAG_READ,(void *)&payload,sizeof(struct Payload));
-        result = _message_recv(MSG_TAG_READ, &data[m_size * n], &tmp);
+        result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp);
     }   
 }
 
 /* This is a type neutral way to just write bytes to the data table */
+/* TODO: Do we return error on this one or not??? Maybe with some flags?? */
 void dax_tag_write_bytes(handle_t handle, void *data, size_t size) {
     size_t n,count,m_size,sendsize;
     dax_tag_message msg;
@@ -184,5 +185,28 @@ void dax_tag_write_bytes(handle_t handle, void *data, size_t size) {
         memcpy(msg.data,data+(m_size * n),sendsize);
         
         _message_send(1,MSG_TAG_WRITE,(void *)&msg,sendsize+sizeof(handle_t));
+    }
+}
+
+void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
+    size_t n,count,m_size,sendsize;
+    dax_tag_message msg;
+    
+    /* This calculates the amount of data that we can send with a single message
+       It subtracts a handle_t from the data size for use as the tag handle.*/
+    /* TODO: Verify that all this works if m_size is odd */
+	m_size = (MSG_DATA_SIZE-sizeof(handle_t)) / 2;
+    count=((size-1)/m_size)+1;
+    for(n=0;n<count;n++) {
+        if(n == (count-1)) { /* Last Packet */
+		    sendsize = (size % m_size); /* What's left over */
+        } else {
+            sendsize = m_size;
+        }
+		/* Write the data to the message structure */
+        msg.handle = handle + (m_size * 8 * n);
+        memcpy(msg.data, data+(m_size * n), sendsize);
+        memcpy(msg.data + sendsize, mask+(m_size * n), sendsize);
+        _message_send(1,MSG_TAG_MWRITE,(void *)&msg,(sendsize * 2)+sizeof(handle_t));
     }
 }
