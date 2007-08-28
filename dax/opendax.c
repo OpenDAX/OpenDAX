@@ -52,6 +52,21 @@ int main(int argc, const char *argv[]) {
     sigaction (SIGINT,&sa,NULL);
     sigaction (SIGTERM,&sa,NULL);
 
+    /* TODO: This is the program architecture in a nutshell...
+        check_already_running();
+            if we are then do what the options say or possibly 
+            re-run the configuration.
+        read_configuration();
+        daemonize();
+        setverbosity();
+        create_message_queue();
+        initialize_tagbase();
+        start_message_thread();
+        setup_slave / redundant sockets();
+        start_modules();
+        start_main_loop();
+    */
+    
     /* TODO: Whether to go to the background should be an option */
     //if(daemonize("OpenDAX")) {
     //    xerror("Unable to go to the background");
@@ -68,36 +83,36 @@ int main(int argc, const char *argv[]) {
         xfatal("Unable to create message thread");
     }
     
-    
-    
     // TODO: Module addition should be handled from the configuration file
     temp=module_add("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
     temp=module_add("test","/Users/phil/opendax/modules/test/test",NULL,0);
-    temp=module_add("modbus","/Users/phil/opendax/modules/modbus/modbus","-C /Users/phil/opendax/etc/modbus.conf",0);
+    temp=module_add("modbus","/Users/phil/opendax/modules/modbus/modbus","-C /Users/phil/opendax/etc/modtest.conf",0);
     
-    handle=tag_add("dummy",DAX_BYTE,8);
-    
-    for(n=0;n<8;n++) {
-        dummy[n]=n;
-        mask[n]=0;
-    }
-    
-    mask[2]=0xFF;
-    dummy[3]=0x55;
-    mask[3]=0xF0;
-    mask[4]=0xFF;
-    
-    temp=tag_mask_write(handle,dummy,mask,8);
-    temp=tag_read_bytes(handle,dummy,8);
-    
-    for(n=0;n<8;n++) {
-        printf("Dummy[%d] = %x\n",n,dummy[n]);
-    }
-    sleep(2);
+    /* handle=tag_add("dummy",DAX_BYTE,8);
+        
+        for(n=0;n<8;n++) {
+            dummy[n]=n;
+            mask[n]=0;
+        }
+        
+        mask[2]=0xFF;
+        dummy[3]=0x55;
+        mask[3]=0xF0;
+        mask[4]=0xFF;
+        
+        temp=tag_mask_write(handle,dummy,mask,8);
+        temp=tag_read_bytes(handle,dummy,8);
+        
+        for(n=0;n<8;n++) {
+            printf("Dummy[%d] = %x\n",n,dummy[n]);
+        }
+        sleep(2);
+         */
     // TODO: There should be one giant global module starter
+    module_start(4);
     module_start(3);
     
-    sleep(4);
+    //sleep(4);
     /*
 	temp=tag_read_bytes(0x60,ddd,sizeof(int)*1000);
     for(n=0;n<1000;n++) {

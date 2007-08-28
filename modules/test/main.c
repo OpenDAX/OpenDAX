@@ -32,31 +32,42 @@
 int main(int argc,char *argv[]) {
     handle_t handle;
     int n;
-    int indata[TEST],outdata[TEST],maskdata[TEST];
+    u_int16_t indata[TEST],outdata[TEST],maskdata[TEST];
     
     openlog("test",LOG_NDELAY,LOG_DAEMON);
     xnotice("starting module test");
     dax_mod_register("test");
     //sleep(1);
-    handle=dax_tag_add("modbus",DAX_DINT,TEST);
-    xlog(0,"modbus handle = 0x%X",handle);
+    //handle=dax_tag_add("modbus",DAX_DINT,TEST);
+    //xlog(0,"modbus handle = 0x%X",handle);
     //sleep(3);
     
-    for(n=0;n<TEST;n++) {
-        outdata[n]=n+6000;
-		maskdata[n]=0xFFFFFFFE;
-    }
+    //for(n=0;n<TEST;n++) {
+    //    outdata[n]=n+6000;
+	//	maskdata[n]=0xFFFFFFFE;
+    //}
     
     //dax_tag_write_bytes(handle,outdata,sizeof(int)*TEST);
-    dax_tag_mask_write(handle,outdata,maskdata,sizeof(int)*TEST);
-	dax_tag_read_bytes(handle,indata,sizeof(int)*TEST);
-    sleep(2);
-	for(n=0;n<TEST;n++) {
-        printf("outdata[%d] = %d : indata[%d] = %d\n",n,outdata[n],n,indata[n]);
-    }
+    //dax_tag_mask_write(handle,outdata,maskdata,sizeof(int)*TEST);
+	//dax_tag_read_bytes(handle,indata,sizeof(int)*TEST);
+    //sleep(2);
+	//for(n=0;n<TEST;n++) {
+    //    printf("outdata[%d] = %d : indata[%d] = %d\n",n,outdata[n],n,indata[n]);
+    //}
     
-    sleep(10);
+    //sleep(10);
+    
+    while(1) {
+        dax_tag_read_bytes(0,&indata,50);
+        for(n=0;n<25;n++) {
+            printf("data[%d] = %d   ",n,indata[n]);
+            if((n % 2) == 1) printf("\n");
+        }
+        printf("----------\n");
+        sleep(2);
+    }
+
     dax_mod_unregister();
-    sleep(3);
+    //sleep(3);
     return 0;
 }

@@ -51,7 +51,8 @@ int dt_destroy(void) {
 u_int16_t dt_getword(unsigned int address) {
     u_int16_t temp;
     pthread_mutex_lock(&datamutex);
-    temp=datatable[address];
+    //temp=datatable[address];
+    dax_tag_read_bytes(dt_handle + (address * 16),&temp,2);
     pthread_mutex_unlock(&datamutex);
     return(temp);
 }
@@ -59,7 +60,8 @@ u_int16_t dt_getword(unsigned int address) {
 int dt_setword(unsigned int address, u_int16_t buff) {
     if(address < tablesize) {
         pthread_mutex_lock(&datamutex);
-        datatable[address]=buff;
+        //datatable[address]=buff;
+        dax_tag_write_bytes(dt_handle + (address * 16),&buff,2);
         pthread_mutex_unlock(&datamutex);
         return 0;
     }
@@ -72,10 +74,12 @@ char dt_getbit(unsigned int address) {
     unsigned int address_int, address_bit;
     address_int = address / 16; /* This will be the register address */
     address_bit = address % 16; /* This will be the bit offset */
+    u_int16_t temp;
     
     if(address_int < tablesize) {
         pthread_mutex_lock(&datamutex);
-        if(datatable[address_int] & (1 << address_bit)) { /* If bit is set */
+        dax_tag_read_bytes(dt_handle + address_int *16,&temp,2);
+        if(temp & (1 << address_bit)) { /* If bit is set */
             pthread_mutex_unlock(&datamutex);
             return 1;
         } else {
@@ -87,37 +91,11 @@ char dt_getbit(unsigned int address) {
 }
 
 int dt_setbits(unsigned int address, u_int8_t *buff, u_int16_t length) {
-    unsigned int address_int, address_bit,n;
-    unsigned char buff_int, buff_bit;
-    
-    address_int = address / 16; /* This will be the register address */
-    address_bit = address % 16; /* This will be the bit offset */
-    buff_int=0;
-    buff_bit=0;
-    
+    int result;
     pthread_mutex_lock(&datamutex);
-    /* Loop from zero to length and check to make sure the
-       address_int stays in bounds */
-    for(n=0;n<length && address_int<tablesize ;n++) {
-        if(buff[buff_int] & (1 << buff_bit)) { /* If *buff bit is set */
-            datatable[address_int] |= (u_int16_t)(1 << address_bit);
-            //TODO: Need to also test the word that this is associated with
-            // once we are done.
-        } else {  /* If the bit in the buffer is not set */
-            datatable[address_int] &= ~(u_int16_t)(1 << address_bit);
-        }
-        
-        buff_bit++;
-        if(buff_bit==8) {
-            buff_bit=0;
-            buff_int++;
-        }
-        address_bit++;
-        if(address_bit==16) {
-            address_bit=0;
-            address_int++;
-        }
-    }
+    
+    result = dax_tag_write_bits(dt_handle + address,buff,length);
+    
     pthread_mutex_unlock(&datamutex);
-    return n;
+    return result;
 }

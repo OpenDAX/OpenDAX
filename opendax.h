@@ -77,5 +77,7 @@ void dax_tag_write_bytes(handle_t handle, void *data, size_t size);
 /* simple untyped masked tag write */
 void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
 
+void dax_tag_read_bits(handle_t handle, void *data, size_t size);
+int dax_tag_write_bits(handle_t handle, void *data, size_t size);
 
 #endif /* !__OPENDAX_H */
