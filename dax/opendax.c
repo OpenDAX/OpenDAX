@@ -68,11 +68,11 @@ int main(int argc, const char *argv[]) {
     */
     
     /* TODO: Whether to go to the background should be an option */
-    //if(daemonize("OpenDAX")) {
-    //    xerror("Unable to go to the background");
-    //}
+    if(daemonize("OpenDAX")) {
+        xerror("Unable to go to the background");
+    }
 
-    setverbosity(10); /*TODO: Needs to be configuration */
+    setverbosity(9); /*TODO: Needs to be configuration */
     
     temp=msg_setup_queue();    /* This creates and sets up the message queue */
     //xlog(10,"msg_setup_queue() returned %d",temp);

@@ -70,6 +70,13 @@ typedef int handle_t;
 int dax_mod_register(char *);   /* Registers the Module with the core */
 int dax_mod_unregister(void);   /* Unregister the Module with the core */
 handle_t dax_tag_add(char *name,unsigned int type, unsigned int count);
+
+/* The following functions are for reading and writing data.  These 
+   are generic functions and are used by other functions within the
+   library.  They can be used by the modules as well but they don't
+   do any bounds checking of the tag handles.  This will make them
+   more efficient but less stable if the module misbehaves */
+
 /* simple untyped tag reading function */
 void dax_tag_read_bytes(handle_t handle, void *data, size_t size);
 /* simple untyped tag writing function */
@@ -77,7 +84,13 @@ void dax_tag_write_bytes(handle_t handle, void *data, size_t size);
 /* simple untyped masked tag write */
 void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
 
+/* reads a single bit */
+char dax_tag_read_bit(handle_t handle);
+/* writes a single bit */
+int dax_tag_write_bit(handle_t handle, u_int8_t data);
+/* simple multiple bit read */
 void dax_tag_read_bits(handle_t handle, void *data, size_t size);
+/* simple multiple bit write */
 int dax_tag_write_bits(handle_t handle, void *data, size_t size);
 
 #endif /* !__OPENDAX_H */

@@ -21,7 +21,7 @@
 #include <database.h>
 #include <pthread.h>
 
-static u_int16_t *datatable;
+//static u_int16_t *datatable;
 static unsigned int tablesize;
 static pthread_mutex_t datamutex;
 static handle_t dt_handle;
@@ -29,29 +29,21 @@ static handle_t dt_handle;
 /* Allocate and Initialize the datatable */
 int dt_init(unsigned int size) {
     dt_handle = dax_tag_add("modbus",DAX_UINT, size);
-    /*
-    int n;
-    datatable=(u_int16_t *)malloc(sizeof(u_int16_t)*size);
-    if(datatable==NULL) {
-        return(-1);
-    } */
+    
     tablesize=size;
-    /* TODO: Should initialize to zero ??*/
-    //--for(n=0;n<tablesize;n++) datatable[n]=0;
+    
     pthread_mutex_init(&datamutex,NULL);
     return(0);
 }
 
 int dt_destroy(void) {
     pthread_mutex_destroy(&datamutex);
-    //--free(datatable);
     return 0;
 }
 
 u_int16_t dt_getword(unsigned int address) {
     u_int16_t temp;
     pthread_mutex_lock(&datamutex);
-    //temp=datatable[address];
     dax_tag_read_bytes(dt_handle + (address * 16),&temp,2);
     pthread_mutex_unlock(&datamutex);
     return(temp);
@@ -71,25 +63,19 @@ int dt_setword(unsigned int address, u_int16_t buff) {
 /* TODO: Need to add multiple word versions of the above two functions. */
 
 char dt_getbit(unsigned int address) {
-    unsigned int address_int, address_bit;
-    address_int = address / 16; /* This will be the register address */
-    address_bit = address % 16; /* This will be the bit offset */
-    u_int16_t temp;
-    
-    if(address_int < tablesize) {
-        pthread_mutex_lock(&datamutex);
-        dax_tag_read_bytes(dt_handle + address_int *16,&temp,2);
-        if(temp & (1 << address_bit)) { /* If bit is set */
-            pthread_mutex_unlock(&datamutex);
-            return 1;
-        } else {
-            pthread_mutex_unlock(&datamutex);
-            return 0;
-        }
+    pthread_mutex_lock(&datamutex);
+    if(dax_tag_read_bit(dt_handle + address)) { /* If bit is set */
+        pthread_mutex_unlock(&datamutex);
+        return 1;
+    } else {
+        pthread_mutex_unlock(&datamutex);
+        return 0;
     }
-    return -1; /* we only get here on error */
+    return -1; /* we can't get here */
 }
 
+/* This function sets bits in buff.  Address and length are both given in
+   number of bits. */
 int dt_setbits(unsigned int address, u_int8_t *buff, u_int16_t length) {
     int result;
     pthread_mutex_lock(&datamutex);

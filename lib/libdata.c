@@ -32,10 +32,28 @@ typedef struct {
     unsigned int count;
 } io_tag;
 
+/* returns zero if the bit is clear, 1 if it's set */
+char dax_tag_read_bit(handle_t handle) {
+    u_int8_t data;
+    /* read the one byte that contains the handle the bit we want */
+    dax_tag_read_bytes(handle & ~0x07,&data,1);
+    if(data & (1 << (handle % 8))) {
+        return 1;
+    }
+    return 0;
+}
+
+/* sets the bit if data evaluates true and clears it otherwise */
+/* TODO: write this function */
+int dax_tag_write_bit(handle_t handle, u_int8_t data) {
+    return 0;
+}
+
 /* This is how many bytes we'll send in each call to the masked write. */
 #define DAX_BIT_MSG_SIZE (MSG_TAG_DATA_SIZE / 2)
 
 /* Reads bits starting at handle, size is in bits not bytes */
+/* TODO: Write this function */
 void dax_tag_read_bits(handle_t handle, void *data, size_t size) {
     return;
 }
@@ -45,6 +63,9 @@ void dax_tag_read_bits(handle_t handle, void *data, size_t size) {
    that is big enough for all the bits to fit and then let the 
    dax_tag_mask_write() function handle splitting them up.  I'm betting
    on this being quite a bit faster.  It might not matter. */
+/* TODO: Need to test whether this thing will handle more than
+   one message worth of bits.  Modbus just can't produce that many
+   bits in one message */
 int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
     u_int8_t buffer[DAX_BIT_MSG_SIZE];
     u_int8_t mask[DAX_BIT_MSG_SIZE];

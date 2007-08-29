@@ -30,9 +30,9 @@
 #define TEST 1000
 
 int main(int argc,char *argv[]) {
-    handle_t handle;
-    int n;
-    u_int16_t indata[TEST],outdata[TEST],maskdata[TEST];
+    //handle_t handle;
+    //int n;
+    //u_int16_t indata[TEST],outdata[TEST],maskdata[TEST];
     
     openlog("test",LOG_NDELAY,LOG_DAEMON);
     xnotice("starting module test");
@@ -57,14 +57,16 @@ int main(int argc,char *argv[]) {
     
     //sleep(10);
     
+    
     while(1) {
-        dax_tag_read_bytes(0,&indata,50);
+    /*    dax_tag_read_bytes(0,&indata,50);
         for(n=0;n<25;n++) {
             printf("data[%d] = %d   ",n,indata[n]);
             if((n % 2) == 1) printf("\n");
         }
         printf("----------\n");
-        sleep(2);
+    */
+        sleep(5);
     }
 
     dax_mod_unregister();
