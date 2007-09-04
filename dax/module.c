@@ -336,7 +336,6 @@ void module_unregister(pid_t pid) {
     dax_module *mod;
     mod=_get_module_pid(pid);
     if(mod) {
-        //mod->pid=0;
         mod->state &= (~MSTATE_REGISTERED);
     }
 }

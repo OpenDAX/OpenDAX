@@ -333,11 +333,35 @@ handle_t tag_get_handle(char *name) {
 }
 
 /* Retrieves the type of the point at the given handle */
-int tag_get_type(handle_t handle) {
+/*int tag_get_type(handle_t handle) {
     int x;
     x=find_handle(handle);
     if(x<0) return x;
     else return __taglist[x].type;
+}*/
+
+
+/* Finds a tag based on it's name.  Basically just a wrapper for get_by_name().
+   Returns a pointer to the tag given by 'name' NULL if not found */
+dax_tag *tag_get_name(char *name) {
+    int x;
+    x = get_by_name(name);
+    if( x < 0) {
+        return NULL;
+    } else {
+        return &__taglist[x];
+    }
+}
+
+/* Finds a tag based on it's index in the array.  Returns a pointer to 
+   the tag give by index, NULL if index is out of range.  Incex should
+   not be assumed to remain constant throughout the programs lifetiem. */
+dax_tag *tag_get_index(int index) {
+    if(index < 0 || index >= __tagcount) {
+        return NULL;
+    } else {
+        return &__taglist[index];
+    }
 }
 
 

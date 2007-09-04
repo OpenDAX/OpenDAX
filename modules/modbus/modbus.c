@@ -297,9 +297,11 @@ int mb_open_port(struct mb_port *m_port) {
     /* if the LAN bit or the TCP bit are set then we need a network
         socket.  Otherwise we need a serial port opened */
     if(m_port->protocol & LAN || m_port->protocol & TCP) {
-        fd=openIPport(m_port);
+        /* TODO: this socket thing should be in the configuration */
+        m_port->socket = TCP_SOCK;
+        fd = openIPport(m_port);
     } else {
-        fd=openport(m_port);
+        fd = openport(m_port);
     }
     if(pthread_mutex_init (&m_port->port_mutex,NULL)) return -1;
     if(fd>0) return 0;
@@ -343,7 +345,7 @@ int mb_start_port(struct mb_port *m_port) {
         }
         return 0;
     } else {
-        syslog(LOG_ERR,"Unable to open Port: %s [%s]",m_port->name,m_port->device);
+        syslog(LOG_ERR,"Unable to open IP Port: %s [%s:%d]",m_port->name,m_port->ipaddress,m_port->bindport);
         return -1;
     }
     return 0; //should never get here
@@ -392,27 +394,29 @@ static int openIPport(struct mb_port *mp) {
     int result;
     
     if(mp->socket == TCP_SOCK) {
-		fd=socket(AF_INET, SOCK_STREAM,0);
+		fd = socket(AF_INET, SOCK_STREAM,0);
 	} else if (mp->socket == UDP_SOCK) {
-		fd=socket(AF_INET, SOCK_DGRAM,0);
+		fd = socket(AF_INET, SOCK_DGRAM,0);
 	} else {
+        syslog(LOG_ERR,"Unknown socket type");
 	    return -1;
 	}
 	
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr=inet_addr(mp->ipaddress);
-    addr.sin_port=htons(mp->bindport);
+    addr.sin_addr.s_addr = inet_addr(mp->ipaddress);
+    addr.sin_port = htons(mp->bindport);
     
-    result=connect(fd,(struct sockaddr *)&addr,sizeof(addr));
+    result = connect(fd,(struct sockaddr *)&addr,sizeof(addr));
     if(result == -1) {
         syslog(LOG_ERR,"openIPport: %s",strerror(errno));
-        return(-1);
+        return -1;
     }
-    result=fcntl(fd,F_SETFL,O_NONBLOCK);
+    result = fcntl(fd,F_SETFL,O_NONBLOCK);
     if(result) {
         syslog(LOG_ERR,"Unable to set socket to non blocking");
         return -1 ;
     }
+    mp->fd=fd;
     return fd;
 }
         
@@ -475,7 +479,8 @@ int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
     /*This sets up the function pointers so we don't have to constantly check
       which protocol we are using for communication.  From this point on the 
       code is generic for RTU or ASCII */
-    if(mp->protocol == RTU) {
+    /* TODO: This whole LAN/RTU/ASCII/TCP thing needs fixing */
+    if(mp->protocol == RTU || mp->protocol == LAN) {
         sendrequest=sendRTUrequest;
         getresponse=getRTUresponse;
     } else if(mp->protocol == ASCII) {

@@ -59,12 +59,26 @@
 /* Library function errors */
 #define ERR_NO_QUEUE -1 /* The Message Queue does not exist */
 #define ERR_2BIG     -2 /* The argument is too big */
-#define ERR_ARG      -3 /* Some argument is missing */
+#define ERR_ARG      -3 /* Bad argument */
+#define ERR_NOTFOUND -4 /* Not found */
+#define ERR_MSG_SEND -5 /* Unable to send message */
+#define ERR_MSG_RECV -6 /* Unable to receive message */
 
 /* Macro to get the size of the datatype */
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
+#ifndef DAX_TAGNAME_SIZE
+  #define DAX_TAGNAME_SIZE 32
+#endif
+
 typedef int handle_t;
+
+typedef struct {
+    handle_t handle;
+    char name[DAX_TAGNAME_SIZE + 1];
+    unsigned int type;
+    unsigned int count;
+} dax_tag;
 
 /* Only registered modules will get responses from the core */
 int dax_mod_register(char *);   /* Registers the Module with the core */
@@ -83,7 +97,11 @@ void dax_tag_read_bytes(handle_t handle, void *data, size_t size);
 void dax_tag_write_bytes(handle_t handle, void *data, size_t size);
 /* simple untyped masked tag write */
 void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
-
+/* Get tag by name */
+int dax_tag_get_name(char *name, dax_tag *tag);
+/* Get tag by index */
+int dax_tag_get_index(int index, dax_tag *tag);
+    
 /* reads a single bit */
 char dax_tag_read_bit(handle_t handle);
 /* writes a single bit */

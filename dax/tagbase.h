@@ -24,10 +24,6 @@
 #ifndef __TAGBASE_H
 #define __TAGBASE_H
 
-#ifndef DAX_TAGNAME_SIZE
- #define DAX_TAGNAME_SIZE 32
-#endif
-
 /* This stuff may be better to belong in the configuration */
 
 /* This is the initial size of the tagname list array */
@@ -52,18 +48,15 @@
  #define DAX_DATABASE_INC 2048
 #endif
 
-typedef struct {
-    handle_t handle;
-    char name[DAX_TAGNAME_SIZE + 1];
-    unsigned int type;
-    unsigned int count;
-} dax_tag;
 
 void initialize_tagbase(void);
 handle_t tag_add(char *name,unsigned int type, unsigned int count);
 int tag_del(char *name);
 handle_t tag_get_handle(char *name);
-int tag_get_type(handle_t handle);
+/* Do we really need this one?? 
+int tag_get_type(handle_t handle); */
+dax_tag *tag_get_name(char *name);
+dax_tag *tag_get_index(int index);
 int tag_read_bytes(handle_t handle, void *data,size_t size);
 int tag_write_bytes(handle_t handle, void *data, size_t size);
 int tag_mask_write(handle_t handle, void *data, void *mask, size_t size);

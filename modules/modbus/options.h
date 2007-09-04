@@ -30,6 +30,7 @@
 #define DEFAULT_DEVICE "/dev/serial"
 #define DEFAULT_PORT 7777
 #define DEFAULT_TABLE_SIZE 100
+#define DEFAULT_TAGNAME "modbus"
 
 #ifndef MAX_PORTS
   #define MAX_PORTS 16
@@ -40,6 +41,7 @@ struct Config {
     //--char ipaddress[16];
     //--unsigned short port;  /* TCP Port */ //There is probably a better datatype
     char *configfile;
+    char *tagname;
     u_int8_t verbose;
     u_int8_t daemonize;
     unsigned int tablesize;

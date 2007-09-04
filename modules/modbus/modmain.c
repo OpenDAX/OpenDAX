@@ -183,32 +183,33 @@ static void writepidfile(void) {
 /* This function is used as the signal handler for all the signals
 * that are going to be caught by the program */
 void catchsignal(int sig) {
-    if(sig==SIGHUP) {
+    if(sig == SIGHUP) {
         syslog(LOG_NOTICE,"Should be Reconfiguring Now");
         //reconfigure();
-    } else if(sig==SIGTERM || sig==SIGINT) {
+    } else if(sig == SIGTERM || sig==SIGINT) {
         syslog(LOG_NOTICE,"Exiting with signal %d",sig);
     getout(0);
-    } else if(sig==SIGCHLD) {
+    } else if(sig == SIGCHLD) {
         if(config.verbose) syslog(LOG_NOTICE,"Got SIGCHLD");
        /*There is probably some really cool child process handling stuff to do here
          but I don't quite know what to do yet. */
-    } else if(sig==SIGPIPE) {
-        if(config.verbose) syslog(LOG_NOTICE,"got SIGPIPE");
+    } else if(sig == SIGPIPE) {
+        /* TODO: We should shutdown or restart a port or something here */
+        if(config.verbose) syslog(LOG_NOTICE,"Got SIGPIPE");
     }
 }
 
 
 static void getout(int exitcode) {
     int n;
-    syslog(LOG_NOTICE,"Process exiting");
+    syslog(LOG_NOTICE, "Process exiting");
     closelog();
     
     dt_destroy();
     /* TODO: Need to figure out a way to unbind the socket */
     
     /* Delete the PID file */   
-    for(n=0;n<config.portcount;n++) {
+    for(n=0; n<config.portcount; n++) {
     /* TODO: Should probably stop the running threads here and then close the ports */
         close(config.ports[n].fd);
     }

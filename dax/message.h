@@ -57,9 +57,9 @@
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */
 typedef struct {
     long int module; /* Destination module */
-    int command;
-    pid_t pid;
-    size_t size;
+    int command;     /* Which function to call */
+    pid_t pid;       /* PID of the module that sent the message */
+    size_t size;     /* size of the data sent */
     char data[MSG_DATA_SIZE];
 } dax_message;
 

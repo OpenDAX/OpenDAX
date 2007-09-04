@@ -38,11 +38,16 @@ static int _message_send(long int module, int command, void *payload, size_t siz
     outmsg.size=size;
     memcpy(outmsg.data,payload,size);
     result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
-    /* TODO: Yes this is redundant, the optimizer will destroy result but I may need to handle the
-       case where the system call returns because of a signal.  This msgsnd will block if the
-       queue is full and a signal will bail us out.  This may be good this may not but it'll
-       need to be handled here somehow. */
-    return result;
+    //result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
+    /* TODO: need to handle the case where the system call returns because of a signal.
+        This msgsnd will block if the queue is full and a signal will bail us out.
+        This may be good this may not but it'll need to be handled here somehow.
+        also need to handle errors returned here*/
+    if(result) {
+        xerror("msgsnd() returned %d",result);
+        return ERR_MSG_SEND;
+    }
+    return 0;
 }
 
 /* This function waits for a message with the given command to come in. If
@@ -50,21 +55,28 @@ static int _message_send(long int module, int command, void *payload, size_t siz
    an asynchronous command handler.  This is due to a race condition that could
    happen if someone puts a message in the queue after we send a request but
    before we retrieve the result. */
+/* TODO: I suppose that it's possible for a module to hang here.  Perhaps opendax
+   can send a wake up message every now and then so this function can timeout */
 static int _message_recv(int command, void *payload, size_t *size) {
     dax_message inmsg;
     int result,done;
     
-    done=0;
+    done = 0;
     while(!done) {
-        result=msgrcv(__msqid,(struct msgbuff *)(&inmsg),DAX_MSGMAX,(long)getpid(),0);
-        if(inmsg.command==command) {
-            done=1;
+        result = msgrcv(__msqid,(struct msgbuff *)(&inmsg),DAX_MSGMAX,(long)getpid(),0);
+        if(inmsg.command == command) {
+            done = 1;
             *size = (size_t)(result-MSG_HDR_SIZE);
             memcpy(payload,inmsg.data,*size);
+            if( inmsg.size == 0 ) { /* If size is zero then it's an error response */
+                /* return the error code found in the data portion */
+                return *((int *)inmsg.data);
+            }
         } else {
-            printf("Some other message received\n");
+            xlog(10,"Asyncronous message received\n");
             /* TODO: Insert the async message handling logic here */
         }
+        /* TODO: Also need to handle cases when signals or errors happen here */
     }
     return 0;
 }
@@ -134,8 +146,40 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     /*  We're putting a lot of faith in the sending function here.  That
         might be okay in this instance */
     result= _message_recv(MSG_TAG_ADD,&(tag.handle),&size);
-    printf("Tag.handle = 0x%x\n",tag.handle);
     return tag.handle;
+}
+
+
+int dax_tag_get_name(char *name, dax_tag *tag) {
+    int result;
+    size_t size;
+    
+    result = _message_send(1, MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
+    if(result) {
+        xerror("Can't send MSG_TAG_GET message\n");
+        return result;
+    }
+    result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
+    if(result) {
+        xerror("Problem receiving message MSG_TAG_GET\n");
+    }
+    return result;
+}
+
+
+int dax_tag_get_index(int index, dax_tag *tag) {
+    int result;
+    size_t size;
+    result = _message_send(1, MSG_TAG_GET, &index, sizeof(int));
+    if(result) {
+        xerror("Can't send MSG_TAG_GET message\n");
+        return result;
+    }
+    result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
+    if(result) {
+        xerror("Problem receiving message MSG_TAG_GET\n");
+    }
+    return result;
 }
 
 /* TODO: This function should return some kind of error */

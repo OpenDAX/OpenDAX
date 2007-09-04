@@ -45,19 +45,31 @@ int msg_mod_get(dax_message *msg);
 
 void _send_handle(handle_t handle,pid_t pid);
 
+/* Generic message sending function.  If size is zero then it is assumed that an error
+   is being sent to the module.  In that case payload should point to a single int that
+   indicates the error */
 static int _message_send(long int module, int command, void *payload, size_t size) {
     dax_message outmsg;
+    size_t newsize;
     int result;
+    /* TODO: Need to handle the case where we send an error.  That is when size is
+        zero and we send one negative integer to indicate the error. */
     outmsg.module=module;
     outmsg.command=command;
     outmsg.pid=getpid();
     outmsg.size=size;
-    memcpy(outmsg.data,payload,size);
-    result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
-    /* TODO: Yes this is redundant, the optimizer will destroy result but I may need to handle the
-        case where the system call returns because of a signal.  This msgsnd will block if the
-    queue is full and a signal will bail us out.  This may be good this may not but it'll
-        need to be handled here somehow. */
+    if(size) { /* Sending a normal response */
+        memcpy(outmsg.data,payload,size);
+        newsize = size;
+    } else { /* Send error response */
+        memcpy(outmsg.data, payload, sizeof(int));
+        newsize = sizeof(int);
+    }
+    result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + newsize, 0);
+    /* TODO: need to handle the case where the system call returns because of a signal.
+    This msgsnd will block if the queue is full and a signal will bail us out.
+    This may be good this may not but it'll need to be handled here somehow.
+    also need to handle errors returned here*/
     return result;
 }
 
@@ -106,22 +118,22 @@ void msg_destroy_queue(void) {
 /* This function blocks waiting for a message to be received.  Once a message
    is retrieved from the system the proper handling function is called */
 int msg_receive(void) {
-    dax_message dcsmsg;
+    dax_message daxmsg;
     int result;
-    result = msgrcv(__msqid,(struct msgbuff *)(&dcsmsg),sizeof(dax_message),1,0);
+    result = msgrcv(__msqid,(struct msgbuff *)(&daxmsg),sizeof(dax_message),1,0);
     if(result < 0) {
         xerror("msg_receive - %s",strerror(errno));
         return result;
     }
-    if(result < (MSG_HDR_SIZE + dcsmsg.size)) {
+    if(result < (MSG_HDR_SIZE + daxmsg.size)) {
         xerror("message received is not of the specified size.");
         return -1;
     }
-    if(dcsmsg.command > 0 && dcsmsg.command <= NUM_COMMANDS) {
+    if(daxmsg.command > 0 && daxmsg.command <= NUM_COMMANDS) {
         /* Call the command function from the array */
-        (*cmd_arr[dcsmsg.command])(&dcsmsg);
+        (*cmd_arr[daxmsg.command])(&daxmsg);
     } else {
-        xerror("unknown message command received %d",dcsmsg.command);
+        xerror("unknown message command received %d",daxmsg.command);
         return -2;
     }
     return 0;
@@ -141,7 +153,7 @@ int msg_mod_register(dax_message *msg) {
 }
 
 int msg_tag_add(dax_message *msg) {
-    dax_tag tag;
+    dax_tag tag; /* We use a structure within the data[] area of the message */
     handle_t handle;
     
     xlog(10,"Tag Add Message from %d",msg->pid);
@@ -158,8 +170,33 @@ int msg_tag_del(dax_message *msg) {
     return 0;
 }
 
+/* This function retrieves a tag from the database.  If the size is
+   a single int then it returns the tag at that index if the size is
+   the DAX_TAGNAME_SIZE then it uses that as the name and returns that
+   tag. */
+/* TODO: Need to handle cases where the name isn't found and where the 
+   index requested isn't within bounds */
 int msg_tag_get(dax_message *msg) {
-    xlog(10,"Tag Get Message from %d",msg->pid);
+    int result;
+    dax_tag *tag;
+    
+    if(msg->size == sizeof(int)) { /* Is it a string or index */
+        tag = tag_get_index( *((int *)msg->data) ); /* get the index */
+        if(tag == NULL) result = ERR_ARG;
+        xlog(10,"Tag Get Message from %d for index %d",msg->pid,index);
+    } else {
+        ((char *)msg->data)[DAX_TAGNAME_SIZE] = 0x00; /* Just to avoid trouble */
+        tag = tag_get_name((char *)msg->data);
+        if(tag == NULL) result = ERR_NOTFOUND;
+        xlog(10, "Tag Get Message from %d for name %s", msg->pid, (char *)msg->data);
+    }
+    if(tag) {
+        _message_send(msg->pid, MSG_TAG_GET, tag, sizeof(dax_tag));
+        xlog(10,"Returned tag to calling module %d",msg->pid);
+    } else {
+        _message_send(msg->pid, MSG_TAG_GET, &result, 0);
+        xlog(10,"Bad tag query for MSG_TAG_GET");
+    }
     return 0;
 }
 

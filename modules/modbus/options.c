@@ -48,7 +48,6 @@ int modbus_configure(int argc, const char *argv[]) {
     parsecommandline(argc,argv);
     if(readconfigfile()) {
         syslog(LOG_ERR,"Unable to read configuration running with defaults");
-	    //--return -1;
     }
     setdefaults();
     if(config.verbose) printconfig();
@@ -57,16 +56,12 @@ int modbus_configure(int argc, const char *argv[]) {
 
 /* Inititialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
-    //struct mbd_hook *result=NULL;
-    
     config.pidfile=NULL;
-    //--config.ipaddress[0]=0;
+    config.tagname=NULL;
     config.configfile=NULL;
-    //--config.port=0;
     config.tablesize=0;
     config.verbose=0;
     config.daemonize=0;
-    //--config.hooks=NULL;
 }
 
 
@@ -118,6 +113,9 @@ static void setdefaults(void) {
     if(!config.pidfile) {
         config.pidfile=(char *)malloc(sizeof(char)*(strlen(s)+1));
         if(config.pidfile) strcpy(config.pidfile,s);
+    }
+    if(!config.tagname) {
+        config.tagname = strdup(DEFAULT_TAGNAME);
     }
     //--if(!config.ipaddress[0])
     //--    strcpy(config.ipaddress,"0.0.0.0");
@@ -179,10 +177,15 @@ static int readconfigfile(void)  {
 			//--    }
 		    } else if(!strcasecmp(token,"PIDFile")) {
 			     if(!config.pidfile) {
-				     config.pidfile=(char *)malloc(sizeof(char)*(strlen(value)+1));
-				     if(config.pidfile) strcpy(config.pidfile,value);
+				     config.pidfile=strdup(value);
+                     //--config.pidfile=(char *)malloc(sizeof(char)*(strlen(value)+1));
+				     //--if(config.pidfile) strcpy(config.pidfile,value);
 			     }
-		    } else if(!strcasecmp(token,"Verbose")) {
+		    } else if(!strcasecmp(token,"Tagname")) {
+                if(!config.pidfile) {
+                    config.pidfile=strdup(value);
+                }
+            } else if(!strcasecmp(token,"Verbose")) {
                 if(!strcasecmp(value,"yes"))
                     config.verbose=1;
             } else if(!strcasecmp(token,"Daemonize")) {
