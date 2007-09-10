@@ -232,6 +232,7 @@ void dax_tag_write_bytes(handle_t handle, void *data, size_t size) {
     }
 }
 
+/* TODO: is there an error condition that we need to deal with here?? */
 void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
     size_t n,count,m_size,sendsize;
     dax_tag_message msg;

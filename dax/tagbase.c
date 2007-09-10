@@ -133,7 +133,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
         return -6;
     }
     __tagcount++;
-    xlog(10,"Tag %s added at handle %d",name,handle);
+    xlog(10,"Tag %s added at handle 0x%X",name,handle);
     return handle;
 }
 

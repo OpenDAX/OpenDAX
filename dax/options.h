@@ -21,6 +21,25 @@
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
 
+#ifndef MAX_LINE_LENGTH
+  #define MAX_LINE_LENGTH 100
+#endif
 
+#ifndef DEFAULT_PID
+  #define DEFAULT_PID "/var/run/modbus.pid"
+#endif
+
+struct Config {
+    char *pidfile;
+    //--char ipaddress[16];
+    //--unsigned short port;  /* TCP Port */ //There is probably a better datatype
+    char *configfile;
+    char *tagname;
+    u_int8_t daemonize;
+    unsigned int tablesize;
+};
+
+
+int dax_configure(int argc, const char *argv[]);
 
 #endif /* !__OPTIONS_H */

@@ -28,6 +28,8 @@
 #include <message.h>
 #include <tagbase.h>
 
+extern struct Config config;
+
 static void messagethread(void);
 void child_signal(int);
 void quit_signal(int);
@@ -67,12 +69,17 @@ int main(int argc, const char *argv[]) {
         start_main_loop();
     */
     
-    /* TODO: Whether to go to the background should be an option */
-    /*if(daemonize("OpenDAX")) {
-        xerror("Unable to go to the background");
-    }*/
-
     setverbosity(10); /*TODO: Needs to be configuration */
+    
+    /* Read configuration from defaults, file and command line */
+    dax_configure(argc, argv);
+    
+    /* TODO: Whether to go to the background should be an option */
+    if(config.daemonize) {
+        if(daemonize("OpenDAX")) {
+            xerror("Unable to go to the background");
+        }
+    }
     
     temp=msg_setup_queue();    /* This creates and sets up the message queue */
     //xlog(10,"msg_setup_queue() returned %d",temp);
@@ -83,10 +90,13 @@ int main(int argc, const char *argv[]) {
         xfatal("Unable to create message thread");
     }
     
+    /* Start all the modules */
+    module_start_all();
+    
     // TODO: Module addition should be handled from the configuration file
-    temp=module_add("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
-    temp=module_add("modbus","/Users/phil/opendax/modules/modbus/modbus","-C /Users/phil/opendax/etc/modtest.conf",0);
-    temp=module_add("test","/Users/phil/opendax/modules/test/test",NULL,0);
+    //temp=module_add("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
+    //temp=module_add("modbus","/Users/phil/opendax/modules/modbus/modbus","-C /Users/phil/opendax/etc/modtest.conf",0);
+    //temp=module_add("test","/Users/phil/opendax/modules/test/test",NULL,0);
     
     /* handle=tag_add("dummy",DAX_BYTE,8);
         
@@ -109,9 +119,9 @@ int main(int argc, const char *argv[]) {
         sleep(2);
          */
     // TODO: There should be one giant global module starter
-    module_start(4);
-    sleep(2);
-    module_start(3);
+    //module_start(4);
+    //sleep(2);
+    //module_start(3);
     
     //sleep(4);
     /*

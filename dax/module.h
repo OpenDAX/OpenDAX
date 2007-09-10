@@ -56,10 +56,11 @@ typedef struct {
 } dead_module;
 
 /* Module List Handling Functions */
-mod_handle_t module_add(char *, char *, char *, unsigned int);
+mod_handle_t module_add(char *name, char *path, char *arglist, unsigned int flags);
 int module_del(mod_handle_t);
 
 /* Module runtime functions */
+void module_start_all(void);
 pid_t module_start (mod_handle_t);
 int module_stop(mod_handle_t);
 void module_register(char *,pid_t);

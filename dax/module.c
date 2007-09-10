@@ -46,6 +46,7 @@ static int _cleanup_module(pid_t,int);
 #ifndef DMQ_SIZE
   #define DMQ_SIZE 10
 #endif
+
 static dead_module _dmq[DMQ_SIZE];
 
 /* The module list is implemented as a circular double linked list.
@@ -59,8 +60,7 @@ static dead_module _dmq[DMQ_SIZE];
    for the opendcs main process.)  If an existing module with the same
    name is found the handle of that module will be returned instead.
 */
-mod_handle_t 
-module_add(char *name, char *path, char *arglist, unsigned int flags) {
+mod_handle_t module_add(char *name, char *path, char *arglist, unsigned int flags) {
     /* The handle is incremented before first use.  The first added module
        will be handle 2 so that the core process can always be one */
     static mod_handle_t handle=1;
@@ -68,25 +68,25 @@ module_add(char *name, char *path, char *arglist, unsigned int flags) {
     dax_module *new, *try;
     xlog(10,"Adding module %s",name);
     
-    if((try=_get_module_name(name))) return try->handle; /* Name already used */
+    if((try = _get_module_name(name))) return try->handle; /* Name already used */
     /* TODO: Handle the errors for the following somehow */
-    new=(dax_module *)xmalloc(sizeof(dax_module));
+    new = (dax_module *)xmalloc(sizeof(dax_module));
     if(new) {
         new->handle = ++handle;
         new->flags = flags;
         
         /* Add the module path to the struct */
         if(path) {
-            new->path=strdup(path);
+            new->path = strdup(path);
             
             /* tokenize and set arglist */
-            new->arglist=_arglist_tok(path,arglist);
+            new->arglist = _arglist_tok(path,arglist);
         }
         /* name the module */
-        new->name=strdup(name);
-        if(_current_mod==NULL) { /* List is empty */
-            new->next=new;
-            new->prev=new;
+        new->name = strdup(name);
+        if(_current_mod == NULL) { /* List is empty */
+            new->next = new;
+            new->prev = new;
         } else {
             new->next = _current_mod->next;
             new->prev = _current_mod;
@@ -107,25 +107,25 @@ module_add(char *name, char *path, char *arglist, unsigned int flags) {
 static char **_arglist_tok(char *path,char *str) {
     char *temp,*token,*save;
     char **arr;
-    int count=1;
-    int index=1;
+    int count = 1;
+    int index = 1;
     save=temp=NULL;
     
     if(str!=NULL) {
         /* We need a non const char string for strtok */
-        temp=strdup(str);
+        temp = strdup(str);
     }
     /* First we count the number of tokens */
     if(temp) {
-        token=strtok_r(temp," ",&save);
+        token = strtok_r(temp," ",&save);
         while(token) {
             count++;
-            token=strtok_r(NULL," ",&save);
+            token = strtok_r(NULL," ",&save);
         }
     }
     /* Allocate the array, 1 extra for the NULL */
     if(path || temp) {
-        arr=(char**)xmalloc((count+1)*sizeof(char*));
+        arr = (char**)xmalloc((count+1)*sizeof(char*));
         if(arr==NULL) return NULL; /* OOOPS No Memory left */
     } else { /* No path supplied either */
         return NULL;
@@ -138,14 +138,14 @@ static char **_arglist_tok(char *path,char *str) {
        strdup() this time since the string is the same and the memory
        has already been allocated */
     if(temp) {
-        strcpy(temp,str);
-        token=strtok_r(temp," ",&save);
+        strcpy(temp, str);
+        token = strtok_r(temp, " ", &save);
         while(token) {
             /* allocate and get a copy of the token and save it into the array */
-            arr[index++]=strdup(token); /* TODO: ERROR CHECK THIS */
-            token=strtok_r(NULL," ",&save);
+            arr[index++] = strdup(token); /* TODO: ERROR CHECK THIS */
+            token = strtok_r(NULL, " ", &save);
         }
-        arr[index]=NULL;
+        arr[index] = NULL;
         /* dont forget this */
         free(temp);
     }
@@ -190,6 +190,29 @@ int module_del(mod_handle_t handle) {
     return -1;
 }
 
+void module_start_all(void) {
+    dax_module *last;
+    /* In case we ain't go no list */
+    if(_current_mod == NULL) return;
+    /* Figure out where we need to stop */
+    last = _current_mod->prev;
+    
+    /* TODO: Startup tiers should be added eventually so the user
+        has the ability to start modules in a certain order. */
+    /* TODO: Should also add a flag for auto starting modules and
+        only start them when the flag is set.  This'll only make
+        sense once the system has another way to start modules
+        asynchronously. */
+    /* TODO: I know this sucks but it works.  I still have work to do anyway */
+    while(1) {
+        module_start(_current_mod->handle);
+        if(_current_mod == last) {
+            return;
+        }
+        _current_mod = _current_mod->next;
+    }
+}
+
 /* These are only used for the module_start() to handle the pipes.
    it was getting a little messy */
 inline static int _getpipes(int *);
@@ -213,7 +236,7 @@ pid_t module_start(mod_handle_t handle) {
         if(child_pid>0) { /* This is the parent */
             mod->pid = child_pid;
             xlog(1,"Starting Module - %s - %d",mod->path,child_pid);
-            mod->starttime=time(NULL);
+            mod->starttime = time(NULL);
 
             if(result) { /* do we have any pipes set */
                 close(pipes[0]); /* close the write pipe on childs stdin */
@@ -226,15 +249,15 @@ pid_t module_start(mod_handle_t handle) {
                 mod->pipe_err = pipes[4];  /* fd to read childs stderr */
             }
             return child_pid;
-        } else if(child_pid==0) { /* Child */
+        } else if(child_pid == 0) { /* Child */
             if(result) _childpipes(pipes);
-            mod->state=MSTATE_RUNNING | MSTATE_CHILD;
-            mod->exit_status=0;
+            mod->state = MSTATE_RUNNING | MSTATE_CHILD;
+            mod->exit_status = 0;
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
             if(execvp(mod->path,mod->arglist)) {
                 xerror("start_module exec failed - %s - %s",
-                       mod->path,strerror(errno));
+                       mod->path, strerror(errno));
 
                 exit(errno);
             }
@@ -308,13 +331,13 @@ void module_register(char *name ,pid_t pid) {
     
     /* First see if we already have a module of the given PID
        This should happen if DAX started the module */
-    mod=_get_module_pid(pid);
+    mod = _get_module_pid(pid);
     if(mod) {
         if(name) {
             if(strcmp(name,mod->name)) { /* New name given */
                 xlog(6,"Changing the name of module %s to %s",mod->name,name);
                 free(mod->name);
-                mod->name=xstrdup(name);
+                mod->name = xstrdup(name);
             }
         }
     } else {
@@ -334,7 +357,7 @@ void module_register(char *name ,pid_t pid) {
 
 void module_unregister(pid_t pid) {
     dax_module *mod;
-    mod=_get_module_pid(pid);
+    mod = _get_module_pid(pid);
     if(mod) {
         mod->state &= (~MSTATE_REGISTERED);
     }
@@ -343,7 +366,7 @@ void module_unregister(pid_t pid) {
 
 mod_handle_t module_get_pid(pid_t pid) {
     dax_module *mod;
-    mod=_get_module_pid(pid);
+    mod = _get_module_pid(pid);
     if(mod)
         return mod->handle;
     else
@@ -358,13 +381,14 @@ mod_handle_t module_get_pid(pid_t pid) {
 void module_scan(void) {
     int n;
     /* Check the dead module queue for pid's that need cleaning */
-    for(n=0;n<DMQ_SIZE;n++) {
-        if(_dmq[n].pid!=0) {
-            if(_cleanup_module(_dmq[n].pid,_dmq[n].status)) {
-                _dmq[n].pid=0;
+    for(n=0; n < DMQ_SIZE; n++) {
+        if(_dmq[n].pid != 0) {
+            if(_cleanup_module(_dmq[n].pid, _dmq[n].status)) {
+                _dmq[n].pid = 0;
             }
         }
     }
+    
     /* TODO: Restart modules if necessary */
 }
 
@@ -382,9 +406,9 @@ static int _cleanup_module(pid_t pid,int status) {
         close(mod->pipe_in);
         close(mod->pipe_out);
         close(mod->pipe_err);
-        mod->pid=0;
-        mod->exit_status=status;
-        mod->state=MSTATE_WAITING;
+        mod->pid = 0;
+        mod->exit_status = status;
+        mod->state = MSTATE_WAITING;
         return 1;
     } else { 
         xerror("Module %d not found \n",pid);
@@ -398,8 +422,8 @@ static int _cleanup_module(pid_t pid,int status) {
    TODO: If more than DMQ_SIZE modules dies all at once this will cause
          problems.  Should be fixed. */
 void module_dmq_add(pid_t pid,int status) {
-    int n=0;
-    while(_dmq[n].pid!=0 && n<DMQ_SIZE) {
+    int n = 0;
+    while(_dmq[n].pid != 0 && n < DMQ_SIZE) {
         n++;
     }
     xlog(10,"Adding Dead Module pid=%d index=%d",pid,n);
@@ -413,14 +437,14 @@ void module_dmq_add(pid_t pid,int status) {
 static dax_module *_get_module(mod_handle_t handle) {
     dax_module *last;
     /* In case we ain't go no list */
-    if(_current_mod==NULL) return NULL;
+    if(_current_mod == NULL) return NULL;
     /* Figure out where we need to stop */
-    last=_current_mod->prev;
-    if(last->handle==handle) return last;
+    last = _current_mod->prev;
+    if(last->handle == handle) return last;
 
     while(_current_mod->handle != handle) {
         _current_mod = _current_mod->next;
-        if(_current_mod==last) {
+        if(_current_mod == last) {
             return NULL;
         }
     }
@@ -431,14 +455,14 @@ static dax_module *_get_module(mod_handle_t handle) {
 static dax_module *_get_module_pid(pid_t pid) {
     dax_module *last;
     /* In case we ain't go no list */
-    if(_current_mod==NULL) return NULL;
+    if(_current_mod == NULL) return NULL;
     /* Figure out where we need to stop */
     last=_current_mod->prev;
-    if(last->pid==pid) return last;
+    if(last->pid == pid) return last;
 
     while(_current_mod->pid != pid) {
         _current_mod = _current_mod->next;
-        if(_current_mod==last) {
+        if(_current_mod == last) {
             return NULL;
         }
     }

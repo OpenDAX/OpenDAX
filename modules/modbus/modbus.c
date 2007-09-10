@@ -481,11 +481,11 @@ int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
       code is generic for RTU or ASCII */
     /* TODO: This whole LAN/RTU/ASCII/TCP thing needs fixing */
     if(mp->protocol == RTU || mp->protocol == LAN) {
-        sendrequest=sendRTUrequest;
-        getresponse=getRTUresponse;
+        sendrequest = sendRTUrequest;
+        getresponse = getRTUresponse;
     } else if(mp->protocol == ASCII) {
-        sendrequest=sendASCIIrequest;
-        getresponse=getASCIIresponse;
+        sendrequest = sendASCIIrequest;
+        getresponse = getASCIIresponse;
     } else {
         /* TODO: Should probably set an error code here?? */
         return -1;
@@ -493,9 +493,9 @@ int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
     
     do { /* retry loop */
         pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
-		result=sendrequest(mp,mc);
+		result = sendrequest(mp,mc);
 		if(result > 0) {
-			msglen=getresponse(buff,mp);
+			msglen = getresponse(buff,mp);
 		}
         /* Unlock the port */
         pthread_mutex_unlock(&mp->port_mutex);
@@ -506,7 +506,7 @@ int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
            should be dealt with here */
         
         if(msglen > 0) {
-            result=handleresponse(buff,mc);
+            result = handleresponse(buff,mc);
             if(result>0) {
                 mc->exceptions++;
                 mc->lasterror=result | ME_EXCEPTION;
@@ -516,11 +516,11 @@ int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
             return 0; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
 			mc->timeouts++;
-			mc->lasterror=ME_TIMEOUT;
+			mc->lasterror = ME_TIMEOUT;
         } else {
             /* Checksum failed in response */
             mc->crcerrors++;
-            mc->lasterror=ME_CHECKSUM;
+            mc->lasterror = ME_CHECKSUM;
         }
     } while(try++ <= mp->retries);
     /* After all the retries get out with error */
@@ -547,15 +547,16 @@ static int sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd) {
             length=6;
             break;
         case 5:
-            temp=dt_getbit(cmd->address);
-            if(cmd->method==MB_CONTINUOUS||(temp!=cmd->lastcrc)||!cmd->firstrun ) {
-                COPYWORD(&buff[2],&cmd->m_register);
-                if(temp) buff[4]=0xff;
-                else     buff[4]=0x00;
-                buff[5]=0x00;
-                cmd->firstrun=1;
-                cmd->lastcrc=temp;
-                length=6;
+            temp = dt_getbit(cmd->address);
+            if(cmd->method == MB_CONTINUOUS||(temp != cmd->lastcrc) || !cmd->firstrun ) {
+                //--printf("Get bit returned %d\n",temp);
+                COPYWORD(&buff[2], &cmd->m_register);
+                if(temp) buff[4] = 0xff;
+                else     buff[4] = 0x00;
+                buff[5] = 0x00;
+                cmd->firstrun = 1;
+                cmd->lastcrc = temp;
+                length = 6;
                 break;
             } else {
                 return 0;
