@@ -12,13 +12,13 @@ AC_PROG_CC
 AC_PROG_RANLIB
 
 # Checks for libraries.
-# FIXME: Replace `main' with a function in `-lpthread':
 AC_CHECK_LIB([pthread], [pthread_create])
+AC_CHECK_LIB([readline], [readline])
 
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -44,5 +44,6 @@ AC_CONFIG_FILES([Makefile
                  lib/Makefile
                  modules/Makefile
                  modules/modbus/Makefile
+                 modules/daxc/Makefile
                  modules/test/Makefile])
 AC_OUTPUT
