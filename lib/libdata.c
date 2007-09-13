@@ -36,7 +36,7 @@ typedef struct {
 char dax_tag_read_bit(handle_t handle) {
     u_int8_t data;
     /* read the one byte that contains the handle the bit we want */
-    dax_tag_read_bytes(handle & ~0x07, &data, 1);
+    dax_tag_read(handle & ~0x07, &data, 1);
     if(data & (1 << (handle % 8))) {
         return 1;
     }
@@ -44,7 +44,6 @@ char dax_tag_read_bit(handle_t handle) {
 }
 
 /* sets the bit if data evaluates true and clears it otherwise */
-/* TODO: write this function */
 int dax_tag_write_bit(handle_t handle, u_int8_t data) {
     u_int8_t input, mask;
     if(data) {

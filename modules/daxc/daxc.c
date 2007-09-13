@@ -15,7 +15,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- *  Main source code file for the OpenDAX Commadn Line Client  module
+ *  Main source code file for the OpenDAX Command Line Client  module
  */
 
 #include <common.h>
@@ -30,6 +30,10 @@ int main(int argc,char *argv[]) {
     while(1) {
         instr = rl_gets("dax>");
         if( !strcmp(instr,"exit")) exit(0);
+        if( instr == NULL ) {
+            printf("End of File\n");
+            exit(0);
+        }
         printf("You entered %s\n",instr);
     }
 }

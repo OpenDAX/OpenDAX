@@ -33,7 +33,7 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtoul])
+AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtoul readline])
 
 CFLAGS="-Wall -g"
 

@@ -74,7 +74,7 @@ int main(int argc,char *argv[]) {
         dax_tag_write_bit(modbus_tag.handle + 104,toggle);
         //--printf("Toggle Bit = %d\n",toggle);
 
-        dax_tag_read_bytes(modbus_tag.handle,&indata,50);
+        dax_tag_read(modbus_tag.handle,&indata,50);
         //--for(n=0;n<20;n++) {
         //--    printf("0x%04X    ",indata[n]);
         //--    if((n % 5) == 4) printf("\n");

@@ -37,11 +37,7 @@ void quit_signal(int);
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
     pthread_t message_thread;
-    //temp declares
-    int temp,handle,n;
-    unsigned char dummy[8];
-    unsigned char mask[8];
-    
+        
     openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
     xlog(0,"OpenDAX started");
 
@@ -58,15 +54,15 @@ int main(int argc, const char *argv[]) {
         check_already_running();
             if we are then do what the options say or possibly 
             re-run the configuration.
-        read_configuration();
-        daemonize();
+	 *? read_configuration();
+      * daemonize();
         setverbosity();
-        create_message_queue();
-        initialize_tagbase();
-        start_message_thread();
+      * create_message_queue();
+	  * initialize_tagbase();
+	  * start_message_thread();
         setup_slave / redundant sockets();
-        start_modules();
-        start_main_loop();
+      * start_modules();
+	  * start_main_loop();
     */
     
     setverbosity(10); /*TODO: Needs to be configuration */
@@ -74,66 +70,26 @@ int main(int argc, const char *argv[]) {
     /* Read configuration from defaults, file and command line */
     dax_configure(argc, argv);
     
-    /* TODO: Whether to go to the background should be an option */
+    /* Go to the background */
     if(config.daemonize) {
         if(daemonize("OpenDAX")) {
             xerror("Unable to go to the background");
         }
     }
     
-    temp=msg_setup_queue();    /* This creates and sets up the message queue */
-    //xlog(10,"msg_setup_queue() returned %d",temp);
-
+    msg_setup_queue();    /* This creates and sets up the message queue */
     initialize_tagbase(); /* initiallize the tagname list and database */
-    /* Start the message handling thread */
+    
+	/* Start the message handling thread */
     if(pthread_create(&message_thread,NULL,(void *)&messagethread,NULL)) {
         xfatal("Unable to create message thread");
     }
     
-    /* Start all the modules */
-    module_start_all();
+    module_start_all(); /* Start all the modules */
     
-    // TODO: Module addition should be handled from the configuration file
-    //temp=module_add("lsmod","/bin/ls","-l",MFLAG_OPENPIPES);
-    //temp=module_add("modbus","/Users/phil/opendax/modules/modbus/modbus","-C /Users/phil/opendax/etc/modtest.conf",0);
-    //temp=module_add("test","/Users/phil/opendax/modules/test/test",NULL,0);
-    
-    /* handle=tag_add("dummy",DAX_BYTE,8);
-        
-        for(n=0;n<8;n++) {
-            dummy[n]=n;
-            mask[n]=0;
-        }
-        
-        mask[2]=0xFF;
-        dummy[3]=0x55;
-        mask[3]=0xF0;
-        mask[4]=0xFF;
-        
-        temp=tag_mask_write(handle,dummy,mask,8);
-        temp=tag_read_bytes(handle,dummy,8);
-        
-        for(n=0;n<8;n++) {
-            printf("Dummy[%d] = %x\n",n,dummy[n]);
-        }
-        sleep(2);
-         */
-    // TODO: There should be one giant global module starter
-    //module_start(4);
-    //sleep(2);
-    //module_start(3);
-    
-    //sleep(4);
-    /*
-	temp=tag_read_bytes(0x60,ddd,sizeof(int)*1000);
-    for(n=0;n<1000;n++) {
-        printf("ddd[%d] = %d\n",n,ddd[n]);
-    }
-	*/
-    while(1) {
-        xlog(10,"Main Loop Scan");
+    while(1) { /* Main loop */
         module_scan();
-        sleep(5);
+        sleep(1);
     }
 }
 

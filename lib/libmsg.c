@@ -183,7 +183,7 @@ int dax_tag_get_index(int index, dax_tag *tag) {
 }
 
 /* TODO: This function should return some kind of error */
-void dax_tag_read_bytes(handle_t handle, void *data, size_t size) {
+void dax_tag_read(handle_t handle, void *data, size_t size) {
     size_t n,count,m_size,sendsize,tmp;
     //dax_tag_message *msg;
     int result;
@@ -210,7 +210,7 @@ void dax_tag_read_bytes(handle_t handle, void *data, size_t size) {
 
 /* This is a type neutral way to just write bytes to the data table */
 /* TODO: Do we return error on this one or not??? Maybe with some flags?? */
-void dax_tag_write_bytes(handle_t handle, void *data, size_t size) {
+void dax_tag_write(handle_t handle, void *data, size_t size) {
     size_t n,count,m_size,sendsize;
     dax_tag_message msg;
     

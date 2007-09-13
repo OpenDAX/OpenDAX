@@ -56,6 +56,9 @@
 #define DAX_32BITS  0x0005
 #define DAX_64BITS  0x0006
 
+/* Macro to get the size of the datatype */
+#define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
+
 /* Library function errors */
 #define ERR_NO_QUEUE -1 /* The Message Queue does not exist */
 #define ERR_2BIG     -2 /* The argument is too big */
@@ -64,9 +67,7 @@
 #define ERR_MSG_SEND -5 /* Unable to send message */
 #define ERR_MSG_RECV -6 /* Unable to receive message */
 
-/* Macro to get the size of the datatype */
-#define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
-
+/* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
   #define DAX_TAGNAME_SIZE 32
 #endif
@@ -91,16 +92,22 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count);
    do any bounds checking of the tag handles.  This will make them
    more efficient but less stable if the module misbehaves */
 
-/* simple untyped tag reading function */
-void dax_tag_read_bytes(handle_t handle, void *data, size_t size);
-/* simple untyped tag writing function */
-void dax_tag_write_bytes(handle_t handle, void *data, size_t size);
-/* simple untyped masked tag write */
-void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
+/* TODO: I really need to sit down and think about what kind of interface
+   this system is going to present.  I also need to think about the possibility
+   of caching data on the module side. */
+
 /* Get tag by name */
 int dax_tag_get_name(char *name, dax_tag *tag);
 /* Get tag by index */
 int dax_tag_get_index(int index, dax_tag *tag);
+
+/* These functions are where all the data transfer takes place. */
+/* simple untyped tag reading function */
+void dax_tag_read(handle_t handle, void *data, size_t size);
+/* simple untyped tag writing function */
+void dax_tag_write(handle_t handle, void *data, size_t size);
+/* simple untyped masked tag write */
+void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
     
 /* reads a single bit */
 char dax_tag_read_bit(handle_t handle);
