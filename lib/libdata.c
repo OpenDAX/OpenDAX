@@ -102,6 +102,7 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
             data_bit=0;
             data_idx++;
         }
+        
         buffer_bit++;
         if(buffer_bit==8) {
             buffer_bit=0;
