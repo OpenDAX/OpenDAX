@@ -6,6 +6,10 @@ EXTRA_DIST = common.h config/ etc/ doc/
 
 include_HEADERS = opendax.h
 
+confdir = $(sysconfdir)/$(PACKAGE)
+conf_DATA = etc/opendax.conf etc/modbus.conf
+
+
 #dist-hook:
 #	(cd $(distdir) && mkdir $(ac_aux_dir))
 #	for file in $(AUX_DIST); do \

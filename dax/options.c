@@ -145,10 +145,10 @@ static int readconfigfile(void)  {
 	 * member it will open that file.  If not the config file name is 
 	 * ETC_DIR/opendax.conf */
 	if(!config.configfile) {
-        length=strlen(ETC_DIR) + strlen("/opendax.conf") +1;
-		config.configfile=(char *)malloc(sizeof(char) * length);
-		if(config.configfile) 
-		    sprintf(config.configfile,"%s%s",ETC_DIR,"/opendax.conf");
+        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
+		 config.configfile=(char *)malloc(sizeof(char) * length);
+		 if(config.configfile) 
+		     sprintf(config.configfile,"%s%s",ETC_DIR,"/opendax.conf");
 	}
 	fd=fopen(config.configfile,"r");
 	if(!fd) {

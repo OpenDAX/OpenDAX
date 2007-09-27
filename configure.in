@@ -7,6 +7,8 @@ VERSION="0.1"
 PACKAGE=opendax
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+#AC_DEFINE_UNQUOTED(SYSCONFDIR,"${sysconfdir}")
+#AC_DEFINE_UNQUOTED(ETC_DIR,"$SYSCONFDIR/$PACKAGE","ETC_DIR")
 
 AC_PROG_CC
 AC_PROG_RANLIB
@@ -55,9 +57,10 @@ AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtoul readline])
 
-CFLAGS="-Wall -g"
+CFLAGS="-Wall -g -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
 
 AC_SUBST(ac_aux_dir)
+
 
 AC_CONFIG_FILES([Makefile
                  dax/Makefile
