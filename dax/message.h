@@ -42,7 +42,9 @@
 
 /* Maximum size allowed for a single message in the message queue */
 /* TODO: I don't think this is working right.  Where is MSGMAX defined?
-         This sould be something for Autoconf to do */
+         This sould be something for Autoconf to do.  Also some systems
+         may be able to read this at run time.  Perhaps a runtime check
+         can be done? */
 #ifdef MSGMAX
   #define DAX_MSGMAX MSGMAX
 #else
@@ -50,8 +52,8 @@
 #endif
 
 /* This defines the size of the message minus the actual data */
-#define MSG_HDR_SIZE (sizeof(int)+sizeof(pid_t)+sizeof(size_t))
-#define MSG_DATA_SIZE (DAX_MSGMAX-MSG_HDR_SIZE)
+#define MSG_HDR_SIZE (sizeof(int) + sizeof(pid_t) + sizeof(size_t))
+#define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */

@@ -23,10 +23,6 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/stat.h>
-//--#include <sys/socket.h>
-//--#include <netinet/in.h>
-//--#include <arpa/inet.h>
-//--#include <sys/uio.h>
 #include <fcntl.h>
 #include <pthread.h>
 
@@ -51,18 +47,22 @@ int main (int argc, const char * argv[]) {
     (void)signal(SIGINT,catchsignal);
     (void)signal(SIGTERM,catchsignal);
     (void)signal(SIGPIPE,catchsignal);
+    (void)signal(SIGQUIT,catchsignal);
     /* Probably should use this to see if we've lost a port thread */
     (void)signal(SIGCHLD,SIG_IGN);
     
     /* Set up the system logger */
     openlog("modbus",LOG_NDELAY,LOG_DAEMON);
-    syslog(LOG_NOTICE,"modbus Starting");
+    xnotice("modbus Starting");
    
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
-    result=modbus_configure(argc,argv);
+    result = modbus_configure(argc,argv);
     
-    dax_mod_register("modbus");
+    if( dax_mod_register("modbus") ) {
+        xlog(0,"We got's to go");
+        xfatal("Unable to find OpenDAX Message Queue.  OpenDAX probalby not running");
+    }
     
     /* Allocate and initialize the datatable */
     time=1; n=0;
@@ -76,18 +76,15 @@ int main (int argc, const char * argv[]) {
     }
     
     /* If configured daemonize the program */
-    if(config.daemonize) {
-        daemonize("modbus");
-    } else {
+    //if(config.daemonize) {
+    //    daemonize("modbus");
+    //} else {
     /* Set the input and output callbacks if we aren't going to the background */
         for(n=0;n<config.portcount;n++) {
             mb_set_output_callback(&config.ports[n],outdata);
             mb_set_input_callback(&config.ports[n],indata);
         }
-    }
-    /* TODO: Should put this in the main while loop. So that the program can continue
-             to run and occasionally retry the socket.  This will allow the socket to
-             die and be restarted too. */
+    //}
     /* Start the threads that handle the sockets */
     
     while(1) { /* Infinite loop, threads are doing all the work.*/
@@ -186,7 +183,7 @@ void catchsignal(int sig) {
     if(sig == SIGHUP) {
         syslog(LOG_NOTICE,"Should be Reconfiguring Now");
         //reconfigure();
-    } else if(sig == SIGTERM || sig==SIGINT) {
+    } else if(sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
         syslog(LOG_NOTICE,"Exiting with signal %d",sig);
     getout(0);
     } else if(sig == SIGCHLD) {

@@ -1,3 +1,3 @@
 bin_PROGRAMS = daxc
-daxc_SOURCES = daxc.c
-daxc_LDADD = ../../dax/func.o ../../lib/libdax.a -lreadline
+daxc_SOURCES = daxc.c func.c
+daxc_LDADD =  ../../lib/libdax.a

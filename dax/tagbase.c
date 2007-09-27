@@ -93,7 +93,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
         }
     }
     if(!checktype(type)) {
-        xerror("Unknown datatype %x",type);
+        xerror("Unknown datatype %x", type);
         return -2; /* is the datatype valid */
     }
     if(validate_name(name)) {
@@ -101,24 +101,24 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
         return -3;
     }
     if(get_by_name(name)>=0) {
-        xerror("Duplicate tag name %s",name);
+        xerror("Duplicate tag name %s", name);
         return -4;
     }
     /* Get the first available handle for the size of the type */
-    if(__tagcount==0)   handle = 0;
-    else                handle=gethandle(type,count);
-    if(handle<0) {
+    if(__tagcount == 0)   handle = 0;
+    else                  handle = gethandle(type,count);
+    if(handle < 0) {
         xerror("Problem allocating room");
         return -5;
     }
     /* The taglist must be sorted by handle for all of this stuff to work */
-    if((handle > __taglist[__tagcount-1].handle) || __tagcount==0) {
-        n=__tagcount; /* First or last in the list */
+    if((handle > __taglist[__tagcount-1].handle) || __tagcount == 0) {
+        n = __tagcount; /* First or last in the list */
     } else {
-        for(n=1;n<__tagcount;n++) {
+        for(n = 1; n < __tagcount; n++) {
             if(handle > __taglist[n-1].handle && handle < __taglist[n].handle) {
                 /* Make a hole in the array */
-                memmove(&__taglist[n+1],&__taglist[n],
+                memmove(&__taglist[n+1], &__taglist[n],
                        (__taglistsize-n-2)*sizeof(dax_tag));
                 break;
             }
@@ -159,8 +159,8 @@ static inline handle_t gethandle(unsigned int type,unsigned int count) {
     handle_t nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = TYPESIZE(type);
-    for(n=0;n<__tagcount-1;n++) {
-        this=&__taglist[n]; next=&__taglist[n+1]; /* just to make it easier */
+    for(n = 0; n < __tagcount - 1; n++) {
+        this = &__taglist[n]; next = &__taglist[n+1]; /* just to make it easier */
         /* this is the handle of the bit following this bits allocation */
         nextbit = this->handle + (long)(this->count * (0x01 << (this->type & 0x0F)));
         /* If it's not a single bit type then we need to even up nextbit
@@ -187,8 +187,8 @@ static inline handle_t gethandle(unsigned int type,unsigned int count) {
         new point.  We need to make sure that there is enough room left the 
         database, grow it if necessary, and assign the handle to the end */
 
-    this=&__taglist[__tagcount-1]; /* Get the last tag in the list */
-    nextbit=this->handle + (this->count * TYPESIZE(this->type));
+    this = &__taglist[__tagcount-1]; /* Get the last tag in the list */
+    nextbit = this->handle + (this->count * TYPESIZE(this->type));
     
     if((type & 0x0F) != DAX_1BIT) {/* If it's not a single bit */
         /* ...then even it up */
@@ -225,8 +225,8 @@ static int validate_name(char *name) {
 /* This function retrieves the index of the tag identified by name */
 static int get_by_name(char *name) {
     int i;
-    for(i=0;i<__tagcount;i++) {
-        if(!strcmp(name,__taglist[i].name))
+    for(i = 0; i < __tagcount; i++) {
+        if(!strcmp(name, __taglist[i].name))
             return i;
     }
     return -1;
@@ -236,21 +236,21 @@ static int get_by_name(char *name) {
    search and returns the array index of the point that contains the handle.
    The handle may be the handle of a bit within the tag point too. */
 static int get_by_handle(handle_t handle) {
-    int try,high,low;
-    low=0;
-    high=__tagcount-1;
-    try=high/2;
+    int try, high, low;
+    low = 0;
+    high = __tagcount-1;
+    try = high / 2;
     if(handle < 0) {
         return -1; /* handle does not exist */
     } else if(handle >= __taglist[__tagcount-1].handle) {
-        try=__tagcount-1; /* if the given handle is beyond the array */
+        try = __tagcount-1; /* if the given handle is beyond the array */
     } else {
         while(!(handle > __taglist[try].handle && handle < __taglist[try+1].handle)) {
             try=low+(high-low)/2;
             if(__taglist[try].handle < handle) {
-                low=try;
+                low = try;
             } else if(__taglist[try].handle > handle) {
-                high=try;
+                high = try;
             } else {
                 return try;
             }
@@ -270,21 +270,21 @@ static int get_by_handle(handle_t handle) {
    this function will return error. */
 static int find_handle(handle_t handle) {
     int try,high,low,n;
-    low=n=0;
-    high=__tagcount-1;
-    try=high/2;
+    low = n = 0;
+    high = __tagcount-1;
+    try = high / 2;
     if(handle < 0 || handle > __taglist[__tagcount-1].handle) {
         return -1; /* handle does not exist */
     } else {
         /* Bisection search */
         while(__taglist[try].handle != handle && high != low) {
             if(__taglist[try].handle < handle) {
-                low=try;
+                low = try;
             } else {
-                high=try;
+                high = try;
             }
             xlog(10,"High = %d, Low = %d, Try = %d",high,low,try);
-            try=low+(high-low)/2;
+            try = low + (high - low) / 2;
             if(n++ > 10) return -1;
         }
     }
@@ -327,8 +327,8 @@ static int database_grow(void) {
 /* Get's a handle from a tagname */
 handle_t tag_get_handle(char *name) {
     int x;
-    x=get_by_name(name);
-    if(x>=0) return __taglist[x].handle;
+    x = get_by_name(name);
+    if(x >= 0) return __taglist[x].handle;
     else return x;
 }
 
@@ -379,9 +379,9 @@ int tag_read_bytes(handle_t handle, void *data, size_t size) {
     if((__databasesize*4)-handle < size) {
         return -1;  /* asking for too much data */
     }
-    src=(u_int8_t *)__db; /* Cast __db to byte and set src */
-    src+=handle; /* index dest */
-    if(memcpy(data,src,size)==NULL) {
+    src = (u_int8_t *)__db; /* Cast __db to byte and set src */
+    src += handle; /* index dest */
+    if(memcpy(data, src, size)==NULL) {
         return -2;
     }
     return size;
@@ -391,12 +391,12 @@ int tag_read_bytes(handle_t handle, void *data, size_t size) {
 int tag_write_bytes(handle_t handle, void *data, size_t size) {
     u_int8_t *dest;
     handle /= 8; /* ditch the bottom three bits */
-    if((__databasesize*4)-handle < size) {
+    if((__databasesize * 4) - handle < size) {
         return -1; /* Whoa don't overflow my buffer */
     }
-    dest=(u_int8_t *)__db; /* Cast __db to byte */
+    dest = (u_int8_t *)__db; /* Cast __db to byte */
     dest += handle;
-    if(memcpy(dest,data,size)==NULL) {
+    if(memcpy(dest, data, size)==NULL) {
         return -2;
     }
     return size;
@@ -407,16 +407,16 @@ int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
     u_int8_t *db,*newdata,*newmask;
     size_t n;
     handle /= 8; /* ditch the bottom three bits */
-    if((__databasesize*4)-handle < size) {
+    if((__databasesize * 4) - handle < size) {
         return -1; /* Whoa don't overflow my buffer */
     }
     
-    db=(u_int8_t *)__db; /* Cast __db to byte */
-    newdata=(u_int8_t *)data;
-    newmask=(u_int8_t *)mask;
+    db = (u_int8_t *)__db; /* Cast __db to byte */
+    newdata = (u_int8_t *)data;
+    newmask = (u_int8_t *)mask;
     
-    for(n=0;n<size;n++) {
-        db[handle+n]=newdata[n] & newmask[n];
+    for(n = 0; n < size; n++) {
+        db[handle+n] = newdata[n] & newmask[n];
     }
     return size;
 }
@@ -425,15 +425,15 @@ int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
 /* mostly for debugging */
 void tags_list(void) {
     int n;
-    for(n=0;n<__tagcount;n++) {
-        xlog(0,"%s handle = (%ld,0x%lx) count = %d",__taglist[n].name,
-             __taglist[n].handle,__taglist[n].handle,__taglist[n].count);
+    for(n = 0; n < __tagcount; n++) {
+        xlog(0,"%s handle = (%ld,0x%lx) count = %d", __taglist[n].name,
+             __taglist[n].handle, __taglist[n].handle, __taglist[n].count);
     }
 }
 
 void print_database(void) {
     int n;
-    for(n=0;n<20;n++) {
-        printf("0x%08x\n",__db[n]);
+    for(n = 0; n < 20; n++) {
+        printf("0x%08x\n", __db[n]);
     }
 }

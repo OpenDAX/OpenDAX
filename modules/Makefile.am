@@ -1,4 +1,10 @@
-SUBDIRS = modbus daxc test
+if MODBUS
+  M_MODBUS = modbus
+else
+  M_MODBUS = 
+endif
+
+SUBDIRS = $(M_MODBUS) daxc test
 
 #AUX_DIST = $(ac_aux_dir)/install-sh
 

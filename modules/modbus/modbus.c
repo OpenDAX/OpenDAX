@@ -447,14 +447,14 @@ void masterRTUthread(struct mb_port *mp) {
                     mb_send_command(mp,mc);
                 }
                 if(mp->delay>0) usleep(mp->delay*1000);
-                mc=mc->next; /* get next command from the linked list */
+                mc = mc->next; /* get next command from the linked list */
             } /* End of while for sending commands */
         }
         /* This calculates the length of time that it took to send the messages on this port
            and then subtracts that time from the port's scanrate and calls usleep to hold
            for the right amount of time.  */
         gettimeofday(&end,NULL);
-        time_spent=(end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
+        time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
         /* If it takes longer than the scanrate then just go again instead of sleeping */
         if(time_spent < mp->scanrate)
             usleep((mp->scanrate-time_spent)*1000);

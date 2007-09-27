@@ -54,12 +54,12 @@ static int _message_send(long int module, int command, void *payload, size_t siz
     int result;
     /* TODO: Need to handle the case where we send an error.  That is when size is
         zero and we send one negative integer to indicate the error. */
-    outmsg.module=module;
-    outmsg.command=command;
-    outmsg.pid=getpid();
-    outmsg.size=size;
+    outmsg.module = module;
+    outmsg.command = command;
+    outmsg.pid = getpid();
+    outmsg.size = size;
     if(size) { /* Sending a normal response */
-        memcpy(outmsg.data,payload,size);
+        memcpy(outmsg.data, payload, size);
         newsize = size;
     } else { /* Send error response */
         memcpy(outmsg.data, payload, sizeof(int));
@@ -174,6 +174,7 @@ int msg_tag_del(dax_message *msg) {
    a single int then it returns the tag at that index if the size is
    the DAX_TAGNAME_SIZE then it uses that as the name and returns that
    tag. */
+
 /* TODO: Need to handle cases where the name isn't found and where the 
    index requested isn't within bounds */
 int msg_tag_get(dax_message *msg) {
@@ -183,7 +184,7 @@ int msg_tag_get(dax_message *msg) {
     if(msg->size == sizeof(int)) { /* Is it a string or index */
         tag = tag_get_index( *((int *)msg->data) ); /* get the index */
         if(tag == NULL) result = ERR_ARG;
-        xlog(10,"Tag Get Message from %d for index %d",msg->pid,index);
+        xlog(10, "Tag Get Message from %d for index %d",msg->pid,index);
     } else {
         ((char *)msg->data)[DAX_TAGNAME_SIZE] = 0x00; /* Just to avoid trouble */
         tag = tag_get_name((char *)msg->data);

@@ -25,6 +25,8 @@
 #define DAX_IPC_KEY 0x707070
 
 /* Data type definitions */
+#define DAX_ALIAS   0x0000
+
 #define DAX_BOOL    0x0010
 /* 8 Bits */
 #define DAX_BYTE    0x0003
@@ -80,6 +82,15 @@ typedef struct {
     unsigned int type;
     unsigned int count;
 } dax_tag;
+
+void dax_set_level(int);
+/* These functions accept a function pointer to functions that would
+   print debug and error messages.  The functions should be declared as...
+   void functionname(const char *); */
+int dax_set_debug(void (*debug)(const char *msg));
+int dax_set_error(void (*error)(const char *msg));
+/* Get a string that is the datatype, i.e. "BOOL" */
+const char *dax_get_type(int type);
 
 /* Only registered modules will get responses from the core */
 int dax_mod_register(char *);   /* Registers the Module with the core */

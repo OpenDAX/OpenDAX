@@ -26,7 +26,7 @@
 #endif
 
 #ifndef DEFAULT_PID
-  #define DEFAULT_PID "/var/run/modbus.pid"
+  #define DEFAULT_PID "/var/run/opendax.pid"
 #endif
 
 struct Config {

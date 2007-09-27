@@ -19,8 +19,7 @@
  * This file contains the messaging code for the library
  */
  
-#include <common.h>
-#include <opendax.h>
+#include <libdax.h>
 #include <dax/message.h>
 #include <dax/tagbase.h>
 #include <sys/ipc.h>
@@ -32,11 +31,11 @@ static int __msqid;
 static int _message_send(long int module, int command, void *payload, size_t size) {
     dax_message outmsg;
     int result;
-    outmsg.module=module;
-    outmsg.command=command;
-    outmsg.pid=getpid();
-    outmsg.size=size;
-    memcpy(outmsg.data,payload,size);
+    outmsg.module = module;
+    outmsg.command = command;
+    outmsg.pid = getpid();
+    outmsg.size = size;
+    memcpy(outmsg.data, payload, size);
     result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
     //result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
     /* TODO: need to handle the case where the system call returns because of a signal.
@@ -44,7 +43,7 @@ static int _message_send(long int module, int command, void *payload, size_t siz
         This may be good this may not but it'll need to be handled here somehow.
         also need to handle errors returned here*/
     if(result) {
-        xerror("msgsnd() returned %d",result);
+        dax_error("msgsnd() returned %d",result);
         return ERR_MSG_SEND;
     }
     return 0;
@@ -63,17 +62,17 @@ static int _message_recv(int command, void *payload, size_t *size) {
     
     done = 0;
     while(!done) {
-        result = msgrcv(__msqid,(struct msgbuff *)(&inmsg),DAX_MSGMAX,(long)getpid(),0);
+        result = msgrcv(__msqid,(struct msgbuff *)(&inmsg), DAX_MSGMAX, (long)getpid(), 0);
         if(inmsg.command == command) {
             done = 1;
-            *size = (size_t)(result-MSG_HDR_SIZE);
-            memcpy(payload,inmsg.data,*size);
+            *size = (size_t)(result - MSG_HDR_SIZE);
+            memcpy(payload, inmsg.data, *size);
             if( inmsg.size == 0 ) { /* If size is zero then it's an error response */
                 /* return the error code found in the data portion */
                 return *((int *)inmsg.data);
             }
         } else {
-            xlog(10,"Asyncronous message received\n");
+            dax_debug(2, "Asyncronous message received\n");
             /* TODO: Insert the async message handling logic here */
         }
         /* TODO: Also need to handle cases when signals or errors happen here */
@@ -90,7 +89,7 @@ static int mod_reg(char *name) {
     size_t size;
     int result;
     
-    __msqid=msgget(DAX_IPC_KEY,0660);
+    __msqid = msgget(DAX_IPC_KEY, 0660);
     if(__msqid < 0) {
         return ERR_NO_QUEUE;
     }
@@ -98,14 +97,16 @@ static int mod_reg(char *name) {
         if(strlen(name) > 254) {
             return ERR_2BIG;
         }
-        size=strlen(name)+1;
+        size = strlen(name) + 1;
     } else {
-        size=0;
+        size = 0;
     }
     /* TODO: this call will block if queue is full.  Should also check
              for exit status that would be caused by signals EINTR.  Now do
-             we return on EINTR or do we wait in a loop here? */
-    result=_message_send(1,MSG_MOD_REG,name,size);
+             we return on EINTR or do we wait in a loop here?  Probably should
+             arrange to have an alarm signal sent to us after a few seconds so
+             this will have some kind of timeout. */
+    result = _message_send(1, MSG_MOD_REG, name, size);
     if(result) { 
         return -2;
     }
@@ -113,10 +114,12 @@ static int mod_reg(char *name) {
 }
 
 int dax_mod_register(char *name) {
+    dax_debug(10,"Sending registration for name - %s",name);
     return mod_reg(name);
 }
 
 int dax_mod_unregister(void) {
+    dax_debug(10,"Sending un-registration");
     return mod_reg(NULL);
 }
 
@@ -149,19 +152,20 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     return tag.handle;
 }
 
-
+/* Get the tag by name. */
+/* TODO: Resolve array and bit references in the tagname */
 int dax_tag_get_name(char *name, dax_tag *tag) {
     int result;
     size_t size;
-    
+    /* It seems like we should bounds check *name but _message-send will clip it! */
     result = _message_send(1, MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
     if(result) {
-        xerror("Can't send MSG_TAG_GET message\n");
+        dax_error("Can't send MSG_TAG_GET message\n");
         return result;
     }
     result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
     if(result) {
-        xerror("Problem receiving message MSG_TAG_GET\n");
+        dax_error("Problem receiving message MSG_TAG_GET\n");
     }
     return result;
 }
@@ -172,15 +176,21 @@ int dax_tag_get_index(int index, dax_tag *tag) {
     size_t size;
     result = _message_send(1, MSG_TAG_GET, &index, sizeof(int));
     if(result) {
-        xerror("Can't send MSG_TAG_GET message\n");
+        dax_error("Can't send MSG_TAG_GET message");
         return result;
     }
     result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
-    if(result) {
-        xerror("Problem receiving message MSG_TAG_GET\n");
-    }
-    return result;
+    if(result == ERR_ARG) return ERR_ARG;
+    //if(result) {
+    //    dax_error("Problem receiving message MSG_TAG_GET");
+    //}
+    return 0;
+    //return 1;
 }
+
+/* The following three functions are the core of the data handling
+   system in Dax.  They are the raw reading and writing functions.
+   Each takes a handle, a buffer pointer, and a size in bytes.  */
 
 /* TODO: This function should return some kind of error */
 void dax_tag_read(handle_t handle, void *data, size_t size) {

@@ -19,8 +19,7 @@
  * This file contains some of the database handling code for the library
  */
 
-#include <common.h>
-#include <opendax.h>
+#include <libdax.h>
 #include <dax/tagbase.h>
 #include <dax/message.h>
 
