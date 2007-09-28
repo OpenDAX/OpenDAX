@@ -79,7 +79,8 @@ void list(char *instr) {
             printf("[%d]", temp_tag.count);
         }
         /* Output the handle and the carriage return */
-        printf(" \t 0x%08X\n", temp_tag.handle);
+//        printf(" \t 0x%08X\n", temp_tag.handle);
+        printf(" \t %d\n", temp_tag.handle);
     }
 }
 

@@ -156,11 +156,11 @@ int msg_tag_add(dax_message *msg) {
     dax_tag tag; /* We use a structure within the data[] area of the message */
     handle_t handle;
     
-    xlog(10,"Tag Add Message from %d",msg->pid);
-    memcpy(tag.name,msg->data,sizeof(dax_tag)-sizeof(handle_t));
-    handle=tag_add(tag.name,tag.type,tag.count);
+    xlog(10,"Tag Add Message from %d", msg->pid);
+    memcpy(tag.name, msg->data, sizeof(dax_tag) - sizeof(handle_t));
+    handle = tag_add(tag.name, tag.type, tag.count);
     if(handle >= 0) {
-        _send_handle(handle,msg->pid);
+        _send_handle(handle, msg->pid);
     }
     return 0;
 }
@@ -178,11 +178,12 @@ int msg_tag_del(dax_message *msg) {
 /* TODO: Need to handle cases where the name isn't found and where the 
    index requested isn't within bounds */
 int msg_tag_get(dax_message *msg) {
-    int result;
+    int result, index;
     dax_tag *tag;
     
     if(msg->size == sizeof(int)) { /* Is it a string or index */
-        tag = tag_get_index( *((int *)msg->data) ); /* get the index */
+        index = *((int *)msg->data); /* cast void * -> int * then indirect */
+        tag = tag_get_index(index); /* get the index */
         if(tag == NULL) result = ERR_ARG;
         xlog(10, "Tag Get Message from %d for index %d",msg->pid,index);
     } else {

@@ -2,7 +2,7 @@ SUBDIRS = lib dax modules
 
 AUX_DIST = $(ac_aux_dir)/install-sh
 
-EXTRA_DIST = common.h config/ etc/ doc/
+EXTRA_DIST = common.h config/ etc/*.conf 
 
 include_HEADERS = opendax.h
 

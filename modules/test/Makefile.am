@@ -1,3 +1,3 @@
-bin_PROGRAMS = test
-test_SOURCES = main.c
-test_LDADD = ../../dax/func.o ../../lib/libdax.a
+bin_PROGRAMS = daxtest
+daxtest_SOURCES = main.c tags.c tags.h
+daxtest_LDADD = ../../dax/func.o ../../lib/libdax.a

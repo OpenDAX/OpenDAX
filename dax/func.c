@@ -64,28 +64,37 @@ void *xcalloc(size_t count, size_t size) {
 void xfatal(const char *format,...) {
     va_list val;
     va_start(val,format);
+#ifdef DAX_LOGGER
     vsyslog(LOG_ERR,format,val);
-    //vfprintf(stderr,format,val);
-    //fprintf(stderr,"\n");
+#else
+    vfprintf(stderr,format,val);
+    fprintf(stderr,"\n");
+#endif
     va_end(val);
     kill(getpid(),SIGQUIT);
 }
 
 void xerror(const char *format,...) {
     va_list val;
-    va_start(val,format);
-    vsyslog(LOG_ERR,format,val);
-    //vfprintf(stderr,format,val);
-    //fprintf(stderr,"\n");
+    va_start(val, format);
+#ifdef DAX_LOGGER
+    vsyslog(LOG_ERR, format, val);
+#else
+    vfprintf(stderr, format, val);
+    fprintf(stderr, "\n");
+#endif
     va_end(val);
 }
 
 void xnotice(const char *format,...) {
     va_list val;
     va_start(val,format);
+#ifdef DAX_LOGGER
     vsyslog(LOG_NOTICE,format,val);
-    //vfprintf(stderr,format,val);
-    //fprintf(stderr,"\n");
+#else
+    vfprintf(stderr,format,val);
+    fprintf(stderr,"\n");
+#endif
     va_end(val);
 }
 
@@ -104,9 +113,12 @@ void xlog(int verbosity, const char *format,...) {
     va_list val;
     if(verbosity <= _verbosity) {
         va_start(val,format);
+#ifdef DAX_LOGGER
         vsyslog(LOG_NOTICE,format,val);
-        //vprintf(format,val);
-        //printf("\n");
+#else
+        vfprintf(stdout,format,val);
+        fprintf(stdout,"\n");
+#endif
         va_end(val);
     }
 }

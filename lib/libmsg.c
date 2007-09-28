@@ -130,6 +130,7 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     size_t size;
     int result;
     
+    if(count == 0) return ERR_ARG;
     if(name) {
         if(strlen(name) > DAX_TAGNAME_SIZE) {
             return ERR_2BIG;

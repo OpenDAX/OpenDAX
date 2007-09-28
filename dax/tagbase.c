@@ -86,6 +86,7 @@ void initialize_tagbase(void) {
 handle_t tag_add(char *name,unsigned int type, unsigned int count) {
     int n;
     handle_t handle;
+    if(count == 0) return -6;
     if(__tagcount >= __taglistsize) {
         if(!taglist_grow()) {
             xerror("Out of memory for symbol table");
@@ -106,7 +107,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
     }
     /* Get the first available handle for the size of the type */
     if(__tagcount == 0)   handle = 0;
-    else                  handle = gethandle(type,count);
+    else                  handle = gethandle(type, count);
     if(handle < 0) {
         xerror("Problem allocating room");
         return -5;
@@ -119,7 +120,7 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
             if(handle > __taglist[n-1].handle && handle < __taglist[n].handle) {
                 /* Make a hole in the array */
                 memmove(&__taglist[n+1], &__taglist[n],
-                       (__taglistsize-n-2)*sizeof(dax_tag));
+                       (__taglistsize-n-2) * sizeof(dax_tag));
                 break;
             }
         }
@@ -128,12 +129,12 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
     __taglist[n].handle=handle;
     __taglist[n].count=count;
     __taglist[n].type=type;
-    if(!strncpy(__taglist[n].name,name,DAX_TAGNAME_SIZE)) {
+    if(!strncpy(__taglist[n].name, name, DAX_TAGNAME_SIZE)) {
         xerror("Unable to copy tagname %s");
         return -6;
     }
     __tagcount++;
-    xlog(10,"Tag %s added at handle 0x%X",name,handle);
+    xlog(10,"Tag %s added at handle 0x%X", name, handle);
     return handle;
 }
 
@@ -153,9 +154,9 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
          datatype.  That way it could handle custom datatypes later.
          Or may have to write another for custom datatypes.
 */
-static inline handle_t gethandle(unsigned int type,unsigned int count) {
-    int n,size,mask;
-    dax_tag *this,*next;
+static inline handle_t gethandle(unsigned int type, unsigned int count) {
+    int n, size, mask;
+    dax_tag *this, *next;
     handle_t nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = TYPESIZE(type);
@@ -172,7 +173,7 @@ static inline handle_t gethandle(unsigned int type,unsigned int count) {
                 return nextbit;
             }
         } else {
-            mask=TYPESIZE(type)-1;
+            mask = TYPESIZE(type)-1;
             if((nextbit & mask) != 0x00) { /* If not even number */
                 nextbit |= mask; /* Round up */
                 nextbit ++;

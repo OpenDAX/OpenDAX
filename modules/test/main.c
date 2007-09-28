@@ -26,6 +26,7 @@
 #include <dax/message.h>
 #include <dax/func.h>
 #include <string.h>
+#include <tags.h>
 
 #define TEST 1000
 
@@ -35,58 +36,26 @@ int main(int argc,char *argv[]) {
     u_int16_t indata[TEST],outdata[TEST],maskdata[TEST];
     dax_tag modbus_tag;
     
-    openlog("test",LOG_NDELAY,LOG_DAEMON);
+    openlog("test", LOG_NDELAY, LOG_DAEMON);
     xnotice("Starting module test");
     setverbosity(10);
     dax_mod_register("test");
     
-    n = -1;
-    while(n < 0) {
-        n = dax_tag_get_name("modbus", &modbus_tag);
-        xlog(10,"dax_tag_get_name returned %d",n);
-        if(n < 0) {
-            xlog(10,"OOPS Trying again");
-            sleep(1);
-        }
-    }
-    xlog(10,"Tag handle for modbus is 0x%X",modbus_tag.handle);
+    add_random_tags(500);
     
-    handle = dax_tag_add("test",DAX_UINT,100);
-    printf("Test received handle 0x%X\n",handle);
-    for(n=0;n<16;n++) {
-        toggle = 0;
-        dax_tag_write_bit(handle + n,toggle);
-        //--printf("N = %d : Toggle = %d : Returned %d\n",n,toggle,dax_tag_read_bit(handle + n));
-        toggle = 1;
-        dax_tag_write_bit(handle + n,toggle);
-        //--printf("N = %d : Toggle = %d : Returned %d\n",n,toggle,dax_tag_read_bit(handle + n));
-    }
     
-    while(1) {
-        sleep(5);
-        
-        if(toggle == 0) {
-            toggle = 0x0001;
-        } else {
-            toggle = 0x0000;
-            
-        }
-        dax_tag_write_bit(modbus_tag.handle + 104,toggle);
-        //--printf("Toggle Bit = %d\n",toggle);
-
-        dax_tag_read(modbus_tag.handle,&indata,50);
-        //--for(n=0;n<20;n++) {
-        //--    printf("0x%04X    ",indata[n]);
-        //--    if((n % 5) == 4) printf("\n");
-        //--}
-        //--printf("----------\n");
- 
-        //dax_tag_write_bit(handle + n,toggle);
-        //dax_tag_read_bytes(handle,&indata,4);
-        //printf("Data = 0x%08X\n",*((int *)indata));
-    }
-
+    handle = dax_tag_add("Byte1", DAX_BYTE, 1);
+    handle = dax_tag_add("Dint1", DAX_DINT, 10);
+    handle = dax_tag_add("Byte2", DAX_BYTE, 1);
+    handle = dax_tag_add("Bool1", DAX_BOOL, 1);
+    handle = dax_tag_add("Bool2", DAX_BOOL, 5);
+    handle = dax_tag_add("Bool3", DAX_BOOL, 1);
+    handle = dax_tag_add("Byte3", DAX_BYTE, 1);
+    
+    //handle = dax_tag_add("test",DAX_UINT,100);
+    //printf("Test received handle 0x%X\n",handle);
+    
+    
     dax_mod_unregister();
-    //sleep(3);
     return 0;
 }

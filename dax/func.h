@@ -30,6 +30,9 @@ void *xrealloc(void *, size_t);
 void *xcalloc(size_t, size_t);
 
 /* Error handling and logging functions */
+/* If this is defined the output goes to the system log otherwise it
+   goes to STDOUT and STDERR */
+//#define DAX_LOGGER
 
 void xfatal(const char *,...);
 void xerror(const char *,...);
