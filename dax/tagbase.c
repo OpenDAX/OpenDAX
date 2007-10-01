@@ -44,53 +44,58 @@
  */
 
 dax_tag *__taglist;
-static long int __tagcount=0;
-static long int __taglistsize=0;
+static long int __tagcount = 0;
+static long int __taglistsize = 0;
 
 u_int32_t *__db; /* Primary Point Database */
-static int __databasesize=0;
+static int __databasesize = 0;
 
 /* Non public function declarations */
 static int validate_name(char *);
 static int get_by_name(char *);
 static int checktype(unsigned int);
-static inline handle_t gethandle(unsigned int, unsigned int);
+static inline handle_t getnewhandle(unsigned int, unsigned int);
 static int taglist_grow(void);
 static int database_grow(void);
 
 /* Allocates the symbol table and the database array.  There's no return
    value because failure of this function is fatal */
 void initialize_tagbase(void) {
-    __taglist=(dax_tag *)xmalloc(sizeof(dax_tag)*DAX_TAGLIST_SIZE);
+    __taglist = (dax_tag *)xmalloc(sizeof(dax_tag) * DAX_TAGLIST_SIZE);
     if(!__taglist) {
         xfatal("Unable to allocate the symbol table");
     }
-    __taglistsize=DAX_TAGLIST_SIZE;
+    __taglistsize = DAX_TAGLIST_SIZE;
+    
     /* Allocate the primary database */
-    __db=(u_int32_t *)xmalloc(sizeof(u_int32_t)*DAX_DATABASE_SIZE);
+    __db = (u_int32_t *)xmalloc(sizeof(u_int32_t) * DAX_DATABASE_SIZE);
     if(!__db) {
         xfatal("Unable to allocate the database");
     }
-    __databasesize=DAX_DATABASE_SIZE;
+    __databasesize = DAX_DATABASE_SIZE;
+    xlog(10,"Database size = %d",__databasesize);
     /* Set all the memory to zero */
-    memset(__taglist,0x00,sizeof(dax_tag)*DAX_TAGLIST_SIZE);
-    memset(__db,0x00,sizeof(u_int32_t)*DAX_DATABASE_SIZE);
+    memset(__taglist, 0x00, sizeof(dax_tag) * DAX_TAGLIST_SIZE);
+    memset(__db, 0x00, sizeof(u_int32_t) * DAX_DATABASE_SIZE);
+    
     /* Create the _status tag at handle zero */
-    if(tag_add("_status",DAX_DWORD,1)) {
+    if(tag_add("_status", DAX_DWORD, 1)) {
         xfatal("_status not created properly");
     }
 }
 
 
 /* This adds a tag to the database. */
-handle_t tag_add(char *name,unsigned int type, unsigned int count) {
+handle_t tag_add(char *name, unsigned int type, unsigned int count) {
     int n;
     handle_t handle;
     if(count == 0) return -6;
     if(__tagcount >= __taglistsize) {
-        if(!taglist_grow()) {
+        if(taglist_grow()) {
             xerror("Out of memory for symbol table");
             return -1;
+        } else {
+            xlog(8,"Taglist increased to %d items", __taglistsize);
         }
     }
     if(!checktype(type)) {
@@ -101,40 +106,44 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
         xerror("%s is not a valid tag name");
         return -3;
     }
-    if(get_by_name(name)>=0) {
+    if(get_by_name(name) >= 0) {
         xerror("Duplicate tag name %s", name);
         return -4;
     }
-    /* Get the first available handle for the size of the type */
+ /* Get the first available handle for the size of the type */
     if(__tagcount == 0)   handle = 0;
-    else                  handle = gethandle(type, count);
+    else                  handle = getnewhandle(type, count);
+ /* If handle is less than zero then we couldn't allocate room */   
     if(handle < 0) {
-        xerror("Problem allocating room");
+        /* We already sent an error from gethandle() */
+        /*xerror("Problem growing the database"); */
         return -5;
     }
-    /* The taglist must be sorted by handle for all of this stuff to work */
-    if((handle > __taglist[__tagcount-1].handle) || __tagcount == 0) {
+    
+ /* Okay we've passed all the tests so let's add the tag.
+    The taglist must be sorted by handle for all of this stuff to work */
+    if((handle > __taglist[__tagcount - 1].handle) || __tagcount == 0) {
         n = __tagcount; /* First or last in the list */
     } else {
         for(n = 1; n < __tagcount; n++) {
-            if(handle > __taglist[n-1].handle && handle < __taglist[n].handle) {
+            if(handle > __taglist[n - 1].handle && handle < __taglist[n].handle) {
                 /* Make a hole in the array */
-                memmove(&__taglist[n+1], &__taglist[n],
-                       (__taglistsize-n-2) * sizeof(dax_tag));
+                memmove(&__taglist[n + 1], &__taglist[n],
+                       (__taglistsize - n - 2) * sizeof(dax_tag));
                 break;
             }
         }
     }
-    /* Assign everything to the new tag, copy the string and git */
-    __taglist[n].handle=handle;
-    __taglist[n].count=count;
-    __taglist[n].type=type;
+ /* Assign everything to the new tag, copy the string and git */
+    __taglist[n].handle = handle;
+    __taglist[n].count = count;
+    __taglist[n].type = type;
     if(!strncpy(__taglist[n].name, name, DAX_TAGNAME_SIZE)) {
         xerror("Unable to copy tagname %s");
         return -6;
     }
     __tagcount++;
-    xlog(10,"Tag %s added at handle 0x%X", name, handle);
+    xlog(10,"tag_add() - Tag %s added at handle 0x%X", name, handle);
     return handle;
 }
 
@@ -150,33 +159,33 @@ handle_t tag_add(char *name,unsigned int type, unsigned int count) {
 
    This function assumes that the taglist is sorted by handle lowest first
 
-   TODO: May need to rewrite this thing to accept a size instead of a
-         datatype.  That way it could handle custom datatypes later.
-         Or may have to write another for custom datatypes.
+   TODO: Will have to be rewritten for custom datatypes.  The size of a custom
+         datatype will not be as simple as the TYPESIZE() macro.
 */
-static inline handle_t gethandle(unsigned int type, unsigned int count) {
+static inline handle_t getnewhandle(unsigned int type, unsigned int count) {
     int n, size, mask;
     dax_tag *this, *next;
     handle_t nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = TYPESIZE(type);
     for(n = 0; n < __tagcount - 1; n++) {
-        this = &__taglist[n]; next = &__taglist[n+1]; /* just to make it easier */
+        this = &__taglist[n]; next = &__taglist[n + 1]; /* just to make it easier */
         /* this is the handle of the bit following this bits allocation */
-        nextbit = this->handle + (long)(this->count * (0x01 << (this->type & 0x0F)));
-        /* If it's not a single bit type then we need to even up nextbit
-            We do this by first calculating a mask to see if we are already
-            even and if we are then return.  If not then set the mask bits into
-            nextbit and then increment by one to get the even number */
-        if((type & 0x0F) == DAX_1BIT) {
+        nextbit = this->handle + (long)(this->count * TYPESIZE(this->type));
+
+     /* If it's not a single bit type then we need to even up nextbit
+        We do this by first calculating a mask to see if we are already
+        even and if we are then return.  If not then set the mask bits into
+        nextbit and then increment by one to get the even number */
+        if((type & 0x0F) == DAX_1BIT) { /* bits can go anywhere */
             if((next->handle - nextbit) >= (long)(size * count)) {
                 return nextbit;
             }
-        } else {
-            mask = TYPESIZE(type)-1;
+        } else { /* Other types need to be aligned with memory to make other function easier */
+            mask = TYPESIZE(type) - 1; /* Lower bits will be ones */
             if((nextbit & mask) != 0x00) { /* If not even number */
-                nextbit |= mask; /* Round up */
-                nextbit ++;
+                nextbit |= mask; /* Make the lower bits ones */
+                nextbit ++; /* then add one to get to the even number */
             }
             /* Now see if we have enough room */
             if((next->handle - nextbit) >= (long)(size * count)) {
@@ -184,27 +193,27 @@ static inline handle_t gethandle(unsigned int type, unsigned int count) {
             }
         }
     }
-    /* We are at the end of the loops so there are no gaps large enough for our
-        new point.  We need to make sure that there is enough room left the 
-        database, grow it if necessary, and assign the handle to the end */
+ /* We are at the end of the loops so there are no gaps large enough for our
+    new point.  We need to make sure that there is enough room left the 
+    database, grow it if necessary, and assign the handle to the end */
 
-    this = &__taglist[__tagcount-1]; /* Get the last tag in the list */
+    this = &__taglist[__tagcount - 1]; /* Get the last tag in the list */
     nextbit = this->handle + (this->count * TYPESIZE(this->type));
     
     if((type & 0x0F) != DAX_1BIT) {/* If it's not a single bit */
         /* ...then even it up */
-        mask=(0x0001 << (type & 0x0f))-1;
-        if((nextbit & mask) == 0x00) {
-            return nextbit;
+        mask = TYPESIZE(type) - 1;
+        if((nextbit & mask) != 0x00) {
+            nextbit |= mask;
+            nextbit ++;
         }
-        nextbit |= mask;
-        nextbit ++;
     }
-    
-    if(nextbit > (__databasesize * 32)) { /* We need more room */
-        if(!database_grow()) { /* Make the database bigger */
-            xerror("Unable to allocate more database memory");
+    if((nextbit + (TYPESIZE(type) * count)) > (__databasesize * 32)) { /* We need more room */
+        if(database_grow()) { /* Make the database bigger */
+            xerror("gethandle() - Unable to allocate more database memory");
             return -1;
+        } else {
+            xlog(8,"Increasing size of database to %d wordss", __databasesize);
         }
     }
     return nextbit;
@@ -315,14 +324,34 @@ static int checktype(unsigned int type) {
 
 /* Grow the tagname database when necessary */
 static int taglist_grow(void) {
-    xlog(8,"Growing the size of the taglist");
-    return 0; /* Just return error for now */
+    dax_tag *new_list;
+    size_t size;
+    size = (__taglistsize + DAX_TAGLIST_INC) * sizeof(dax_tag);
+    new_list = xrealloc(__taglist, size);
+    if( new_list != NULL ) {
+        memset(&__taglist[__taglistsize], 0x00,  DAX_TAGLIST_INC * sizeof(dax_tag));
+        __taglist = new_list;
+        __taglistsize += DAX_TAGLIST_INC;
+        return 0;
+    } else {
+        return -1;
+    }
+    
+    return 0; 
 }
 
 /* Grow the database when necessary */
 static int database_grow(void) {
-    xlog(8,"Growing the size of the database");
-    return 0; /* Just return error for now */
+    u_int32_t *new_db;
+    new_db = xrealloc(__db, (__databasesize + DAX_DATABASE_INC) * sizeof(u_int32_t));
+    if( new_db != NULL) {
+        memset(&__db[__databasesize], 0x00, DAX_DATABASE_INC * sizeof(u_int32_t));
+        __db = new_db;
+        __databasesize += DAX_DATABASE_INC;
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 /* Get's a handle from a tagname */

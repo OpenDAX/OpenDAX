@@ -48,7 +48,7 @@ void *xrealloc(void *ptr, size_t num) {
     if(!ptr) {
         new = xmalloc(num);
     } else {
-        new = realloc(ptr,num);
+        new = realloc(ptr, num);
     }
     return new;
 }
@@ -80,8 +80,8 @@ void xerror(const char *format,...) {
 #ifdef DAX_LOGGER
     vsyslog(LOG_ERR, format, val);
 #else
-    vfprintf(stderr, format, val);
-    fprintf(stderr, "\n");
+    vfprintf(stdout, format, val);
+    fprintf(stdout, "\n");
 #endif
     va_end(val);
 }

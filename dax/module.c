@@ -363,7 +363,7 @@ void module_unregister(pid_t pid) {
     }
 }
 
-
+/* Returns a module handle to the module with pid */
 mod_handle_t module_get_pid(pid_t pid) {
     dax_module *mod;
     mod = _get_module_pid(pid);

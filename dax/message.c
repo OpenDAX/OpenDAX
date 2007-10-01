@@ -43,7 +43,6 @@ int msg_tag_write(dax_message *msg);
 int msg_tag_mask_write(dax_message *msg);
 int msg_mod_get(dax_message *msg);
 
-void _send_handle(handle_t handle,pid_t pid);
 
 /* Generic message sending function.  If size is zero then it is assumed that an error
    is being sent to the module.  In that case payload should point to a single int that
@@ -52,8 +51,7 @@ static int _message_send(long int module, int command, void *payload, size_t siz
     dax_message outmsg;
     size_t newsize;
     int result;
-    /* TODO: Need to handle the case where we send an error.  That is when size is
-        zero and we send one negative integer to indicate the error. */
+    
     outmsg.module = module;
     outmsg.command = command;
     outmsg.pid = getpid();
@@ -65,11 +63,16 @@ static int _message_send(long int module, int command, void *payload, size_t siz
         memcpy(outmsg.data, payload, sizeof(int));
         newsize = sizeof(int);
     }
-    result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + newsize, 0);
-    /* TODO: need to handle the case where the system call returns because of a signal.
-    This msgsnd will block if the queue is full and a signal will bail us out.
-    This may be good this may not but it'll need to be handled here somehow.
-    also need to handle errors returned here*/
+    /* Only send messages to modules that we know about */
+    if(module_get_pid(module)) {
+        /* TODO: need to handle the case where the system call returns because of a signal.
+        This msgsnd will block if the queue is full and a signal will bail us out.
+        This may be good this may not but it'll need to be handled here somehow.
+        also need to handle errors returned here*/
+        result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + newsize, 0);
+    } else {
+        result = -1;
+    }
     return result;
 }
 
@@ -106,7 +109,7 @@ void msg_destroy_queue(void) {
     int result=0;
     
     if(__msqid) {
-        result=msgctl(__msqid,IPC_RMID,NULL);
+        result = msgctl(__msqid,IPC_RMID,NULL);
     }
     if(result) {
         xerror("Unable to delete message queue %d",__msqid);
@@ -159,8 +162,13 @@ int msg_tag_add(dax_message *msg) {
     xlog(10,"Tag Add Message from %d", msg->pid);
     memcpy(tag.name, msg->data, sizeof(dax_tag) - sizeof(handle_t));
     handle = tag_add(tag.name, tag.type, tag.count);
+    /* TODO: Gotta handle the error condition here or the module locks up waiting on the message */
+    
     if(handle >= 0) {
-        _send_handle(handle, msg->pid);
+        _message_send(msg->pid, MSG_TAG_ADD, &handle, sizeof(handle_t));
+    } else {
+        _message_send(msg->pid, MSG_TAG_ADD, &handle, 0);
+        return -1; /* do I need this????? */
     }
     return 0;
 }
@@ -274,18 +282,3 @@ int msg_mod_get(dax_message *msg) {
     return 0;
 }
 
-/* TODO:  Probably should write a generic message handling function or two */
-void _send_handle(handle_t handle,pid_t pid) {
-    dax_message msg;
-    int result;
-    if(module_get_pid(pid)) {
-        msg.module=pid;
-        msg.command=MSG_TAG_ADD;
-        msg.pid=0; /* Doesn't really matter what PID we send here */
-        msg.size=sizeof(handle_t);
-        *((handle_t *)msg.data)=handle; /* Type cast copy thing */
-        result=msgsnd(__msqid,(struct msgbuff *)(&msg),MSG_HDR_SIZE + sizeof(handle_t),0);
-        if(result)
-            xerror("_send_handle() problem sending message");
-    }
-}
