@@ -22,7 +22,7 @@
 
 /* Returns a random datatype to the caller */
 int get_random_type(void) {
-    switch (rand()%15) {
+    switch (rand()%11) {
     case 0:
         return DAX_BOOL;        
     case 1:
@@ -80,4 +80,58 @@ void add_random_tags(int tagcount) {
           //  xlog(10, "%s added at handle 0x%8X", tagname, result);
         }
     }
+}
+
+int checktagbase(void) {
+    dax_tag last_tag, this_tag;
+    int n = 0;
+    long int lastbit;
+    
+    if(n == 0) {
+        if( dax_tag_get_index(n++, &last_tag) ) {
+            xlog(10,"CheckTagBase() - Unable to get first tag");
+            return -1;
+        }
+    }
+    
+    while( !dax_tag_get_index(n, &this_tag) ) {
+        /* Check the sort order */
+        if(this_tag.handle <= last_tag.handle) {
+            xlog(10,"CheckTagBase() - Tag array not properly sorted at index %d",n);
+            return -2;
+        }
+        /* check for overlap - Don't use TYPESIZE() macro.  We're testing it too */
+        lastbit = last_tag.handle + ( 0x0001 << (last_tag.type & 0x0F)) * last_tag.count;
+        if( lastbit > this_tag.handle) {
+            xlog(10,"CheckTagBase() - Overlap in tag array at index %d",n);
+            return -3;
+        }
+        /* TODO: calculate fragmentation, datasize etc. */
+        memcpy(&last_tag, &this_tag, sizeof(dax_tag)); /* copy old to new */
+        n++;
+    }
+    return 0;
+}
+
+
+int tagtopass(char *name) {
+    handle_t handle;
+    
+    handle = dax_tag_add(name, DAX_BOOL, 1);
+    if(handle < 0) {
+        printf("Test Failed - %s was not allowed", name);
+        return -1;
+    }
+    return 0;
+}
+
+int tagtofail(char *name) {
+    handle_t handle;
+    
+    handle = dax_tag_add(name, DAX_BOOL, 1);
+    if(handle >= 0) {
+        xlog(1,"Test Failed - %s was allowed", name);
+        return -1;
+    }
+    return 0;
 }

@@ -48,7 +48,7 @@ static long int __tagcount = 0;
 static long int __taglistsize = 0;
 
 u_int32_t *__db; /* Primary Point Database */
-static int __databasesize = 0;
+static long int __databasesize = 0;
 
 /* Non public function declarations */
 static int validate_name(char *);
@@ -90,6 +90,7 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
     int n;
     handle_t handle;
     if(count == 0) return -6;
+
     if(__tagcount >= __taglistsize) {
         if(taglist_grow()) {
             xerror("Out of memory for symbol table");
@@ -98,12 +99,13 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
             xlog(8,"Taglist increased to %d items", __taglistsize);
         }
     }
+    
     if(!checktype(type)) {
         xerror("Unknown datatype %x", type);
         return -2; /* is the datatype valid */
     }
     if(validate_name(name)) {
-        xerror("%s is not a valid tag name");
+        xerror("%s is not a valid tag name", name);
         return -3;
     }
     if(get_by_name(name) >= 0) {
@@ -120,6 +122,7 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
         return -5;
     }
     
+    
  /* Okay we've passed all the tests so let's add the tag.
     The taglist must be sorted by handle for all of this stuff to work */
     if((handle > __taglist[__tagcount - 1].handle) || __tagcount == 0) {
@@ -129,7 +132,7 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
             if(handle > __taglist[n - 1].handle && handle < __taglist[n].handle) {
                 /* Make a hole in the array */
                 memmove(&__taglist[n + 1], &__taglist[n],
-                       (__taglistsize - n - 2) * sizeof(dax_tag));
+                       (__taglistsize - n - 1) * sizeof(dax_tag));
                 break;
             }
         }
@@ -229,6 +232,20 @@ int tag_del(char *name) {
 /* Determine whether or not the tag name is okay */
 /* TODO: Make this function do something */
 static int validate_name(char *name) {
+    int n;
+    if(strlen(name) > DAX_TAGNAME_SIZE) {
+        return -1;
+    }
+    /* First character has to be a letter or '_' */
+    if( !isalpha(name[0]) && name[0] != '_' ) {
+        return -1;
+    }
+    /* The rest of the name can be letters, numbers or '_' */
+    for(n = 1; n < strlen(name) ;n++) {
+        if( !isalpha(name[n]) && (name[n] != '_') &&  !isdigit(name[n]) ) {
+            return -1;
+        }
+    }
     return 0; /* Return good for now */
 }
 
@@ -325,19 +342,16 @@ static int checktype(unsigned int type) {
 /* Grow the tagname database when necessary */
 static int taglist_grow(void) {
     dax_tag *new_list;
-    size_t size;
-    size = (__taglistsize + DAX_TAGLIST_INC) * sizeof(dax_tag);
-    new_list = xrealloc(__taglist, size);
+    new_list = xrealloc(__taglist, (__taglistsize + DAX_TAGLIST_INC) * sizeof(dax_tag));
     if( new_list != NULL ) {
-        memset(&__taglist[__taglistsize], 0x00,  DAX_TAGLIST_INC * sizeof(dax_tag));
+        //BUG: There is a bug in this somewhere
+        //memset(&(__taglist[__taglistsize]), 0x00,  DAX_TAGLIST_INC * sizeof(dax_tag));
         __taglist = new_list;
         __taglistsize += DAX_TAGLIST_INC;
         return 0;
     } else {
         return -1;
     }
-    
-    return 0; 
 }
 
 /* Grow the database when necessary */
@@ -345,7 +359,7 @@ static int database_grow(void) {
     u_int32_t *new_db;
     new_db = xrealloc(__db, (__databasesize + DAX_DATABASE_INC) * sizeof(u_int32_t));
     if( new_db != NULL) {
-        memset(&__db[__databasesize], 0x00, DAX_DATABASE_INC * sizeof(u_int32_t));
+        //memset(&__db[__databasesize], 0x00, DAX_DATABASE_INC * sizeof(u_int32_t));
         __db = new_db;
         __databasesize += DAX_DATABASE_INC;
         return 0;

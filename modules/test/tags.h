@@ -19,10 +19,14 @@
 
 #include <common.h>
 #include <opendax.h>
+#include <string.h>
 
 #ifndef __TAGS_H
 #define __TAGS_H
 
 void add_random_tags(int count);
+int checktagbase(void);
+int tagtopass(char *name);
+int tagtofail(char *name);
 
 #endif /* !__TAGS_H */

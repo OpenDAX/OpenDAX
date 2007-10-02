@@ -71,9 +71,9 @@ int main(int argc,char *argv[]) {
 void list(char *instr) {
     dax_tag temp_tag;
     int n = 0;
-    while( !dax_tag_get_index(n++, &temp_tag) ) {
+    while( !dax_tag_get_index(n, &temp_tag) ) {
         /* Print the name */
-        printf("%s \t %s", temp_tag.name, dax_get_type(temp_tag.type));
+        printf("[%d] %s \t %s",n, temp_tag.name, dax_get_type(temp_tag.type));
         /* Output the array size of it's greater than 1 */
         if(temp_tag.count > 1) {
             printf("[%d]", temp_tag.count);
@@ -81,6 +81,7 @@ void list(char *instr) {
         /* Output the handle and the carriage return */
 //        printf(" \t 0x%08X\n", temp_tag.handle);
         printf(" \t %d\n", temp_tag.handle);
+        n++;
     }
 }
 

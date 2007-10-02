@@ -39,12 +39,26 @@ int main(int argc,char *argv[]) {
     
     openlog("test", LOG_NDELAY, LOG_DAEMON);
     xnotice("Starting module test");
-    setverbosity(10);
+    setverbosity(1);
     dax_mod_register("test");
     
-    add_random_tags(2200);
+    //add_random_tags(72700);
+    
+    /* These tags should fail */
+    if(tagtofail("1Tag")) return -1;
+    if(tagtofail("-Tag")) return -1;
+    if(tagtofail("Tag-name")) return -1;
+    if(tagtofail("Tag&name")) return -1;
+    /* These tags should pass */
+    if(tagtopass("_Tag")) return -1;
+    if(tagtopass("Tag1")) return -1;
+    if(tagtopass("tAg_name")) return -1;
+    if(tagtopass("t1Ag_name")) return -1;
+    
+    
+    
     /*
-    for(n = 0; n<1000; n++) {
+    for(n = 0; n<126; n++) {
         if(n % 5) {
             sprintf(tagname,"BOOL%d",n);
             handle = dax_tag_add(tagname,DAX_BOOL,1);
@@ -53,8 +67,7 @@ int main(int argc,char *argv[]) {
             handle = dax_tag_add(tagname,DAX_BYTE,1);
         }
     }
-    */
-    /*
+    
     handle = dax_tag_add("Byte1", DAX_BYTE, 1);
     handle = dax_tag_add("Dint2", DAX_DINT, 10);
     handle = dax_tag_add("Byte3", DAX_BYTE, 1);
@@ -82,7 +95,11 @@ int main(int argc,char *argv[]) {
     */
     //handle = dax_tag_add("test",DAX_UINT,100);
     //printf("Test received handle 0x%X\n",handle);
-    
+    if( checktagbase() ) {
+        xlog(1,"Tagbase failed test");
+    } else {
+        xlog(1,"Tagbase passed test");
+    }
     
     dax_mod_unregister();
     return 0;

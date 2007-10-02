@@ -28,13 +28,13 @@
 
 /* This is the initial size of the tagname list array */
 #ifndef DAX_TAGLIST_SIZE
- #define DAX_TAGLIST_SIZE 2048
+ #define DAX_TAGLIST_SIZE 1024
 #endif
 
 /* This is the size that the tagname list array will grow when
    the size is exceeded */
 #ifndef DAX_TAGLIST_INC
- #define DAX_TAGLIST_INC 2048
+ #define DAX_TAGLIST_INC 1024
 #endif
 
 /* The initial size of the database */
