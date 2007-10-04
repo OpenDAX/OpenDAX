@@ -1,2 +1,2 @@
-lib_LIBRARIES = libdax.a
-libdax_a_SOURCES = libdax.h libmsg.c libdata.c libfunc.c
+lib_LTLIBRARIES = libdax.la
+libdax_la_SOURCES = libdax.h libmsg.c libdata.c libfunc.c
