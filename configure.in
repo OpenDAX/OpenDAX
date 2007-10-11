@@ -33,10 +33,21 @@ AC_ARG_ENABLE([test],
     esac],[test=true]) 
 AM_CONDITIONAL([TEST], [test x$test = xtrue])
 
-
 # Checks for libraries.
-AC_CHECK_LIB([pthread], [pthread_create])
-AC_CHECK_LIB([readline], [readline])
+# Not all libraries go in all modules so we save the old ones here
+# so that we can overwrite them later.
+OLD_LIBS=$LIBS
+
+#These lines will check for the library and add the right stuff to config.h
+AC_CHECK_LIB([pthread], [pthread_create], ,[got_pthread=false])
+AC_CHECK_LIB([readline], [readline], ,[got_readline=false])
+
+#Replace what AC_CHECK_LIB does to the LIBS variable
+LIBS=$OLD_LIBS
+
+#Some Automake conditionals that we can use later
+AM_CONDITIONAL([HAVE_PTHREAD], test !$got_pthread=false)
+AM_CONDITIONAL([HAVE_READLINE], test !$got_readline=false)
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -56,12 +67,14 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtoul readline])
+AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtoul])
 
 CFLAGS="-Wall -g -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
 
 AC_SUBST(ac_aux_dir)
 
+#I'll use this once I start on the hmi module.  It's different enough that it justifies it's own conigure.in
+#AC_CONFIG_SUBDIRS([modules/hmi])
 
 AC_CONFIG_FILES([Makefile
                  dax/Makefile

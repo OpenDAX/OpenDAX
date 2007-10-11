@@ -1,5 +1,3 @@
-NAME NAME NAME NAME NAME NAME NAME!!!! Come up with a name
-
 make dist isn't installing the header files at the moment.
 
 the distribution needs to be tested to see if it will configure, compile and install properly.
