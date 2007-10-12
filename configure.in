@@ -39,28 +39,33 @@ AM_CONDITIONAL([TEST], [test x$test = xtrue])
 OLD_LIBS=$LIBS
 
 #These lines will check for the library and add the right stuff to config.h
-AC_CHECK_LIB([pthread], [pthread_create], ,[got_pthread=false])
-AC_CHECK_LIB([readline], [readline], ,[got_readline=false])
-AC_CHECK_LIB([lua],[luaL_newstate], [], [got_lua=false])
-AC_CHECK_LIB([lua50],[luaL_newstate], [], [got_lua50=false])
-AC_CHECK_LIB([lua5.1],[luaL_newstate], [], [got_lua51=false])
-#AC_CHECK_LIB([lualib],[luaopen_math], [], [got_lualib=false]) 
-#AC_CHECK_LIB([lualib50],[luaopen_math], [], [got_lualib50=false]) 
-#AC_CHECK_LIB([lualib5.1],[luaopen_math], [], [got_lualib51=false]) 
+AC_CHECK_LIB([pthread], [pthread_create], [got_pthread=true])
+AC_CHECK_LIB([readline], [readline], [got_readline=true])
+AC_CHECK_LIB([lua],[luaL_newstate], [got_lua=true], [got_lua=false])
+AC_CHECK_LIB([lua50],[luaL_newstate], [got_lua50=true], [got_lua50=false])
+AC_CHECK_LIB([lua5.1],[luaL_newstate], [got_lua51=true], [got_lua51=false])
 
 #Replace what AC_CHECK_LIB does to the LIBS variable
 LIBS=$OLD_LIBS
 
 #Some Automake conditionals that we can use later
-AM_CONDITIONAL([HAVE_PTHREAD], test $got_pthread=true)
-AM_CONDITIONAL([HAVE_READLINE], test $got_readline=true)
-AM_CONDITIONAL([HAVE_LUA], test $got_lua=true)
-AM_CONDITIONAL([HAVE_LUA50], test $got_lua50=true)
-AM_CONDITIONAL([HAVE_LUA51], test $got_lua51=true)
-#AM_CONDITIONAL([HAVE_LUALIB], test $got_lualib=true)
-#AM_CONDITIONAL([HAVE_LUALIB50], test $got_lualib50=true)
-#AM_CONDITIONAL([HAVE_LUALIB51], test $got_lualib51=true)
+AM_CONDITIONAL([HAVE_PTHREAD], test $got_pthread = true)
+AM_CONDITIONAL([HAVE_READLINE], test $got_readline = true)
+AM_CONDITIONAL([HAVE_LUA], test $got_lua = true)
+AM_CONDITIONAL([HAVE_LUA50], test $got_lua50 = true)
+AM_CONDITIONAL([HAVE_LUA51], test $got_lua51 = true)
 
+if test $got_lua = true ; then
+  LUALIB='-llua'
+elif test $got_lua50 = true ; then
+  LUALIB='-llua50'
+elif test $got_lua51 = true ; then
+  LUALIB='-llua5.1'
+else
+  LUALIB=
+fi
+
+AC_SUBST(LUALIB)
 
 # Checks for header files.
 AC_HEADER_STDC

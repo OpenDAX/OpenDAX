@@ -27,21 +27,6 @@
 /* Define to 1 if you have the <lauxlib.h> header file. */
 #undef HAVE_LAUXLIB_H
 
-/* Define to 1 if you have the `lua' library (-llua). */
-#undef HAVE_LIBLUA
-
-/* Define to 1 if you have the `lua50' library (-llua50). */
-#undef HAVE_LIBLUA50
-
-/* Define to 1 if you have the `lua5.1' library (-llua5.1). */
-#undef HAVE_LIBLUA5_1
-
-/* Define to 1 if you have the `pthread' library (-lpthread). */
-#undef HAVE_LIBPTHREAD
-
-/* Define to 1 if you have the `readline' library (-lreadline). */
-#undef HAVE_LIBREADLINE
-
 /* Define to 1 if you have the <lua50/lauxlib.h> header file. */
 #undef HAVE_LUA50_LAUXLIB_H
 
@@ -221,7 +206,7 @@
 /* Define to rpl_realloc if the replacement function should be used. */
 #undef realloc
 
-/* Define to `unsigned' if <sys/types.h> does not define. */
+/* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t
 
 /* Define as `fork' if `vfork' does not work. */

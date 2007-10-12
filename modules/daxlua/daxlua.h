@@ -2,7 +2,7 @@
 
 #if defined(HAVE_LUA50_LUA_H)
   #include <lua50/lua.h>
-#if defined(HAVE_LUA5_1_LUA_H)
+#elif defined(HAVE_LUA5_1_LUA_H)
   #include <lua5.1/lua.h>
 #elif defined(HAVE_LUA_LUA_H)
   #include <lua/lua.h>
@@ -14,7 +14,7 @@
 
 #if defined(HAVE_LUA50_LAUXLIB_H)
   #include <lua50/lauxlib.h>
-#if defined(HAVE_LUA5_1_LAUXLIB_H)
+#elif defined(HAVE_LUA5_1_LAUXLIB_H)
   #include <lua5.1/lauxlib.h>
 #elif defined(HAVE_LUA_LAUXLIB_H)
   #include <lua/lauxlib.h>
@@ -26,7 +26,7 @@
 
 #if defined(HAVE_LUA50_LUALIB_H)
   #include <lua50/lualib.h>
-#if defined(HAVE_LUA5_1_LUALIB_H)
+#elif defined(HAVE_LUA5_1_LUALIB_H)
   #include <lua5.1/lualib.h>
 #elif defined(HAVE_LUA_LUALIB_H)
   #include <lua/lualib.h>

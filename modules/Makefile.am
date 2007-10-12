@@ -4,7 +4,7 @@ else
   M_MODBUS = 
 endif
 
-
+# We only build daxlua if we have the lua library somewhere (duh)
 if HAVE_LUA
   M_DAXLUA = daxlua
 endif
