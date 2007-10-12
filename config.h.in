@@ -24,11 +24,56 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the <lauxlib.h> header file. */
+#undef HAVE_LAUXLIB_H
+
+/* Define to 1 if you have the `lua' library (-llua). */
+#undef HAVE_LIBLUA
+
+/* Define to 1 if you have the `lua50' library (-llua50). */
+#undef HAVE_LIBLUA50
+
+/* Define to 1 if you have the `lua5.1' library (-llua5.1). */
+#undef HAVE_LIBLUA5_1
+
 /* Define to 1 if you have the `pthread' library (-lpthread). */
 #undef HAVE_LIBPTHREAD
 
 /* Define to 1 if you have the `readline' library (-lreadline). */
 #undef HAVE_LIBREADLINE
+
+/* Define to 1 if you have the <lua50/lauxlib.h> header file. */
+#undef HAVE_LUA50_LAUXLIB_H
+
+/* Define to 1 if you have the <lua50/lualib.h> header file. */
+#undef HAVE_LUA50_LUALIB_H
+
+/* Define to 1 if you have the <lua50/lua.h> header file. */
+#undef HAVE_LUA50_LUA_H
+
+/* Define to 1 if you have the <lua5.1/lauxlib.h> header file. */
+#undef HAVE_LUA5_1_LAUXLIB_H
+
+/* Define to 1 if you have the <lua5.1/lualib.h> header file. */
+#undef HAVE_LUA5_1_LUALIB_H
+
+/* Define to 1 if you have the <lua5.1/lua.h> header file. */
+#undef HAVE_LUA5_1_LUA_H
+
+/* Define to 1 if you have the <lualib.h> header file. */
+#undef HAVE_LUALIB_H
+
+/* Define to 1 if you have the <lua.h> header file. */
+#undef HAVE_LUA_H
+
+/* Define to 1 if you have the <lua/lauxlib.h> header file. */
+#undef HAVE_LUA_LAUXLIB_H
+
+/* Define to 1 if you have the <lua/lualib.h> header file. */
+#undef HAVE_LUA_LUALIB_H
+
+/* Define to 1 if you have the <lua/lua.h> header file. */
+#undef HAVE_LUA_LUA_H
 
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
    to 0 otherwise. */

@@ -4,8 +4,32 @@ else
   M_MODBUS = 
 endif
 
-SUBDIRS = $(M_MODBUS) daxc test
 
+if HAVE_LUA
+  M_DAXLUA = daxlua
+endif
+
+if HAVE_LUA50
+  M_DAXLUA = daxlua
+endif
+
+if HAVE_LUA51
+  M_DAXLUA = daxlua
+endif
+
+#if HAVE_LUALIB
+#  M_DAXLUA = daxlua
+#endif
+
+#if HAVE_LUALIB50
+#  M_DAXLUA = daxlua
+#endif
+
+#if HAVE_LUALIB51
+#  M_DAXLUA = daxlua
+#endif
+
+SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc test 
 #AUX_DIST = $(ac_aux_dir)/install-sh
 
 #dist-hook:

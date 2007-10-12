@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * This file contains the messaging code for the library
+ * This file contains libdax functions that need to send messages to the queue
  */
  
 #include <libdax.h>
@@ -37,7 +37,6 @@ static int _message_send(long int module, int command, void *payload, size_t siz
     outmsg.size = size;
     memcpy(outmsg.data, payload, size);
     result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
-    //result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
     /* TODO: need to handle the case where the system call returns because of a signal.
         This msgsnd will block if the queue is full and a signal will bail us out.
         This may be good this may not but it'll need to be handled here somehow.
@@ -182,11 +181,7 @@ int dax_tag_get_index(int index, dax_tag *tag) {
     }
     result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
     if(result == ERR_ARG) return ERR_ARG;
-    //if(result) {
-    //    dax_error("Problem receiving message MSG_TAG_GET");
-    //}
     return 0;
-    //return 1;
 }
 
 /* The following three functions are the core of the data handling

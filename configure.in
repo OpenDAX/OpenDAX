@@ -8,7 +8,7 @@ PACKAGE=opendax
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 #AC_DEFINE_UNQUOTED(SYSCONFDIR,"${sysconfdir}")
-#AC_DEFINE_UNQUOTED(ETC_DIR,"$SYSCONFDIR/$PACKAGE","ETC_DIR")
+#AC_DEFINE_UNQUOTED([ETC_DIR],["${sysconfdir}/$PACKAGE"],"ETC_DIR")
 
 AC_PROG_CC
 #AC_PROG_RANLIB
@@ -41,18 +41,36 @@ OLD_LIBS=$LIBS
 #These lines will check for the library and add the right stuff to config.h
 AC_CHECK_LIB([pthread], [pthread_create], ,[got_pthread=false])
 AC_CHECK_LIB([readline], [readline], ,[got_readline=false])
+AC_CHECK_LIB([lua],[luaL_newstate], [], [got_lua=false])
+AC_CHECK_LIB([lua50],[luaL_newstate], [], [got_lua50=false])
+AC_CHECK_LIB([lua5.1],[luaL_newstate], [], [got_lua51=false])
+#AC_CHECK_LIB([lualib],[luaopen_math], [], [got_lualib=false]) 
+#AC_CHECK_LIB([lualib50],[luaopen_math], [], [got_lualib50=false]) 
+#AC_CHECK_LIB([lualib5.1],[luaopen_math], [], [got_lualib51=false]) 
 
 #Replace what AC_CHECK_LIB does to the LIBS variable
 LIBS=$OLD_LIBS
 
 #Some Automake conditionals that we can use later
-AM_CONDITIONAL([HAVE_PTHREAD], test !$got_pthread=false)
-AM_CONDITIONAL([HAVE_READLINE], test !$got_readline=false)
+AM_CONDITIONAL([HAVE_PTHREAD], test $got_pthread=true)
+AM_CONDITIONAL([HAVE_READLINE], test $got_readline=true)
+AM_CONDITIONAL([HAVE_LUA], test $got_lua=true)
+AM_CONDITIONAL([HAVE_LUA50], test $got_lua50=true)
+AM_CONDITIONAL([HAVE_LUA51], test $got_lua51=true)
+#AM_CONDITIONAL([HAVE_LUALIB], test $got_lualib=true)
+#AM_CONDITIONAL([HAVE_LUALIB50], test $got_lualib50=true)
+#AM_CONDITIONAL([HAVE_LUALIB51], test $got_lualib51=true)
+
 
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h])
+
+AC_CHECK_HEADERS([lua50/lua.h lua50/lauxlib.h lua50/lualib.h])
+AC_CHECK_HEADERS([lua5.1/lua.h lua5.1/lauxlib.h lua5.1/lualib.h])
+AC_CHECK_HEADERS([lua/lua.h lua/lauxlib.h lua/lualib.h])
+AC_CHECK_HEADERS([lua.h lauxlib.h lualib.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -82,5 +100,6 @@ AC_CONFIG_FILES([Makefile
                  modules/Makefile
                  modules/modbus/Makefile
                  modules/daxc/Makefile
+                 modules/daxlua/Makefile
                  modules/test/Makefile])
 AC_OUTPUT
