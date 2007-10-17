@@ -30,9 +30,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sys/types.h>
-
-#include <dax/func.h>
+#ifdef HAVE_SYS_TYPES_H
+ #include <sys/types.h>
+#endif
 
 /* Global definitions. These can be overriden with a -D arguments
  * in the Makefile */

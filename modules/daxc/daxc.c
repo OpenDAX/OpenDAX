@@ -20,6 +20,7 @@
 
 #include <common.h>
 #include <opendax.h>
+#include "func.h"
 #include <signal.h>
 #include <string.h>
 #include <readline/readline.h>
@@ -71,7 +72,7 @@ int main(int argc,char *argv[]) {
 void list(char *instr) {
     dax_tag temp_tag;
     int n = 0;
-    while( !dax_tag_get_index(n, &temp_tag) ) {
+    while( !dax_tag_byindex(n, &temp_tag) ) {
         /* Print the name */
         printf("[%d] %s \t %s",n, temp_tag.name, dax_get_type(temp_tag.type));
         /* Output the array size of it's greater than 1 */

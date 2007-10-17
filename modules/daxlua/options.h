@@ -16,22 +16,12 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * This file contains the global header stuff for the library
+ * Configuration header code file for the Lua script interpreter
  */
 
-#ifndef __LIBDAX_H
-#define __LIBDAX_H  
+#ifndef __OPTIONS_H
+#define __OPTIONS_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <common.h>
-#include <opendax.h>
+int configure(int argc, char *argv[]);
 
-//int _message_send(long int module,int command,void *payload, size_t size);
-//int _message_recv(int command, void *payload, size_t *size);
-
-void dax_debug(int level, const char *format, ...);
-void dax_error(const char *format, ...);
-
-
-#endif /* !__LIBDAX_H */
+#endif /* !__OPTIONS_H */

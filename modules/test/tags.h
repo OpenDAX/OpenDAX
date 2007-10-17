@@ -19,14 +19,17 @@
 
 #include <common.h>
 #include <opendax.h>
+#include <dax/func.h>
 #include <string.h>
 
 #ifndef __TAGS_H
 #define __TAGS_H
 
 void add_random_tags(int count);
-int checktagbase(void);
-int tagtopass(char *name);
-int tagtofail(char *name);
+int check_tagbase(void);
+int check_tag_addition(void);
+int check_tag_retrieve(void);
+//--int tagtopass(char *name);
+//--int tagtofail(char *name);
 
 #endif /* !__TAGS_H */

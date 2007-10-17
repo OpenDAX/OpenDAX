@@ -31,33 +31,34 @@
 #define TEST 1000
 
 int main(int argc,char *argv[]) {
+    int tests_failed = 0;
+    int n;
     handle_t handle;
-    int n,toggle;
-    u_int16_t indata[TEST],outdata[TEST],maskdata[TEST];
-    dax_tag modbus_tag;
-    char tagname[30];
+    char tagname[DAX_TAGNAME_SIZE +1];
     
     openlog("test", LOG_NDELAY, LOG_DAEMON);
     xnotice("Starting module test");
     setverbosity(1);
     dax_mod_register("test");
     
-    //add_random_tags(72700);
     
-    /* These tags should fail */
-    if(tagtofail("1Tag")) return -1;
-    if(tagtofail("-Tag")) return -1;
-    if(tagtofail("Tag-name")) return -1;
-    if(tagtofail("Tag&name")) return -1;
-    /* These tags should pass */
-    if(tagtopass("_Tag")) return -1;
-    if(tagtopass("Tag1")) return -1;
-    if(tagtopass("tAg_name")) return -1;
-    if(tagtopass("t1Ag_name")) return -1;
+    if(check_tag_addition()) {
+        xnotice("Tagname addition test - FAILED");
+        tests_failed++;
+    } else {
+        xnotice("Tagname addition test - PASSED");
+    }
+    
+    if(check_tag_retrieve()) {
+        xnotice("Tagname retrieving test - FAILED");
+        tests_failed++;
+    } else {
+        xnotice("Tagname retrieving test - PASSED");
+    }
     
     
+    add_random_tags(1000);
     
-    /*
     for(n = 0; n<126; n++) {
         if(n % 5) {
             sprintf(tagname,"BOOL%d",n);
@@ -92,15 +93,18 @@ int main(int argc,char *argv[]) {
     handle = dax_tag_add("Bool22", DAX_BOOL, 1);
     handle = dax_tag_add("Bool23", DAX_BOOL, 1);
     handle = dax_tag_add("Bool24", DAX_BOOL, 1);
-    */
+    
     //handle = dax_tag_add("test",DAX_UINT,100);
     //printf("Test received handle 0x%X\n",handle);
-    if( checktagbase() ) {
-        xlog(1,"Tagbase failed test");
+    if( check_tagbase() ) {
+        xnotice("Tagbase verification test - FAILED");
+        tests_failed++;
     } else {
-        xlog(1,"Tagbase passed test");
+        xnotice("Tagbase verification test - PASSED");
     }
     
     dax_mod_unregister();
+    
+    xlog(1,"OpenDAX Test Finished, %d tests failed", tests_failed);
     return 0;
 }

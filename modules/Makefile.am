@@ -9,7 +9,7 @@ if HAVE_LUA
   M_DAXLUA = daxlua
 endif
 
-if HAVE_LUA50
+if HAVE_LUA5_1
   M_DAXLUA = daxlua
 endif
 

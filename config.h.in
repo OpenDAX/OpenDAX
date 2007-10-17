@@ -27,14 +27,14 @@
 /* Define to 1 if you have the <lauxlib.h> header file. */
 #undef HAVE_LAUXLIB_H
 
-/* Define to 1 if you have the <lua50/lauxlib.h> header file. */
-#undef HAVE_LUA50_LAUXLIB_H
+/* Define to 1 if you have the <lua51/lauxlib.h> header file. */
+#undef HAVE_LUA51_LAUXLIB_H
 
-/* Define to 1 if you have the <lua50/lualib.h> header file. */
-#undef HAVE_LUA50_LUALIB_H
+/* Define to 1 if you have the <lua51/lualib.h> header file. */
+#undef HAVE_LUA51_LUALIB_H
 
-/* Define to 1 if you have the <lua50/lua.h> header file. */
-#undef HAVE_LUA50_LUA_H
+/* Define to 1 if you have the <lua51/lua.h> header file. */
+#undef HAVE_LUA51_LUA_H
 
 /* Define to 1 if you have the <lua5.1/lauxlib.h> header file. */
 #undef HAVE_LUA5_1_LAUXLIB_H
@@ -125,6 +125,9 @@
 /* Define to 1 if you have the <sys/param.h> header file. */
 #undef HAVE_SYS_PARAM_H
 
+/* Define to 1 if you have the <sys/socket.h> header file. */
+#undef HAVE_SYS_SOCKET_H
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 
@@ -206,7 +209,7 @@
 /* Define to rpl_realloc if the replacement function should be used. */
 #undef realloc
 
-/* Define to `unsigned int' if <sys/types.h> does not define. */
+/* Define to `unsigned' if <sys/types.h> does not define. */
 #undef size_t
 
 /* Define as `fork' if `vfork' does not work. */

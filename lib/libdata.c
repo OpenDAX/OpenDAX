@@ -119,3 +119,6 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
     /* TODO: Need to do some real error checking here and return a good number */
     return size;
 }
+
+
+

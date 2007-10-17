@@ -152,11 +152,15 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     return tag.handle;
 }
 
+
 /* Get the tag by name. */
 /* TODO: Resolve array and bit references in the tagname */
-int dax_tag_get_name(char *name, dax_tag *tag) {
+int dax_get_tag(char *name, dax_tag *tag) {
     int result;
     size_t size;
+    
+    /* TODO: Check the tag cache here */
+    
     /* It seems like we should bounds check *name but _message-send will clip it! */
     result = _message_send(1, MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
     if(result) {
@@ -170,8 +174,108 @@ int dax_tag_get_name(char *name, dax_tag *tag) {
     return result;
 }
 
+/* This function takes the name argument and figures out the text part and puts
+   that in 'tagname' then it sees if there is an index in [] or if there is
+   a '.' for a bit index.  It puts those in the pointers that are passed */
+static inline int parsetag(char *name, char *tagname, int *index, int *bit) {
+    int n = 0;
+    int i = 0;
+    int tagend = 0;
+    char test[10];
+    *index = -1;
+    *bit = -1;
 
-int dax_tag_get_index(int index, dax_tag *tag) {
+    while(name[n] != '\0') {
+        if(name[n] == '[') {
+            tagend = n++;
+            /* figure the tagindex here */
+            while(name[n] != ']') {
+                if(name[n] == '\0') return -1; /* Gotta get to a ']' before the end */
+                test[i++] = name[n++];
+                if(i == 9) return -1; /* Number is too long */
+            }
+            test[i] = '\0';
+            *index = (int)strtol(test, NULL, 10);
+            n++;
+        } else if(name[n] == '.') {
+            if(*index < 0) {
+                tagend = n;
+            }
+            n++;
+            *bit = (int)strtol(&name[n], NULL, 10);
+            break;
+        } else {
+            n++;
+        }
+    }
+    if(tagend) { /********BUFFER OVERFLOW POTENTIAL***************/
+        strncpy(tagname, name, tagend);
+        tagname[tagend] = '\0';
+    } else {
+        strcpy(tagname, name);
+    }
+    return 0;
+}
+
+/* These tag name getting routines will have to be rewritten when we get
+the custom data types going. */
+int dax_tag_byname(char *name, dax_tag *tag) {
+    dax_tag tag_test;
+    char tagname[DAX_TAGNAME_SIZE + 1];
+    int index,bit,result,size;
+    
+    if(parsetag(name, tagname, &index, &bit)) {
+        return ERR_TAG_BAD;
+    }
+    /***********TESTING ONLY**************/
+    //--xlog(1,"parsetag returned tagname=\'%s\' index=%d bit=%d", tagname, index, bit);
+    
+    result = dax_get_tag(tagname, &tag_test);
+    if(result) {
+        return result;
+    }
+    
+    /* This will happen if there are no subscripts to the tag */
+    if(index < 0 && bit < 0) {
+        memcpy(tag, &tag_test, sizeof(dax_tag));
+        return 0;
+    }
+    /* Check that the given subscripts still fall within the tags. */
+    size = TYPESIZE(tag_test.type) * tag_test.count;
+    
+    if( (index >=0 && index >= tag_test.count) || 
+       (bit >= size || (index * TYPESIZE(tag_test.type) + bit >= size)) ||
+       (index >= 0 && bit >= TYPESIZE(tag_test.type))) {
+           return ERR_TAG_BAD;
+    }
+    /*
+    if(index >=0 && index >= tag_test.count) {
+        printf("index is too big\n");
+        return ERR_TAG_BAD;
+    } else if(bit >= size || (index * TYPESIZE(tag_test.type) + bit >= size) ) {
+        printf("too many bits\n");
+        return ERR_TAG_BAD;
+    } else if(index >= 0 && bit >= TYPESIZE(tag_test.type)) {
+        printf("Way too many bits\n");
+        return ERR_TAG_BAD;
+    }
+    */
+    /* if we make it this far all is good and we can calculate the type,
+       size and handle of the tag */
+    tag->name[0] = '\0'; /* We don't return the name */
+    if(index < 0) index = 0; /* Make these zeros so we can do math on them */
+    if(bit < 0) {
+        bit = 0;
+        tag->type = tag_test.type;
+    } else { /* If we have any kind of bit index then... */
+        tag->type = DAX_BOOL;
+    }
+    tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
+    return 0;
+}
+
+/* Retrieves the tag by index.  */
+int dax_tag_byindex(int index, dax_tag *tag) {
     int result;
     size_t size;
     result = _message_send(1, MSG_TAG_GET, &index, sizeof(int));
@@ -191,7 +295,6 @@ int dax_tag_get_index(int index, dax_tag *tag) {
 /* TODO: This function should return some kind of error */
 void dax_tag_read(handle_t handle, void *data, size_t size) {
     size_t n,count,m_size,sendsize,tmp;
-    //dax_tag_message *msg;
     int result;
     struct Payload {
         handle_t handle;

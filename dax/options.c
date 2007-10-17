@@ -48,7 +48,6 @@ static void setdefaults(void);
 static void parsecommandline(int, const char**);
 static int readconfigfile(void);
 static void parsemodule(FILE *);
-static void printconfig(void);
 
 struct Config config;
 
@@ -254,8 +253,3 @@ static void parsemodule(FILE *fd) {
     xerror("No </module> to end subsection\n");
 }
 
-
-/* TODO: Really should print out more than this*/
-static void printconfig(void) {
-
-}

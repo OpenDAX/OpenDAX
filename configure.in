@@ -43,7 +43,8 @@ AC_CHECK_LIB([pthread], [pthread_create], [got_pthread=true])
 AC_CHECK_LIB([readline], [readline], [got_readline=true])
 AC_CHECK_LIB([lua],[luaL_newstate], [got_lua=true], [got_lua=false])
 AC_CHECK_LIB([lua50],[luaL_newstate], [got_lua50=true], [got_lua50=false])
-AC_CHECK_LIB([lua5.1],[luaL_newstate], [got_lua51=true], [got_lua51=false])
+AC_CHECK_LIB([lua5.1],[luaL_newstate], [got_lua5_1=true], [got_lua5_1=false])
+AC_CHECK_LIB([lua51],[luaL_newstate], [got_lua51=true], [got_lua51=false])
 
 #Replace what AC_CHECK_LIB does to the LIBS variable
 LIBS=$OLD_LIBS
@@ -52,14 +53,14 @@ LIBS=$OLD_LIBS
 AM_CONDITIONAL([HAVE_PTHREAD], test $got_pthread = true)
 AM_CONDITIONAL([HAVE_READLINE], test $got_readline = true)
 AM_CONDITIONAL([HAVE_LUA], test $got_lua = true)
-AM_CONDITIONAL([HAVE_LUA50], test $got_lua50 = true)
 AM_CONDITIONAL([HAVE_LUA51], test $got_lua51 = true)
+AM_CONDITIONAL([HAVE_LUA5_1], test $got_lua5_1 = true)
 
 if test $got_lua = true ; then
   LUALIB='-llua'
-elif test $got_lua50 = true ; then
-  LUALIB='-llua50'
 elif test $got_lua51 = true ; then
+  LUALIB='-llua51'
+elif test $got_lua5_1 = true ; then
   LUALIB='-llua5.1'
 else
   LUALIB=
@@ -68,12 +69,12 @@ fi
 AC_SUBST(LUALIB)
 
 # Checks for header files.
-AC_HEADER_STDC
+#AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/socket.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h])
 
-AC_CHECK_HEADERS([lua50/lua.h lua50/lauxlib.h lua50/lualib.h])
 AC_CHECK_HEADERS([lua5.1/lua.h lua5.1/lauxlib.h lua5.1/lualib.h])
+AC_CHECK_HEADERS([lua51/lua.h lua51/lauxlib.h lua51/lualib.h])
 AC_CHECK_HEADERS([lua/lua.h lua/lauxlib.h lua/lualib.h])
 AC_CHECK_HEADERS([lua.h lauxlib.h lualib.h])
 

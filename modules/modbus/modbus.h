@@ -19,8 +19,13 @@
 #ifndef __MODBUS_H
 #define __MODBUS_H
 
-#include <sys/types.h>
-#include <sys/param.h>
+#include <common.h>
+#ifdef HAVE_SYS_SOCKET_H
+ #include <sys/socket.h>
+#endif
+#ifdef HAVE_SYS_PARAM_H
+ #include <sys/param.h>
+#endif
 #include "database.h"
 
 /* Used to insert a 16bit value into the modbus buffer 

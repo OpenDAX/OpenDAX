@@ -62,12 +62,13 @@
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
 /* Library function errors */
-#define ERR_NO_QUEUE -1 /* The Message Queue does not exist */
-#define ERR_2BIG     -2 /* The argument is too big */
-#define ERR_ARG      -3 /* Bad argument */
-#define ERR_NOTFOUND -4 /* Not found */
-#define ERR_MSG_SEND -5 /* Unable to send message */
-#define ERR_MSG_RECV -6 /* Unable to receive message */
+#define ERR_NO_QUEUE  -1 /* The Message Queue does not exist */
+#define ERR_2BIG      -2 /* The argument is too big */
+#define ERR_ARG       -3 /* Bad argument */
+#define ERR_NOTFOUND  -4 /* Not found */
+#define ERR_MSG_SEND  -5 /* Unable to send message */
+#define ERR_MSG_RECV  -6 /* Unable to receive message */
+#define ERR_TAG_BAD   -7 /* Bad tagname */
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
@@ -107,10 +108,12 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count);
    this system is going to present.  I also need to think about the possibility
    of caching data on the module side. */
 
-/* Get tag by name */
-int dax_tag_get_name(char *name, dax_tag *tag);
+/* Low level tag retrieval function.  Will not decode subscripts. */
+int dax_get_tag(char *name, dax_tag *tag);
+/* Get tag by name, will decode members and subscripts */
+int dax_tag_byname(char *name, dax_tag *tag);
 /* Get tag by index */
-int dax_tag_get_index(int index, dax_tag *tag);
+int dax_tag_byindex(int index, dax_tag *tag);
 
 /* These functions are where all the data transfer takes place. */
 /* simple untyped tag reading function */
