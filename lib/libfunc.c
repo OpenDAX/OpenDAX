@@ -21,6 +21,7 @@
 
 #include <libdax.h>
 #include <stdarg.h>
+#include <strings.h>
 
 static int _verbosity = 0;
 
@@ -83,7 +84,27 @@ void dax_error(const char *format, ...) {
 }
 
 /* Returns a pointer to a string that is the name of the datatype */
-const char *dax_get_type(int type) {
+int dax_string_to_type(const char *type) {
+    if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
+    if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
+    if(!strcasecmp(type, "SINT"))  return DAX_SINT;
+    if(!strcasecmp(type, "WORD"))  return DAX_WORD;
+    if(!strcasecmp(type, "INT"))   return DAX_INT;
+    if(!strcasecmp(type, "UINT"))  return DAX_UINT;
+    if(!strcasecmp(type, "DWORD")) return DAX_DWORD;
+    if(!strcasecmp(type, "DINT"))  return DAX_DINT;
+    if(!strcasecmp(type, "UDINT")) return DAX_UDINT;
+    if(!strcasecmp(type, "TIME"))  return DAX_TIME;
+    if(!strcasecmp(type, "REAL"))  return DAX_REAL;
+    if(!strcasecmp(type, "LWORD")) return DAX_LWORD;
+    if(!strcasecmp(type, "LINT"))  return DAX_LINT;
+    if(!strcasecmp(type, "ULINT")) return DAX_ULINT;
+    if(!strcasecmp(type, "LREAL")) return DAX_LREAL;
+    return -1;
+}
+
+/* Returns a pointer to a string that is the name of the datatype */
+const char *dax_type_to_string(int type) {
     switch (type) {
         case DAX_BOOL:
             return "BOOL";

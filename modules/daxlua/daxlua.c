@@ -23,61 +23,123 @@
 #include <opendax.h>
 #include <common.h>
 #include <options.h>
+#include <dax/func.h>
+#include <string.h>
+#include <luaif.h>
 
-/* Function to expose to lua interpreter */
-static int l_dummy(lua_State *L) {
-  double d = lua_tonumber(L,1); /* Get the argument off the stack */
-  lua_pushnumber(L,d*2); /* put the return value/s on the stack */
-  return 1; /* return number of retvals */
-}
+void quit_signal(int sig);
+int lua_init(void);
+int lua_main(void);
+
 
 int main(int argc, char *argv[]) {
-  int status,func_ref;
-  lua_State *L;
-  
-  configure(argc,argv);
-  
-  /* Create a lua interpreter object */
-  L = lua_open();
-  /* send the l_dummy() function to the lua interpreter */
-  lua_pushcfunction(L,l_dummy);
-  lua_setglobal(L,"dummy");
-  /* register the libraries */
-  luaL_openlibs(L);
-  /* load and compile the file */
-  if((status = luaL_loadfile(L, "script.lua"))) {
-    printf("bad, bad file\n");
-    exit(1);
-  }
-  /* Basicaly stores the function */
-  func_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-  /* retrieve the funciton and call it */
-  lua_rawgeti(L, LUA_REGISTRYINDEX, func_ref);
-  if (lua_pcall(L, 0, 0, 0)) {
-    fprintf(stderr, "%s\n", lua_tostring(L, -1));
-  }
-  
-  printf("This line from C\n");
-  /* run the lua program */
-  lua_rawgeti(L, LUA_REGISTRYINDEX, func_ref);
-  if((status = lua_pcall(L, 0, 0, 0))) {
-    printf("--bad, bad script\n");
-  }
-  printf("\nBack to C again\n");
-  
-  /* tell lua to push these variables onto the stack */
-  lua_getglobal(L, "width");
-  lua_getglobal(L, "height");
-  /* check that the variables pushed onto the stack are numbers */
-  if(!lua_isnumber(L,-2))
-    luaL_error(L,"width should be a number\n");
-  if(!lua_isnumber(L,-1))
-    luaL_error(L,"height should be a number\n");
-  /* print the globals that we got */
-  printf("width = %g, height = %g\n",lua_tonumber(L,-2),lua_tonumber(L,-1));
+    struct sigaction sa;
+    
+ /* Set up the signal handlers */
+    memset (&sa,0,sizeof(struct sigaction));
+    sa.sa_handler=&quit_signal;
+    sigaction (SIGQUIT,&sa,NULL);
+    sigaction (SIGINT,&sa,NULL);
+    sigaction (SIGTERM,&sa,NULL);
+    /* TODO: How 'bout a SIGHUP to restart the module */
 
-  /* Clean up and get out */
-  lua_close(L);
+ /* Reads the configuration */
+    if(configure(argc,argv)) {
+        xfatal("Unable to configure");
+    }
+    
+ /* Check for OpenDAX and register the module */
+    if( dax_mod_register("daxlua") ) {
+        xfatal("Unable to find OpenDAX");
+    }
+    
+ /* Run the initialization script */
+    if(lua_init()) {
+        xfatal("Init Script \'%s\' failed to run properly", get_init());
+    }
+ /* Start running the main script */    
+    if(lua_main()) {
+        xfatal("Main Script \'%s\' failed to run properly", get_main());
+    }
+ /* Should never get here */
+    return 0;
+}
 
-  exit(0);
+/* Sets up and runs the init script.  The init script runs once
+   at module start */
+int lua_init(void) {
+    lua_State *L;
+    
+ /* Create a lua interpreter object */
+    L = luaL_newstate();
+    setup_interpreter(L);    
+ /* load and compile the file */
+    if(luaL_loadfile(L, get_init()) || lua_pcall(L, 0, 0, 0) ) {
+        xerror("Error Running Init Script - %s", lua_tostring(L, -1));
+        return 1;
+    }
+    
+    /* Clean up and get out */
+    lua_close(L);
+
+    return 0;
+}
+
+/* Sets up and runs the main script.  The main script runs
+   every 'rate' mSec. for the life of the module */
+int lua_main(void) {
+    int func_ref;
+    long rate, time_spent;
+    lua_State *L;
+    struct timeval start, end;
+    
+ /* Create a lua interpreter object */
+    L = luaL_newstate();
+    setup_interpreter(L);    
+ /* load and compile the file */
+    if(luaL_loadfile(L, get_main()) ) {
+        xerror("Error Loading Main Script - %s", lua_tostring(L, -1));
+        //--Don't bail on errors just yet
+        //--return 1;
+    }
+ /* Basicaly stores the function */
+    func_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    rate = get_rate();
+ /* Main Infinite Loop */
+    while(1) {
+        gettimeofday(&start, NULL);
+        
+        /* retrieve the funciton and call it */
+        lua_rawgeti(L, LUA_REGISTRYINDEX, func_ref);
+        if( lua_pcall(L, 0, 0, 0) ) {
+            xerror("Error Running Main Script - %s", lua_tostring(L, -1));
+            //return 1;
+        }
+        
+     /* This calculates the length of time that it took to run the script
+        and then subtracts that time from the rate and calls usleep to hold
+        for the right amount of time.  It ain't real time. */
+        gettimeofday(&end,NULL);
+        time_spent = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
+     /* If it takes longer than the scanrate then just go again instead of sleeping */
+        if(time_spent < rate)
+            usleep((rate - time_spent)*1000);
+    }    
+    
+ /* Clean up and get out */
+    lua_close(L);
+    
+ /* Should never get here */
+    return 1;
+}
+
+/* this handles stopping the program */
+void quit_signal(int sig) {
+    xlog(0, "Quitting due to signal %d", sig);
+    dax_mod_unregister();
+    if(sig == SIGQUIT) {
+        exit(0);
+    } else {
+        exit(-1);    
+    }
 }

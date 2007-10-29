@@ -48,6 +48,7 @@ int msg_mod_get(dax_message *msg);
    is being sent to the module.  In that case payload should point to a single int that
    indicates the error */
 static int _message_send(long int module, int command, void *payload, size_t size) {
+    static u_int32_t count = 0;
     dax_message outmsg;
     size_t newsize;
     int result;
@@ -70,6 +71,9 @@ static int _message_send(long int module, int command, void *payload, size_t siz
         This may be good this may not but it'll need to be handled here somehow.
         also need to handle errors returned here*/
         result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + newsize, 0);
+        
+        count++;
+        tag_write_bytes(STAT_MSG_SENT, &count, sizeof(u_int32_t));
     } else {
         result = -1;
     }
@@ -121,6 +125,7 @@ void msg_destroy_queue(void) {
 /* This function blocks waiting for a message to be received.  Once a message
    is retrieved from the system the proper handling function is called */
 int msg_receive(void) {
+    static u_int32_t count = 0;
     dax_message daxmsg;
     int result;
     result = msgrcv(__msqid,(struct msgbuff *)(&daxmsg),sizeof(dax_message),1,0);
@@ -128,6 +133,8 @@ int msg_receive(void) {
         xerror("msg_receive - %s",strerror(errno));
         return result;
     }
+    count++;
+    tag_write_bytes(STAT_MSG_RCVD, &count, sizeof(u_int32_t));
     if(result < (MSG_HDR_SIZE + daxmsg.size)) {
         xerror("message received is not of the specified size.");
         return -1;

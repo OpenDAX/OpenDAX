@@ -1,4 +1,11 @@
-make dist isn't installing the header files at the moment.
+opendax gets all locked up when a module fails to start
 
-the distribution needs to be tested to see if it will configure, compile and install properly.
+_status tag can be written to by modules.  This should be read only.
+
+Need to fix the duplicate tag adding logic.  Handles should be returned if the tag
+being created is an exact duplicate of the tag with the existing name.
+
+Debug option for Autoconf needs to change the CFLAGS to remove the -g and add the -O3
+
+Allow 'nice' levels to be set for modules
 

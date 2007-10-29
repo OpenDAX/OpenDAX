@@ -35,12 +35,12 @@ int main(int argc,char *argv[]) {
     int n;
     handle_t handle;
     char tagname[DAX_TAGNAME_SIZE +1];
+    u_int16_t dummy[20], test[20];
     
     openlog("test", LOG_NDELAY, LOG_DAEMON);
     xnotice("Starting module test");
     setverbosity(1);
     dax_mod_register("test");
-    
     
     if(check_tag_addition()) {
         xnotice("Tagname addition test - FAILED");
@@ -56,7 +56,25 @@ int main(int argc,char *argv[]) {
         xnotice("Tagname retrieving test - PASSED");
     }
     
+    /* TEST TO DO
+        Tag Read / Write Test
+    */
     
+    dummy[0] = 0x0505;
+    dummy[1] = 0x8888;
+    dummy[2] = 0x3333;
+    dummy[3] = 0x4444;
+    dummy[4] = 0x7777;
+    
+    handle = dax_tag_add("BitTest", DAX_WORD, 10);
+    printf("Handle = %d\n",handle);
+    dax_tag_write_bits(handle + 1, &dummy, 77);
+    dax_tag_read_bits(handle + 1, &test, 77);
+    for(n=0;n<5;n++) {
+        printf("Before write 0x%X: After Read 0x%X\n",dummy[n], test[n]);
+    }
+    
+    /* 
     add_random_tags(1000);
     
     for(n = 0; n<126; n++) {
@@ -96,6 +114,9 @@ int main(int argc,char *argv[]) {
     
     //handle = dax_tag_add("test",DAX_UINT,100);
     //printf("Test received handle 0x%X\n",handle);
+    */
+     
+    /* Verify the integrity of the tag database */
     if( check_tagbase() ) {
         xnotice("Tagbase verification test - FAILED");
         tests_failed++;

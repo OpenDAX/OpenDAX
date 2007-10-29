@@ -222,7 +222,7 @@ the custom data types going. */
 int dax_tag_byname(char *name, dax_tag *tag) {
     dax_tag tag_test;
     char tagname[DAX_TAGNAME_SIZE + 1];
-    int index,bit,result,size;
+    int index, bit, result, size;
     
     if(parsetag(name, tagname, &index, &bit)) {
         return ERR_TAG_BAD;
@@ -263,12 +263,22 @@ int dax_tag_byname(char *name, dax_tag *tag) {
     /* if we make it this far all is good and we can calculate the type,
        size and handle of the tag */
     tag->name[0] = '\0'; /* We don't return the name */
-    if(index < 0) index = 0; /* Make these zeros so we can do math on them */
-    if(bit < 0) {
+    if(index < 0 && bit < 0) {
+        index = 0; /* Make these zeros so we can do math on them */
         bit = 0;
         tag->type = tag_test.type;
-    } else { /* If we have any kind of bit index then... */
+        tag->count = tag_test.count;
+    } else if(index < 0 && bit >=0) {
+        index = 0;
         tag->type = DAX_BOOL;
+        tag->count = 1;
+    } else if(index >=0 && bit < 0) {
+        bit = 0;
+        tag->type = tag_test.type;
+        tag->count = 1;
+    } else  {
+        tag->type = DAX_BOOL;
+        tag->count = 1;
     }
     tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
     return 0;
@@ -293,7 +303,7 @@ int dax_tag_byindex(int index, dax_tag *tag) {
    Each takes a handle, a buffer pointer, and a size in bytes.  */
 
 /* TODO: This function should return some kind of error */
-void dax_tag_read(handle_t handle, void *data, size_t size) {
+int dax_tag_read(handle_t handle, void *data, size_t size) {
     size_t n,count,m_size,sendsize,tmp;
     int result;
     struct Payload {
@@ -314,7 +324,8 @@ void dax_tag_read(handle_t handle, void *data, size_t size) {
         payload.size = sendsize;
         result = _message_send(1,MSG_TAG_READ,(void *)&payload,sizeof(struct Payload));
         result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp);
-    }   
+    }
+    return result;
 }
 
 /* This is a type neutral way to just write bytes to the data table */

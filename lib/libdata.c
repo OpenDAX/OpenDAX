@@ -51,18 +51,61 @@ int dax_tag_write_bit(handle_t handle, u_int8_t data) {
         input = 0x00;
     }
     mask = 1 << (handle % 8);
-    dax_tag_mask_write(handle & ~0x07,&input,&mask,1);
+    dax_tag_mask_write(handle & ~0x07, &input, &mask, 1);
+    return 0;
+}
+
+
+/* Reads bits starting at handle, size is in bits not bytes.  This function
+   will be more efficient if the size and handle are evenly divisible by 8 */
+int dax_tag_read_bits(handle_t handle, void *data, size_t size) {
+    void *buffer;
+    size_t n, buff_len, buffer_idx, data_idx, data_bit, buffer_bit;
+    /* Screw it I'm gonna allocate the whole thing and see what happens.
+       I'm also gonna use alloca() because it should be faster on the stack
+       none of this may matter and I'd be easy enough to change */
+    buff_len = size / 8; /* Start here */
+    
+ /* If handle and size are even bytes then this is just a byte read */
+    if( handle % 8 == 0 && size % 8 == 0) {
+        return dax_tag_read(handle, data, buff_len);
+    }
+
+    buff_len = (((handle + size - 1) & ~0x07) - (handle & ~0x07)) / 8 + 1;
+    buffer = alloca(buff_len);
+    if(buffer == NULL) {
+        return -1;
+    }
+    if(dax_tag_read(handle, buffer, buff_len)) {
+        return -1;
+    }
+    buffer_bit = handle % 8;
+    buffer_idx = 0;
+    data_bit = 0;
+    data_idx = 0;
+ /* Loop through the bits moving from buffer to data */
+    for(n = 0; n< size; n++) {
+        if(((u_int8_t *)buffer)[buffer_idx] & (1 << buffer_bit)) { /* If *buff bit is set */
+            ((u_int8_t *)data)[data_idx] |= (u_int8_t)(1 << data_bit);
+        } else {  /* If the bit in the buffer is not set */
+            ((u_int8_t *)data)[data_idx] &= ~(u_int8_t)(1 << data_bit);
+        }
+        data_bit++;
+        if(data_bit == 8) {
+            data_bit = 0;
+            data_idx++;
+        }
+        buffer_bit++;
+        if(buffer_bit == 8) {
+            buffer_bit = 0;
+            buffer_idx++;
+        }
+    }
     return 0;
 }
 
 /* This is how many bytes we'll send in each call to the masked write. */
 #define DAX_BIT_MSG_SIZE (MSG_TAG_DATA_SIZE / 2)
-
-/* Reads bits starting at handle, size is in bits not bytes */
-/* TODO: Write this function */
-void dax_tag_read_bits(handle_t handle, void *data, size_t size) {
-    return;
-}
 
 /* Writes bits starting at handle, size is in bits not bytes */
 /* This function could be a lot simpler if we'd just allocate a buffer
@@ -75,19 +118,19 @@ void dax_tag_read_bits(handle_t handle, void *data, size_t size) {
 int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
     u_int8_t buffer[DAX_BIT_MSG_SIZE];
     u_int8_t mask[DAX_BIT_MSG_SIZE];
-    size_t buffer_idx,buffer_bit,data_idx,data_bit;
+    size_t buffer_idx, buffer_bit, data_idx, data_bit;
     handle_t next_handle;
     int n;
     
     buffer_idx = 0;
     buffer_bit = handle % 8;
     next_handle = handle & ~0x07;
-    data_idx=0;
-    data_bit=0;
+    data_idx = 0;
+    data_bit = 0;
     
-    for(n=0;n<DAX_BIT_MSG_SIZE;n++) mask[n]=0x00;
+    for(n=0; n < DAX_BIT_MSG_SIZE; n++) mask[n]=0x00;
     
-    for(n=0;n<size;n++) {
+    for(n=0; n<size; n++) {
         if(((u_int8_t *)data)[data_idx] & (1 << data_bit)) { /* If *buff bit is set */
             buffer[buffer_idx] |= (u_int16_t)(1 << buffer_bit);
         } else {  /* If the bit in the buffer is not set */
@@ -97,21 +140,21 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
         mask[buffer_idx] |= (u_int16_t)(1 << buffer_bit);
     
         data_bit++;
-        if(data_bit==8) {
-            data_bit=0;
+        if(data_bit == 8) {
+            data_bit = 0;
             data_idx++;
         }
         
         buffer_bit++;
-        if(buffer_bit==8) {
-            buffer_bit=0;
+        if(buffer_bit == 8) {
+            buffer_bit = 0;
             buffer_idx++;
             if(buffer_idx == DAX_BIT_MSG_SIZE) {
                 /* Out of room in the buffer, send the message */
                 dax_tag_mask_write(next_handle, buffer, mask, buffer_idx);
                 next_handle += DAX_BIT_MSG_SIZE;
                 buffer_idx = 0;
-                for(n=0;n<DAX_BIT_MSG_SIZE;n++) mask[n]=0x00;
+                for(n=0; n < DAX_BIT_MSG_SIZE; n++) mask[n]=0x00;
             }
         }
     }

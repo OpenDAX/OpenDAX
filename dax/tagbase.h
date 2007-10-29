@@ -48,6 +48,12 @@
  #define DAX_DATABASE_INC 1024
 #endif
 
+/* Define Handles for _status register points */
+#define STATUS_SIZE   4
+#define STAT_MSG_RCVD 0
+#define STAT_MSG_SENT 32
+#define STAT_DB_SIZE  64
+#define STAT_TAG_CNT 96
 
 void initialize_tagbase(void);
 handle_t tag_add(char *name,unsigned int type, unsigned int count);

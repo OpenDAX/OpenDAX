@@ -1,0 +1,30 @@
+LIST command should accept a single number that tells it to display the next N records. 
+As a part of this is should also keep the last record displayed so that it can start there.
+If given two numbers it should display the records starting at the first argument using the
+second argument as the count.
+
+Maybe I need to rethink this whole thing.  Perhaps it should be...
+
+DAX status
+DAX stop
+DAX reload
+
+TAG add x x x
+TAG list x x
+TAG set x x x x
+TAG get x x x x
+
+MOD add x x x x
+MOD list x x
+MOD start x
+MOD stop x
+MOD status x
+MOD connect x  <connect to STDIN / STDOUT with dax CL>
+
+DB list x x x
+DB set x x   <maybe read / write would be better for raw access>
+DB get x x
+
+MSG send x x
+
+Obviously not all of this has been done in the DAX itself yet.

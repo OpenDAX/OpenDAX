@@ -431,12 +431,12 @@ void masterRTUthread(struct mb_port *mp) {
     //u_int8_t buff[255]; /* Modbus Frame buffer */
     long time_spent;
     struct mb_cmd *mc;
-    struct timeval start,end;
+    struct timeval start, end;
     
     mp->running=1; /* Tells the world that we are going */
     /* If enable goes negative we bail at the next scan */
     while(mp->enable >= 0) {
-        gettimeofday(&start,NULL);
+        gettimeofday(&start, NULL);
         if(mp->enable) { /* If enable=0 then pause for the scanrate and try again. */
             mc=mp->commands;
             while(mc!=NULL) {

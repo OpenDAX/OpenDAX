@@ -1,0 +1,6 @@
+Add tag retrieving functions
+
+Possibly add multiple threads with different scripts in each
+
+Once the tag change notifications are programmed into the core we need
+a way to call certain scripts with changes in tags.

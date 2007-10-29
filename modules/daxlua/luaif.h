@@ -11,20 +11,18 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License
+ *  You should have received a copy of the GNU General Public License 
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * Configuration header code file for the Lua script interpreter
+ * Lua script interpreter interface header file
  */
 
-#ifndef __OPTIONS_H
-#define __OPTIONS_H
+#ifndef __LUAIF_H
+#define __LUAIF_H
 
-int configure(int argc, char *argv[]);
-char *get_init(void);
-char *get_main(void);
-int get_rate(void);
+int setup_interpreter(lua_State *L);
 
-#endif /* !__OPTIONS_H */
+
+#endif 

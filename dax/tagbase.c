@@ -67,22 +67,24 @@ void initialize_tagbase(void) {
         xfatal("Unable to allocate the symbol table");
     }
     __taglistsize = DAX_TAGLIST_SIZE;
-    
     /* Allocate the primary database */
     __db = (u_int32_t *)xmalloc(sizeof(u_int32_t) * DAX_DATABASE_SIZE);
     if(!__db) {
         xfatal("Unable to allocate the database");
     }
     __databasesize = DAX_DATABASE_SIZE;
-    xlog(10,"Database size = %d",__databasesize);
+    
+    xlog(10,"Database size = %d", __databasesize);
     /* Set all the memory to zero */
     memset(__taglist, 0x00, sizeof(dax_tag) * DAX_TAGLIST_SIZE);
     memset(__db, 0x00, sizeof(u_int32_t) * DAX_DATABASE_SIZE);
     
     /* Create the _status tag at handle zero */
-    if(tag_add("_status", DAX_DWORD, 1)) {
+    if(tag_add("_status", DAX_DWORD, STATUS_SIZE)) {
         xfatal("_status not created properly");
     }
+    /* Write the current size of the database to the _status tag */
+    tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
 }
 
 
@@ -109,6 +111,7 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
         xerror("%s is not a valid tag name", name);
         return -3;
     }
+    /* TODO: If the tag is an exact duplicate then let's return the handle */
     if(get_by_name(name) >= 0) {
         xerror("Duplicate tag name %s", name);
         return -4;
@@ -147,6 +150,8 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
         return -6;
     }
     __tagcount++;
+    tag_write_bytes(STAT_TAG_CNT, &__tagcount, sizeof(u_int32_t));
+    
     xlog(10,"tag_add() - Tag %s added at handle 0x%X", name, handle);
     return handle;
 }
@@ -224,7 +229,7 @@ static inline handle_t getnewhandle(unsigned int type, unsigned int count) {
 }
 
 
-/* TODO: Make this function do something */
+/* TODO: Make this function do something.  */
 int tag_del(char *name) {
     /* TODO: No deleting handle 0x0000 */
     return 0; /* Return good for now */
@@ -363,6 +368,8 @@ static int database_grow(void) {
         //memset(&__db[__databasesize], 0x00, DAX_DATABASE_INC * sizeof(u_int32_t));
         __db = new_db;
         __databasesize += DAX_DATABASE_INC;
+        /* Write the current size of the database to the _status tag */
+        tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
         return 0;
     } else {
         return -1;

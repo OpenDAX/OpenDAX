@@ -74,23 +74,24 @@ void add_random_tags(int tagcount) {
         data_type = get_random_type();
         result = dax_tag_add(tagname, data_type, count);
         if(result < 0) {
-            xlog(10, "Failed to add Tag %s %s[%d]", tagname, dax_get_type(data_type), count );
+            xlog(10, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
         } else {
           //  xlog(10, "%s added at handle 0x%8X", tagname, result);
         }
     }
 }
 
+/* This checks the integrity of the tag database.  It makes sure that
+   the tags are properly sorted in the array and that there is no
+   overlap of tags */
 int check_tagbase(void) {
     dax_tag last_tag, this_tag;
     int n = 0;
     long int lastbit;
     
-    if(n == 0) {
-        if( dax_tag_byindex(n++, &last_tag) ) {
-            xlog(10,"CheckTagBase() - Unable to get first tag");
-            return -1;
-        }
+    if( dax_tag_byindex(n++, &last_tag) ) {
+        xlog(10,"CheckTagBase() - Unable to get first tag");
+        return -1;
     }
     
     while( !dax_tag_byindex(n, &this_tag) ) {
@@ -152,7 +153,7 @@ int check_tag_addition(void) {
 }
 
 /* This test runs the tagname retrival process through it's paces */
-static handle_t getshouldpass(char *name, handle_t h, unsigned int type) {
+static handle_t getshouldpass(char *name, handle_t h, unsigned int type, unsigned int count) {
     dax_tag test_tag;
     xlog(2,"Testing tagname \"%s\" to find.", name);
     if(dax_tag_byname(name, &test_tag)) {
@@ -163,6 +164,9 @@ static handle_t getshouldpass(char *name, handle_t h, unsigned int type) {
         return -1;
     } else if(test_tag.type != type) {
         xlog(1, "Test Failed - Returned type doesn't match for \"%s\"", name);
+        return -1;
+    } else if(test_tag.count != count) {
+        xlog(1, "Test Failed - Returned count doesn't match for \"%s\"", name);
         return -1;
     } else {
         return 0;
@@ -181,29 +185,31 @@ static handle_t getshouldfail(char *name) {
     }
 }
 
+/* Tries all the different tagnames / subscript combinations and checks the
+   resulting handle and type for accuracy */
 int check_tag_retrieve(void) {
     handle_t handle;
-    
+    int fail = 0;
     handle = dax_tag_add("TestTag", DAX_INT, 10);
     if(handle < 0) {
-        xlog(1,"OOPs TestTag should have been allowed to be added");
+        xlog(1, "OOPs TestTag should have been allowed to be added");
         return -1;
     }
-    if(getshouldpass("TestTag", handle, DAX_INT)) return -1;
-    if(getshouldpass("TestTag[0]", handle, DAX_INT)) return -1;
-    if(getshouldpass("TestTag.0", handle, DAX_BOOL)) return -1;
-    if(getshouldpass("TestTag.1", handle + 1, DAX_BOOL)) return -1;
-    if(getshouldpass("TestTag.15", handle + 15, DAX_BOOL)) return -1;
-    if(getshouldpass("TestTag[0].0", handle, DAX_BOOL)) return -1;
-    if(getshouldpass("TestTag[1]", handle + 16, DAX_INT)) return -1;
-    if(getshouldpass("TestTag[9]", handle + 16*9, DAX_INT)) return -1;
-    if(getshouldfail("TestTag[10]")) return -1;
-    if(getshouldpass("TestTag.159", handle + 159, DAX_BOOL)) return -1;
-    if(getshouldfail("TestTag.160")) return -1;
-    if(getshouldpass("TestTag[9].15", handle + 159, DAX_BOOL)) return -1;
-    if(getshouldfail("TestTag[9].16")) return -1;
-    if(getshouldfail("TestTag[8].16")) return -1;
-    if(getshouldfail("TestTag[5].16")) return -1;
+    if(getshouldpass("TestTag", handle, DAX_INT, 10)) fail = -1;
+    if(getshouldpass("TestTag[0]", handle, DAX_INT, 1)) fail = -1;
+    if(getshouldpass("TestTag.0", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag.1", handle + 1, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag.15", handle + 15, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag[0].0", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag[1]", handle + 16, DAX_INT, 1)) fail = -1;
+    if(getshouldpass("TestTag[9]", handle + 16*9, DAX_INT, 1)) fail = -1;
+    if(getshouldfail("TestTag[10]")) fail = -1;
+    if(getshouldpass("TestTag.159", handle + 159, DAX_BOOL, 1)) fail = -1;
+    if(getshouldfail("TestTag.160")) fail = -1;
+    if(getshouldpass("TestTag[9].15", handle + 159, DAX_BOOL, 1)) fail = -1;
+    if(getshouldfail("TestTag[9].16")) fail = -1;
+    if(getshouldfail("TestTag[8].16")) fail = -1;
+    if(getshouldfail("TestTag[5].16")) fail = -1;
     
-    return 0;
+    return fail;
 }

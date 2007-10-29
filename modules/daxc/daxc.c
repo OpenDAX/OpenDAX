@@ -74,7 +74,7 @@ void list(char *instr) {
     int n = 0;
     while( !dax_tag_byindex(n, &temp_tag) ) {
         /* Print the name */
-        printf("[%d] %s \t %s",n, temp_tag.name, dax_get_type(temp_tag.type));
+        printf("[%d] %s \t %s",n, temp_tag.name, dax_type_to_string(temp_tag.type));
         /* Output the array size of it's greater than 1 */
         if(temp_tag.count > 1) {
             printf("[%d]", temp_tag.count);

@@ -90,8 +90,11 @@ void dax_set_level(int);
    void functionname(const char *); */
 int dax_set_debug(void (*debug)(const char *msg));
 int dax_set_error(void (*error)(const char *msg));
+
+/* Get the datatype from a string */
+int dax_string_to_type(const char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
-const char *dax_get_type(int type);
+const char *dax_type_to_string(int type);
 
 /* Only registered modules will get responses from the core */
 int dax_mod_register(char *);   /* Registers the Module with the core */
@@ -117,7 +120,7 @@ int dax_tag_byindex(int index, dax_tag *tag);
 
 /* These functions are where all the data transfer takes place. */
 /* simple untyped tag reading function */
-void dax_tag_read(handle_t handle, void *data, size_t size);
+int dax_tag_read(handle_t handle, void *data, size_t size);
 /* simple untyped tag writing function */
 void dax_tag_write(handle_t handle, void *data, size_t size);
 /* simple untyped masked tag write */
@@ -128,7 +131,7 @@ char dax_tag_read_bit(handle_t handle);
 /* writes a single bit */
 int dax_tag_write_bit(handle_t handle, u_int8_t data);
 /* simple multiple bit read */
-void dax_tag_read_bits(handle_t handle, void *data, size_t size);
+int dax_tag_read_bits(handle_t handle, void *data, size_t size);
 /* simple multiple bit write */
 int dax_tag_write_bits(handle_t handle, void *data, size_t size);
 
