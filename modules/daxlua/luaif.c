@@ -233,7 +233,7 @@ static inline void lua_to_dax(lua_State *L, unsigned int type, void *buff, void 
 static int _dax_set(lua_State *L) {
     char *name;
     dax_tag tag;
-    int size, n;
+    int size, n, x;
     void *buff, *mask;
     
     name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
@@ -243,7 +243,11 @@ static int _dax_set(lua_State *L) {
     }
     
     if( tag.type == DAX_BOOL ) {
-        size = tag.count / 8; //---$#%#$%#$%  Might need the old +1 at the end
+        if( tag.handle % 8 == 0) {
+            size = tag.count / 8;
+        } else {
+            size = tag.count / 8 + 1;
+        }
     } else {
         size = tag.count * TYPESIZE(tag.type) / 8;
     }
@@ -267,12 +271,13 @@ static int _dax_set(lua_State *L) {
             if(lua_isnil(L, -1) == 0) {
                 if(tag.type == DAX_BOOL) {
                     /* Handle the boolean */
+                    x = n + handle % 8;
                     if(lua_toboolean(L, -1)) {
-                        ((u_int8_t *)buff)[n / 8] &= (1 << n % 8);
+                        ((u_int8_t *)buff)[x / 8] &= (1 << x % 8);
                     } else {  /* If the bit in the buffer is not set */
-                        ((u_int8_t *)buff)[n / 8] |= ~(1 << n % 8);
+                        ((u_int8_t *)buff)[x / 8] |= ~(1 << x % 8);
                     }
-                    ((u_int8_t *)mask)[n / 8] &= (1 << n % 8);
+                    ((u_int8_t *)mask)[x / 8] &= (1 << x % 8);
                 } else {
                     //Handle the non-boolean
                     lua_to_dax(L, tag.type, buff, mask, n);
