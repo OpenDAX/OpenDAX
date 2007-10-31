@@ -253,6 +253,7 @@ static int _dax_set(lua_State *L) {
     }
     /* Allocate a buffer and a mask */
     buff = alloca(size);
+    bzero(buff, size);
     mask = alloca(size);
     bzero(mask, size);
     if(buff == NULL || mask == NULL) {
@@ -271,13 +272,13 @@ static int _dax_set(lua_State *L) {
             if(lua_isnil(L, -1) == 0) {
                 if(tag.type == DAX_BOOL) {
                     /* Handle the boolean */
-                    x = n + handle % 8;
+                    x = (n + tag.handle) % 8;
                     if(lua_toboolean(L, -1)) {
-                        ((u_int8_t *)buff)[x / 8] &= (1 << x % 8);
+                        ((u_int8_t *)buff)[x / 8] |= (1 << (x % 8));
                     } else {  /* If the bit in the buffer is not set */
-                        ((u_int8_t *)buff)[x / 8] |= ~(1 << x % 8);
+                        ((u_int8_t *)buff)[x / 8] &= ~(1 << (x % 8));
                     }
-                    ((u_int8_t *)mask)[x / 8] &= (1 << x % 8);
+                    ((u_int8_t *)mask)[x / 8] |= (1 << (x % 8));
                 } else {
                     //Handle the non-boolean
                     lua_to_dax(L, tag.type, buff, mask, n);
