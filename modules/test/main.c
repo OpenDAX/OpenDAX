@@ -34,7 +34,7 @@ int main(int argc,char *argv[]) {
     int tests_failed = 0;
     int n;
     handle_t handle;
-    char tagname[DAX_TAGNAME_SIZE +1];
+    //char tagname[DAX_TAGNAME_SIZE +1];
     u_int16_t dummy[20], test[20];
     
     openlog("test", LOG_NDELAY, LOG_DAEMON);

@@ -233,7 +233,7 @@ static inline void lua_to_dax(lua_State *L, unsigned int type, void *buff, void 
 static int _dax_set(lua_State *L) {
     char *name;
     dax_tag tag;
-    int size, n, x;
+    int size, n, x, index;
     void *buff, *mask;
     
     name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
@@ -273,12 +273,13 @@ static int _dax_set(lua_State *L) {
                 if(tag.type == DAX_BOOL) {
                     /* Handle the boolean */
                     x = (n + tag.handle) % 8;
+                    index = ((tag.handle % 8) + n) / 8;
                     if(lua_toboolean(L, -1)) {
-                        ((u_int8_t *)buff)[x / 8] |= (1 << (x % 8));
+                        ((u_int8_t *)buff)[index] |= (1 << (x % 8));
                     } else {  /* If the bit in the buffer is not set */
-                        ((u_int8_t *)buff)[x / 8] &= ~(1 << (x % 8));
+                        ((u_int8_t *)buff)[index] &= ~(1 << (x % 8));
                     }
-                    ((u_int8_t *)mask)[x / 8] |= (1 << (x % 8));
+                    ((u_int8_t *)mask)[index] |= (1 << (x % 8));
                 } else {
                     //Handle the non-boolean
                     lua_to_dax(L, tag.type, buff, mask, n);
@@ -291,7 +292,7 @@ static int _dax_set(lua_State *L) {
         dax_tag_mask_write(tag.handle, buff, mask, size);
     } else { /* Retrieved tag is a single point */
         if(tag.type == DAX_BOOL) {
-            dax_tag_write_bit(tag.handle, lua_toboolean(L,2));
+            dax_tag_write_bit(tag.handle, lua_toboolean(L, -1));
         } else {
             lua_to_dax(L, tag.type, buff, mask, 0);
             dax_tag_write(tag.handle, buff, size);

@@ -101,7 +101,7 @@ int configure(int argc, char *argv[]) {
     
  /* load and run the configuration file */
     if(luaL_loadfile(L, configfile)  || lua_pcall(L, 0, 0, 0)) {
-        xerror("Problem executing configuration file %s", configfile);
+        xerror("Problem executing configuration file %s", lua_tostring(L, -1));
         return 1;
     }
     
