@@ -74,7 +74,7 @@ void initialize_tagbase(void) {
     }
     __databasesize = DAX_DATABASE_SIZE;
     
-    xlog(10,"Database size = %d", __databasesize);
+    xlog(10,"Database created with size = %d", __databasesize);
     /* Set all the memory to zero */
     memset(__taglist, 0x00, sizeof(dax_tag) * DAX_TAGLIST_SIZE);
     memset(__db, 0x00, sizeof(u_int32_t) * DAX_DATABASE_SIZE);
@@ -85,7 +85,7 @@ void initialize_tagbase(void) {
     }
     /* Write the current size of the database to the _status tag */
     tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
-}
+    }
 
 
 /* This adds a tag to the database. */
@@ -125,11 +125,9 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
         /*xerror("Problem growing the database"); */
         return -5;
     }
-    
-    
  /* Okay we've passed all the tests so let's add the tag.
     The taglist must be sorted by handle for all of this stuff to work */
-    if((handle > __taglist[__tagcount - 1].handle) || __tagcount == 0) {
+    if(__tagcount == 0 || (handle > __taglist[__tagcount - 1].handle) ) {
         n = __tagcount; /* First or last in the list */
     } else {
         for(n = 1; n < __tagcount; n++) {

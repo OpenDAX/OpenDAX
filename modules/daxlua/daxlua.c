@@ -22,6 +22,7 @@
 #include <daxlua.h>
 #include <opendax.h>
 #include <common.h>
+#include <signal.h>
 #include <options.h>
 #include <dax/func.h>
 #include <string.h>

@@ -65,11 +65,10 @@ int main(int argc, const char *argv[]) {
 	  * start_main_loop();
     */
     
-    setverbosity(1); /*TODO: Needs to be configuration */
+    setverbosity(10); /*TODO: Needs to be configuration */
     
     /* Read configuration from defaults, file and command line */
     dax_configure(argc, argv);
-    
     /* Go to the background */
     if(config.daemonize) {
         if(daemonize("OpenDAX")) {

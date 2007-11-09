@@ -98,6 +98,7 @@ void xlog(int verbosity, const char *format,...) {
 
 /* allocates and copies a string.  This string would have to be
    deallocated with free() */
+/* TODO: Should use strdup if available right??? */
 char *xstrdup(char *src) {
     char *dest;
     dest=(char *)xmalloc((strlen(src)*sizeof(char))+1);

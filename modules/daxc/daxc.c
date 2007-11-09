@@ -18,11 +18,7 @@
  *  Main source code file for the OpenDAX Command Line Client  module
  */
 
-#include <common.h>
-#include <opendax.h>
-#include "func.h"
-#include <signal.h>
-#include <string.h>
+#include <daxc.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -37,15 +33,18 @@ int main(int argc,char *argv[]) {
     char *instr;
     
  /* Set up the signal handlers */
-    memset (&sa,0,sizeof(struct sigaction));
-    sa.sa_handler=&quit_signal;
-    sigaction (SIGQUIT,&sa,NULL);
-    sigaction (SIGINT,&sa,NULL);
-    sigaction (SIGTERM,&sa,NULL);
+    memset (&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = &quit_signal;
+    sigaction (SIGQUIT, &sa, NULL);
+    sigaction (SIGINT, &sa, NULL);
+    sigaction (SIGTERM, &sa, NULL);
     
  /* Set's the error level and assigns the message callbacks */
+    /* TODO: Should be a command line option -v n */
     dax_set_level(10);
-    /*TODO: These cause errors because of the function types */
+    
+    /*TODO: These cause warnings because of the function types 
+            There has got to be a better way of handling error and debug messages */
     dax_set_debug(&xnotice);
     dax_set_error(&xerror);
     
@@ -54,53 +53,65 @@ int main(int argc,char *argv[]) {
         xfatal("Unable to find OpenDAX");
     }
     
-    /* TODO: Check Command Line options here and act accordingly */
+    /* TODO: Check Command Line options here and act accordingly 
+        -X for execute command
+        -f for read commands from file
+        -v verbosity
+        -V print version and bail */
     
  /* At this point we are in interactive mode.  We call the readline
     function repeatedly and then send the input to runcmd */
     while(1) {
         instr = rl_gets("dax>");
-        
-        runcmd(instr); /* Off we go */    
+        /* TODO: Blank lines craxh */
+        if( instr == NULL ) {
+            /* End of File */
+            getout(0);
+        }
+        if( instr[0] != '\0' ) {
+            runcmd(instr); /* Off we go */    
+        }
     }
     
  /* This is just to make the compiler happy */
     return(0);
 }
 
-/* LIST command function */
-void list(char *instr) {
-    dax_tag temp_tag;
-    int n = 0;
-    while( !dax_tag_byindex(n, &temp_tag) ) {
-        /* Print the name */
-        printf("[%d] %s \t %s",n, temp_tag.name, dax_type_to_string(temp_tag.type));
-        /* Output the array size of it's greater than 1 */
-        if(temp_tag.count > 1) {
-            printf("[%d]", temp_tag.count);
-        }
-        /* Output the handle and the carriage return */
-//        printf(" \t 0x%08X\n", temp_tag.handle);
-        printf(" \t %d\n", temp_tag.handle);
-        n++;
-    }
-}
+
 
 /* Main Loop.  Get input produce output */
 void runcmd(char *instr) {
     char *tok;
     
-    if( instr == NULL ) {
-        printf("End of File\n");
-        getout(0);
-    }
     /* get the command */
     tok = strtok(instr, " ");
     /* test the command in sequential if's once found call function and continue */
-    if( !strcasecmp(tok,"list")) {
-        list(instr);
+    if( !strcasecmp(tok,"dax")) {
+        printf("Haven't done 'dax' yet\n");
+    
+    } else if( !strcasecmp(tok,"tag")) {
+        tok = strtok(NULL, " ");
+        if(tok == NULL) fprintf(stderr,"ERROR: Missing Subcommand\n");
+        else if( !strcasecmp(tok, "list")) tag_list();
+        else if( !strcasecmp(tok, "set")) tag_set(instr);
+        else if( !strcasecmp(tok, "get")) tag_get(instr);
+    
+    } else if( !strcasecmp(tok,"mod")) {
+        printf("Haven't done 'mod' yet!\n");
+        
+    } else if( !strcasecmp(tok,"db")) {
+        printf("Haven't done 'db' yet!\n");
+    
+    } else if( !strcasecmp(tok,"msg")) {
+        printf("Haven't done 'msg' yet!\n");    
+    
+    } else if( !strcasecmp(tok, "help")) {
+        printf("Hehehehe, Yea right!\n");
+        printf(" Try TAG LIST, TAG SET or TAG GET\n");
+    
     } else if( !strcasecmp(tok,"exit")) {
         getout(0);
+    
     } else {
         printf("Unknown Command - %s\n",tok);
     }
