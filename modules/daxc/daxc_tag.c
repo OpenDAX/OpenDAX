@@ -166,13 +166,17 @@ void tag_set(char *instr) {
     /* Figure the size of the bufer and the mask */
     if( tag.type == DAX_BOOL ) {
         if( tag.handle % 8 == 0) {
-            size = tag.count / 8;
-        } else {
+            printf("BOOL and even by 8\n");
             size = tag.count / 8 + 1;
+        } else {
+            printf("BOOL and not even\n");
+            size = tag.count / 8 + 2;
         }
     } else {
         size = tag.count * TYPESIZE(tag.type) / 8;
     }
+    printf("Size = %d\n",size);
+    
     /* Allocate a buffer and a mask */
     buff = alloca(size);
     bzero(buff, size);
@@ -218,6 +222,7 @@ void tag_set(char *instr) {
             n = tag.count;
         }
     }
+    printf("byte 0x%X, mask 0x%X\n",((char *)buff)[0], ((char *)mask)[0]);
     dax_tag_mask_write(tag.handle, buff, mask, size);
 }
 

@@ -21,11 +21,13 @@
 #include <daxc.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <getopt.h>
 
 void runcmd(char *inst);
 char *rl_gets(const char *prompt);
 void quit_signal(int sig);
 static void getout(int exitstatus);
+static void parsecommandline(int argc, char *argv[]);
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -53,17 +55,14 @@ int main(int argc,char *argv[]) {
         xfatal("Unable to find OpenDAX");
     }
     
-    /* TODO: Check Command Line options here and act accordingly 
-        -X for execute command
-        -f for read commands from file
-        -v verbosity
-        -V print version and bail */
+    parsecommandline(argc, argv);
+
     
  /* At this point we are in interactive mode.  We call the readline
     function repeatedly and then send the input to runcmd */
     while(1) {
         instr = rl_gets("dax>");
-        /* TODO: Blank lines craxh */
+    
         if( instr == NULL ) {
             /* End of File */
             getout(0);
@@ -76,6 +75,50 @@ int main(int argc,char *argv[]) {
  /* This is just to make the compiler happy */
     return(0);
 }
+
+/* TODO: Finish this function 
+ -X for execute command
+ -f for read commands from file
+ -v verbosity
+ -V print version and bail */
+static void parsecommandline(int argc, char *argv[])  {
+    char c;
+    
+    static struct option options[] = {
+        {"execute",required_argument, NULL, 'x'},
+        {"file",required_argument, NULL, 'f'},
+        {"version",no_argument, NULL, 'V'},
+        {"verbose",optional_argument, NULL, 'v'},
+        {0, 0, 0, 0}
+    };
+    
+    /* Get the command line arguments */ 
+    while ((c = getopt_long (argc, (char * const *)argv, "C:VvD",options, NULL)) != -1) {
+        switch (c) {
+            case 'V':
+                printf("OpenDAX Command Line Client Module Version %s\n",VERSION);
+                break;
+            case 'v':
+                //--config.verbose = strtol(optarg, "NULL", 10);
+                break;
+            case 'x': 
+                //--config.daemonize=1;
+                break;
+            case 'f': 
+                //--config.daemonize=1;
+                break;
+            case '?':
+                printf("Got the big ?\n");
+                break;
+            case -1:
+            case 0:
+                break;
+            default:
+                printf ("?? getopt returned character code 0%o ??\n", c);
+        } /* End Switch */
+    } /* End While */           
+}
+
 
 
 

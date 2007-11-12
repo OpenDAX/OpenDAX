@@ -85,7 +85,7 @@ static void parsecommandline(int argc, const char *argv[])  {
 	        if(config.configfile) strcpy(config.configfile,optarg);
 	        break;
         case 'V':
-		    printf("mbd Version %s\n",VERSION);
+		    printf("OpenDAX Modbus Module Version %s\n",VERSION);
 	        break;
 	    case 'v':
             config.verbose=1;

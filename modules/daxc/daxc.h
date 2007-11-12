@@ -24,6 +24,7 @@
 #include <signal.h>
 #include <string.h>
 
+/* TAG commands */
 void tag_list(void);
 void tag_set(char *instr);
 void tag_get(char *instr);
