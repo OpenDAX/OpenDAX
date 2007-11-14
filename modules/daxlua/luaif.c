@@ -211,16 +211,16 @@ static inline void lua_to_dax(lua_State *L, unsigned int type, void *buff, void 
         case DAX_ULINT:
             x = lua_tointeger(L, -1);
             ((u_int64_t *)buff)[index] = x;
-            ((u_int64_t *)mask)[index] = 0xFFFFFFFFFFFFFFFF;
+            ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LINT:
             x = lua_tointeger(L, -1);
             ((int64_t *)buff)[index] = x;
-            ((u_int64_t *)mask)[index] = 0xFFFFFFFFFFFFFFFF;
+            ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LREAL:
             ((double *)buff)[index] = lua_tonumber(L, -1);
-            ((u_int64_t *)mask)[index] = 0xFFFFFFFFFFFFFFFF;
+            ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
      }
 }
@@ -244,9 +244,9 @@ static int _dax_set(lua_State *L) {
     
     if( tag.type == DAX_BOOL ) {
         if( tag.handle % 8 == 0) {
-            size = tag.count / 8;
-        } else {
             size = tag.count / 8 + 1;
+        } else {
+            size = tag.count / 8 + 2;
         }
     } else {
         size = tag.count * TYPESIZE(tag.type) / 8;

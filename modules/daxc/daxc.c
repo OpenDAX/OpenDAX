@@ -23,11 +23,15 @@
 #include <readline/history.h>
 #include <getopt.h>
 
-void runcmd(char *inst);
+int runcmd(char *inst);
 char *rl_gets(const char *prompt);
 void quit_signal(int sig);
 static void getout(int exitstatus);
 static void parsecommandline(int argc, char *argv[]);
+
+static int verbosity = 0;
+static char *command = NULL;
+static char *filename = NULL;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -41,22 +45,32 @@ int main(int argc,char *argv[]) {
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
     
- /* Set's the error level and assigns the message callbacks */
-    /* TODO: Should be a command line option -v n */
-    dax_set_level(10);
+
+    parsecommandline(argc, argv);
+
+    /* Set's the error level and assigns the message callbacks */
+    dax_set_level(verbosity);
     
     /*TODO: These cause warnings because of the function types 
             There has got to be a better way of handling error and debug messages */
     dax_set_debug(&xnotice);
     dax_set_error(&xerror);
+
     
  /* Check for OpenDAX and register the module */
     if( dax_mod_register("daxc") ) {
         xfatal("Unable to find OpenDAX");
     }
     
-    parsecommandline(argc, argv);
-
+    if(command) {
+        if(runcmd(command)) getout(1);
+    }
+    
+    if(filename) {
+        printf("Gonna try to run file %s\n", filename);
+    }
+    
+    if(filename || command) getout(0);
     
  /* At this point we are in interactive mode.  We call the readline
     function repeatedly and then send the input to runcmd */
@@ -77,38 +91,43 @@ int main(int argc,char *argv[]) {
 }
 
 /* TODO: Finish this function 
- -X for execute command
+ -x for execute command
  -f for read commands from file
  -v verbosity
- -V print version and bail */
+ -V print version and bail
+ -h for help*/
 static void parsecommandline(int argc, char *argv[])  {
     char c;
     
     static struct option options[] = {
-        {"execute",required_argument, NULL, 'x'},
-        {"file",required_argument, NULL, 'f'},
-        {"version",no_argument, NULL, 'V'},
-        {"verbose",optional_argument, NULL, 'v'},
+        {"execute", required_argument, NULL, 'x'},
+        {"file", required_argument, NULL, 'f'},
+        {"version", no_argument, NULL, 'V'},
+        {"help", no_argument, NULL, 'h'},
         {0, 0, 0, 0}
     };
     
     /* Get the command line arguments */ 
-    while ((c = getopt_long (argc, (char * const *)argv, "C:VvD",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "f:Vvhx:",options, NULL)) != -1) {
         switch (c) {
             case 'V':
-                printf("OpenDAX Command Line Client Module Version %s\n",VERSION);
+                printf("OpenDAX Command Line Client Module Version %s\n", VERSION);
+                getout(0);
                 break;
             case 'v':
-                //--config.verbose = strtol(optarg, "NULL", 10);
+                verbosity++;
                 break;
             case 'x': 
-                //--config.daemonize=1;
+                command = strdup(optarg);
                 break;
             case 'f': 
-                //--config.daemonize=1;
+                filename = strdup(optarg);
+                break;
+            case 'h': 
+                printf("Printing Help\n");
                 break;
             case '?':
-                printf("Got the big ?\n");
+                //--printf("Got the big ?\n");
                 break;
             case -1:
             case 0:
@@ -120,10 +139,11 @@ static void parsecommandline(int argc, char *argv[])  {
 }
 
 
-
+/* TODO: Gotta return error from here so that we can return it up 
+   to the shell when we are in batch mode */
 
 /* Main Loop.  Get input produce output */
-void runcmd(char *instr) {
+int runcmd(char *instr) {
     char *tok;
     
     /* get the command */
@@ -135,9 +155,9 @@ void runcmd(char *instr) {
     } else if( !strcasecmp(tok,"tag")) {
         tok = strtok(NULL, " ");
         if(tok == NULL) fprintf(stderr,"ERROR: Missing Subcommand\n");
-        else if( !strcasecmp(tok, "list")) tag_list();
-        else if( !strcasecmp(tok, "set")) tag_set(instr);
-        else if( !strcasecmp(tok, "get")) tag_get(instr);
+        else if( !strcasecmp(tok, "list")) return(tag_list());
+        else if( !strcasecmp(tok, "set")) return(tag_set(instr));
+        else if( !strcasecmp(tok, "get")) return(tag_get(instr));
     
     } else if( !strcasecmp(tok,"mod")) {
         printf("Haven't done 'mod' yet!\n");

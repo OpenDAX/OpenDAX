@@ -160,16 +160,16 @@ int dax_get_tag(char *name, dax_tag *tag) {
     size_t size;
     
     /* TODO: Check the tag cache here */
-    
+    /* TODO: Some of these may need to be debug messages so they won't print */
     /* It seems like we should bounds check *name but _message-send will clip it! */
     result = _message_send(1, MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
     if(result) {
-        dax_error("Can't send MSG_TAG_GET message\n");
+        dax_error("Can't send MSG_TAG_GET message");
         return result;
     }
     result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
     if(result) {
-        dax_error("Problem receiving message MSG_TAG_GET\n");
+        dax_error("Problem receiving message MSG_TAG_GET");
     }
     return result;
 }

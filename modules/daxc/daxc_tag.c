@@ -29,8 +29,8 @@ static inline void show_tag(int n, dax_tag temp_tag) {
         printf("[%d]", temp_tag.count);
     }
     /* Output the handle and the carriage return */
-    //        printf(" \t 0x%08X\n", temp_tag.handle);
-    printf(" \t %d\n", temp_tag.handle);
+    printf(" \t 0x%08X\n", temp_tag.handle);
+    //--printf(" \t %d\n", temp_tag.handle);
 }
 
 /* TAG LIST command function 
@@ -40,7 +40,7 @@ static inline void show_tag(int n, dax_tag temp_tag) {
  then we check for a second argument.  If we have two numbers then
  we list from the first to the first + second if not then we list
  the next X tags and increment lastindex. */
-void tag_list(void) {
+int tag_list(void) {
     dax_tag temp_tag;
     static int lastindex;
     char *arg[] = {NULL, NULL};
@@ -57,6 +57,7 @@ void tag_list(void) {
         if(end_ptr == arg[0]) {
             if( dax_tag_byname(arg[0], &temp_tag) ) {
                 printf("ERROR: Unknown Tagname %s\n", arg[0]);
+                return 1;
             } else {
                 show_tag(-1, temp_tag);
             }
@@ -69,7 +70,7 @@ void tag_list(void) {
                 for(n = start; n < (start + count); n++) {
                     if(dax_tag_byindex(n, &temp_tag)) {
                         printf("No More Tags To List\n");
-                        return;
+                        return 1;
                     } else {
                         show_tag(n, temp_tag);
                     }
@@ -80,7 +81,7 @@ void tag_list(void) {
                     if(dax_tag_byindex(n, &temp_tag)) {
                         printf("No More Tags To List\n");
                         lastindex = 0;
-                        return;
+                        return 1;
                     } else {
                         show_tag(n, temp_tag);
                     }
@@ -96,7 +97,9 @@ void tag_list(void) {
             n++;
         }
     }
+    return 0;
 }
+
 
 static inline void string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index) {
     
@@ -132,21 +135,21 @@ static inline void string_to_dax(char *val, unsigned int type, void *buff, void 
         case DAX_LWORD:
         case DAX_ULINT:
             ((u_int64_t *)buff)[index] = (u_int64_t)strtol(val, NULL, 0);
-            ((u_int64_t *)mask)[index] = 0xFFFFFFFFFFFFFFFF;
+            ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LINT:
             ((int64_t *)buff)[index] = (int64_t)strtol(val, NULL, 0);
-            ((u_int64_t *)mask)[index] = 0xFFFFFFFFFFFFFFFF;
+            ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LREAL:
             ((double *)buff)[index] = strtod(val,NULL);
-            ((u_int64_t *)mask)[index] = 0xFFFFFFFFFFFFFFFF;
+            ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
     }
 }
 
 
-void tag_set(char *instr) {
+int tag_set(char *instr) {
     char *name;
     char *val;
     int n,x,index,result;
@@ -157,25 +160,22 @@ void tag_set(char *instr) {
     name = strtok(NULL, " ");
     if(name == NULL) {
         fprintf(stderr, "ERROR: No Tagname or Handle Given\n");
-        return;
+        return 1;
     }
     if( dax_tag_byname(name, &tag) ) {
         fprintf(stderr, "ERROR: Tagname %s not found\n", name);
-        return;
+        return 1;
     }
     /* Figure the size of the bufer and the mask */
     if( tag.type == DAX_BOOL ) {
         if( tag.handle % 8 == 0) {
-            printf("BOOL and even by 8\n");
             size = tag.count / 8 + 1;
         } else {
-            printf("BOOL and not even\n");
             size = tag.count / 8 + 2;
         }
     } else {
         size = tag.count * TYPESIZE(tag.type) / 8;
     }
-    printf("Size = %d\n",size);
     
     /* Allocate a buffer and a mask */
     buff = alloca(size);
@@ -184,12 +184,13 @@ void tag_set(char *instr) {
     bzero(mask, size);
     if(buff == NULL || mask == NULL) {
         fprintf(stderr, "ERROR: Unable to allocate memory\n");
+        return 1;
     }
     
     val = strtok(NULL, " ");
     if(val == NULL) {
         fprintf(stderr, "ERROR: No Value Given\n");
-        return;
+        return 1;
     }
     
     for(n = 0; n < tag.count; n++ ) {
@@ -197,12 +198,12 @@ void tag_set(char *instr) {
         if(strcasecmp(val, "-")) {        
             if(tag.type == DAX_BOOL) {
                 /* booleans are special */
-                if(!strcasecmp(val,"true")) {
+                if(!strcasecmp(val, "true")) {
                     result = 1;
-                } else if(!strcasecmp(val,"false")) {
+                } else if(!strcasecmp(val, "false")) {
                     result = 0;
                 } else {
-                    result = strtol(val,NULL,0);
+                    result = strtol(val, NULL, 0);
                 }
                 x = (n + tag.handle) % 8;
                 index = ((tag.handle % 8) + n) / 8;
@@ -222,8 +223,9 @@ void tag_set(char *instr) {
             n = tag.count;
         }
     }
-    printf("byte 0x%X, mask 0x%X\n",((char *)buff)[0], ((char *)mask)[0]);
+    //--printf("byte 0x%X, mask 0x%X\n",((char *)buff)[0], ((char *)mask)[0]);
     dax_tag_mask_write(tag.handle, buff, mask, size);
+    return 0;
 }
 
 
@@ -269,7 +271,7 @@ static inline void dax_to_string(unsigned int type, void *buff) {
 }
 
 
-void tag_get(char *instr) {
+int tag_get(char *instr) {
     char *name;
     dax_tag tag;
     int size, n;
@@ -280,9 +282,11 @@ void tag_get(char *instr) {
     /* Make sure that name is not NULL and we get the tagname */
     if( name == NULL) {
         fprintf(stderr, "ERROR: No tagname given\n");
+        return 1;
     }
     if(dax_tag_byname(name, &tag) ) {
         fprintf(stderr, "ERROR: Unable to retrieve tag - %s", name);
+        return 1;
     }
     /* We have to treat Booleans differently */
     if(tag.type == DAX_BOOL) {
@@ -291,6 +295,7 @@ void tag_get(char *instr) {
         buff = alloca(size);
         if(buff == NULL) {
             fprintf(stderr, "Unable to allocate buffer size = %d", size);
+            return 1;
         }
         dax_tag_read_bits(tag.handle, buff, tag.count);
         buff_idx = buff_bit = 0;
@@ -314,14 +319,14 @@ void tag_get(char *instr) {
         buff = alloca(size);
         if(buff == NULL) {
             fprintf(stderr, "Unable to allocate buffer size = %d", size);
+            return 1;
         }
         dax_tag_read(tag.handle, buff, size);
         //--DEBUG: printf("tag.count = %d, tag.type = %s\n", tag.count, dax_type_to_string(tag.type));
         
-        /* Push the data up to the lua interpreter stack */
-        /* TODO: Since this is all Array stuff we can use */
         for(n = 0; n < tag.count ; n++) {
             dax_to_string( tag.type, buff + (TYPESIZE(tag.type) / 8) * n);
         }
     }
+    return 0;
 }

@@ -34,6 +34,7 @@ struct Config {
     //--char ipaddress[16];
     //--unsigned short port;  /* TCP Port */ //There is probably a better datatype
     char *configfile;
+    int verbosity;
     char *tagname;
     u_int8_t daemonize;
     unsigned int tablesize;

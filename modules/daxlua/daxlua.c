@@ -26,6 +26,7 @@
 #include <options.h>
 #include <dax/func.h>
 #include <string.h>
+#include <sys/time.h>
 #include <luaif.h>
 
 void quit_signal(int sig);

@@ -76,6 +76,8 @@ int main(int argc, const char *argv[]) {
         }
     }
     
+    setverbosity(config.verbosity);
+    
     msg_setup_queue();    /* This creates and sets up the message queue */
     initialize_tagbase(); /* initiallize the tagname list and database */
     

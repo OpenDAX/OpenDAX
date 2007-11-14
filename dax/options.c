@@ -70,7 +70,7 @@ static void initconfig(void) {
     config.pidfile=NULL;
     config.tagname=NULL;
     config.configfile=NULL;
-    //config.verbose=0;
+    config.verbosity=0;
     config.daemonize=0;
 }
 
@@ -97,8 +97,7 @@ static void parsecommandline(int argc, const char *argv[])  {
 		    printf("%s Version %s\n",PACKAGE,VERSION);
 	        break;
 	    case 'v':
-            setverbosity(10);
-            //config.verbose = 1 ;
+            config.verbosity++;
 	        break;
         case 'D': 
             config.daemonize = 1;

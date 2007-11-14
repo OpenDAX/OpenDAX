@@ -25,6 +25,6 @@
 #include <string.h>
 
 /* TAG commands */
-void tag_list(void);
-void tag_set(char *instr);
-void tag_get(char *instr);
+int tag_list(void);
+int tag_set(char *instr);
+int tag_get(char *instr);

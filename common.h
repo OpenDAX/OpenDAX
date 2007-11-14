@@ -43,3 +43,5 @@
 #ifndef ETC_DIR
   #define ETC_DIR "/etc/opendax"
 #endif
+
+#define DAX_64_ONES 0xFFFFFFFFFFFFFFFFULL
