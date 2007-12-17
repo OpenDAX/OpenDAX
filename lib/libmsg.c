@@ -314,7 +314,7 @@ int dax_tag_read(handle_t handle, void *data, size_t size) {
         It subtracts a handle_t from the data size for use as the tag handle.*/
     m_size = MSG_DATA_SIZE;
     count=((size-1)/m_size)+1;
-    for(n=0;n<count;n++) {
+    for(n=0; n<count; n++) {
         if(n == (count-1)) { /* Last Packet */
             sendsize = size % m_size; /* What's left over */
         } else {

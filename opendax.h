@@ -134,5 +134,8 @@ int dax_tag_write_bit(handle_t handle, u_int8_t data);
 int dax_tag_read_bits(handle_t handle, void *data, size_t size);
 /* simple multiple bit write */
 int dax_tag_write_bits(handle_t handle, void *data, size_t size);
+/* multiple bit write with maks */
+int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size);
+
 
 #endif /* !__OPENDAX_H */

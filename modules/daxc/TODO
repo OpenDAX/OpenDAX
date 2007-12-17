@@ -1,9 +1,4 @@
-LIST command should accept a single number that tells it to display the next N records. 
-As a part of this is should also keep the last record displayed so that it can start there.
-If given two numbers it should display the records starting at the first argument using the
-second argument as the count.
-
-Maybe I need to rethink this whole thing.  Perhaps it should be...
+Commands...
 
 DAX status
 DAX stop
@@ -22,9 +17,15 @@ MOD status x
 MOD connect x  <connect to STDIN / STDOUT with dax CL>
 
 DB list x x x
-DB set x x   <maybe read / write would be better for raw access>
-DB get x x
+DB read x x 
+DB write x x
 
 MSG send x x
 
 Obviously not all of this has been done in the DAX itself yet.
+
+Need to have a way to store the "mode" of the client so that TAG, DAX, MOD etc would not
+have to be retyped everytime.  If DB was typed alone on the command line the it would go
+into DB mode and the prompt would change to daxc:DB>.  Then only READ and WRITE would have
+to be typed.  Maybe I should also adjust the command detection to use the least number of
+letters that would be necessary to denote a command, like the old Cisco OS.

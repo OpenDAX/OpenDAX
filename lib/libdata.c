@@ -20,6 +20,9 @@
  */
 
 #include <libdax.h>
+#ifdef HAVE_STRINGS_H
+  #include <strings.h>
+#endif
 #include <dax/tagbase.h>
 #include <dax/message.h>
 
@@ -32,6 +35,7 @@ typedef struct {
 } io_tag;
 
 /* returns zero if the bit is clear, 1 if it's set */
+/* TODO: Shouldn't we return an error somehow? */
 char dax_tag_read_bit(handle_t handle) {
     u_int8_t data;
     /* read the one byte that contains the handle the bit we want */
@@ -128,7 +132,7 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
     data_idx = 0;
     data_bit = 0;
     
-    for(n=0; n < DAX_BIT_MSG_SIZE; n++) mask[n]=0x00;
+    bzero(mask, DAX_BIT_MSG_SIZE);
     
     for(n=0; n<size; n++) {
         if(((u_int8_t *)data)[data_idx] & (1 << data_bit)) { /* If *buff bit is set */
@@ -163,5 +167,52 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
     return size;
 }
 
-
-
+int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size) {
+    u_int8_t buffer[DAX_BIT_MSG_SIZE];
+    u_int8_t newmask[DAX_BIT_MSG_SIZE];
+    size_t buffer_idx, buffer_bit, data_idx, data_bit;
+    handle_t next_handle;
+    int n;
+    
+    buffer_idx = 0;
+    buffer_bit = handle % 8;
+    next_handle = handle & ~0x07;
+    data_idx = 0;
+    data_bit = 0;
+    
+    bzero(newmask, DAX_BIT_MSG_SIZE);
+    
+    for(n=0; n<size; n++) {
+        if(((u_int8_t *)mask)[data_idx] & (1 << data_bit)) {
+            if(((u_int8_t *)data)[data_idx] & (1 << data_bit)) { /* If *buff bit is set */
+                buffer[buffer_idx] |= (u_int16_t)(1 << buffer_bit);
+            } else {  /* If the bit in the buffer is not set */
+                buffer[buffer_idx] &= ~(u_int16_t)(1 << buffer_bit);
+            }
+            /* This sets the mask bit */
+            newmask[buffer_idx] |= (u_int16_t)(1 << buffer_bit);
+        }
+        data_bit++;
+        if(data_bit == 8) {
+            data_bit = 0;
+            data_idx++;
+        }
+        
+        buffer_bit++;
+        if(buffer_bit == 8) {
+            buffer_bit = 0;
+            buffer_idx++;
+            if(buffer_idx == DAX_BIT_MSG_SIZE) {
+                /* Out of room in the buffer, send the message */
+                dax_tag_mask_write(next_handle, buffer, mask, buffer_idx);
+                next_handle += DAX_BIT_MSG_SIZE;
+                buffer_idx = 0;
+                bzero(mask, DAX_BIT_MSG_SIZE);
+                //--for(n=0; n < DAX_BIT_MSG_SIZE; n++) mask[n]=0x00;
+            }
+        }
+    }
+    dax_tag_mask_write(next_handle, buffer, mask, buffer_idx + 1);
+    /* TODO: Need to do some real error checking here and return a good number */
+    return size;
+}

@@ -149,7 +149,7 @@ static inline void string_to_dax(char *val, unsigned int type, void *buff, void 
 }
 
 
-int tag_set(char *instr) {
+int tag_set(void) {
     char *name;
     char *val;
     int n,x,index,result;
@@ -162,6 +162,7 @@ int tag_set(char *instr) {
         fprintf(stderr, "ERROR: No Tagname or Handle Given\n");
         return 1;
     }
+    /* TODO: Need to decide if this is a handle or a tag */
     if( dax_tag_byname(name, &tag) ) {
         fprintf(stderr, "ERROR: Tagname %s not found\n", name);
         return 1;
@@ -271,7 +272,7 @@ static inline void dax_to_string(unsigned int type, void *buff) {
 }
 
 
-int tag_get(char *instr) {
+int tag_get(void) {
     char *name;
     dax_tag tag;
     int size, n;
@@ -284,6 +285,7 @@ int tag_get(char *instr) {
         fprintf(stderr, "ERROR: No tagname given\n");
         return 1;
     }
+    /* TODO: Need to decide if this is a handle or a tag */
     if(dax_tag_byname(name, &tag) ) {
         fprintf(stderr, "ERROR: Unable to retrieve tag - %s", name);
         return 1;

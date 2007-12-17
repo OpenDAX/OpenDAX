@@ -26,5 +26,11 @@
 
 /* TAG commands */
 int tag_list(void);
-int tag_set(char *instr);
-int tag_get(char *instr);
+int tag_set(void);
+int tag_get(void);
+
+/* DB commands (DataBase) */
+int db_read_bit(void);
+int db_read(void);
+int db_write(void);
+int db_format(void);

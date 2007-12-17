@@ -139,9 +139,6 @@ static void parsecommandline(int argc, char *argv[])  {
 }
 
 
-/* TODO: Gotta return error from here so that we can return it up 
-   to the shell when we are in batch mode */
-
 /* Main Loop.  Get input produce output */
 int runcmd(char *instr) {
     char *tok;
@@ -156,18 +153,25 @@ int runcmd(char *instr) {
         tok = strtok(NULL, " ");
         if(tok == NULL) fprintf(stderr,"ERROR: Missing Subcommand\n");
         else if( !strcasecmp(tok, "list")) return(tag_list());
-        else if( !strcasecmp(tok, "set")) return(tag_set(instr));
-        else if( !strcasecmp(tok, "get")) return(tag_get(instr));
+        else if( !strcasecmp(tok, "set")) return(tag_set());
+        else if( !strcasecmp(tok, "get")) return(tag_get());
+        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tok);
     
     } else if( !strcasecmp(tok,"mod")) {
         printf("Haven't done 'mod' yet!\n");
         
     } else if( !strcasecmp(tok,"db")) {
-        printf("Haven't done 'db' yet!\n");
-    
+        tok = strtok(NULL, " ");
+        if(tok == NULL) fprintf(stderr, "ERROR: Missing Subcommand\n");
+        else if( !strcasecmp(tok, "read")) return(db_read());
+        else if( !strcasecmp(tok, "readbit")) return(db_read_bit());
+        else if( !strcasecmp(tok, "write")) return(db_write());
+        else if( !strcasecmp(tok, "format")) return(db_format());
+        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tok);
+        
     } else if( !strcasecmp(tok,"msg")) {
         printf("Haven't done 'msg' yet!\n");    
-    
+    /* TODO: Really should work on the help command */
     } else if( !strcasecmp(tok, "help")) {
         printf("Hehehehe, Yea right!\n");
         printf(" Try TAG LIST, TAG SET or TAG GET\n");
@@ -178,6 +182,7 @@ int runcmd(char *instr) {
     } else {
         printf("Unknown Command - %s\n",tok);
     }
+    return 0;
 }
 
 
