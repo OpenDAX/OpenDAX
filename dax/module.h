@@ -20,35 +20,13 @@
 #ifndef __MODULE_H
 #define __MODULE_H
 
-#include <sys/types.h>
-
-/* Module Flags */
-#define MFLAG_NORESTART 0x01
-#define MFLAG_OPENPIPES 0x02
+#include <common.h>
+#include <dax/daxtypes.h>
 
 #define MSTATE_RUNNING      0x00 /* Running normally */
 #define MSTATE_WAITING      0x01 /* Waiting for restart */
 #define MSTATE_CHILD        0x02 /* Module was started by this program */
 #define MSTATE_REGISTERED   0x04 /* Is the module registered */
-
-typedef unsigned int mod_handle_t;
-
-/* Modules are implemented as a circular doubly linked list */
-typedef struct dax_Module {
-    mod_handle_t handle;
-    char *name;
-    pid_t pid;
-    int exit_status;    /* modules exit status */
-    char *path;         /* modules execution */
-    char **arglist;     /* exec() ready array of arguments */
-    unsigned int flags; /* Configuration Flags for the module */
-    unsigned int state; /* Modules Current Running State */
-    int pipe_in;        /* Redirected to the modules stdin */
-    int pipe_out;       /* Redirected to the modules stdout */
-    int pipe_err;       /* Redirected to the modules stderr */
-    time_t starttime;
-    struct dax_Module *next,*prev;
-} dax_module;
 
 typedef struct {
     pid_t pid;
@@ -63,13 +41,13 @@ int module_del(mod_handle_t);
 void module_start_all(void);
 pid_t module_start (mod_handle_t);
 int module_stop(mod_handle_t);
-void module_register(char *,pid_t);
+void module_register(char *, pid_t);
 void module_unregister(pid_t);
 mod_handle_t module_get_pid(pid_t);
 
 /* module maintanance */
 void module_scan(void);
 
-void module_dmq_add(pid_t,int);
+void module_dmq_add(pid_t, int);
 
 #endif /* !__MODULE_H */

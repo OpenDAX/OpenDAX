@@ -28,7 +28,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <signal.h>
-#include "func.h"
+#include <func.h>
 
 static int _verbosity=0;
 static int _background=0;

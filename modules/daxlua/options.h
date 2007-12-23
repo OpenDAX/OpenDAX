@@ -26,5 +26,6 @@ int configure(int argc, char *argv[]);
 char *get_init(void);
 char *get_main(void);
 int get_rate(void);
+int get_verbosity(void);
 
 #endif /* !__OPTIONS_H */

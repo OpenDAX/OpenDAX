@@ -77,11 +77,25 @@
 
 typedef int handle_t;
 
+struct mod_list {
+    dax_module *module;
+    struct mod_list *next;
+};
+
+typedef struct dax_event_t {
+    handle_t handle;
+    size_t size;
+    u_int32_t checksum;
+    struct mod_list *notify;
+    struct dax_event_t *next;
+} dax_event;
+
 typedef struct {
     handle_t handle;
     char name[DAX_TAGNAME_SIZE + 1];
     unsigned int type;
     unsigned int count;
+    dax_tag *events;
 } dax_tag;
 
 void dax_set_level(int);
@@ -99,7 +113,7 @@ const char *dax_type_to_string(int type);
 /* Only registered modules will get responses from the core */
 int dax_mod_register(char *);   /* Registers the Module with the core */
 int dax_mod_unregister(void);   /* Unregister the Module with the core */
-handle_t dax_tag_add(char *name,unsigned int type, unsigned int count);
+handle_t dax_tag_add(char *name, unsigned int type, unsigned int count);
 
 /* The following functions are for reading and writing data.  These 
    are generic functions and are used by other functions within the

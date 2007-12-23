@@ -18,12 +18,11 @@
  * This is the source file for the tagname database handling routines
  */
 
+#include <common.h>
 #include <tagbase.h>
 #include <func.h>
-#include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include <unistd.h>
 
 /* Notes:
  * The tagname symbol table list is implemented as a simple array that
@@ -58,6 +57,8 @@ static int checktype(unsigned int);
 static inline handle_t getnewhandle(unsigned int, unsigned int);
 static int taglist_grow(void);
 static int database_grow(void);
+static int event_check(handle_t handle, size_t size);
+static int eventlist_grow(void);
 
 /* Allocates the symbol table and the database array.  There's no return
    value because failure of this function is fatal */
@@ -147,6 +148,7 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
         xerror("Unable to copy tagname %s");
         return -6;
     }
+    __taglist[n].events = NULL;
     __tagcount++;
     tag_write_bytes(STAT_TAG_CNT, &__tagcount, sizeof(u_int32_t));
     
@@ -234,7 +236,6 @@ int tag_del(char *name) {
 }
 
 /* Determine whether or not the tag name is okay */
-/* TODO: Make this function do something */
 static int validate_name(char *name) {
     int n;
     if(strlen(name) > DAX_TAGNAME_SIZE) {
@@ -264,8 +265,8 @@ static int get_by_name(char *name) {
 }
 
 /* This function searches the taglist for the handle.  It uses a bisection
-   search and returns the array index of the point that contains the handle.
-   The handle may be the handle of a bit within the tag point too. */
+   search and returns the array index of the tag that contains the handle.
+   The handle may be the handle of a bit within the tag too. */
 static int get_by_handle(handle_t handle) {
     int try, high, low;
     low = 0;
@@ -299,6 +300,8 @@ static int get_by_handle(handle_t handle) {
 /* This function finds the tag index of the tag that is defined by handle
    If this handle is within the tag and not the starting handle of the tag
    this function will return error. */
+/* TODO: Not sure that we need this function */
+#ifdef __FIND_HANDLE_DELETE
 static int find_handle(handle_t handle) {
     int try,high,low,n;
     low = n = 0;
@@ -321,6 +324,8 @@ static int find_handle(handle_t handle) {
     }
     return try;
 }
+#endif /* __FIND_HANDLE_DELETE */
+
 
 /* checks whether type is a valid datatype */
 static int checktype(unsigned int type) {
@@ -471,19 +476,23 @@ int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
     return size;
 }
 
-
-/* mostly for debugging */
-void tags_list(void) {
-    int n;
-    for(n = 0; n < __tagcount; n++) {
-        xlog(0,"%s handle = (%ld,0x%lx) count = %d", __taglist[n].name,
-             __taglist[n].handle, __taglist[n].handle, __taglist[n].count);
-    }
+/* Add an event to the event array */
+int event_add(handle_t handle, size_t size, dax_module *module) {
+/* TODO: PS
+    find the tag
+    verify that we are contained
+    check that the event doesn't already exist
+    allocate and add the the event
+ */
 }
 
-void print_database(void) {
-    int n;
-    for(n = 0; n < 20; n++) {
-        printf("0x%08x\n", __db[n]);
-    }
+/* TODO: Maybe some other way to delete events */
+int event_del(handle_t handle, size_t size, dax_module *module) {
+    return 0;
+}
+
+/* Compares the tagbase given by handle and size against the array of
+   events and sends the event messages when necessary */
+static int event_check(handle_t handle, size_t size) {
+    return 0;
 }

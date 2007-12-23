@@ -1,26 +1,29 @@
 Commands...
 
-DAX status
-DAX stop
-DAX reload
+  DAX status
+  DAX stop
+  DAX reload
 
-TAG add x x x
-TAG list x x
-TAG set x x x x
-TAG get x x x x
+  TAG add x x x
+x TAG list x x
+x TAG set x x x x
+x TAG get x x x x
 
-MOD add x x x x
-MOD list x x
-MOD start x
-MOD stop x
-MOD status x
-MOD connect x  <connect to STDIN / STDOUT with dax CL>
+  MOD add x x x x
+  MOD list x x
+  MOD start x
+  MOD stop x
+  MOD status x
+  MOD connect x  <connect to STDIN / STDOUT with dax CL>
 
-DB list x x x
-DB read x x 
-DB write x x
+  DB list x x x
+x DB read x x 
+x DB readbit x x
+  DB write x x ...
+  DB writebit x x ...
+  DB writemask x x ... mask x x ... ?? Not sure on this one
 
-MSG send x x
+x MSG send x x
 
 Obviously not all of this has been done in the DAX itself yet.
 
@@ -29,3 +32,4 @@ have to be retyped everytime.  If DB was typed alone on the command line the it 
 into DB mode and the prompt would change to daxc:DB>.  Then only READ and WRITE would have
 to be typed.  Maybe I should also adjust the command detection to use the least number of
 letters that would be necessary to denote a command, like the old Cisco OS.
+

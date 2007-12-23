@@ -16,17 +16,16 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#include <common.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <syslog.h>
-#include <module.h>
 #include <options.h>
-#include <func.h>
-#include <pthread.h>
 #include <message.h>
 #include <tagbase.h>
+#include <common.h>
+#include <module.h>
+#include <func.h>
+#include <pthread.h>
+#include <syslog.h>
+#include <string.h>
+#include <signal.h>
 
 extern struct Config config;
 

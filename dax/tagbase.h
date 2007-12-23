@@ -19,7 +19,7 @@
  */
 
 #include <opendax.h>
-#include <sys/types.h>
+#include <dax/daxtypes.h>
 
 #ifndef __TAGBASE_H
 #define __TAGBASE_H
@@ -48,12 +48,26 @@
  #define DAX_DATABASE_INC 1024
 #endif
 
+/* This is the initial size of the event array */
+#ifndef DAX_EVENT_SIZE
+ #define DAX_EVENT_SIZE 512
+#endif
+
+/* This is the increment by which the event array will grow when
+   the size is exceeded */
+#ifndef DAX_EVENT_INC
+ #define DAX_EVENT_INC 512
+#endif
+
+
 /* Define Handles for _status register points */
 #define STATUS_SIZE   4
 #define STAT_MSG_RCVD 0
 #define STAT_MSG_SENT 32
 #define STAT_DB_SIZE  64
 #define STAT_TAG_CNT 96
+
+
 
 void initialize_tagbase(void);
 handle_t tag_add(char *name,unsigned int type, unsigned int count);
@@ -63,12 +77,10 @@ handle_t tag_get_handle(char *name);
 int tag_get_type(handle_t handle); */
 dax_tag *tag_get_name(char *name);
 dax_tag *tag_get_index(int index);
-int tag_read_bytes(handle_t handle, void *data,size_t size);
+int tag_read_bytes(handle_t handle, void *data, size_t size);
 int tag_write_bytes(handle_t handle, void *data, size_t size);
 int tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
-
-/* debug stuff */
-void tags_list(void);
-void print_database(void);
+int event_add(handle_t handle, size_t size, dax_module *module);
+int event_del(handle_t handle, size_t size, dax_module *module);
 
 #endif /* !__TAGBASE_H */

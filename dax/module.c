@@ -17,11 +17,11 @@
  */
 
 #include <common.h>
+#include <module.h>
+#include <func.h>
+
 #include <time.h>
 #include <string.h>
-#include <opendax.h>
-#include "module.h"
-#include "func.h"
 
 /* TODO:
     Function to scan modules to determine which need restarting

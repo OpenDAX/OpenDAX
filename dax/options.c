@@ -27,21 +27,18 @@
 
 
 #include <common.h>
+#include <options.h>
+#include <module.h>
+#include <message.h>
+#include <tagbase.h>
+#include <func.h>
 
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include <syslog.h>
 #include <string.h>
-#include <unistd.h>
+#include <string.h>
 #include <getopt.h>
-//#include <termios.h>
-
-
-#include <common.h>
-#include <func.h>
-#include <module.h>
-#include <options.h>
 
 static void initconfig(void);
 static void setdefaults(void);
@@ -67,11 +64,11 @@ int dax_configure(int argc, const char *argv[]) {
 
 /* Inititialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
-    config.pidfile=NULL;
-    config.tagname=NULL;
-    config.configfile=NULL;
-    config.verbosity=0;
-    config.daemonize=0;
+    config.pidfile = NULL;
+    config.tagname = NULL;
+    config.configfile = NULL;
+    config.verbosity = 0;
+    config.daemonize = 0;
 }
 
 
@@ -81,9 +78,9 @@ static void parsecommandline(int argc, const char *argv[])  {
     char c;
 
     static struct option options[] = {
-        {"config",required_argument,0,'C'},
-        {"version",no_argument, 0, 'V'},
-        {"verbose",no_argument,0,'v'},
+        {"config", required_argument, 0, 'C'},
+        {"version", no_argument, 0, 'V'},
+        {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
     };
       
@@ -133,8 +130,8 @@ static void setdefaults(void) {
  * override values that were entered on the commandline. */
 static int readconfigfile(void)  {
     FILE *fd=NULL;
-	int length,count;
-	char *result,*find;
+	int length, count;
+	char *result, *find;
 	char string[MAX_LINE_LENGTH];
 	char token[MAX_LINE_LENGTH];
 	char value[MAX_LINE_LENGTH];
@@ -146,7 +143,7 @@ static int readconfigfile(void)  {
         length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
 		 config.configfile=(char *)malloc(sizeof(char) * length);
 		 if(config.configfile) 
-		     sprintf(config.configfile,"%s%s",ETC_DIR,"/opendax.conf");
+		     sprintf(config.configfile, "%s%s", ETC_DIR, "/opendax.conf");
 	}
 	fd=fopen(config.configfile,"r");
 	if(!fd) {

@@ -32,6 +32,7 @@ static char *configfile;
 static char *initscript;
 static char *mainscript;
 static long rate;
+static long verbosity;
 
 static void initconfig(void) {
     int length;
@@ -67,7 +68,7 @@ static void parsecommandline(int argc, char *argv[])  {
                 printf("daxlua Version %s\n",VERSION);
                 break;
             case 'v':
-                setverbosity(10);
+                verbosity++;
                 break;
             case '?':
                 printf("Got the big ?\n");
@@ -78,10 +79,12 @@ static void parsecommandline(int argc, char *argv[])  {
             default:
                 printf ("?? getopt returned character code 0%o ??\n", c);
         } /* End Switch */
-    } /* End While */           
+    } /* End While */
+    if(verbosity) setverbosity(verbosity);
 }
 
-
+/* This function is called last and makes sure that we have some sane defaults
+   for all the configuration options */
 static void setdefaults(void) {
     if(! rate) rate = 1000;
 }
@@ -109,19 +112,25 @@ int configure(int argc, char *argv[]) {
     lua_getglobal(L, "init");
     lua_getglobal(L, "main");
     lua_getglobal(L, "rate");
+    lua_getglobal(L, "verbosity");
     
-    initscript = strdup(lua_tostring(L,-3));
-    mainscript = strdup(lua_tostring(L, -2));
-    rate = lround(lua_tonumber(L, -1));
+    initscript = strdup(lua_tostring(L,-4));
+    mainscript = strdup(lua_tostring(L, -3));
+    rate = lround(lua_tonumber(L, -2));
+    if(verbosity == 0) { /* Make sure we didn't get anything on the commandline */
+        verbosity = lround(lua_tonumber(L, -1));
+        setverbosity(verbosity);
+    }
     
  /* bounds check rate */
     if(rate < 10 || rate > 100000) {
         xerror("Rate is out of bounds.  Setting to 1000.");
         rate = 1000;
     }
-    xlog(2,"Initialization Script set to %s",initscript);
-    xlog(2,"Main Script set to %s", mainscript);
-    xlog(2,"Rate set to %d", rate);
+    xlog(2, "Initialization Script set to %s",initscript);
+    xlog(2, "Main Script set to %s", mainscript);
+    xlog(2, "Rate set to %d", rate);
+    xlog(2, "Verbosity set to %d", verbosity);
  /* Clean up and get out */
     lua_close(L);
     

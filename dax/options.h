@@ -18,8 +18,15 @@
  *  Header file for opendax configuration
  */
 
+/* TODO: Convert all this to LUA */
+
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
+
+#define _GNU_SOURCE
+
+#include <common.h>
+#include <dax/daxtypes.h>
 
 #ifndef MAX_LINE_LENGTH
   #define MAX_LINE_LENGTH 100

@@ -21,11 +21,13 @@
 
 
 #include <message.h>
-#include <tagbase.h>
-#include <opendax.h>
-#include <module.h>
-#include <string.h>
 #include <func.h>
+#include <module.h>
+#include <tagbase.h>
+
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <string.h>
 
 static int __msqid;
 

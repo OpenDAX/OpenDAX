@@ -22,13 +22,12 @@
 #ifndef __LIBDAX_H
 #define __LIBDAX_H  
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <common.h>
 #include <opendax.h>
+#include <dax/daxtypes.h>
 
-//int _message_send(long int module,int command,void *payload, size_t size);
-//int _message_recv(int command, void *payload, size_t *size);
+//--int _message_send(long int module,int command,void *payload, size_t size);
+//--int _message_recv(int command, void *payload, size_t *size);
 
 void dax_debug(int level, const char *format, ...);
 void dax_error(const char *format, ...);
