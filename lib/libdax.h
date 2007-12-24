@@ -16,7 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * This file contains the global header stuff for the library
+ * This file contains the function definitions that are used internally
+ * by the libarary.  Public functions should go in opendax.h
  */
 
 #ifndef __LIBDAX_H
@@ -24,13 +25,10 @@
 
 #include <common.h>
 #include <opendax.h>
-#include <dax/daxtypes.h>
 
 //--int _message_send(long int module,int command,void *payload, size_t size);
 //--int _message_recv(int command, void *payload, size_t *size);
 
-void dax_debug(int level, const char *format, ...);
-void dax_error(const char *format, ...);
 
 
 #endif /* !__LIBDAX_H */

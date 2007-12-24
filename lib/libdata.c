@@ -21,11 +21,9 @@
 
 #include <libdax.h>
 #ifdef HAVE_STRINGS_H
-#include <strings.h>
+ #include <strings.h>
 #endif
-//--#include <dax/tagbase.h>
-//--#include <dax/message.h>
-
+#include <dax/libcommon.h>
 
 /* Use this tag type when we don't care about the name */
 typedef struct {

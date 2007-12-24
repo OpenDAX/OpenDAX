@@ -49,17 +49,11 @@ int main(int argc,char *argv[]) {
     parsecommandline(argc, argv);
 
     /* Set's the error level and assigns the message callbacks */
-    dax_set_level(verbosity);
-    
-    /*TODO: These cause warnings because of the function types 
-            There has got to be a better way of handling error and debug messages */
-    dax_set_debug(&xnotice);
-    dax_set_error(&xerror);
-
-    
+    dax_set_verbosity(verbosity);
+        
  /* Check for OpenDAX and register the module */
     if( dax_mod_register("daxc") ) {
-        xfatal("Unable to find OpenDAX");
+        dax_fatal("Unable to find OpenDAX");
     }
     
     if(command) {
@@ -214,7 +208,7 @@ char *rl_gets(const char *prompt) {
 
 /* Signal handler - mainly jsut cleanup */
 void quit_signal(int sig) {
-    xerror("Quitting due to signal %d",sig);
+    dax_fatal("Quitting due to signal %d", sig);
     getout(-1);
 }
 

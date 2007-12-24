@@ -20,7 +20,6 @@
 
 #include <common.h>
 #include <opendax.h>
-#include "func.h"
 #include <signal.h>
 #include <string.h>
 

@@ -23,38 +23,9 @@
 #define __MESSAGE_H
 
 #include <common.h>
-#include <opendax.h>
 #include <dax/daxtypes.h>
-
-
-
-/* Message functions */
-#define MSG_MOD_REG    0x0001 /* Register the module with the core */
-#define MSG_TAG_ADD    0x0002 /* Add a tag */
-#define MSG_TAG_DEL    0x0003 /* Delete a tag from the database */
-#define MSG_TAG_GET    0x0004 /* Get the handle, type, size etc for the tag */
-#define MSG_TAG_LIST   0x0005 /* Retrieve a list of all the tagnames */
-#define MSG_TAG_READ   0x0006 /* Read the value of a tag */
-#define MSG_TAG_WRITE  0x0007 /* Write the value to a tag */
-#define MSG_TAG_MWRITE 0x0008 /* Masked Write */
-#define MSG_MOD_GET    0x0009 /* Get the module handle by name */
-/* More to come */
-
-/* This is a full sized message.  It's the largest message allowed to be sent in the queue */
-typedef struct {
-    long int module; /* Destination module */
-    int command;     /* Which function to call */
-    pid_t pid;       /* PID of the module that sent the message */
-    size_t size;     /* size of the data sent */
-    char data[MSG_DATA_SIZE];
-} dax_message;
-
-/* This datatype can be copied into the data[] area of the main dax_message when
-   the first part of the message is a tag hangle. */
-typedef struct {
-    handle_t handle;
-    char data[MSG_TAG_DATA_SIZE];
-} dax_tag_message;
+#include <dax/libcommon.h>
+#include <opendax.h>
 
 int msg_setup_queue(void);
 void msg_destroy_queue(void);

@@ -20,8 +20,10 @@
  */
 
 #include <libdax.h>
+#include <common.h>
 #include <stdarg.h>
 #include <strings.h>
+#include <signal.h>
 
 static int _verbosity = 0;
 
@@ -30,12 +32,13 @@ static int _verbosity = 0;
 /* Callback functions. */
 static void (*_dax_debug)(const char *output) = NULL;
 static void (*_dax_error)(const char *output) = NULL;
+static void (*_dax_log)(const char *output) = NULL;
 
 /* Set the verbosity level for the debug callback */
-void dax_set_level(int level) {
+void dax_set_verbosity(int level) {
     /* bounds check */
     if(level < 0) _verbosity = 0;
-    else if(_verbosity > 10) _verbosity = 10;
+    else if(level > 10) _verbosity = 10;
     else _verbosity = level;
 }
 
@@ -51,6 +54,14 @@ int dax_set_error(void (*error)(const char *format)) {
     return (int)_dax_error;
 }
 
+/* Function for modules to override the dax_log function */
+int dax_set_log(void (*log)(const char *format)) {
+    _dax_log = log;
+    return (int)_dax_log;
+}
+
+/* TODO: Make these function allocate the memory at run time so that
+   we don't have this limitation */
 #ifndef DEBUG_STRING_SIZE
   #define DEBUG_STRING_SIZE 80
 #endif
@@ -60,28 +71,72 @@ int dax_set_error(void (*error)(const char *format)) {
    print the message.  Otherwise do nothing */
 void dax_debug(int level, const char *format, ...) {
     char output[DEBUG_STRING_SIZE];
+    va_list val;
+    
     /* check if the callback has been set and _verbosity is set high enough */
-    if(_dax_debug && level <= _verbosity) {
-        va_list val;
-        va_start(val,format);
-        vsnprintf(output, DEBUG_STRING_SIZE, format, val);
+    if(level <= _verbosity) {
+        va_start(val, format);
+        if(_dax_debug) {
+            vsnprintf(output, DEBUG_STRING_SIZE, format, val);
+            _dax_debug(output);
+        } else {
+            vprintf(format, val);
+        }
         va_end(val);
-        _dax_debug(output);
     }
 }
 
-/* Prints an error message if the callback has been set */
+/* Prints an error message if the callback has been set otherwise
+   sends the string to stderr. */
 void dax_error(const char *format, ...) {
     char output[DEBUG_STRING_SIZE];
+    va_list val;
+    va_start(val, format);
+    
+    /* Check whether the callback has been set */
+    if(_dax_error) {
+        vsnprintf(output, DEBUG_STRING_SIZE, format, val);
+        _dax_error(format);
+    } else {
+        vfprintf(stderr, format, val);
+    }
+    va_end(val);
+}
+
+/* This function would be for logging events within the module */
+/* TODO: At some point this may send a message to opendax right
+ now it either calls the callback or if none is given prints to stdout */
+void dax_log(const char *format, ...) {
+    char output[DEBUG_STRING_SIZE];
+    va_list val;
+    va_start(val, format);
+    
     /* Check that the callback has been set */
     if(_dax_error) {
-        va_list val;
-        va_start(val,format);
         vsnprintf(output, DEBUG_STRING_SIZE, format, val);
-        va_end(val);
-        _dax_error(format);
+        _dax_log(format);
+    } else {
+        vprintf(format, val);
     }
+    va_end(val);
 }
+
+void dax_fatal(const char *format, ...) {
+    char output[DEBUG_STRING_SIZE];
+    va_list val;
+    va_start(val, format);
+    
+    /* Check whether the callback has been set */
+    if(_dax_error) {
+        vsnprintf(output, DEBUG_STRING_SIZE, format, val);
+        _dax_error(format);
+    } else {
+        vfprintf(stderr, format, val);
+    }
+    va_end(val);
+    kill(getpid(), SIGQUIT);
+}
+
 
 /* Returns a pointer to a string that is the name of the datatype */
 int dax_string_to_type(const char *type) {

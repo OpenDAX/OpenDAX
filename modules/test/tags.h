@@ -19,7 +19,6 @@
 
 #include <common.h>
 #include <opendax.h>
-#include <dax/func.h>
 #include <string.h>
 
 #ifndef __TAGS_H

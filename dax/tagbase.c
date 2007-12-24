@@ -43,7 +43,7 @@
  * This may create some fragmentation but it'll make the logic simpler.
  */
 
-dax_tag *__taglist;
+_dax_tag *__taglist;
 static long int __tagcount = 0;
 static long int __taglistsize = 0;
 
@@ -58,12 +58,11 @@ static inline handle_t getnewhandle(unsigned int, unsigned int);
 static int taglist_grow(void);
 static int database_grow(void);
 static int event_check(handle_t handle, size_t size);
-static int eventlist_grow(void);
 
 /* Allocates the symbol table and the database array.  There's no return
    value because failure of this function is fatal */
 void initialize_tagbase(void) {
-    __taglist = (dax_tag *)xmalloc(sizeof(dax_tag) * DAX_TAGLIST_SIZE);
+    __taglist = (_dax_tag *)xmalloc(sizeof(_dax_tag) * DAX_TAGLIST_SIZE);
     if(!__taglist) {
         xfatal("Unable to allocate the symbol table");
     }
@@ -75,9 +74,9 @@ void initialize_tagbase(void) {
     }
     __databasesize = DAX_DATABASE_SIZE;
     
-    xlog(10,"Database created with size = %d", __databasesize);
+    xlog(10, "Database created with size = %d", __databasesize);
     /* Set all the memory to zero */
-    memset(__taglist, 0x00, sizeof(dax_tag) * DAX_TAGLIST_SIZE);
+    memset(__taglist, 0x00, sizeof(_dax_tag) * DAX_TAGLIST_SIZE);
     memset(__db, 0x00, sizeof(u_int32_t) * DAX_DATABASE_SIZE);
     
     /* Create the _status tag at handle zero */
@@ -135,7 +134,7 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
             if(handle > __taglist[n - 1].handle && handle < __taglist[n].handle) {
                 /* Make a hole in the array */
                 memmove(&__taglist[n + 1], &__taglist[n],
-                       (__taglistsize - n - 1) * sizeof(dax_tag));
+                       (__taglistsize - n - 1) * sizeof(_dax_tag));
                 break;
             }
         }
@@ -173,7 +172,7 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
 */
 static inline handle_t getnewhandle(unsigned int type, unsigned int count) {
     int n, size, mask;
-    dax_tag *this, *next;
+    _dax_tag *this, *next;
     handle_t nextbit;
     /* The lower four bits of type are the size in 2^n format */
     size = TYPESIZE(type);
@@ -350,8 +349,8 @@ static int checktype(unsigned int type) {
 
 /* Grow the tagname database when necessary */
 static int taglist_grow(void) {
-    dax_tag *new_list;
-    new_list = xrealloc(__taglist, (__taglistsize + DAX_TAGLIST_INC) * sizeof(dax_tag));
+    _dax_tag *new_list;
+    new_list = xrealloc(__taglist, (__taglistsize + DAX_TAGLIST_INC) * sizeof(_dax_tag));
     if( new_list != NULL ) {
         //BUG: There is a bug in this somewhere
         //memset(&(__taglist[__taglistsize]), 0x00,  DAX_TAGLIST_INC * sizeof(dax_tag));
@@ -398,7 +397,7 @@ handle_t tag_get_handle(char *name) {
 
 /* Finds a tag based on it's name.  Basically just a wrapper for get_by_name().
    Returns a pointer to the tag given by 'name' NULL if not found */
-dax_tag *tag_get_name(char *name) {
+_dax_tag *tag_get_name(char *name) {
     int x;
     x = get_by_name(name);
     if( x < 0) {
@@ -411,7 +410,7 @@ dax_tag *tag_get_name(char *name) {
 /* Finds a tag based on it's index in the array.  Returns a pointer to 
    the tag give by index, NULL if index is out of range.  Incex should
    not be assumed to remain constant throughout the programs lifetiem. */
-dax_tag *tag_get_index(int index) {
+_dax_tag *tag_get_index(int index) {
     if(index < 0 || index >= __tagcount) {
         return NULL;
     } else {
@@ -484,6 +483,7 @@ int event_add(handle_t handle, size_t size, dax_module *module) {
     check that the event doesn't already exist
     allocate and add the the event
  */
+    return 0;
 }
 
 /* TODO: Maybe some other way to delete events */

@@ -23,7 +23,6 @@
 #define __DAXLUA_H
 
 #include <common.h>
-#include <dax/func.h>
 
 /* All this silliness is because the different distributions have the libraries
    and header files for lua in different places with different names.

@@ -21,6 +21,7 @@
 
 #include <daxlua.h>
 #include <options.h>
+#include <opendax.h>
 #include <string.h>
 #include <getopt.h>
 #include <math.h>
@@ -80,7 +81,7 @@ static void parsecommandline(int argc, char *argv[])  {
                 printf ("?? getopt returned character code 0%o ??\n", c);
         } /* End Switch */
     } /* End While */
-    if(verbosity) setverbosity(verbosity);
+    if(verbosity) dax_set_verbosity(verbosity);
 }
 
 /* This function is called last and makes sure that we have some sane defaults
@@ -104,7 +105,7 @@ int configure(int argc, char *argv[]) {
     
  /* load and run the configuration file */
     if(luaL_loadfile(L, configfile)  || lua_pcall(L, 0, 0, 0)) {
-        xerror("Problem executing configuration file %s", lua_tostring(L, -1));
+        dax_error("Problem executing configuration file %s", lua_tostring(L, -1));
         return 1;
     }
     
@@ -119,18 +120,18 @@ int configure(int argc, char *argv[]) {
     rate = lround(lua_tonumber(L, -2));
     if(verbosity == 0) { /* Make sure we didn't get anything on the commandline */
         verbosity = lround(lua_tonumber(L, -1));
-        setverbosity(verbosity);
+        dax_set_verbosity(verbosity);
     }
     
  /* bounds check rate */
     if(rate < 10 || rate > 100000) {
-        xerror("Rate is out of bounds.  Setting to 1000.");
+        dax_error("Rate is out of bounds.  Setting to 1000.");
         rate = 1000;
     }
-    xlog(2, "Initialization Script set to %s",initscript);
-    xlog(2, "Main Script set to %s", mainscript);
-    xlog(2, "Rate set to %d", rate);
-    xlog(2, "Verbosity set to %d", verbosity);
+    dax_debug(2, "Initialization Script set to %s",initscript);
+    dax_debug(2, "Main Script set to %s", mainscript);
+    dax_debug(2, "Rate set to %d", rate);
+    dax_debug(2, "Verbosity set to %d", verbosity);
  /* Clean up and get out */
     lua_close(L);
     

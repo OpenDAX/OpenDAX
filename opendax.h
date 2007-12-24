@@ -16,13 +16,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#include <sys/types.h>
 
 #ifndef __OPENDAX_H
 #define __OPENDAX_H
 
-/* For now we'll use this as the key for all the SysV IPC stuff */
-#define DAX_IPC_KEY 0x707070
+#include <sys/types.h>
 
 /* Data type definitions */
 #define DAX_ALIAS   0x0000
@@ -72,38 +70,37 @@
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
-  #define DAX_TAGNAME_SIZE 32
+ #define DAX_TAGNAME_SIZE 32
 #endif
 
 typedef int handle_t;
 
-struct mod_list {
-    dax_module *module;
-    struct mod_list *next;
-};
-
-typedef struct dax_event_t {
-    handle_t handle;
-    size_t size;
-    u_int32_t checksum;
-    struct mod_list *notify;
-    struct dax_event_t *next;
-} dax_event;
-
+/* This is a generic representation of a tag for the library */
 typedef struct {
     handle_t handle;
     char name[DAX_TAGNAME_SIZE + 1];
     unsigned int type;
     unsigned int count;
-    dax_tag *events;
 } dax_tag;
 
-void dax_set_level(int);
+
+void dax_set_verbosity(int);
 /* These functions accept a function pointer to functions that would
    print debug and error messages.  The functions should be declared as...
    void functionname(const char *); */
 int dax_set_debug(void (*debug)(const char *msg));
 int dax_set_error(void (*error)(const char *msg));
+int dax_set_log(void (*log)(const char *msg));
+
+/* These are the functions that a module should actually call to log
+   a message or log and exit. These are the functions that are basically
+   overridden by the above _set functions.  The reason for the complexity
+   is that these functions are also used internally by the library and
+   this keeps everything consistent. */
+void dax_debug(int level, const char *format, ...);
+void dax_error(const char *format, ...);
+void dax_log(const char *format, ...);
+void dax_fatal(const char *format, ...);
 
 /* Get the datatype from a string */
 int dax_string_to_type(const char *type);

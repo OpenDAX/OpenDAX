@@ -20,11 +20,11 @@
  */
  
 #include <libdax.h>
-#include <dax/message.h>
-#include <dax/tagbase.h>
+#include <dax/libcommon.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <string.h>
+
 
 static int __msqid;
 
@@ -36,13 +36,13 @@ static int _message_send(long int module, int command, void *payload, size_t siz
     outmsg.pid = getpid();
     outmsg.size = size;
     memcpy(outmsg.data, payload, size);
-    result = msgsnd(__msqid,(struct msgbuff *)(&outmsg),MSG_HDR_SIZE + size,0);
+    result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + size, 0);
     /* TODO: need to handle the case where the system call returns because of a signal.
         This msgsnd will block if the queue is full and a signal will bail us out.
         This may be good this may not but it'll need to be handled here somehow.
         also need to handle errors returned here*/
     if(result) {
-        dax_error("msgsnd() returned %d",result);
+        dax_error("msgsnd() returned %d", result);
         return ERR_MSG_SEND;
     }
     return 0;
@@ -124,7 +124,7 @@ int dax_mod_unregister(void) {
 
 /* Sends a message to dax to add a tag.  The payload is basically the
    tagname without the handle. */
-handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
+handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
     dax_tag tag;
     size_t size;
     int result;
@@ -142,13 +142,13 @@ handle_t dax_tag_add(char *name,unsigned int type, unsigned int count) {
     } else {
         return -1;
     }
-    result = _message_send(1,MSG_TAG_ADD,&(tag.name),size);
+    result = _message_send(1, MSG_TAG_ADD, &(tag.name),size);
     if(result) { 
         return -2;
     }
     /*  We're putting a lot of faith in the sending function here.  That
         might be okay in this instance */
-    result= _message_recv(MSG_TAG_ADD,&(tag.handle),&size);
+    result= _message_recv(MSG_TAG_ADD, &(tag.handle), &size);
     return tag.handle;
 }
 
@@ -228,7 +228,7 @@ int dax_tag_byname(char *name, dax_tag *tag) {
         return ERR_TAG_BAD;
     }
     /***********TESTING ONLY**************/
-    //--xlog(1,"parsetag returned tagname=\'%s\' index=%d bit=%d", tagname, index, bit);
+    //--dax_debug(1,"parsetag returned tagname=\'%s\' index=%d bit=%d", tagname, index, bit);
     
     result = dax_get_tag(tagname, &tag_test);
     if(result) {

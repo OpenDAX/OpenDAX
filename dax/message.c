@@ -19,7 +19,6 @@
  * This file contains the messaging code for the OpenDAX core
  */
 
-
 #include <message.h>
 #include <func.h>
 #include <module.h>
@@ -196,11 +195,11 @@ int msg_tag_del(dax_message *msg) {
    index requested isn't within bounds */
 int msg_tag_get(dax_message *msg) {
     int result, index;
-    dax_tag *tag;
+    _dax_tag *tag;
     
     if(msg->size == sizeof(int)) { /* Is it a string or index */
         index = *((int *)msg->data); /* cast void * -> int * then indirect */
-        tag = tag_get_index(index); /* get the index */
+        tag = tag_get_index(index); /* get the tag */
         if(tag == NULL) result = ERR_ARG;
         xlog(10, "Tag Get Message from %d for index %d",msg->pid,index);
     } else {

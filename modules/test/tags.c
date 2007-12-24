@@ -74,7 +74,7 @@ void add_random_tags(int tagcount) {
         data_type = get_random_type();
         result = dax_tag_add(tagname, data_type, count);
         if(result < 0) {
-            xlog(10, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
+            dax_debug(10, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
         } else {
           //  xlog(10, "%s added at handle 0x%8X", tagname, result);
         }
@@ -90,20 +90,20 @@ int check_tagbase(void) {
     long int lastbit;
     
     if( dax_tag_byindex(n++, &last_tag) ) {
-        xlog(10,"CheckTagBase() - Unable to get first tag");
+        dax_debug(10, "CheckTagBase() - Unable to get first tag");
         return -1;
     }
     
     while( !dax_tag_byindex(n, &this_tag) ) {
         /* Check the sort order */
         if(this_tag.handle <= last_tag.handle) {
-            xlog(10,"CheckTagBase() - Tag array not properly sorted at index %d",n);
+            dax_debug(10,"CheckTagBase() - Tag array not properly sorted at index %d",n);
             return -2;
         }
         /* check for overlap - Don't use TYPESIZE() macro.  We're testing it too */
         lastbit = last_tag.handle + ( 0x0001 << (last_tag.type & 0x0F)) * last_tag.count;
         if( lastbit > this_tag.handle) {
-            xlog(10,"CheckTagBase() - Overlap in tag array at index %d",n);
+            dax_debug(10,"CheckTagBase() - Overlap in tag array at index %d",n);
             return -3;
         }
         /* TODO: calculate fragmentation, datasize etc. */
@@ -119,7 +119,7 @@ static int tagtopass(char *name) {
     
     handle = dax_tag_add(name, DAX_BOOL, 1);
     if(handle < 0) {
-        xlog(1,"Test Failed - %s was not allowed", name);
+        dax_debug(1,"Test Failed - %s was not allowed", name);
         return -1;
     }
     return 0;
@@ -130,7 +130,7 @@ static int tagtofail(char *name) {
     
     handle = dax_tag_add(name, DAX_BOOL, 1);
     if(handle >= 0) {
-        xlog(1,"Test Failed - %s was allowed", name);
+        dax_debug(1,"Test Failed - %s was allowed", name);
         return -1;
     }
     return 0;
@@ -155,18 +155,18 @@ int check_tag_addition(void) {
 /* This test runs the tagname retrival process through it's paces */
 static handle_t getshouldpass(char *name, handle_t h, unsigned int type, unsigned int count) {
     dax_tag test_tag;
-    xlog(2,"Testing tagname \"%s\" to find.", name);
+    dax_debug(2,"Testing tagname \"%s\" to find.", name);
     if(dax_tag_byname(name, &test_tag)) {
-        xlog(1,"Test Failed - \"%s\" Should have been found", name);
+        dax_debug(1,"Test Failed - \"%s\" Should have been found", name);
         return -1;
     } else if(test_tag.handle != h) {
-        xlog(1,"Test Failed - Handle doesn't match for \"%s\"", name);
+        dax_debug(1,"Test Failed - Handle doesn't match for \"%s\"", name);
         return -1;
     } else if(test_tag.type != type) {
-        xlog(1, "Test Failed - Returned type doesn't match for \"%s\"", name);
+        dax_debug(1, "Test Failed - Returned type doesn't match for \"%s\"", name);
         return -1;
     } else if(test_tag.count != count) {
-        xlog(1, "Test Failed - Returned count doesn't match for \"%s\"", name);
+        dax_debug(1, "Test Failed - Returned count doesn't match for \"%s\"", name);
         return -1;
     } else {
         return 0;
@@ -176,9 +176,9 @@ static handle_t getshouldpass(char *name, handle_t h, unsigned int type, unsigne
 /* This test runs the tagname retrival process through it's paces */
 static handle_t getshouldfail(char *name) {
     dax_tag test_tag;
-    xlog(2,"Testing tagname \"%s\" to not find.", name);
+    dax_debug(2, "Testing tagname \"%s\" to not find.", name);
     if(! dax_tag_byname(name, &test_tag)) {
-        xlog(1,"Test Failed - \"%s\" Should not have been found", name);
+        dax_debug(1,"Test Failed - \"%s\" Should not have been found", name);
         return -1;
     } else {
         return 0;
@@ -192,7 +192,7 @@ int check_tag_retrieve(void) {
     int fail = 0;
     handle = dax_tag_add("TestTag", DAX_INT, 10);
     if(handle < 0) {
-        xlog(1, "OOPs TestTag should have been allowed to be added");
+        dax_debug(1, "OOPs TestTag should have been allowed to be added");
         return -1;
     }
     if(getshouldpass("TestTag", handle, DAX_INT, 10)) fail = -1;

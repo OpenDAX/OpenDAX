@@ -18,8 +18,9 @@
  * This is the header file for the tagname database handling routines
  */
 
-#include <opendax.h>
 #include <dax/daxtypes.h>
+#include <dax/libcommon.h>
+#include <opendax.h>
 
 #ifndef __TAGBASE_H
 #define __TAGBASE_H
@@ -48,17 +49,6 @@
  #define DAX_DATABASE_INC 1024
 #endif
 
-/* This is the initial size of the event array */
-#ifndef DAX_EVENT_SIZE
- #define DAX_EVENT_SIZE 512
-#endif
-
-/* This is the increment by which the event array will grow when
-   the size is exceeded */
-#ifndef DAX_EVENT_INC
- #define DAX_EVENT_INC 512
-#endif
-
 
 /* Define Handles for _status register points */
 #define STATUS_SIZE   4
@@ -67,16 +57,41 @@
 #define STAT_DB_SIZE  64
 #define STAT_TAG_CNT 96
 
+struct mod_list {
+    dax_module *module;
+    struct mod_list *next;
+};
+
+typedef struct dax_event_t {
+    handle_t handle;
+    size_t size;
+    u_int32_t checksum;
+    struct mod_list *notify;
+    struct dax_event_t *next;
+} _dax_event;
+
+/* This is the internal structure for the tag array.  The external
+   representation is dax_tag.  There is an assumption that _dax_tag
+   and dax_tag have the same top.  This is so that memcpy() functions
+   can be used to move tags in and out of the array without too 
+   much effort. */
+typedef struct {
+    handle_t handle;
+    char name[DAX_TAGNAME_SIZE + 1];
+    unsigned int type;
+    unsigned int count;
+    _dax_event *events;
+} _dax_tag;
 
 
 void initialize_tagbase(void);
-handle_t tag_add(char *name,unsigned int type, unsigned int count);
+handle_t tag_add(char *name, unsigned int type, unsigned int count);
 int tag_del(char *name);
 handle_t tag_get_handle(char *name);
 /* Do we really need this one?? 
 int tag_get_type(handle_t handle); */
-dax_tag *tag_get_name(char *name);
-dax_tag *tag_get_index(int index);
+_dax_tag *tag_get_name(char *name);
+_dax_tag *tag_get_index(int index);
 int tag_read_bytes(handle_t handle, void *data, size_t size);
 int tag_write_bytes(handle_t handle, void *data, size_t size);
 int tag_mask_write(handle_t handle, void *data, void *mask, size_t size);

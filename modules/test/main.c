@@ -21,10 +21,7 @@
 #include <common.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include <syslog.h>
 #include <opendax.h>
-#include <dax/message.h>
-#include <dax/func.h>
 #include <string.h>
 #include <tags.h>
 
@@ -37,23 +34,23 @@ int main(int argc,char *argv[]) {
     //char tagname[DAX_TAGNAME_SIZE +1];
     u_int16_t dummy[20], test[20];
     
-    openlog("test", LOG_NDELAY, LOG_DAEMON);
-    xnotice("Starting module test");
-    setverbosity(1);
+    //openlog("test", LOG_NDELAY, LOG_DAEMON);
+    dax_log("Starting module test");
+    dax_set_verbosity(1);
     dax_mod_register("test");
     
     if(check_tag_addition()) {
-        xnotice("Tagname addition test - FAILED");
+        dax_log("Tagname addition test - FAILED");
         tests_failed++;
     } else {
-        xnotice("Tagname addition test - PASSED");
+        dax_log("Tagname addition test - PASSED");
     }
     
     if(check_tag_retrieve()) {
-        xnotice("Tagname retrieving test - FAILED");
+        dax_log("Tagname retrieving test - FAILED");
         tests_failed++;
     } else {
-        xnotice("Tagname retrieving test - PASSED");
+        dax_log("Tagname retrieving test - PASSED");
     }
     
     /* TEST TO DO
@@ -118,14 +115,14 @@ int main(int argc,char *argv[]) {
      
     /* Verify the integrity of the tag database */
     if( check_tagbase() ) {
-        xnotice("Tagbase verification test - FAILED");
+        dax_log("Tagbase verification test - FAILED");
         tests_failed++;
     } else {
-        xnotice("Tagbase verification test - PASSED");
+        dax_log("Tagbase verification test - PASSED");
     }
     
     dax_mod_unregister();
     
-    xlog(1,"OpenDAX Test Finished, %d tests failed", tests_failed);
+    dax_debug(1, "OpenDAX Test Finished, %d tests failed", tests_failed);
     return 0;
 }
