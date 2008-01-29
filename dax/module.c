@@ -363,16 +363,23 @@ void module_unregister(pid_t pid) {
     }
 }
 
-/* Returns a module handle to the module with pid */
-mod_handle_t module_get_pid(pid_t pid) {
+/* Returns a pointer to the module with pid.
+   It's just a wrapper for the static function, because
+   I'm still not convinced that I want to use the modules
+   PID as the identifier for that module in the messaging
+   system.  I might have to have differnet ID's for
+   different threads. */
+dax_module *module_get_pid(pid_t pid) {
+    return _get_module_pid(pid);
+    /*
     dax_module *mod;
     mod = _get_module_pid(pid);
     if(mod)
         return mod->handle;
     else
         return -1;
+     */
 }
-
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called
@@ -459,7 +466,7 @@ static dax_module *_get_module_pid(pid_t pid) {
     /* Figure out where we need to stop */
     last=_current_mod->prev;
     if(last->pid == pid) return last;
-
+    
     while(_current_mod->pid != pid) {
         _current_mod = _current_mod->next;
         if(_current_mod == last) {
@@ -468,6 +475,7 @@ static dax_module *_get_module_pid(pid_t pid) {
     }
     return _current_mod;
 }
+
 
 /* Retrieves a pointer to module given name */
 static dax_module *_get_module_name(char *name) {

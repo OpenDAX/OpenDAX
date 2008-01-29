@@ -50,6 +50,8 @@ static long int __taglistsize = 0;
 u_int32_t *__db; /* Primary Point Database */
 static long int __databasesize = 0;
 
+static int __next_event_id = 0;
+
 /* Non public function declarations */
 static int validate_name(char *);
 static int get_by_name(char *);
@@ -274,7 +276,7 @@ static int get_by_handle(handle_t handle) {
     if(handle < 0) {
         return -1; /* handle does not exist */
     } else if(handle >= __taglist[__tagcount-1].handle) {
-        try = __tagcount-1; /* if the given handle is beyond the array */
+        try = __tagcount - 1; /* if the given handle is beyond the array */
     } else {
         while(!(handle > __taglist[try].handle && handle < __taglist[try+1].handle)) {
             try=low+(high-low)/2;
@@ -475,19 +477,98 @@ int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
     return size;
 }
 
-/* Add an event to the event array */
-int event_add(handle_t handle, size_t size, dax_module *module) {
-/* TODO: PS
-    find the tag
-    verify that we are contained
-    check that the event doesn't already exist
-    allocate and add the the event
- */
-    return 0;
+/* Event handling code. Events are simply a notification mechanism when
+   a tag (or a portion) of a tag changes.  The events are linked lists 
+   that have the head pointer in the __taglist[] array.  Within each linked
+   list of events is a linked list of pointers to modules that want to recieve
+   notification messages for the change.  Each event is basically a database
+   handle and a size (in bits) of the data that is in question.  It is assumed
+   that the event handle and size are contained within the tag. */
+
+/* This adds a module to the linked list of modules in the
+   event whose pointer is passed as *event.  Will return
+   the id of the event that has been passed or -1 on error. */
+static int event_add_module(_dax_event *event, dax_module *module) {
+    struct mod_list *this, *new;
+    xlog(10, "Adding module to event");
+
+    if( (this = event->notify) == NULL) {
+        event->notify = new;
+    } else {
+        while(this->next != NULL) {
+            if(this->module == module) {
+                return event->id;
+            }
+            this = this->next;
+        }
+        new = malloc(sizeof(struct mod_list));
+        if(new == NULL) return -1; /* The only error that we know is no more memory */
+        new->module = module;
+        new->next = NULL;
+        this->next = new;
+    }
+    
+    return event->id;
 }
 
-/* TODO: Maybe some other way to delete events */
-int event_del(handle_t handle, size_t size, dax_module *module) {
+/* Add an event to the tag array.  It is assumed that the event will be
+   contained in a single tag. */
+int event_add(handle_t handle, size_t size, dax_module *module) {
+    int index;
+    _dax_event *this, *new;
+    
+    index = get_by_handle(handle);
+    xlog(10, "Found tag at index %d", index);
+    /* get_by_handle() will return -1 if the handle is no good */
+    if( index < 0 ) {
+        return ERR_NOTFOUND;
+    }
+    xlog(10, "Got a good handle");
+    this = __taglist[index].events;
+    
+    /* If we get this far then the starting handle is contained in a tag.
+       Now we need to see if the ending bit is also contained. */
+    if( (handle + size) > (__taglist[index].handle + __taglist[index].count * TYPESIZE(__taglist[index].type)) ) {
+        /* Return error if the notification definition exceeds the tags boundries */
+        xlog(8, "Event tag definition is out of bounds");
+        return ERR_2BIG;
+    }
+    
+    /* Check to see if there is already a notification like this contained
+       in this tag */
+    while(this != NULL) {
+        if( this->handle == handle && this->size == size ) {
+            xlog(10, "Found an event just like this one");
+            return event_add_module(this, module);
+        }
+        this = this->next;
+    }
+    
+    new = malloc(sizeof(_dax_event));
+    if(new == NULL) return ERR_ALLOC;
+    
+    /* Create and initialize the new event */
+    new->id = __next_event_id++;
+    new->handle = handle;
+    new->size = size;
+    new->checksum = 0x00;
+    new->next = NULL;
+    
+    this = __taglist[index].events;
+    
+    if( (this = __taglist[index].events) == NULL) {
+        __taglist[index].events = new;
+    } else {
+        while(this->next != NULL) {
+            this = this->next;
+        }
+        this->next = new;
+    }
+    
+    return event_add_module(new, module);
+}
+
+int event_del(int id) {
     return 0;
 }
 

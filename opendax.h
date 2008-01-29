@@ -67,6 +67,7 @@
 #define ERR_MSG_SEND  -5 /* Unable to send message */
 #define ERR_MSG_RECV  -6 /* Unable to receive message */
 #define ERR_TAG_BAD   -7 /* Bad tagname */
+#define ERR_ALLOC     -8 /* Unable to allocate resource */
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
@@ -148,5 +149,8 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size);
 /* multiple bit write with maks */
 int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size);
 
+int dax_event_add(char *tag, int count);
+int dax_event_del(int id);
+int dax_event_get(int id);
 
 #endif /* !__OPENDAX_H */

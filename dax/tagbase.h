@@ -63,6 +63,7 @@ struct mod_list {
 };
 
 typedef struct dax_event_t {
+    int id;
     handle_t handle;
     size_t size;
     u_int32_t checksum;
@@ -96,6 +97,6 @@ int tag_read_bytes(handle_t handle, void *data, size_t size);
 int tag_write_bytes(handle_t handle, void *data, size_t size);
 int tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
 int event_add(handle_t handle, size_t size, dax_module *module);
-int event_del(handle_t handle, size_t size, dax_module *module);
+int event_del(int id);
 
 #endif /* !__TAGBASE_H */

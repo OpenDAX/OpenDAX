@@ -36,7 +36,7 @@ void quit_signal(int);
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
     pthread_t message_thread;
-        
+    
     openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
     xlog(0,"OpenDAX started");
 
@@ -84,8 +84,12 @@ int main(int argc, const char *argv[]) {
     if(pthread_create(&message_thread,NULL,(void *)&messagethread,NULL)) {
         xfatal("Unable to create message thread");
     }
-    
+        
     module_start_all(); /* Start all the modules */
+    
+    /* DO TESTING STUFF HERE */
+
+    /* END TESTING STUFF */
     
     while(1) { /* Main loop */
         module_scan();
@@ -102,6 +106,7 @@ static void messagethread(void) {
     algorithm should increase in frequency when it finds lost messages and
     decrease in frequency when it doesn't.*/
     while(1) {
+        /* TODO: How far up should errors be passed */
         msg_receive();
     }
 }

@@ -57,6 +57,13 @@ int main(int argc,char *argv[]) {
         Tag Read / Write Test
     */
     
+    if(check_tag_events()) {
+        dax_log("Tag Event Test - FAILED");
+        tests_failed++;
+    } else {
+        dax_log("Tag Event Test - PASSED");
+    }
+    
     dummy[0] = 0x0505;
     dummy[1] = 0x8888;
     dummy[2] = 0x3333;

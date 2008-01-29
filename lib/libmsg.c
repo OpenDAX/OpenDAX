@@ -71,7 +71,7 @@ static int _message_recv(int command, void *payload, size_t *size) {
                 return *((int *)inmsg.data);
             }
         } else {
-            dax_debug(2, "Asyncronous message received\n");
+            dax_debug(2, "Asynchronous message received\n");
             /* TODO: Insert the async message handling logic here */
         }
         /* TODO: Also need to handle cases when signals or errors happen here */
@@ -218,7 +218,7 @@ static inline int parsetag(char *name, char *tagname, int *index, int *bit) {
 }
 
 /* These tag name getting routines will have to be rewritten when we get
-the custom data types going. */
+the custom data types going.  Returns zero on success. */
 int dax_tag_byname(char *name, dax_tag *tag) {
     dax_tag tag_test;
     char tagname[DAX_TAGNAME_SIZE + 1];
@@ -227,7 +227,7 @@ int dax_tag_byname(char *name, dax_tag *tag) {
     if(parsetag(name, tagname, &index, &bit)) {
         return ERR_TAG_BAD;
     }
-    /***********TESTING ONLY**************/
+    /*********** TESTING ONLY **************/
     //--dax_debug(1,"parsetag returned tagname=\'%s\' index=%d bit=%d", tagname, index, bit);
     
     result = dax_get_tag(tagname, &tag_test);
@@ -248,18 +248,6 @@ int dax_tag_byname(char *name, dax_tag *tag) {
        (index >= 0 && bit >= TYPESIZE(tag_test.type))) {
            return ERR_TAG_BAD;
     }
-    /*
-    if(index >=0 && index >= tag_test.count) {
-        printf("index is too big\n");
-        return ERR_TAG_BAD;
-    } else if(bit >= size || (index * TYPESIZE(tag_test.type) + bit >= size) ) {
-        printf("too many bits\n");
-        return ERR_TAG_BAD;
-    } else if(index >= 0 && bit >= TYPESIZE(tag_test.type)) {
-        printf("Way too many bits\n");
-        return ERR_TAG_BAD;
-    }
-    */
     /* if we make it this far all is good and we can calculate the type,
        size and handle of the tag */
     tag->name[0] = '\0'; /* We don't return the name */
@@ -322,7 +310,7 @@ int dax_tag_read(handle_t handle, void *data, size_t size) {
         }
         payload.handle = handle + (m_size * 8 * n);
         payload.size = sendsize;
-        result = _message_send(1,MSG_TAG_READ,(void *)&payload,sizeof(struct Payload));
+        result = _message_send(1,MSG_TAG_READ,(void *)&payload, sizeof(struct Payload));
         result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp);
     }
     return result;
@@ -374,4 +362,42 @@ void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
         memcpy(msg.data + sendsize, mask+(m_size * n), sendsize);
         _message_send(1,MSG_TAG_MWRITE,(void *)&msg,(sendsize * 2)+sizeof(handle_t));
     }
+}
+
+/* Adds an event for the given tag.  The count is how many of those
+   tags the event should effect. */
+/* TODO: The count is not actually implemented yet. */
+int dax_event_add(char *tagname, int count) {
+    dax_tag tag;
+    dax_event_message msg;
+    int result, test;
+    size_t size;
+    
+    result = dax_tag_byname(tagname, &tag);
+    if(result) {
+        return result;
+    }
+    
+    msg.handle = tag.handle;
+    if(tag.type == DAX_BOOL) {
+        msg.size = tag.count;
+    } else {
+        msg.size = TYPESIZE(tag.type) / 8 * tag.count;
+    }
+    
+    if(_message_send(1, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
+        return ERR_MSG_SEND;
+    } else {
+        test = _message_recv(MSG_EVNT_ADD, &result, &size);
+        if(test) return test;
+    }       
+    return result;
+}
+
+int dax_event_del(int id) {
+    return 0;
+}
+
+int dax_event_get(int id) {
+    return 0;
 }

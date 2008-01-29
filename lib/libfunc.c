@@ -81,6 +81,7 @@ void dax_debug(int level, const char *format, ...) {
             _dax_debug(output);
         } else {
             vprintf(format, val);
+            printf("\n");
         }
         va_end(val);
     }
@@ -99,6 +100,7 @@ void dax_error(const char *format, ...) {
         _dax_error(format);
     } else {
         vfprintf(stderr, format, val);
+        printf("\n");
     }
     va_end(val);
 }
@@ -117,6 +119,7 @@ void dax_log(const char *format, ...) {
         _dax_log(format);
     } else {
         vprintf(format, val);
+        printf("\n");
     }
     va_end(val);
 }

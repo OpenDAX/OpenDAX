@@ -48,6 +48,9 @@
 #define MSG_TAG_WRITE  0x0007 /* Write the value to a tag */
 #define MSG_TAG_MWRITE 0x0008 /* Masked Write */
 #define MSG_MOD_GET    0x0009 /* Get the module handle by name */
+#define MSG_EVNT_ADD   0x000A /* Add an event to the taglist */
+#define MSG_EVNT_DEL   0x000B /* Delete an event */
+#define MSG_EVNT_GET   0x000C /* Get an event definition */
 /* More to come */
 
 /* Maximum size allowed for a single message in the message queue */
@@ -82,5 +85,9 @@ typedef struct {
     char data[MSG_TAG_DATA_SIZE];
 } dax_tag_message;
 
+typedef struct {
+    handle_t handle;
+    size_t size;
+} dax_event_message;
 
 #endif /* ! __LIBCOMMON_H */

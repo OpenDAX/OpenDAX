@@ -43,6 +43,9 @@ int msg_tag_read(dax_message *msg);
 int msg_tag_write(dax_message *msg);
 int msg_tag_mask_write(dax_message *msg);
 int msg_mod_get(dax_message *msg);
+int msg_evnt_add(dax_message *msg);
+int msg_evnt_del(dax_message *msg);
+int msg_evnt_get(dax_message *msg);
 
 
 /* Generic message sending function.  If size is zero then it is assumed that an error
@@ -105,7 +108,10 @@ int msg_setup_queue(void) {
     cmd_arr[MSG_TAG_WRITE]  = &msg_tag_write;
     cmd_arr[MSG_TAG_MWRITE] = &msg_tag_mask_write;
     cmd_arr[MSG_MOD_GET]    = &msg_mod_get;
-
+    cmd_arr[MSG_EVNT_ADD]   = &msg_evnt_add;
+    cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
+    cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
+    
     return __msqid;
 }
 
@@ -181,6 +187,7 @@ int msg_tag_add(dax_message *msg) {
     return 0;
 }
 
+/* TODO: Make this function do something */
 int msg_tag_del(dax_message *msg) {
     xlog(10,"Tag Delete Message from %d",msg->pid);
     return 0;
@@ -290,3 +297,31 @@ int msg_mod_get(dax_message *msg) {
     return 0;
 }
 
+int msg_evnt_add(dax_message *msg) {
+    dax_event_message event;
+    dax_module *module;
+    int event_id = -1;
+    
+    xlog(10, "Add Event Message from %d", msg->pid);
+    memcpy(&event, msg->data, sizeof(dax_event_message));
+    
+    module = module_get_pid(msg->pid);
+    if( module != NULL ) {
+        event_id = event_add(event.handle, event.size, module);
+    }
+        
+    if(event_id < 0) { /* Send Error */
+        _message_send(msg->pid, MSG_EVNT_ADD, &event_id, 0);    
+    } else {
+        _message_send(msg->pid, MSG_EVNT_ADD, &event_id, sizeof(int));
+    }
+    return 0;
+}
+
+int msg_evnt_del(dax_message *msg) {
+    return 0;
+}
+
+int msg_evnt_get(dax_message *msg) {
+    return 0;
+}

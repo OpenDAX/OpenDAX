@@ -28,7 +28,6 @@ void add_random_tags(int count);
 int check_tagbase(void);
 int check_tag_addition(void);
 int check_tag_retrieve(void);
-//--int tagtopass(char *name);
-//--int tagtofail(char *name);
+int check_tag_events(void);
 
 #endif /* !__TAGS_H */

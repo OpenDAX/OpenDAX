@@ -43,7 +43,8 @@ pid_t module_start (mod_handle_t);
 int module_stop(mod_handle_t);
 void module_register(char *, pid_t);
 void module_unregister(pid_t);
-mod_handle_t module_get_pid(pid_t);
+//mod_handle_t module_get_pid(pid_t);
+dax_module *module_get_pid(pid_t);
 
 /* module maintanance */
 void module_scan(void);

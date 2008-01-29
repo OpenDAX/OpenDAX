@@ -213,3 +213,27 @@ int check_tag_retrieve(void) {
     
     return fail;
 }
+
+/* Test's the different aspects of the tag events */
+int check_tag_events(void) {
+    handle_t handle;
+    int id;
+    
+    handle = dax_tag_add("EventTest", DAX_DINT, 10);
+    if(handle < 0) {
+        dax_debug(1, "Unable to add EventTest Tag");
+        return -1;
+    }
+    id = dax_event_add("EventTest[2]", 1);
+    if(id < 0) {
+        if(id == ERR_MSG_SEND) {
+            dax_debug(1, "Unable to send messager to Add Event for EventTest[2]");
+        } else if(id == ERR_MSG_RECV) {
+            dax_debug(1, "No response to Add Event for EventTest[2]");
+        } else {
+            dax_debug(1, "Error from dax_event_add() is %d", id);
+        }
+        return -1;
+    }
+    return 0;
+}
