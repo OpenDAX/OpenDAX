@@ -60,7 +60,7 @@ static dead_module _dmq[DMQ_SIZE];
    for the opendcs main process.)  If an existing module with the same
    name is found the handle of that module will be returned instead.
 */
-mod_handle_t module_add(char *name, char *path, char *arglist, unsigned int flags) {
+mod_handle_t module_add(char *name, char *path, char *arglist, int startup, unsigned int flags) {
     /* The handle is incremented before first use.  The first added module
        will be handle 2 so that the core process can always be one */
     static mod_handle_t handle=1;
@@ -74,13 +74,15 @@ mod_handle_t module_add(char *name, char *path, char *arglist, unsigned int flag
     if(new) {
         new->handle = ++handle;
         new->flags = flags;
+        if(startup > 0) new->startup = startup;
+        else startup = 0;
         
         /* Add the module path to the struct */
         if(path) {
             new->path = strdup(path);
             
             /* tokenize and set arglist */
-            new->arglist = _arglist_tok(path,arglist);
+            new->arglist = _arglist_tok(path, arglist);
         }
         /* name the module */
         new->name = strdup(name);
@@ -342,10 +344,10 @@ void module_register(char *name ,pid_t pid) {
         }
     } else {
         /* Does the module exist in in the handle list */
-        mod=_get_module_name(name);
+        mod = _get_module_name(name);
         if(!mod) {
-            handle=module_add(name,NULL,NULL,0);
-            mod=_get_module(handle);
+            handle = module_add(name, NULL, NULL, 0, 0);
+            mod = _get_module(handle);
         }
     }
     if(mod) {

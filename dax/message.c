@@ -68,7 +68,7 @@ static int _message_send(long int module, int command, void *payload, size_t siz
         memcpy(outmsg.data, payload, sizeof(int));
         newsize = sizeof(int);
     }
-    /* Only send messages to modules that we know about */
+    /* Only send messages to modules that are registered */
     if(module_get_pid(module)) {
         /* TODO: need to handle the case where the system call returns because of a signal.
         This msgsnd will block if the queue is full and a signal will bail us out.
@@ -264,7 +264,6 @@ int msg_tag_write(dax_message *msg) {
 
 	xlog(10,"Tag Write Message from module %d, handle 0x%X, size %d", msg->pid, handle, size);
 
-    /* TODO: Need error check here */
     if(tag_write_bytes(handle,data,size) != size) {
         xerror("Unable to write tag 0x%X with size %d",handle, size);
     }
@@ -285,9 +284,8 @@ int msg_tag_mask_write(dax_message *msg) {
 	
 	xlog(10,"Tag Mask Write Message from module %d, handle 0x%X, size %d", msg->pid, handle, size);
 	
-	/* TODO: Need error check here */
     if(tag_mask_write(handle, data, mask, size) != size) {
-        xerror("Unable to write tag 0x%X with size %d",handle, size);
+        xerror("Unable to write tag 0x%X with size %d", handle, size);
     }
     return 0;
 }

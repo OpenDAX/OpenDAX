@@ -23,7 +23,7 @@
 #define __DAXTYPES_H
 
 /* Module Flags */
-#define MFLAG_NORESTART     0x01
+#define MFLAG_RESTART       0x01
 #define MFLAG_OPENPIPES     0x02
 
 typedef unsigned int mod_handle_t;
@@ -36,6 +36,7 @@ typedef struct dax_Module {
     int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
     char **arglist;     /* exec() ready array of arguments */
+    int startup;        /* Execution order 0 = no auto start */
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
     int pipe_in;        /* Redirected to the modules stdin */

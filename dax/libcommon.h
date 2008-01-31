@@ -53,6 +53,10 @@
 #define MSG_EVNT_GET   0x000C /* Get an event definition */
 /* More to come */
 
+#ifndef MSG_RESPONSE
+  #define MSG_RESPONSE   0x100000000 /* Flag for defining a response message */
+#endif
+
 /* Maximum size allowed for a single message in the message queue */
 /* TODO: I don't think this is working right.  Where is MSGMAX defined?
  This sould be something for Autoconf to do.  Also some systems

@@ -18,8 +18,6 @@
  *  Header file for opendax configuration
  */
 
-/* TODO: Convert all this to LUA */
-
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
 
@@ -36,18 +34,51 @@
   #define DEFAULT_PID "/var/run/opendax.pid"
 #endif
 
-struct Config {
-    char *pidfile;
-    //--char ipaddress[16];
-    //--unsigned short port;  /* TCP Port */ //There is probably a better datatype
-    char *configfile;
-    int verbosity;
-    char *tagname;
-    u_int8_t daemonize;
-    unsigned int tablesize;
-};
+/* All this silliness is because the different distributions have the libraries
+ and header files for lua in different places with different names.
+ There has got to be a better way. */
+#if defined(HAVE_LUA5_1_LUA_H)
+ #include <lua5.1/lua.h>
+#elif defined(HAVE_LUA51_LUA_H)
+ #include <lua51/lua.h>
+#elif defined(HAVE_LUA_LUA_H)
+ #include <lua/lua.h>
+#elif defined(HAVE_LUA_H)
+ #include <lua.h>
+#else
+ #error Missing lua.h
+#endif
+
+#if defined(HAVE_LUA51_LAUXLIB_H)
+ #include <lua51/lauxlib.h>
+#elif defined(HAVE_LUA5_1_LAUXLIB_H)
+ #include <lua5.1/lauxlib.h>
+#elif defined(HAVE_LUA_LAUXLIB_H)
+ #include <lua/lauxlib.h>
+#elif defined(HAVE_LAUXLIB_H)
+ #include <lauxlib.h>
+#else
+ #error Missing lauxlib.h
+#endif
+
+#if defined(HAVE_LUA51_LUALIB_H)
+ #include <lua51/lualib.h>
+#elif defined(HAVE_LUA5_1_LUALIB_H)
+ #include <lua5.1/lualib.h>
+#elif defined(HAVE_LUA_LUALIB_H)
+ #include <lua/lualib.h>
+#elif defined(HAVE_LUALIB_H)
+ #include <lualib.h>
+#else
+ #error Missing lualib.h
+#endif 
 
 
 int dax_configure(int argc, const char *argv[]);
+
+int get_daemonize(void);
+char *get_statustag(void);
+char *get_pidfile(void);    
+
 
 #endif /* !__OPTIONS_H */

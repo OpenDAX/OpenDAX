@@ -69,13 +69,13 @@ int main(int argc, const char *argv[]) {
     /* Read configuration from defaults, file and command line */
     dax_configure(argc, argv);
     /* Go to the background */
-    if(config.daemonize) {
+    if(get_daemonize()) {
         if(daemonize("OpenDAX")) {
             xerror("Unable to go to the background");
         }
     }
     
-    setverbosity(config.verbosity);
+    //--setverbosity(config.verbosity);
     
     msg_setup_queue();    /* This creates and sets up the message queue */
     initialize_tagbase(); /* initiallize the tagname list and database */

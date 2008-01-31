@@ -16,15 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
  *  Source code file for opendax configuration
- *  
  */
-
-/*  TODO: This entire configuration mechanism needs to be changed.  We need a
-    a way to make it easy to use configuration files in DAX as well as all the
-    modules.  It would help to enforce a common look and feel and it would help
-    get modules built faster.  If enough thought is put into the system it'd
-    make it relatively easy to build a GUI configuration system too. */
-
 
 #include <common.h>
 #include <options.h>
@@ -33,44 +25,39 @@
 #include <tagbase.h>
 #include <func.h>
 
-#include <signal.h>
-#include <sys/wait.h>
-#include <syslog.h>
-#include <string.h>
 #include <string.h>
 #include <getopt.h>
+#include <math.h>
 
-static void initconfig(void);
-static void setdefaults(void);
-static void parsecommandline(int, const char**);
-static int readconfigfile(void);
-static void parsemodule(FILE *);
-
-struct Config config;
-
-/* This function should be called from main() to configure the program.
-   First the defaults are set then the configuration file is parsed then
-   the command line is handled.  This gives the command line priority.  */
-int dax_configure(int argc, const char *argv[]) {
-    initconfig();
-    parsecommandline(argc,argv);
-    if(readconfigfile()) {
-        xerror("Unable to read configuration running with defaults");
-    }
-    setdefaults();
-    //if(config.verbose) printconfig();
-    return 0;
-}
+static char *_pidfile;
+static char *_configfile;
+static char *_statustag;
+static int _verbosity;
+static int _daemonize;
 
 /* Inititialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
-    config.pidfile = NULL;
-    config.tagname = NULL;
-    config.configfile = NULL;
-    config.verbosity = 0;
-    config.daemonize = 0;
+    int length;
+    
+    if(!_configfile) {
+        length = strlen(ETC_DIR) + strlen("/daxlua.conf") +1;
+        _configfile = (char *)malloc(sizeof(char) * length);
+        if(_configfile) 
+            sprintf(_configfile,"%s%s",ETC_DIR,"/daxlua.conf");
+    }
+    _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
+    _verbosity = 0;
+    _statustag = NULL;
+    _pidfile = NULL;
 }
 
+/* This function sets the defaults if nothing else has been done 
+   to the configuration parameters to this point */
+static void setdefaults(void) {
+    if(_daemonize < 0) _daemonize = 1;
+    if(!_statustag) _statustag = strdup("_status");
+    if(!_pidfile) _pidfile = strdup(DEFAULT_PID);
+}
 
 /* This function parses the command line options and sets
    the proper members of the configuration structure */
@@ -88,16 +75,16 @@ static void parsecommandline(int argc, const char *argv[])  {
     while ((c = getopt_long (argc, (char * const *)argv, "C:VvD",options, NULL)) != -1) {
         switch (c) {
         case 'C':
-            config.configfile = strdup(optarg);
+            _configfile = strdup(optarg);
 	        break;
         case 'V':
-		    printf("%s Version %s\n",PACKAGE,VERSION);
+		    printf("%s Version %s\n", PACKAGE, VERSION);
 	        break;
 	    case 'v':
-            config.verbosity++;
+            _verbosity++;
 	        break;
         case 'D': 
-            config.daemonize = 1;
+            _daemonize = 1;
 	        break;
         case '?':
 		    printf("Got the big ?\n");
@@ -111,141 +98,129 @@ static void parsecommandline(int argc, const char *argv[])  {
     } /* End While */           
 }
 
-/* This function sets the defaults for the configuration if the
-   commandline or the config file set them. */
-static void setdefaults(void) {
-    char s[]=DEFAULT_PID;
-   
-    if(!config.pidfile) {
-        config.pidfile = strdup(s);
-    }
-    //--if(!config.ipaddress[0])
-    //--    strcpy(config.ipaddress,"0.0.0.0");
-    //--if(!config.port)
-    //--    config.port=DEFAULT_PORT;
-}
-
-
-/* This function reads the configuration file.  It does not
- * override values that were entered on the commandline. */
-static int readconfigfile(void)  {
-    FILE *fd=NULL;
-	int length, count;
-	char *result, *find;
-	char string[MAX_LINE_LENGTH];
-	char token[MAX_LINE_LENGTH];
-	char value[MAX_LINE_LENGTH];
+/* This is the wrapper for the add module function in the Lua configuration file */
+/* The arguments are a table that consist of all the configuration
+   parameters of a module.  See the opendax.conf for examples */
+static int _add_module(lua_State *L) {
+    char *name, *path, *arglist;
+    unsigned int flags = 0;
+    int startup;
     
-	/* if the name of the configuration file is in the config.configfile
-	 * member it will open that file.  If not the config file name is 
-	 * ETC_DIR/opendax.conf */
-	if(!config.configfile) {
-        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
-		 config.configfile=(char *)malloc(sizeof(char) * length);
-		 if(config.configfile) 
-		     sprintf(config.configfile, "%s%s", ETC_DIR, "/opendax.conf");
-	}
-	fd=fopen(config.configfile,"r");
-	if(!fd) {
-        syslog(LOG_ERR,"Unable to open configuration file %s",config.configfile);
-        return(-1);
-	}
-	/* parse the strings in the file */
-	while( (result=fgets(string, MAX_LINE_LENGTH-1, fd)) )  {
-        if(strlen(string) >= MAX_LINE_LENGTH) {
-            xnotice("Extra long line found in config file");
-		}
-		/* Find the '#' in the string and place the \0 in it's place to \
-		 * truncate the string and remove the comment */
-		find = strpbrk(string,"#");
-		if(find) *find = '\0';
-        count = sscanf(string, "%s %s",(char *)&token, (char *)&value);
-		if(count == 2) { /* if sscanf() found both strings */
-            if(!strcasecmp(token,"Tablesize")) {
-                if(!config.tablesize) {
-                    config.tablesize=strtol(value,NULL,10);
-                }
-            } else if(!strcasecmp(token,"PIDFile")) {
-			     if(!config.pidfile) {
-				     config.pidfile=strdup(value);
-                 }
-		    /* TODO: Should be able to put in a number */
-            } else if(!strcasecmp(token, "Verbose")) {
-                if(!strcasecmp(value, "yes"))
-                    //config.verbose = 10;
-                    setverbosity(10);
-            } else if(!strcasecmp(token,"Daemonize")) {
-                if(!strcasecmp(value,"yes"))
-                    config.daemonize = 1;
-            }
-		} else if(strcasestr(string,"<module>")) {
-            parsemodule(fd);
-        }
+    if(!lua_istable(L, -1)) {
+        luaL_error(L, "add_module() received an argument that is not a table");
     }
-
-    fclose(fd);
+    
+    lua_getfield(L, -1, "name");
+    if( !(name = (char *)lua_tostring(L, -1)) ) {
+        xerror("No module name given");
+        return 0;
+    }
+    
+    lua_getfield(L, -2, "path");
+    path = (char *)lua_tostring(L, -1);
+    
+    lua_getfield(L, -3, "args");
+    arglist = (char *)lua_tostring(L, -1);
+    
+    lua_getfield(L, -4, "startup");
+    startup = (int)lua_tonumber(L, -1);
+    
+    lua_getfield(L, -5, "openpipes");
+    if(lua_toboolean(L, -1)) {
+        flags = MFLAG_OPENPIPES;
+    }
+    
+    lua_getfield(L, -6, "restart");
+    if(lua_toboolean(L, -1)) {
+        flags |= MFLAG_RESTART;
+    }
+    
+    module_add(name, path, arglist, startup, flags);
+    
     return 0;
 }
 
-/* When the main parsing routine finds a <port> or <defaultport> it
-   calls this function to get the port configuration.  def should be
-   1 if this is the configuration for the default port. */
-static void parsemodule(FILE *fd) {
-    int count;
-    unsigned int flags;
-    char *name,*path,*arglist;
-    char *result,*find;
-	char string[MAX_LINE_LENGTH];
-	char token[MAX_LINE_LENGTH];
-	char value[MAX_LINE_LENGTH];
-	
-    if(fd == NULL) { /* Used to reset the module configuration */
-        fd = NULL;
+static int readconfigfile(void)  {
+    lua_State *L;
+    char *string;
+    
+    L = lua_open();
+    /* We don't open any librarires because we don't really want any
+     function calls in the configuration file.  It's just for
+     setting a few globals. */
+    
+    lua_pushcfunction(L, _add_module);
+    lua_setglobal(L, "add_module");
+    
+    
+    /* load and run the configuration file */
+    if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
+        xerror("Problem executing configuration file - %s", lua_tostring(L, -1));
+        return 1;
     }
     
-    name = NULL;
-    path = NULL;
-    arglist = NULL;
-    xlog(10,"Found a module to parse");
+    /* tell lua to push these variables onto the stack */
+    lua_getglobal(L, "daemonize");
+    lua_getglobal(L, "statustag");
+    lua_getglobal(L, "pidfile");
+    lua_getglobal(L, "verbosity");
     
-    while( (result = fgets(string,MAX_LINE_LENGTH-1,fd)) )  {
-        if(strlen(string) >= MAX_LINE_LENGTH) {
-            xnotice("Extra long line found in config file");
-		}
-		/* Find the '#' in the string and place the \0 in it's place to \
-        * truncate the string and remove the comment */
-		find = strpbrk(string,"#");
-		if(find) *find = '\0';
-        count = sscanf(string,"%s %s",(char *)&token,(char *)&value);
-		if(count == 2) { /* if sscanf() found both strings */
-            if(!strcasecmp(token,"name")) {
-                name = strdup(value);
-            } else if(!strcasecmp(token,"path")) {
-                path = strdup(value);
-            /* TODO: All this is just goofy.  I need to read the whole path from the line
-                that'll come with the rewrite of the config file reading code that's comin */
-            } else if(!strcasecmp(token,"arg")) {
-                if(arglist == NULL) {
-                    arglist = strdup(value);
-                } else {
-                    arglist = xrealloc(arglist, strlen(arglist) + strlen(value) + 1);
-                    arglist = strcat(arglist, " ");
-                    arglist = strcat(arglist, value);
-                }
-            } else if(!strcasecmp(token,"restart")) {
-                if(!strcasecmp(value,"no")) {
-                    flags |= MFLAG_NORESTART;
-                }
-            } else if(!strcasecmp(token,"openpipes")) {
-                if(!strcasecmp(value,"yes")) {
-                    flags |= MFLAG_OPENPIPES;
-                }
-            }
-        } else if(strcasestr(string,"</module>")) {
-            module_add(name, path, arglist, flags);
-            return;
+    if(_daemonize < 0) { /* negative if not already set */
+        _daemonize = lua_toboolean(L, 1);
+    }
+    /* Do I really need to do this???? */
+    if(_statustag == NULL) {
+        if( (string = (char *)lua_tostring(L, 2)) ) {
+            _statustag = strdup(string);
         }
     }
-    xerror("No </module> to end subsection\n");
+
+    if(_pidfile == NULL) {
+        if( (string = (char *)lua_tostring(L, 3)) ) {
+            _pidfile = strdup(string);
+        }
+    }
+    
+    if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
+        _verbosity = lround(lua_tonumber(L, 4));
+        setverbosity(_verbosity);
+    }
+    /* Clean up and get out */
+    lua_close(L);
+    
+    return 0;
 }
 
+
+/* This function should be called from main() to configure the program.
+   After the configurations have been initialized the command line is
+   parsed.  Then the configuration file is read and after that if any
+   parameter has not been set the defaults are used. */
+int dax_configure(int argc, const char *argv[]) {
+    
+    initconfig();
+    parsecommandline(argc, argv);
+    if(readconfigfile()) {
+        xerror("Unable to read configuration running with defaults");
+    }
+    setdefaults();
+    
+    xlog(2, "Daemonize set to %d", _daemonize);
+    xlog(2, "Status Tagname is set to %s", _statustag);
+    xlog(2, "PID File Name set to %s", _pidfile);
+    xlog(2, "Verbosity set to %d", _verbosity);
+    
+    return 0;
+}
+ 
+int get_daemonize(void) {
+    return _daemonize;
+}
+
+char *get_statustag(void) {
+    return _statustag;
+}
+
+char *get_pidfile(void) {
+    return _pidfile;
+}

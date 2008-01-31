@@ -34,7 +34,7 @@ typedef struct {
 } dead_module;
 
 /* Module List Handling Functions */
-mod_handle_t module_add(char *name, char *path, char *arglist, unsigned int flags);
+mod_handle_t module_add(char *name, char *path, char *arglist, int startup, unsigned int flags);
 int module_del(mod_handle_t);
 
 /* Module runtime functions */

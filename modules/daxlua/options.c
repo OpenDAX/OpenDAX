@@ -26,7 +26,6 @@
 #include <getopt.h>
 #include <math.h>
 
-/* TODO: Allow user to set verbosity to a number */
 /* TODO: Allow user to set whether an error in a script is fatal */
 
 static char *configfile;
@@ -53,9 +52,9 @@ static void parsecommandline(int argc, char *argv[])  {
     char c;
     
     static struct option options[] = {
-    {"config",required_argument,0,'C'},
-    {"version",no_argument, 0, 'V'},
-    {"verbose",no_argument,0,'v'},
+    {"config", required_argument,0,'C'},
+    {"version", no_argument, 0, 'V'},
+    {"verbose", no_argument,0,'v'},
     {0, 0, 0, 0}
     };
     
@@ -115,6 +114,7 @@ int configure(int argc, char *argv[]) {
     lua_getglobal(L, "rate");
     lua_getglobal(L, "verbosity");
     
+    /* TODO: This will probably seg fault without something in the configuration file */
     initscript = strdup(lua_tostring(L,-4));
     mainscript = strdup(lua_tostring(L, -3));
     rate = lround(lua_tonumber(L, -2));
