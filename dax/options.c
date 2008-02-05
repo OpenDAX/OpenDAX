@@ -27,7 +27,7 @@
 
 #include <string.h>
 #include <getopt.h>
-#include <math.h>
+//#include <math.h>
 
 static char *_pidfile;
 static char *_configfile;
@@ -182,7 +182,7 @@ static int readconfigfile(void)  {
     }
     
     if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        _verbosity = lround(lua_tonumber(L, 4));
+        _verbosity = (int)lua_tonumber(L, 4);
         setverbosity(_verbosity);
     }
     /* Clean up and get out */

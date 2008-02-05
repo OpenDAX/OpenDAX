@@ -26,7 +26,7 @@
 #ifdef HAVE_SYS_PARAM_H
  #include <sys/param.h>
 #endif
-#include "database.h"
+#include <database.h>
 
 
 #ifdef __BIG_ENDIAN__ /* Mac OSX Endianness */
@@ -51,6 +51,9 @@
 
 #define ALIAS_LENGTH 33
 #define ALIAS_COUNT 64
+/* Device Port Types */
+#define SERIAL 0
+#define NET 1
 /* Port Types */
 #define MASTER 0
 #define SLAVE 1
@@ -84,6 +87,7 @@ struct mb_port {
     char *device;
     char enable;    /* 0=Pause, 1=Run */
     unsigned char type;      /* 0=Master, 1=Slave */
+    unsigned char devtype;   /* 0=serial, 1=network */
     unsigned char protocol;  /* [Only RTU is implemented so far] */
     u_int8_t slaveid;        /* Slave ID 1-247 (Slave Only) */
     unsigned int baudrate;
@@ -115,8 +119,8 @@ struct mb_port {
     unsigned int inhibit_time;   /* Number of seconds before the port will be retried */
     unsigned int inhibit_temp;
     /* These are callback function pointers for the port data */
-    void (* out_callback)(struct mb_port *,u_int8_t *,unsigned int);
-    void (* in_callback)(struct mb_port *,u_int8_t *,unsigned int);
+    void (* out_callback)(struct mb_port *, u_int8_t *, unsigned int);
+    void (* in_callback)(struct mb_port *, u_int8_t *, unsigned int);
 };
 
 /* Command Methods */

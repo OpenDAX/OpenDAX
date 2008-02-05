@@ -52,27 +52,28 @@ int main (int argc, const char * argv[]) {
     (void)signal(SIGCHLD,SIG_IGN);
     
     /* Set up the system logger */
-    openlog("modbus",LOG_NDELAY,LOG_DAEMON);
-    xnotice("modbus Starting");
+    /*TODO: Use the OpenDAX logger */
+    //openlog("modbus", LOG_NDELAY,LOG_DAEMON);
+    dax_debug(1, "Modbus Starting");
    
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
     result = modbus_configure(argc,argv);
     
     if( dax_mod_register("modbus") ) {
-        xlog(0,"We got's to go");
-        xfatal("Unable to find OpenDAX Message Queue.  OpenDAX probalby not running");
+        dax_log("We got's to go");
+        dax_fatal("Unable to find OpenDAX Message Queue.  OpenDAX probalby not running");
     }
     
     /* Allocate and initialize the datatable */
-    time=1; n=0;
+    time = 1; n = 0;
     while(dt_init(config.tablesize)) {
-        syslog(LOG_ERR,"Unable to allocate the data table");
+        syslog(LOG_ERR, "Unable to allocate the data table");
         sleep(time);
         if(n++ > 5) {
-            time *= 2; n=0;
+            time *= 2; n = 0;
         }
-        if(time > 60) time=60;
+        if(time > 60) time = 60;
     }
     
     /* If configured daemonize the program */
@@ -80,9 +81,9 @@ int main (int argc, const char * argv[]) {
     //    daemonize("modbus");
     //} else {
     /* Set the input and output callbacks if we aren't going to the background */
-        for(n=0;n<config.portcount;n++) {
-            mb_set_output_callback(&config.ports[n],outdata);
-            mb_set_input_callback(&config.ports[n],indata);
+        for(n = 0; n < config.portcount; n++) {
+            mb_set_output_callback(&config.ports[n], outdata);
+            mb_set_input_callback(&config.ports[n], indata);
         }
     //}
     /* Start the threads that handle the sockets */
@@ -155,7 +156,7 @@ static void daemonize(void) {
     /* close all open file descriptors */
     for (n=getdtablesize();n>=0;--n) close(n);
     /*reopen stdout stdin and stderr to /dev/null */
-    n=open("/dev/null",O_RDWR);
+    n = open("/dev/null",O_RDWR);
     dup(n); dup(n);
     /* reopen the logger */
     openlog("mbd",LOG_NDELAY,LOG_DAEMON);
@@ -168,7 +169,7 @@ static void writepidfile(void) {
     umask(0);
     pidfd=open(config.pidfile,O_RDWR | O_CREAT | O_TRUNC,S_IRUSR | S_IWUSR);
     if(!pidfd) 
-        syslog(LOG_NOTICE,"Unable to open PID file - %s",config.pidfile);
+        dax_log("Unable to open PID file - %s",config.pidfile);
     else {
         sprintf(pid,"%d",getpid());
         write(pidfd,pid,strlen(pid)); /*writes to the PID file*/
@@ -181,18 +182,18 @@ static void writepidfile(void) {
 * that are going to be caught by the program */
 void catchsignal(int sig) {
     if(sig == SIGHUP) {
-        syslog(LOG_NOTICE,"Should be Reconfiguring Now");
+        dax_log("Should be Reconfiguring Now");
         //reconfigure();
     } else if(sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
-        syslog(LOG_NOTICE,"Exiting with signal %d",sig);
+        dax_log("Exiting with signal %d", sig);
     getout(0);
     } else if(sig == SIGCHLD) {
-        if(config.verbose) syslog(LOG_NOTICE,"Got SIGCHLD");
+        dax_log("Got SIGCHLD");
        /*There is probably some really cool child process handling stuff to do here
          but I don't quite know what to do yet. */
     } else if(sig == SIGPIPE) {
         /* TODO: We should shutdown or restart a port or something here */
-        if(config.verbose) syslog(LOG_NOTICE,"Got SIGPIPE");
+        dax_log("Got SIGPIPE");
     }
 }
 

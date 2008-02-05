@@ -1,29 +1,31 @@
-# Main configuration file for the OpenDAX system
+-- Main configuration file for the OpenDAX system
 
-type        master # Master dax system
+--Set to 'false' to run OpenDAX in the foreground
+daemonize = false
 
-daemonize   no # If yes then run in background
-verbosity   yes  # Verbosity set 0 - 10
+--Verbosity can be set from 0 to 8
+verbosity = 10
 
-# These are just aliases.  They are not magic.  They are just here to
-#  save typing
-#set daxroot     /Users/Phil/opendax
-#set modroot     $(daxroot)/modules
+--statustag = "_status"
 
-<module>
-  name          test
-  tier		    0
-  path          daxtest
-  restart       yes
-  openpipes     no  # Have dax connect to stdin, stdout and stderr
-</module>
+--pidfile = "/var/run/opendax.pid"
 
-<module>
-  name          modbus
-  tier		    0
-  path          modbus
-#  arg -C
-#  arg /Users/phil/opendax/etc/modtest.conf
-  restart       yes
-  openpipes     no  # Have dax connect to stdin, stdout and stderr
-</module>
+modroot = "/Users/phil/opendax/modules/"
+
+m = {}
+
+m.startup   = 1
+m.restart   = false
+m.openpipes = false
+
+m.name      = "test"
+m.path      = modroot.."test/daxtest"
+
+--add_module(m)
+
+m.name      = "modbus"
+m.path      = modroot.."modbus/modbus"
+m.args      = "-C /Users/phil/opendax/etc/modbus.conf"
+
+add_module(m)
+

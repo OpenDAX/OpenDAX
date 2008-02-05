@@ -21,10 +21,48 @@
 
 #include <modbus.h>
 
-#define MAX_LINE_LENGTH 100
+/* All this silliness is because the different distributions have the libraries
+ and header files for lua in different places with different names.
+ There has got to be a better way. */
+#if defined(HAVE_LUA5_1_LUA_H)
+ #include <lua5.1/lua.h>
+#elif defined(HAVE_LUA51_LUA_H)
+ #include <lua51/lua.h>
+#elif defined(HAVE_LUA_LUA_H)
+ #include <lua/lua.h>
+#elif defined(HAVE_LUA_H)
+ #include <lua.h>
+#else
+ #error Missing lua.h
+#endif
+
+#if defined(HAVE_LUA51_LAUXLIB_H)
+ #include <lua51/lauxlib.h>
+#elif defined(HAVE_LUA5_1_LAUXLIB_H)
+ #include <lua5.1/lauxlib.h>
+#elif defined(HAVE_LUA_LAUXLIB_H)
+ #include <lua/lauxlib.h>
+#elif defined(HAVE_LAUXLIB_H)
+ #include <lauxlib.h>
+#else
+ #error Missing lauxlib.h
+#endif
+
+#if defined(HAVE_LUA51_LUALIB_H)
+ #include <lua51/lualib.h>
+#elif defined(HAVE_LUA5_1_LUALIB_H)
+ #include <lua5.1/lualib.h>
+#elif defined(HAVE_LUA_LUALIB_H)
+ #include <lua/lualib.h>
+#elif defined(HAVE_LUALIB_H)
+ #include <lualib.h>
+#else
+ #error Missing lualib.h
+#endif 
+
 
 #ifndef DEFAULT_PID
-#define DEFAULT_PID "/var/run/modbus.pid"
+ #define DEFAULT_PID "/var/run/modbus.pid"
 #endif
 
 #define DEFAULT_DEVICE "/dev/serial"
@@ -32,23 +70,22 @@
 #define DEFAULT_TABLE_SIZE 100
 #define DEFAULT_TAGNAME "modbus"
 
+/* Default number of ports to allocate if none is specified */
 #ifndef MAX_PORTS
   #define MAX_PORTS 16
 #endif
 
 struct Config {
     char *pidfile;
-    //--char ipaddress[16];
-    //--unsigned short port;  /* TCP Port */ //There is probably a better datatype
     char *configfile;
     char *tagname;
-    u_int8_t verbose;
+    int verbosity;
     u_int8_t daemonize;
     unsigned int tablesize;
-    //--struct mbd_hook *hooks;     /* Top of the linked list of hooks */
-    //--struct mb_alias* aliases;   /* Pointer to an array of aliases */
     int portcount;
-    struct mb_port ports[MAX_PORTS]; /* Pointer to an array of ports */
+    int maxports;
+//    struct mb_port ports[MAX_PORTS]; /* Pointer to an array of ports */
+    struct mb_port *ports; /* Pointer to an array of ports */
 };
 
 

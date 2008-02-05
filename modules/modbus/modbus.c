@@ -52,34 +52,36 @@ static int handleresponse(u_int8_t *,struct mb_cmd *);
 
 /* Initializes the port structure given by pointer p */
 static void initport(struct mb_port *p) {
-    p->name=NULL;
-    p->device=NULL;
-    p->enable=0;
-    p->type=0; 
-    p->protocol=0;
-    p->slaveid=1;      
-    p->baudrate=B9600;
-    p->databits=8;
-    p->stopbits=1;
-    p->timeout=1000;      
-    p->wait=10;
-    p->delay=0;     
-    p->retries=3;
-    p->parity=NONE;  
-    p->scanrate=1000; 
-    p->holdreg=0;  
-    p->holdsize=0; 
-    p->inputreg=0;
-    p->inputsize=0;
-    p->coilreg=0;
-    p->coilsize=0;
-    p->floatreg=0;
-    p->floatsize=0;
-    p->running=0;
-    p->inhibit=0;
-    p->commands=NULL;
-    p->out_callback=NULL;
-    p->in_callback=NULL;
+    p->name = NULL;
+    p->device = NULL;
+    p->enable = 0;
+    p->type = 0; 
+    p->protocol = 0;
+    p->devtype = SERIAL;
+    p->slaveid = 1;      
+    p->baudrate = B9600;
+    p->databits = 8;
+    p->stopbits = 1;
+    p->timeout = 1000;      
+    p->wait = 10;
+    p->delay = 0;     
+    p->retries = 3;
+    p->parity = NONE;  
+    p->bindport = 5001;
+    p->scanrate = 1000; 
+    p->holdreg = 0;  
+    p->holdsize = 0; 
+    p->inputreg = 0;
+    p->inputsize = 0;
+    p->coilreg = 0;
+    p->coilsize = 0;
+    p->floatreg = 0;
+    p->floatsize = 0;
+    p->running = 0;
+    p->inhibit = 0;
+    p->commands = NULL;
+    p->out_callback = NULL;
+    p->in_callback = NULL;
 };
 
 /* Sets the command values to some defaults */
@@ -167,18 +169,18 @@ unsigned short crc16(unsigned char *msg, unsigned short length) {
    length should be the length of the modbus data buffer INCLUDING the
    two byte checksum.  Returns 1 if checksum matches */
 static int crc16check(u_int8_t *buff,int length) {
-    u_int16_t crcLocal,crcRemote;
-    if(length<2) return 0; /* Otherwise a bad pointer will go to crc16 */
-    crcLocal=crc16(buff,length-2);
-    COPYWORD(&crcRemote,&buff[length-2]);
-    if(crcLocal==crcRemote) return 1;
+    u_int16_t crcLocal, crcRemote;
+    if(length < 2) return 0; /* Otherwise a bad pointer will go to crc16 */
+    crcLocal=crc16(buff, length-2);
+    COPYWORD(&crcRemote, &buff[length-2]);
+    if(crcLocal == crcRemote) return 1;
     else return 0;
 };
 
 /* Calculates the difference between the two times */
 inline unsigned long long timediff(struct timeval oldtime,struct timeval newtime) {
-    return (newtime.tv_sec-oldtime.tv_sec)*1000 + 
-           (newtime.tv_usec/1000)-(oldtime.tv_usec/1000);
+    return (newtime.tv_sec - oldtime.tv_sec) * 1000 + 
+           (newtime.tv_usec / 1000)-(oldtime.tv_usec / 1000);
 };
 
 
@@ -233,7 +235,6 @@ struct mb_cmd *mb_new_cmd(void) {
         initcmd(mcmd);
     }
     return mcmd;    
-
 }
 
 void mb_set_output_callback(struct mb_port *mp, void (* outfunc)(struct mb_port *,u_int8_t *,unsigned int)) {
@@ -252,19 +253,19 @@ void mb_set_input_callback(struct mb_port *mp, void (* infunc)(struct mb_port *,
    while running.  If all commands are to be asynchronous then this
    would not be necessary.  Slave ports would never use this.
    Returns 0 on success. */
-int mb_add_cmd(struct mb_port *p,struct mb_cmd *mc) {
+int mb_add_cmd(struct mb_port *p, struct mb_cmd *mc) {
     struct mb_cmd *node;
     
-    if(p==NULL || mc==NULL) return -1;
+    if(p == NULL || mc == NULL) return -1;
     
-    if(p->commands==NULL) {
-        p->commands=mc;
+    if(p->commands == NULL) {
+        p->commands = mc;
     } else {
-        node=p->commands;
-        while(node->next!=NULL) {
-            node=node->next;
+        node = p->commands;
+        while(node->next != NULL) {
+            node = node->next;
         }
-        node->next=mc;
+        node->next = mc;
     }
     return 0;
 }
@@ -273,16 +274,16 @@ int mb_add_cmd(struct mb_port *p,struct mb_cmd *mc) {
    to the command when found and NULL on error. */
 struct mb_cmd *mb_get_cmd(struct mb_port *mp,unsigned int cmd) {
     struct mb_cmd *node;
-    unsigned int n=0;
-    if(mp==NULL) return NULL;
+    unsigned int n = 0;
+    if(mp == NULL) return NULL;
     
-    if(mp->commands==NULL) {
+    if(mp->commands == NULL) {
         node = NULL;
     } else { 
-        node=mp->commands;
+        node = mp->commands;
         do {
             if(n++ == cmd) return node;
-            node=node->next;
+            node = node->next;
         } while(node != NULL);
     }
     return node;
@@ -302,8 +303,8 @@ int mb_open_port(struct mb_port *m_port) {
     } else {
         fd = openport(m_port);
     }
-    if(pthread_mutex_init (&m_port->port_mutex,NULL)) return -1;
-    if(fd>0) return 0;
+    if(pthread_mutex_init (&m_port->port_mutex, NULL)) return -1;
+    if(fd > 0) return 0;
     return fd;
 }
 
@@ -317,7 +318,7 @@ int mb_start_port(struct mb_port *m_port) {
     /* If the port is not already open */
     if(!m_port->fd) {
         if(mb_open_port(m_port)) {
-            syslog(LOG_ERR,"Unable to open port - %s",m_port->name);
+            syslog(LOG_ERR, "Unable to open port - %s", m_port->name);
             return -1;
         }
     }
@@ -326,25 +327,25 @@ int mb_start_port(struct mb_port *m_port) {
         The thread is set up to be detached so that it's resources will
         be deallocated automatically. */
         pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         
-        if(m_port->type==MASTER) {
-            if(pthread_create(&thread,&attr,(void *)&masterRTUthread,(void *)m_port)) {
-                syslog(LOG_ERR,"Unable to start thread for port - %s",m_port->name);
+        if(m_port->type == MASTER) {
+            if(pthread_create(&thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
+                syslog(LOG_ERR, "Unable to start thread for port - %s", m_port->name);
                 return -1;
             } else {
-                syslog(LOG_NOTICE,"Started Thread for port - %s",m_port->name);
+                syslog(LOG_NOTICE, "Started Thread for port - %s", m_port->name);
                 return 0;
             }
-        } else if(m_port->type==SLAVE) {
+        } else if(m_port->type == SLAVE) {
             ; //start slave thread
         } else {
-            syslog(LOG_ERR,"Unknown Port Type %d, on port %s",m_port->type,m_port->name);
+            syslog(LOG_ERR, "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
             return -1;
         }
         return 0;
     } else {
-        syslog(LOG_ERR,"Unable to open IP Port: %s [%s:%d]",m_port->name,m_port->ipaddress,m_port->bindport);
+        syslog(LOG_ERR, "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
         return -1;
     }
     return 0; //should never get here
@@ -356,14 +357,14 @@ static int openport(struct mb_port *m_port) {
     struct termios options;
     
     /* the port is opened RW and reads will not block */
-    fd=open(m_port->device,O_RDWR | O_NOCTTY | O_NONBLOCK);
+    fd=open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(fd == -1)  {
-        syslog(LOG_ERR,"openport: %s",strerror(errno));
+        syslog(LOG_ERR, "openport: %s", strerror(errno));
         return(-1);
     } else  {
     
     /* TODO: this should set the port up like the configuration says */
-        fcntl(fd,F_SETFL,0);
+        fcntl(fd, F_SETFL, 0);
         tcgetattr(fd, &options);
         cfsetispeed(&options, m_port->baudrate);
         cfsetospeed(&options, m_port->baudrate);
@@ -379,9 +380,9 @@ static int openport(struct mb_port *m_port) {
         options.c_cc[VMIN] = 0;
         options.c_cc[VTIME] = 0; /* 1 sec */
         /* TODO: Should check for errors here */
-        tcsetattr(fd,TCSANOW,&options);
+        tcsetattr(fd, TCSANOW, &options);
     } 
-    m_port->fd=fd;
+    m_port->fd = fd;
     return fd;
 }
 
@@ -393,11 +394,11 @@ static int openIPport(struct mb_port *mp) {
     int result;
     
     if(mp->socket == TCP_SOCK) {
-		fd = socket(AF_INET, SOCK_STREAM,0);
+		fd = socket(AF_INET, SOCK_STREAM, 0);
 	} else if (mp->socket == UDP_SOCK) {
-		fd = socket(AF_INET, SOCK_DGRAM,0);
+		fd = socket(AF_INET, SOCK_DGRAM, 0);
 	} else {
-        syslog(LOG_ERR,"Unknown socket type");
+        syslog(LOG_ERR, "Unknown socket type");
 	    return -1;
 	}
 	
@@ -405,17 +406,17 @@ static int openIPport(struct mb_port *mp) {
     addr.sin_addr.s_addr = inet_addr(mp->ipaddress);
     addr.sin_port = htons(mp->bindport);
     
-    result = connect(fd,(struct sockaddr *)&addr,sizeof(addr));
+    result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
     if(result == -1) {
-        syslog(LOG_ERR,"openIPport: %s",strerror(errno));
+        syslog(LOG_ERR, "openIPport: %s", strerror(errno));
         return -1;
     }
-    result = fcntl(fd,F_SETFL,O_NONBLOCK);
+    result = fcntl(fd, F_SETFL, O_NONBLOCK);
     if(result) {
-        syslog(LOG_ERR,"Unable to set socket to non blocking");
+        syslog(LOG_ERR, "Unable to set socket to non blocking");
         return -1 ;
     }
-    mp->fd=fd;
+    mp->fd = fd;
     return fd;
 }
         
@@ -433,17 +434,17 @@ void masterRTUthread(struct mb_port *mp) {
     struct mb_cmd *mc;
     struct timeval start, end;
     
-    mp->running=1; /* Tells the world that we are going */
+    mp->running = 1; /* Tells the world that we are going */
     /* If enable goes negative we bail at the next scan */
     while(mp->enable >= 0) {
         gettimeofday(&start, NULL);
         if(mp->enable) { /* If enable=0 then pause for the scanrate and try again. */
-            mc=mp->commands;
-            while(mc!=NULL) {
+            mc = mp->commands;
+            while(mc != NULL) {
                 /* Only if the command is enabled and the interval counter is over */
                 if(mc->method && (++mc->icount >= mc->interval)) { 
-                    mc->icount=0;
-                    mb_send_command(mp,mc);
+                    mc->icount = 0;
+                    mb_send_command(mp, mc);
                 }
                 if(mp->delay>0) usleep(mp->delay*1000);
                 mc = mc->next; /* get next command from the linked list */
@@ -452,13 +453,13 @@ void masterRTUthread(struct mb_port *mp) {
         /* This calculates the length of time that it took to send the messages on this port
            and then subtracts that time from the port's scanrate and calls usleep to hold
            for the right amount of time.  */
-        gettimeofday(&end,NULL);
+        gettimeofday(&end, NULL);
         time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
         /* If it takes longer than the scanrate then just go again instead of sleeping */
         if(time_spent < mp->scanrate)
-            usleep((mp->scanrate-time_spent)*1000);
+            usleep((mp->scanrate - time_spent)*1000);
     }
-    mp->running=0;
+    mp->running = 0;
 }
 
 /* External function to send a Modbus commaond (mc) to port (mp).  The function
