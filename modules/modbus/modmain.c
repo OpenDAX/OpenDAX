@@ -19,7 +19,7 @@
 #include <common.h>
 #include <opendax.h>
 
-#include <syslog.h>
+//#include <syslog.h>
 #include <string.h>
 #include <signal.h>
 #include <sys/stat.h>
@@ -40,20 +40,18 @@ void outdata(struct mb_port *,u_int8_t *,unsigned int);
 void indata(struct mb_port *,u_int8_t *,unsigned int);
 
 int main (int argc, const char * argv[]) {
-    int result,n,time;
+    int result, n, time;
+    struct mb_port *mp;
     /* Set up the signal handler */
     //TODO: Should use sigaction() instead??
-    (void)signal(SIGHUP,catchsignal);
-    (void)signal(SIGINT,catchsignal);
-    (void)signal(SIGTERM,catchsignal);
-    (void)signal(SIGPIPE,catchsignal);
-    (void)signal(SIGQUIT,catchsignal);
+    (void)signal(SIGHUP, catchsignal);
+    (void)signal(SIGINT, catchsignal);
+    (void)signal(SIGTERM, catchsignal);
+    (void)signal(SIGPIPE, catchsignal);
+    (void)signal(SIGQUIT, catchsignal);
     /* Probably should use this to see if we've lost a port thread */
-    (void)signal(SIGCHLD,SIG_IGN);
+    (void)signal(SIGCHLD, SIG_IGN);
     
-    /* Set up the system logger */
-    /*TODO: Use the OpenDAX logger */
-    //openlog("modbus", LOG_NDELAY,LOG_DAEMON);
     dax_debug(1, "Modbus Starting");
    
     /* Read the configuration from the command line and the file.
@@ -62,13 +60,13 @@ int main (int argc, const char * argv[]) {
     
     if( dax_mod_register("modbus") ) {
         dax_log("We got's to go");
-        dax_fatal("Unable to find OpenDAX Message Queue.  OpenDAX probalby not running");
+        dax_fatal("Unable to find OpenDAX Message Queue.  OpenDAX probabby not running");
     }
     
     /* Allocate and initialize the datatable */
     time = 1; n = 0;
     while(dt_init(config.tablesize)) {
-        syslog(LOG_ERR, "Unable to allocate the data table");
+        dax_error("Unable to allocate the data table");
         sleep(time);
         if(n++ > 5) {
             time *= 2; n = 0;
@@ -90,10 +88,20 @@ int main (int argc, const char * argv[]) {
     
     while(1) { /* Infinite loop, threads are doing all the work.*/
         /* Starts the port threads if they are not running */
-        for(n=0;n<config.portcount;n++) {
-            if(!config.ports[n].running && !config.ports[n].inhibit)
-                if(mb_start_port(&config.ports[n]) < 0) /* If the port fails to open */
-                    config.ports[n].inhibit=1; /* then don't try to open it anymore */
+        for(n=0; n < config.portcount; n++) {
+            mp = &config.ports[n];
+            if(!mp->running && !mp->inhibit) {
+                if(mb_start_port(mp) < 0) { /* If the port fails to open */
+                    mp->inhibit = 1; /* then don't try to open it anymore */
+                    mp->inhibit_temp = 0; /* reset the inhibit timer */
+                }
+            } else if(mp->inhibit && mp->inhibit_time) {
+                mp->inhibit_temp++;
+                if(mp->inhibit_temp >= mp->inhibit_time) {
+                    mp->inhibit = 0;
+                    mp->inhibit_temp = 0;
+                }
+            }
 /* TODO: The inhibition above could be tied to a timer or counter so that it would only be tried
 every so often instead of being inhibited completely.  This would make it possible for the program to
 recover from a USB serial port being pulled and then replaced or a device server going offline. */
@@ -200,8 +208,7 @@ void catchsignal(int sig) {
 
 static void getout(int exitcode) {
     int n;
-    syslog(LOG_NOTICE, "Process exiting");
-    closelog();
+    dax_debug(1, "Modbus Module Exiting");
     
     dt_destroy();
     /* TODO: Need to figure out a way to unbind the socket */

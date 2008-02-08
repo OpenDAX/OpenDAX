@@ -110,7 +110,8 @@ struct mb_port {
     unsigned int floatreg;       /* database index for Enron style float table */
     unsigned int floatsize;      /* size of the float table */
     unsigned int timeout;        /* Response timeout */
-    unsigned int maxtimeouts;    /* Number of timeouts to allow before closing and exiting the port */
+    unsigned int attempt;        /* Attempt counter */
+    unsigned int maxattempts;    /* Number of failed attempts to allow before closing and exiting the port */
     struct mb_cmd *commands;     /* Linked list of Modbus commands */
     int fd;                      /* File descriptor to the port */
     pthread_mutex_t port_mutex;  /* Port Mutex */

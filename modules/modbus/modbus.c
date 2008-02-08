@@ -17,8 +17,6 @@
  */
 
 #define _GNU_SOURCE
-#include "modbus.h"
-#include "database.h"
 #include <stdio.h>
 #include <stdlib.h>
 //#define __USE_XOPEN
@@ -27,7 +25,6 @@
 #include <termios.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <syslog.h>
 #include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -36,15 +33,14 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+#include <modbus.h>
+#include <database.h>
+#include <opendax.h>
+
 static int openport(struct mb_port *);
 static int openIPport(struct mb_port *);
 
 void masterRTUthread(struct mb_port *);
-static int sendRTUrequest(struct mb_port *,struct mb_cmd *);
-static int getRTUresponse(u_int8_t *,struct mb_port *);
-static int sendASCIIrequest(struct mb_port *,struct mb_cmd *);
-static int getASCIIresponse(u_int8_t *,struct mb_port *);
-static int handleresponse(u_int8_t *,struct mb_cmd *);
 
 /************************
  *  Support functions   *
@@ -171,7 +167,7 @@ unsigned short crc16(unsigned char *msg, unsigned short length) {
 static int crc16check(u_int8_t *buff,int length) {
     u_int16_t crcLocal, crcRemote;
     if(length < 2) return 0; /* Otherwise a bad pointer will go to crc16 */
-    crcLocal=crc16(buff, length-2);
+    crcLocal = crc16(buff, length-2);
     COPYWORD(&crcRemote, &buff[length-2]);
     if(crcLocal == crcRemote) return 1;
     else return 0;
@@ -238,15 +234,13 @@ struct mb_cmd *mb_new_cmd(void) {
 }
 
 void mb_set_output_callback(struct mb_port *mp, void (* outfunc)(struct mb_port *,u_int8_t *,unsigned int)) {
-    mp->out_callback=outfunc;
+    mp->out_callback = outfunc;
 }
 
 
 void mb_set_input_callback(struct mb_port *mp, void (* infunc)(struct mb_port *,u_int8_t *,unsigned int)) {
-    mp->in_callback=infunc;
+    mp->in_callback = infunc;
 }
-
-
 
 /* Adds a new command to the linked list of commands on port p 
    This is the master port threads list of commands that it sends
@@ -296,14 +290,15 @@ int mb_open_port(struct mb_port *m_port) {
     
     /* if the LAN bit or the TCP bit are set then we need a network
         socket.  Otherwise we need a serial port opened */
-    if(m_port->protocol & LAN || m_port->protocol & TCP) {
-        /* TODO: this socket thing should be in the configuration */
-        m_port->socket = TCP_SOCK;
+    if(m_port->devtype == NET) {
         fd = openIPport(m_port);
     } else {
         fd = openport(m_port);
     }
-    if(pthread_mutex_init (&m_port->port_mutex, NULL)) return -1;
+    if(pthread_mutex_init (&m_port->port_mutex, NULL)) {
+        dax_error("Problem Initilizing Mutex for port: %s", m_port->name);
+        return -1;
+    }
     if(fd > 0) return 0;
     return fd;
 }
@@ -318,7 +313,7 @@ int mb_start_port(struct mb_port *m_port) {
     /* If the port is not already open */
     if(!m_port->fd) {
         if(mb_open_port(m_port)) {
-            syslog(LOG_ERR, "Unable to open port - %s", m_port->name);
+            dax_error( "Unable to open port - %s", m_port->name);
             return -1;
         }
     }
@@ -331,21 +326,21 @@ int mb_start_port(struct mb_port *m_port) {
         
         if(m_port->type == MASTER) {
             if(pthread_create(&thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
-                syslog(LOG_ERR, "Unable to start thread for port - %s", m_port->name);
+                dax_error( "Unable to start thread for port - %s", m_port->name);
                 return -1;
             } else {
-                syslog(LOG_NOTICE, "Started Thread for port - %s", m_port->name);
+                dax_debug(3, "Started Thread for port - %s", m_port->name);
                 return 0;
             }
         } else if(m_port->type == SLAVE) {
-            ; //start slave thread
+            ; /* TODO: start slave thread */
         } else {
-            syslog(LOG_ERR, "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
+            dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
             return -1;
         }
         return 0;
     } else {
-        syslog(LOG_ERR, "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
+        dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
         return -1;
     }
     return 0; //should never get here
@@ -357,9 +352,9 @@ static int openport(struct mb_port *m_port) {
     struct termios options;
     
     /* the port is opened RW and reads will not block */
-    fd=open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    fd = open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(fd == -1)  {
-        syslog(LOG_ERR, "openport: %s", strerror(errno));
+        dax_error("openport: %s", strerror(errno));
         return(-1);
     } else  {
     
@@ -393,12 +388,13 @@ static int openIPport(struct mb_port *mp) {
     struct sockaddr_in addr;
     int result;
     
+    dax_debug(10, "Opening IP Port");
     if(mp->socket == TCP_SOCK) {
 		fd = socket(AF_INET, SOCK_STREAM, 0);
 	} else if (mp->socket == UDP_SOCK) {
 		fd = socket(AF_INET, SOCK_DGRAM, 0);
 	} else {
-        syslog(LOG_ERR, "Unknown socket type");
+        dax_error( "Unknown socket type");
 	    return -1;
 	}
 	
@@ -407,15 +403,17 @@ static int openIPport(struct mb_port *mp) {
     addr.sin_port = htons(mp->bindport);
     
     result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+    dax_debug(10, "Connect returned %d", result);
     if(result == -1) {
-        syslog(LOG_ERR, "openIPport: %s", strerror(errno));
+        dax_error( "openIPport: %s", strerror(errno));
         return -1;
     }
     result = fcntl(fd, F_SETFL, O_NONBLOCK);
     if(result) {
-        syslog(LOG_ERR, "Unable to set socket to non blocking");
+        dax_error( "Unable to set socket to non blocking");
         return -1 ;
     }
+    dax_debug(10, "Socket Connected, fd = %d", fd);
     mp->fd = fd;
     return fd;
 }
@@ -427,26 +425,31 @@ static int openIPport(struct mb_port *mp) {
 /* TODO: There needs to be a mechanism to bail out of here.  The mp->running should
 be set to 0 and the mp->fd closed.  This will cause the main while(1) loop to restart
 the port */
-/* TODO: All references to the main routine should be removed */
 void masterRTUthread(struct mb_port *mp) {
-    //u_int8_t buff[255]; /* Modbus Frame buffer */
     long time_spent;
     struct mb_cmd *mc;
     struct timeval start, end;
+    unsigned char bail = 0;
     
     mp->running = 1; /* Tells the world that we are going */
+    mp->attempt = 0;
     /* If enable goes negative we bail at the next scan */
-    while(mp->enable >= 0) {
+    while(mp->enable >= 0 && !bail) {
         gettimeofday(&start, NULL);
         if(mp->enable) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
-            while(mc != NULL) {
+            while(mc != NULL && !bail) {
                 /* Only if the command is enabled and the interval counter is over */
                 if(mc->method && (++mc->icount >= mc->interval)) { 
                     mc->icount = 0;
                     mb_send_command(mp, mc);
+                    if(mp->attempt >= mp->maxattempts) {
+                        bail = 1;
+                        mp->inhibit_temp = 0;
+                        mp->inhibit = 1;
+                    }
                 }
-                if(mp->delay>0) usleep(mp->delay*1000);
+                if(mp->delay > 0) usleep(mp->delay * 1000);
                 mc = mc->next; /* get next command from the linked list */
             } /* End of while for sending commands */
         }
@@ -457,76 +460,15 @@ void masterRTUthread(struct mb_port *mp) {
         time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
         /* If it takes longer than the scanrate then just go again instead of sleeping */
         if(time_spent < mp->scanrate)
-            usleep((mp->scanrate - time_spent)*1000);
+            usleep((mp->scanrate - time_spent) * 1000);
     }
+     /* Close the port */
+    if(close(mp->fd)) {
+        dax_error("Could not close port");
+    }
+    dax_error("Too Many Errors: Shutting down port - %s", mp->name);
+    mp->fd = 0;
     mp->running = 0;
-}
-
-/* External function to send a Modbus commaond (mc) to port (mp).  The function
-   sets some function pointers to the functions that handle the port protocol and
-   then uses those functions generically.  The retry loop tries the command for the
-   configured number of times and if successful returns 0.  If not an error code
-   is returned. mb_buff should be at least MB_FRAME_LEN in length */
-
-int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
-    u_int8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
-    int try=1;
-    int result,msglen;
-    static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
-    static int (*getresponse)(u_int8_t *,struct mb_port *) = NULL;
-    
-    
-    /*This sets up the function pointers so we don't have to constantly check
-      which protocol we are using for communication.  From this point on the 
-      code is generic for RTU or ASCII */
-    /* TODO: This whole LAN/RTU/ASCII/TCP thing needs fixing */
-    if(mp->protocol == RTU || mp->protocol == LAN) {
-        sendrequest = sendRTUrequest;
-        getresponse = getRTUresponse;
-    } else if(mp->protocol == ASCII) {
-        sendrequest = sendASCIIrequest;
-        getresponse = getASCIIresponse;
-    } else {
-        /* TODO: Should probably set an error code here?? */
-        return -1;
-    }
-    
-    do { /* retry loop */
-        pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
-		result = sendrequest(mp,mc);
-		if(result > 0) {
-			msglen = getresponse(buff,mp);
-		}
-        /* Unlock the port */
-        pthread_mutex_unlock(&mp->port_mutex);
-        /* Should be 0 when a conditional command simply doesn't run */
-        if(result == 0) return result;
-        
-        /* TODO: There may be other errors in the sendrequest() function that
-           should be dealt with here */
-        
-        if(msglen > 0) {
-            result = handleresponse(buff,mc);
-            if(result>0) {
-                mc->exceptions++;
-                mc->lasterror=result | ME_EXCEPTION;
-            } else { /* Everything is good */
-                mc->lasterror=0;
-            }
-            return 0; /* We got some kind of message so no sense in retrying */
-        } else if(msglen == 0) {
-			mc->timeouts++;
-			mc->lasterror = ME_TIMEOUT;
-        } else {
-            /* Checksum failed in response */
-            mc->crcerrors++;
-            mc->lasterror = ME_CHECKSUM;
-        }
-    } while(try++ <= mp->retries);
-    /* After all the retries get out with error */
-    /* TODO: Should set error code?? */
-    return -2;
-
 }
 
 /* This function formulates and sends the modbus master request */
@@ -542,8 +484,8 @@ static int sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd) {
         case 1:
         case 3:
         case 4:
-            COPYWORD(&buff[2],&cmd->m_register);
-            COPYWORD(&buff[4],&cmd->length);
+            COPYWORD(&buff[2], &cmd->m_register);
+            COPYWORD(&buff[4], &cmd->length);
             length=6;
             break;
         case 5:
@@ -562,75 +504,74 @@ static int sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd) {
                 return 0;
             }
             break;
-        case 6:
+            case 6:
             temp = dt_getword(cmd->address);
             
             /* If the command is contiunous go, if conditional then 
-               check the last checksum against the current datatable[] */
-            if(cmd->method==MB_CONTINUOUS || (temp != cmd->lastcrc)) {
-                COPYWORD(&buff[2],&cmd->m_register);
-                COPYWORD(&buff[4],&temp);
-                cmd->lastcrc=temp; /* Since it's a single just store the word */
-                length=6;
+             check the last checksum against the current datatable[] */
+            if(cmd->method == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
+                COPYWORD(&buff[2], &cmd->m_register);
+                COPYWORD(&buff[4], &temp);
+                cmd->lastcrc = temp; /* Since it's a single just store the word */
+                length = 6;
                 break;
             } else {
                 return 0;
             }
-        default:
+            default:
             break;
     }
-    crc=crc16(buff,length);
+    crc = crc16(buff,length);
     COPYWORD(&buff[length],&crc);
     /* Send Request */
     cmd->requests++; /* Increment the request counter */
-    tcflush(mp->fd,TCIOFLUSH);
+    tcflush(mp->fd, TCIOFLUSH);
     /* Send the buffer to the callback routine. */
     if(mp->out_callback) {
-        mp->out_callback(mp,buff,length+2);
+        mp->out_callback(mp, buff, length + 2);
     }
     
-    return write(mp->fd,buff,length+2);
+    return write(mp->fd, buff, length + 2);
 }
 
 /* This function waits for one interbyte timeout (wait) period and then
-   checks to see if there is data on the port.  If there is no data and
-   we still have not received any data then it compares the current time
-   against the time the loop was started to see about the timeout.  If there
-   is data then it is written into the buffer.  If there is no data on the
-   read() and we have received some data already then the full message should
-   have been received and the function exits. 
-   
-   Returns 0 on timeout
-   Returns -1 on CRC fail
-   Returns the length of the message on success */
-static int getRTUresponse(u_int8_t *buff,struct mb_port *mp) {
-    unsigned int buffptr=0;
-    struct timeval oldtime,thistime;
+ checks to see if there is data on the port.  If there is no data and
+ we still have not received any data then it compares the current time
+ against the time the loop was started to see about the timeout.  If there
+ is data then it is written into the buffer.  If there is no data on the
+ read() and we have received some data already then the full message should
+ have been received and the function exits. 
+ 
+ Returns 0 on timeout
+ Returns -1 on CRC fail
+ Returns the length of the message on success */
+static int getRTUresponse(u_int8_t *buff, struct mb_port *mp) {
+    unsigned int buffptr = 0;
+    struct timeval oldtime, thistime;
     int result;
     
-    gettimeofday(&oldtime,NULL);
-
+    gettimeofday(&oldtime, NULL);
+    
     while(1) {
-        usleep(mp->wait*1000);
-        result=read(mp->fd,&buff[buffptr],MB_FRAME_LEN);
+        usleep(mp->wait * 1000);
+        result = read(mp->fd, &buff[buffptr], MB_FRAME_LEN);
         if(result > 0) { /* Get some data */
             buffptr += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
         } else { /* Message is finished, good or bad */
             if(buffptr > 0) { /* Is there any data in buffer? */
                 
                 if(mp->in_callback) {
-                    mp->in_callback(mp,buff,buffptr);
+                    mp->in_callback(mp, buff, buffptr);
                 }
                 /* Check the checksum here. */
-                result = crc16check(buff,buffptr);
+                result = crc16check(buff, buffptr);
                 
                 if(!result) return -1;
                 else return buffptr;
                 
-                
             } else { /* No data in the buffer */
                 gettimeofday(&thistime,NULL); 
-                if(timediff(oldtime,thistime) > mp->timeout) {
+                if(timediff(oldtime, thistime) > mp->timeout) {
                     return 0;
                 }
             }
@@ -647,15 +588,14 @@ static int getASCIIresponse(u_int8_t *buff,struct mb_port *mp) {
     return 0;
 }
 
-
 /* This function takes the message buffer and the current command and
-   determines what to do with the message.  It may write data to the 
-   datatable or just return if the message is an acknowledge of a write.
-   This function is protocol indifferent so the checksums should be
-   checked before getting here.  This function assumes that *buff looks
-   like an RTU message so the ASCII response functions should translate
-   the ASCII responses into RTUish messages */
-   
+ determines what to do with the message.  It may write data to the 
+ datatable or just return if the message is an acknowledge of a write.
+ This function is protocol indifferent so the checksums should be
+ checked before getting here.  This function assumes that *buff looks
+ like an RTU message so the ASCII response functions should translate
+ the ASCII responses into RTUish messages */
+
 static int handleresponse(u_int8_t *buff,struct mb_cmd *cmd) {
     int n;
     u_int16_t temp;
@@ -679,15 +619,83 @@ static int handleresponse(u_int8_t *buff,struct mb_cmd *cmd) {
                 if(dt_setword(cmd->address+n,temp)) return -1;
             }
             break;
-        case 5:
-        case 6:
+            case 5:
+            case 6:
             //COPYWORD(&temp,&buff[2]);
             //if(dt_setword(cmd->address,temp)) return -1;
             break;
-        default:
+            default:
             break;
     }
     return 0;
 }
+
+
+/* External function to send a Modbus commaond (mc) to port (mp).  The function
+   sets some function pointers to the functions that handle the port protocol and
+   then uses those functions generically.  The retry loop tries the command for the
+   configured number of times and if successful returns 0.  If not, an error code
+   is returned. mb_buff should be at least MB_FRAME_LEN in length */
+
+int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
+    u_int8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
+    int try = 1;
+    int result, msglen;
+    static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
+    static int (*getresponse)(u_int8_t *,struct mb_port *) = NULL;
+    
+    
+    /*This sets up the function pointers so we don't have to constantly check
+      which protocol we are using for communication.  From this point on the 
+      code is generic for RTU or ASCII */
+    if(mp->protocol == RTU) {
+        sendrequest = sendRTUrequest;
+        getresponse = getRTUresponse;
+    } else if(mp->protocol == ASCII) {
+        sendrequest = sendASCIIrequest;
+        getresponse = getASCIIresponse;
+    } else {
+        return -1;
+    }
+    
+    do { /* retry loop */
+        pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
+        if(mp->maxattempts) {
+            mp->attempt++;
+            dax_debug(10, "Incrementing attempt -> %d", mp->attempt);
+        }        
+		result = sendrequest(mp, mc);
+		if(result > 0) {
+			msglen = getresponse(buff, mp);
+		}
+        /* Unlock the port */
+        pthread_mutex_unlock(&mp->port_mutex);
+        /* Should be 0 when a conditional command simply doesn't run */
+        if(result == 0) return result;
+        
+        if(msglen > 0) {
+            result = handleresponse(buff,mc);
+            if(result > 0) {
+                mc->exceptions++;
+                mc->lasterror = result | ME_EXCEPTION;
+            } else { /* Everything is good */
+                mc->lasterror=0;
+            }
+            mp->attempt = 0; /* Good response, reset counter */
+            return 0; /* We got some kind of message so no sense in retrying */
+        } else if(msglen == 0) {
+			mc->timeouts++;
+			mc->lasterror = ME_TIMEOUT;
+        } else {
+            /* Checksum failed in response */
+            mc->crcerrors++;
+            mc->lasterror = ME_CHECKSUM;
+        }
+    } while(try++ <= mp->retries);
+    /* After all the retries get out with error */
+    /* TODO: Should set error code?? */
+    return -2;
+}
+
 
 
