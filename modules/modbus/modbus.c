@@ -443,7 +443,7 @@ void masterRTUthread(struct mb_port *mp) {
                 if(mc->method && (++mc->icount >= mc->interval)) { 
                     mc->icount = 0;
                     mb_send_command(mp, mc);
-                    if(mp->attempt >= mp->maxattempts) {
+                    if(mp->maxattempts && mp->attempt >= mp->maxattempts) {
                         bail = 1;
                         mp->inhibit_temp = 0;
                         mp->inhibit = 1;

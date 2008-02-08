@@ -26,6 +26,7 @@
 #include <syslog.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 extern struct Config config;
 
@@ -36,6 +37,7 @@ void quit_signal(int);
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
     pthread_t message_thread;
+	int result;
     
     openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
     xlog(0,"OpenDAX started");
@@ -77,8 +79,9 @@ int main(int argc, const char *argv[]) {
     
     //--setverbosity(config.verbosity);
     
-    msg_setup_queue();    /* This creates and sets up the message queue */
-    initialize_tagbase(); /* initiallize the tagname list and database */
+    result = msg_setup_queue();    /* This creates and sets up the message queue */
+    xerror("msg_setup_queue() returned %d", result);
+	initialize_tagbase(); /* initiallize the tagname list and database */
     
 	/* Start the message handling thread */
     if(pthread_create(&message_thread,NULL,(void *)&messagethread,NULL)) {
@@ -116,7 +119,7 @@ void child_signal(int sig) {
     int status;
     pid_t pid;
 
-    pid=wait(&status);
+    pid = wait(&status);
     xlog(1,"Caught Child Dying %d\n",pid);
     module_dmq_add(pid,status);
 }

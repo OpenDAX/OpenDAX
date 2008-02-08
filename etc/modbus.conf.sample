@@ -20,7 +20,8 @@ p.devtype = "SERIAL"  -- device type SERIAL, NET
 p.ipaddress = "0.0.0.0"
 p.socket = "TCP"      -- IP socket protocol to use TCP or UDP
 p.bindport = 7777     -- TCP/UDP Port to use
-p.device = "/dev/tty.usbserial-FT3Q9XETA"
+p.device = "/dev/ttyS0"
+--p.device = "/dev/tty.usbserial-FT3Q9XETA"
 p.type = "MASTER"     -- modbus master
 p.protocol = "RTU"    -- RTU, ASCII, TCP
 p.slaveid = 1         -- modbus id if type is slave
@@ -34,13 +35,14 @@ p.baudrate = 9600
 p.databits = 8    
 p.stopbits = 1
 p.parity = "NONE"     -- NONE, EVEN, ODD
-p.scanrate = 500      -- rate at which this port is scanned in mSec
+p.scanrate = 1000      -- rate at which this port is scanned in mSec
 p.timeout = 1000      -- timeout period in mSec for response from slave
 p.wait = 30           -- wait time for the interbyte timeout
 p.delay = 0           -- delay between response and the next request
 p.retries = 2         -- number of times to retry the command
-p.maxtimeouts = 20    -- total number of consecutive timeouts before the port is restarted
-    
+p.maxfailures = 20    -- total number of consecutive timeouts before the port is restarted
+p.inhibit = 10        -- number of seconds to wait until a restart is tried
+
 portid = add_port(p)
 
 if portid then

@@ -31,7 +31,7 @@
 static int __msqid;
 
 /* This array holds the functions for each message command */
-#define NUM_COMMANDS 10
+#define NUM_COMMANDS 12
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
 int msg_mod_register(dax_message *msg);
@@ -90,12 +90,12 @@ static int _message_send(long int module, int command, void *payload, size_t siz
 int msg_setup_queue(void) {
     /* TODO: Do we bail if the queue exists or use an existing one?  The latter for debugging. */
     __msqid = msgget(DAX_IPC_KEY, (IPC_CREAT | 0660));
-    //__msqid = msgget(DAX_IPC_KEY, (IPC_CREAT | IPC_EXCL | 0660));
+    /*__msqid = msgget(DAX_IPC_KEY, (IPC_CREAT | IPC_EXCL | 0660));*/
     if(__msqid < 0) {
-        __msqid=0;
-        xfatal("Message Queue Cannot Be Created - %s",strerror(errno));
+        __msqid = 0;
+        xfatal("Message Queue Cannot Be Created - %s", strerror(errno));
     }
-    xlog(2,"Message Queue Created - id = %d",__msqid);
+    xlog(2,"Message Queue Created - id = %d", __msqid);
     /* The functions are added to an array of function pointers with their
         messsage type used as the index.  This makes it really easy to call
         the handler functions from the messaging thread. */
@@ -120,12 +120,12 @@ void msg_destroy_queue(void) {
     int result=0;
     
     if(__msqid) {
-        result = msgctl(__msqid,IPC_RMID,NULL);
+        result = msgctl(__msqid, IPC_RMID, NULL);
     }
     if(result) {
-        xerror("Unable to delete message queue %d",__msqid);
+        xerror("Unable to delete message queue %d", __msqid);
     } else {
-        xlog(2,"Message queue %d being destroyed",__msqid);
+        xlog(2,"Message queue %d being destroyed", __msqid);
     }
 }
 
@@ -135,9 +135,12 @@ int msg_receive(void) {
     static u_int32_t count = 0;
     dax_message daxmsg;
     int result;
-    result = msgrcv(__msqid,(struct msgbuff *)(&daxmsg),sizeof(dax_message),1,0);
+
+	result = msgrcv(__msqid, (struct msgbuff *)(&daxmsg), sizeof(dax_message), 1, 0);
     if(result < 0) {
-        xerror("msg_receive - %s",strerror(errno));
+        xerror("msg_receive - %s", strerror(errno));
+		xerror("__msqid = %d", __msqid);
+		sleep(1); /* So it doesn't get out of hand */
         return result;
     }
     count++;
@@ -150,7 +153,7 @@ int msg_receive(void) {
         /* Call the command function from the array */
         (*cmd_arr[daxmsg.command])(&daxmsg);
     } else {
-        xerror("unknown message command received %d",daxmsg.command);
+        xerror("unknown message command received %d", daxmsg.command);
         return -2;
     }
     return 0;
@@ -160,10 +163,10 @@ int msg_receive(void) {
    from and array of function pointers so there should be one for each command defined. */
 int msg_mod_register(dax_message *msg) {
     if(msg->size) {
-        xlog(4,"Registering Module %s pid = %d",msg->data,msg->pid);
+        xlog(4, "Registering Module %s pid = %d", msg->data, msg->pid);
         module_register(msg->data,msg->pid);
     } else {
-        xlog(4,"Unregistering Module pid = %d",msg->pid);
+        xlog(4, "Unregistering Module pid = %d", msg->pid);
         module_unregister(msg->pid);
     }
     return 0;

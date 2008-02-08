@@ -322,8 +322,10 @@ static int _add_port(lua_State *L) {
     
     p->commands = NULL;
     p->running = 0;
-    p->inhibit = 0;
+	p->inhibit = 0;
+	p->attempt = 0;
     p->inhibit_temp = 0;
+	p->fd = 0;
     p->out_callback = NULL;
     p->in_callback = NULL;
     
