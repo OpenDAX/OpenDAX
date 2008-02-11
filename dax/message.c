@@ -28,6 +28,9 @@
 #include <sys/msg.h>
 #include <string.h>
 
+#define RESPONSE 1
+#define ASYNC 0
+
 static int __msqid;
 
 /* This array holds the functions for each message command */
@@ -51,13 +54,14 @@ int msg_evnt_get(dax_message *msg);
 /* Generic message sending function.  If size is zero then it is assumed that an error
    is being sent to the module.  In that case payload should point to a single int that
    indicates the error */
-static int _message_send(long int module, int command, void *payload, size_t size) {
+static int _message_send(long int module, int command, void *payload, size_t size, int response) {
     static u_int32_t count = 0;
     dax_message outmsg;
     size_t newsize;
     int result;
     
     outmsg.module = module;
+    if(response) outmsg.module |= MSG_RESPONSE; /* Add the response message flag */
     outmsg.command = command;
     outmsg.pid = getpid();
     outmsg.size = size;
@@ -95,7 +99,7 @@ int msg_setup_queue(void) {
         __msqid = 0;
         xfatal("Message Queue Cannot Be Created - %s", strerror(errno));
     }
-    xlog(2,"Message Queue Created - id = %d", __msqid);
+    xlog(2, "Message Queue Created - id = %d", __msqid);
     /* The functions are added to an array of function pointers with their
         messsage type used as the index.  This makes it really easy to call
         the handler functions from the messaging thread. */
@@ -147,14 +151,14 @@ int msg_receive(void) {
     tag_write_bytes(STAT_MSG_RCVD, &count, sizeof(u_int32_t));
     if(result < (MSG_HDR_SIZE + daxmsg.size)) {
         xerror("message received is not of the specified size.");
-        return -1;
+        return ERR_MSG_BAD;
     }
     if(daxmsg.command > 0 && daxmsg.command <= NUM_COMMANDS) {
         /* Call the command function from the array */
         (*cmd_arr[daxmsg.command])(&daxmsg);
     } else {
         xerror("unknown message command received %d", daxmsg.command);
-        return -2;
+        return ERR_MSG_BAD;
     }
     return 0;
 }
@@ -182,9 +186,9 @@ int msg_tag_add(dax_message *msg) {
     /* TODO: Gotta handle the error condition here or the module locks up waiting on the message */
     
     if(handle >= 0) {
-        _message_send(msg->pid, MSG_TAG_ADD, &handle, sizeof(handle_t));
+        _message_send(msg->pid, MSG_TAG_ADD, &handle, sizeof(handle_t), RESPONSE);
     } else {
-        _message_send(msg->pid, MSG_TAG_ADD, &handle, 0);
+        _message_send(msg->pid, MSG_TAG_ADD, &handle, 0, RESPONSE);
         return -1; /* do I need this????? */
     }
     return 0;
@@ -219,10 +223,10 @@ int msg_tag_get(dax_message *msg) {
         xlog(10, "Tag Get Message from %d for name %s", msg->pid, (char *)msg->data);
     }
     if(tag) {
-        _message_send(msg->pid, MSG_TAG_GET, tag, sizeof(dax_tag));
+        _message_send(msg->pid, MSG_TAG_GET, tag, sizeof(dax_tag), RESPONSE);
         xlog(10,"Returned tag to calling module %d",msg->pid);
     } else {
-        _message_send(msg->pid, MSG_TAG_GET, &result, 0);
+        _message_send(msg->pid, MSG_TAG_GET, &result, 0, RESPONSE);
         xlog(10,"Bad tag query for MSG_TAG_GET");
     }
     return 0;
@@ -248,9 +252,9 @@ int msg_tag_read(dax_message *msg) {
 	xlog(10,"Tag Read Message from %d, handle 0x%X, size %d",msg->pid,handle,size);
     
     if(tag_read_bytes(handle, data, size) == size) { /* Good read from tagbase */
-        _message_send(msg->pid, MSG_TAG_READ, &data, size);
+        _message_send(msg->pid, MSG_TAG_READ, &data, size, RESPONSE);
     } else { /* Send Error */
-        _message_send(msg->pid, MSG_TAG_READ, &data, 0);
+        _message_send(msg->pid, MSG_TAG_READ, &data, 0, RESPONSE);
     }
     return 0;
 }
@@ -312,9 +316,9 @@ int msg_evnt_add(dax_message *msg) {
     }
         
     if(event_id < 0) { /* Send Error */
-        _message_send(msg->pid, MSG_EVNT_ADD, &event_id, 0);    
+        _message_send(msg->pid, MSG_EVNT_ADD, &event_id, 0, RESPONSE);    
     } else {
-        _message_send(msg->pid, MSG_EVNT_ADD, &event_id, sizeof(int));
+        _message_send(msg->pid, MSG_EVNT_ADD, &event_id, sizeof(int), RESPONSE);
     }
     return 0;
 }

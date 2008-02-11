@@ -45,3 +45,12 @@
 #endif
 
 #define DAX_64_ONES 0xFFFFFFFFFFFFFFFFULL
+
+/* These are conditionally compiled debug statements. */
+#ifdef DEBUG
+# define DAX_DEBUG(x) dax_debug(5, x);
+# define DAX_DEBUG2(x, y) dax_debug(5, x, y);
+#else
+# define DAX_DEBUG(x) 
+# define DAX_DEBUG2(x, y) 
+#endif

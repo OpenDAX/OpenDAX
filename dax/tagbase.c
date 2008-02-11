@@ -113,9 +113,14 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
         xerror("%s is not a valid tag name", name);
         return -3;
     }
-    /* TODO: If the tag is an exact duplicate then let's return the handle */
-    if(get_by_name(name) >= 0) {
-        xerror("Duplicate tag name %s", name);
+    
+    if( (n = get_by_name(name)) >= 0) {
+        /* If the tag is identical then just return the handle */
+        if(__taglist[n].type == type && __taglist[n].count == count) {
+            return __taglist[n].handle;
+        } else {
+            xerror("Duplicate tag name %s", name);
+        }    
         return -4;
     }
  /* Get the first available handle for the size of the type */
@@ -279,7 +284,7 @@ static int get_by_handle(handle_t handle) {
         try = __tagcount - 1; /* if the given handle is beyond the array */
     } else {
         while(!(handle > __taglist[try].handle && handle < __taglist[try+1].handle)) {
-            try=low+(high-low)/2;
+            try = low + (high-low) / 2;
             if(__taglist[try].handle < handle) {
                 low = try;
             } else if(__taglist[try].handle > handle) {
@@ -291,7 +296,7 @@ static int get_by_handle(handle_t handle) {
     }
     
     if(handle < __taglist[try].handle + 
-             (TYPESIZE(__taglist[try].type) * __taglist[try].count)) {
+        (TYPESIZE(__taglist[try].type) * __taglist[try].count)) {
         return try;
     } else {
         return -1;
@@ -515,7 +520,7 @@ static int event_add_module(_dax_event *event, dax_module *module) {
    contained in a single tag. */
 int event_add(handle_t handle, size_t size, dax_module *module) {
     int index;
-    _dax_event *this, *new;
+    _dax_event *this = NULL, *new = NULL;
     
     index = get_by_handle(handle);
     xlog(10, "Found tag at index %d", index);
@@ -550,6 +555,7 @@ int event_add(handle_t handle, size_t size, dax_module *module) {
     /* Create and initialize the new event */
     new->id = __next_event_id++;
     new->handle = handle;
+    new->notify = NULL;
     new->size = size;
     new->checksum = 0x00;
     new->next = NULL;

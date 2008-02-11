@@ -27,12 +27,15 @@ static pthread_mutex_t datamutex;
 static handle_t dt_handle;
 
 /* Allocate and Initialize the datatable */
-int dt_init(unsigned int size) {
-    dt_handle = dax_tag_add("modbus",DAX_UINT, size);
+int dt_init(unsigned int size, char *tagname) {
+    dt_handle = dax_tag_add(tagname, DAX_UINT, size);
+    if(dt_handle < 0) {
+        return dt_handle;
+    }
     
-    tablesize=size;
+    tablesize = size;
     
-    pthread_mutex_init(&datamutex,NULL);
+    pthread_mutex_init(&datamutex, NULL);
     return(0);
 }
 

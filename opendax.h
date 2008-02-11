@@ -68,6 +68,7 @@
 #define ERR_MSG_RECV  -6 /* Unable to receive message */
 #define ERR_TAG_BAD   -7 /* Bad tagname */
 #define ERR_ALLOC     -8 /* Unable to allocate resource */
+#define ERR_MSG_BAD   -9 /* Bad Message Received */
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
@@ -119,9 +120,6 @@ handle_t dax_tag_add(char *name, unsigned int type, unsigned int count);
    do any bounds checking of the tag handles.  This will make them
    more efficient but less stable if the module misbehaves */
 
-/* TODO: I really need to sit down and think about what kind of interface
-   this system is going to present.  I also need to think about the possibility
-   of caching data on the module side. */
 
 /* Low level tag retrieval function.  Will not decode subscripts. */
 int dax_get_tag(char *name, dax_tag *tag);

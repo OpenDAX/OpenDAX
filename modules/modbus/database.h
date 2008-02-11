@@ -21,7 +21,7 @@
 
 #include <sys/types.h>
 
-int dt_init(unsigned int);
+int dt_init(unsigned int, char *);
 int dt_destroy(void);
 u_int16_t dt_getword(unsigned int);
 int dt_setword(unsigned int, u_int16_t);

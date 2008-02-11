@@ -662,7 +662,7 @@ int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
         pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
         if(mp->maxattempts) {
             mp->attempt++;
-            dax_debug(10, "Incrementing attempt -> %d", mp->attempt);
+            DAX_DEBUG2("Incrementing attempt - %d", mp->attempt);
         }        
 		result = sendrequest(mp, mc);
 		if(result > 0) {

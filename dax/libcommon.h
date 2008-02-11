@@ -54,7 +54,9 @@
 /* More to come */
 
 #ifndef MSG_RESPONSE
-  #define MSG_RESPONSE   0x100000000 /* Flag for defining a response message */
+#  define MSG_RESPONSE   0x100000000LL /* Flag for defining a response message */
+//#  define MSG_RESPONSE 0x10000
+//# define MSG_RESPONSE 0
 #endif
 
 /* Maximum size allowed for a single message in the message queue */
@@ -63,9 +65,9 @@
  may be able to read this at run time.  Perhaps a runtime check
  can be done? */
 #ifdef MSGMAX
- #define DAX_MSGMAX MSGMAX
+#  define DAX_MSGMAX MSGMAX
 #else
- #define DAX_MSGMAX 2048
+#  define DAX_MSGMAX 2048
 #endif
 
 /* This defines the size of the message minus the actual data */

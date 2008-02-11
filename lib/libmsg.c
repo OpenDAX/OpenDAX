@@ -55,13 +55,21 @@ static int _message_send(long int module, int command, void *payload, size_t siz
    before we retrieve the result. */
 /* TODO: I suppose that it's possible for a module to hang here.  Perhaps opendax
    can send a wake up message every now and then so this function can timeout */
-static int _message_recv(int command, void *payload, size_t *size) {
+/* TODO: This function may only be called for response messages so it could be
+   simplified. */
+static int _message_recv(int command, void *payload, size_t *size, int response) {
     dax_message inmsg;
-    int result,done;
+    int result, done;
+    long msgtype;
     
+    msgtype = (long)getpid();
+    if(response) {
+        msgtype += MSG_RESPONSE;
+    }
     done = 0;
     while(!done) {
-        result = msgrcv(__msqid,(struct msgbuff *)(&inmsg), DAX_MSGMAX, (long)getpid(), 0);
+        DAX_DEBUG2("Looking for message type = %ld", msgtype);
+        result = msgrcv(__msqid,(struct msgbuff *)(&inmsg), DAX_MSGMAX, msgtype, 0);
         if(inmsg.command == command) {
             done = 1;
             *size = (size_t)(result - MSG_HDR_SIZE);
@@ -71,8 +79,8 @@ static int _message_recv(int command, void *payload, size_t *size) {
                 return *((int *)inmsg.data);
             }
         } else {
-            dax_debug(2, "Asynchronous message received\n");
-            /* TODO: Insert the async message handling logic here */
+            dax_error( "Asynchronous message received\n");
+            /* TODO: Should never receive an asynchronous message here */
         }
         /* TODO: Also need to handle cases when signals or errors happen here */
     }
@@ -107,18 +115,18 @@ static int mod_reg(char *name) {
              this will have some kind of timeout. */
     result = _message_send(1, MSG_MOD_REG, name, size);
     if(result) { 
-        return -2;
+        return ERR_MSG_SEND;
     }
     return 0;
 }
 
 int dax_mod_register(char *name) {
-    dax_debug(10,"Sending registration for name - %s",name);
+    dax_debug(10, "Sending registration for name - %s", name);
     return mod_reg(name);
 }
 
 int dax_mod_unregister(void) {
-    dax_debug(10,"Sending un-registration");
+    dax_debug(10, "Sending un-registration");
     return mod_reg(NULL);
 }
 
@@ -140,15 +148,15 @@ handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
         tag.type=type;
         tag.count=count;
     } else {
-        return -1;
+        return ERR_TAG_BAD;
     }
     result = _message_send(1, MSG_TAG_ADD, &(tag.name),size);
     if(result) { 
-        return -2;
+        return ERR_MSG_SEND;
     }
     /*  We're putting a lot of faith in the sending function here.  That
         might be okay in this instance */
-    result= _message_recv(MSG_TAG_ADD, &(tag.handle), &size);
+    result= _message_recv(MSG_TAG_ADD, &(tag.handle), &size, 1);
     return tag.handle;
 }
 
@@ -167,7 +175,7 @@ int dax_get_tag(char *name, dax_tag *tag) {
         dax_error("Can't send MSG_TAG_GET message");
         return result;
     }
-    result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
+    result = _message_recv(MSG_TAG_GET, (void *)tag, &size, 1);
     if(result) {
         dax_error("Problem receiving message MSG_TAG_GET");
     }
@@ -281,7 +289,7 @@ int dax_tag_byindex(int index, dax_tag *tag) {
         dax_error("Can't send MSG_TAG_GET message");
         return result;
     }
-    result = _message_recv(MSG_TAG_GET, (void *)tag, &size);
+    result = _message_recv(MSG_TAG_GET, (void *)tag, &size, 1);
     if(result == ERR_ARG) return ERR_ARG;
     return 0;
 }
@@ -293,7 +301,7 @@ int dax_tag_byindex(int index, dax_tag *tag) {
 /* TODO: This function should return some kind of error */
 int dax_tag_read(handle_t handle, void *data, size_t size) {
     size_t n,count,m_size,sendsize,tmp;
-    int result;
+    int result = 0;
     struct Payload {
         handle_t handle;
         size_t size;
@@ -301,17 +309,17 @@ int dax_tag_read(handle_t handle, void *data, size_t size) {
     /* This calculates the amount of data that we can send with a single message
         It subtracts a handle_t from the data size for use as the tag handle.*/
     m_size = MSG_DATA_SIZE;
-    count=((size-1)/m_size)+1;
-    for(n=0; n<count; n++) {
-        if(n == (count-1)) { /* Last Packet */
+    count=((size-1) / m_size) +1;
+    for(n=0; n < count; n++) {
+        if(n == (count - 1)) { /* Last Packet */
             sendsize = size % m_size; /* What's left over */
         } else {
             sendsize = m_size;
         }
         payload.handle = handle + (m_size * 8 * n);
         payload.size = sendsize;
-        result = _message_send(1,MSG_TAG_READ,(void *)&payload, sizeof(struct Payload));
-        result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp);
+        result = _message_send(1, MSG_TAG_READ, (void *)&payload, sizeof(struct Payload));
+        result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp, 1);
     }
     return result;
 }
@@ -388,7 +396,7 @@ int dax_event_add(char *tagname, int count) {
     if(_message_send(1, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
         return ERR_MSG_SEND;
     } else {
-        test = _message_recv(MSG_EVNT_ADD, &result, &size);
+        test = _message_recv(MSG_EVNT_ADD, &result, &size, 1);
         if(test) return test;
     }       
     return result;

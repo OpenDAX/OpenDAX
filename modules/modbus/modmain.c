@@ -53,19 +53,17 @@ int main (int argc, const char * argv[]) {
     (void)signal(SIGCHLD, SIG_IGN);
     
     dax_debug(1, "Modbus Starting");
-   
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
     result = modbus_configure(argc,argv);
     
     if( dax_mod_register("modbus") ) {
-        dax_log("We got's to go");
         dax_fatal("Unable to find OpenDAX Message Queue.  OpenDAX probabby not running");
     }
     
     /* Allocate and initialize the datatable */
     time = 1; n = 0;
-    while(dt_init(config.tablesize)) {
+    while(dt_init(config.tablesize, config.tagname)) {
         dax_error("Unable to allocate the data table");
         sleep(time);
         if(n++ > 5) {
@@ -209,7 +207,7 @@ void catchsignal(int sig) {
 static void getout(int exitcode) {
     int n;
     dax_debug(1, "Modbus Module Exiting");
-    
+    dax_mod_unregister();
     dt_destroy();
     /* TODO: Need to figure out a way to unbind the socket */
     

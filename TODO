@@ -2,8 +2,5 @@ opendax gets all locked up when a module fails to start
 
 _status tag can be written to by modules.  This should be read only.
 
-Need to fix the duplicate tag adding logic.  Handles should be returned if the tag
-being created is an exact duplicate of the tag with the existing name.
-
 Allow 'nice' levels to be set for modules
 
