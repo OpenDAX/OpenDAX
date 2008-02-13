@@ -47,7 +47,7 @@ int dt_destroy(void) {
 u_int16_t dt_getword(unsigned int address) {
     u_int16_t temp;
     pthread_mutex_lock(&datamutex);
-    dax_tag_read(dt_handle + (address * 16),&temp,2);
+    dax_tag_read(dt_handle + (address * 16), &temp, 2);
     pthread_mutex_unlock(&datamutex);
     return(temp);
 }
@@ -55,7 +55,7 @@ u_int16_t dt_getword(unsigned int address) {
 int dt_setword(unsigned int address, u_int16_t buff) {
     if(address < tablesize) {
         pthread_mutex_lock(&datamutex);
-        dax_tag_write(dt_handle + (address * 16),&buff,2);
+        dax_tag_write(dt_handle + (address * 16), &buff, 2);
         pthread_mutex_unlock(&datamutex);
         return 0;
     }
@@ -82,7 +82,7 @@ int dt_setbits(unsigned int address, u_int8_t *buff, u_int16_t length) {
     int result;
     pthread_mutex_lock(&datamutex);
     
-    result = dax_tag_write_bits(dt_handle + address,buff,length);
+    result = dax_tag_write_bits(dt_handle + address, buff, length);
     
     pthread_mutex_unlock(&datamutex);
     return result;

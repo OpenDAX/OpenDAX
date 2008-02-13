@@ -82,24 +82,24 @@ static void initport(struct mb_port *p) {
 
 /* Sets the command values to some defaults */
 static void initcmd(struct mb_cmd *c) {
-    c->method=0;
-    c->node=0;
-    c->function=0;
-    c->m_register=0;
-    c->length=0;
-    c->address=0;
-    c->interval=0;
-    c->icount=0;
-    c->requests=0;
-    c->responses=0;
-    c->responses=0;
-    c->timeouts=0;
-    c->crcerrors=0;
-    c->exceptions=0;
-    c->lasterror=0;
-    c->lastcrc=0;
-    c->firstrun=0;
-    c->next=NULL;
+    c->method = 0;
+    c->node = 0;
+    c->function = 0;
+    c->m_register = 0;
+    c->length = 0;
+    c->address = 0;
+    c->interval = 0;
+    
+    c->icount = 0;
+    c->requests = 0;
+    c->responses = 0;
+    c->timeouts = 0;
+    c->crcerrors = 0;
+    c->exceptions = 0;
+    c->lasterror = 0;
+    c->lastcrc = 0;
+    c->firstrun = 0;
+    c->next = NULL;
 };
 
 /* CRC table straight from the modbus spec */
@@ -596,32 +596,32 @@ static int getASCIIresponse(u_int8_t *buff,struct mb_port *mp) {
  like an RTU message so the ASCII response functions should translate
  the ASCII responses into RTUish messages */
 
-static int handleresponse(u_int8_t *buff,struct mb_cmd *cmd) {
+static int handleresponse(u_int8_t *buff, struct mb_cmd *cmd) {
     int n;
     u_int16_t temp;
     
     cmd->responses++;
-    if(buff[1]>=0x80) 
+    if(buff[1] >= 0x80) 
         return buff[2];
-    if(buff[0]!=cmd->node)
+    if(buff[0] != cmd->node)
         return ME_WRONG_DEVICE;
-    if(buff[1]!=cmd->function)
+    if(buff[1] != cmd->function)
         return ME_WRONG_FUNCTION;
     /* If we get this far the message should be good */
     switch (cmd->function) {
         case 1:
-            dt_setbits(cmd->address,&buff[3],cmd->length);
+            dt_setbits(cmd->address, &buff[3], cmd->length);
             break;
         case 3:
         case 4:
             for(n=0;n < (buff[2]/2); n++) { /* BUFFER OVERFLOW???? */
-                COPYWORD(&temp,&buff[(n*2)+3]);
-                if(dt_setword(cmd->address+n,temp)) return -1;
+                COPYWORD(&temp, &buff[(n*2)+3]);
+                if(dt_setword(cmd->address + n, temp)) return -1;
             }
             break;
             case 5:
             case 6:
-            //COPYWORD(&temp,&buff[2]);
+            //COPYWORD(&temp, &buff[2]);
             //if(dt_setword(cmd->address,temp)) return -1;
             break;
             default:

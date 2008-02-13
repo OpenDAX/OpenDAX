@@ -27,13 +27,17 @@
 
 
 static int __msqid;
+/* This is the module id.  It is the PID of the program
+   at the time of registration.  The process or thread that
+   registers should stay running or we can have a problem. */
+static pid_t __modid;
 
 static int _message_send(long int module, int command, void *payload, size_t size) {
     dax_message outmsg;
     int result;
     outmsg.module = module;
     outmsg.command = command;
-    outmsg.pid = getpid();
+    outmsg.pid = __modid;
     outmsg.size = size;
     memcpy(outmsg.data, payload, size);
     result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + size, 0);
@@ -62,7 +66,7 @@ static int _message_recv(int command, void *payload, size_t *size, int response)
     int result, done;
     long msgtype;
     
-    msgtype = (long)getpid();
+    msgtype = (long)__modid;
     if(response) {
         msgtype += MSG_RESPONSE;
     }
@@ -122,6 +126,9 @@ static int mod_reg(char *name) {
 
 int dax_mod_register(char *name) {
     dax_debug(10, "Sending registration for name - %s", name);
+    /* Our message id will be the pid at this point.  We will
+       use this from now on. */
+    __modid = getpid();
     return mod_reg(name);
 }
 

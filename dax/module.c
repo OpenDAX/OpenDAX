@@ -392,9 +392,8 @@ void module_scan(void) {
     /* Check the dead module queue for pid's that need cleaning */
     for(n=0; n < DMQ_SIZE; n++) {
         if(_dmq[n].pid != 0) {
-            if(_cleanup_module(_dmq[n].pid, _dmq[n].status)) {
-                _dmq[n].pid = 0;
-            }
+            _cleanup_module(_dmq[n].pid, _dmq[n].status);
+            _dmq[n].pid = 0;
         }
     }
     
@@ -403,14 +402,14 @@ void module_scan(void) {
 
 /* This function is called from the scan_modules function and is used 
    to find and cleanup the module after it has died.  */
-static int _cleanup_module(pid_t pid,int status) {
+static int _cleanup_module(pid_t pid, int status) {
     dax_module *mod;
-    mod=_get_module_pid(pid);
+    mod = _get_module_pid(pid);
     /* at this point _current_mod should be pointing to a module with
     the PID that we passed but we should check because there may not 
     be a module with our PID */
     if(mod) {
-        xlog(2,"Cleaning up Module %d\n",pid);
+        xlog(2, "Cleaning up Module %d\n", pid);
         /* Close the stdio pipe fd's */
         close(mod->pipe_in);
         close(mod->pipe_out);
@@ -418,10 +417,10 @@ static int _cleanup_module(pid_t pid,int status) {
         mod->pid = 0;
         mod->exit_status = status;
         mod->state = MSTATE_WAITING;
-        return 1;
-    } else { 
-        xerror("Module %d not found \n",pid);
         return 0;
+    } else {
+        xerror("Module %d not found \n", pid);
+        return ERR_NOTFOUND;
     }
 }
 

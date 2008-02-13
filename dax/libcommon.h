@@ -55,8 +55,6 @@
 
 #ifndef MSG_RESPONSE
 #  define MSG_RESPONSE   0x100000000LL /* Flag for defining a response message */
-//#  define MSG_RESPONSE 0x10000
-//# define MSG_RESPONSE 0
 #endif
 
 /* Maximum size allowed for a single message in the message queue */

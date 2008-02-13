@@ -104,19 +104,41 @@ int lua_main(void) {
         //--Don't bail on errors just yet
         //--return 1;
     }
- /* Basicaly stores the function */
+ /* Basicaly stores the Lua script */
     func_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    
+/* PARSE THE _G TABLE */    
+
+    lua_getglobal(L, "_G");
+    /* table is in the stack at index 't' */
+    lua_pushnil(L);  /* first key */
+    while (lua_next(L, -2) != 0) {
+        /* uses 'key' (at index -2) and 'value' (at index -1) */
+        printf("%s - %s\n",
+               //lua_typename(L, lua_type(L, -2)),
+               lua_tostring(L, -2),
+               lua_typename(L, lua_type(L, -1)));
+        /* removes 'value'; keeps 'key' for next iteration */
+        lua_pop(L, 1);
+    }
+    
+
+/* */
+    
     rate = get_rate();
  /* Main Infinite Loop */
     while(1) {
         gettimeofday(&start, NULL);
         
-        /* retrieve the funciton and call it */
+        /* retrieve the funciton and put it on the stack */
         lua_rawgeti(L, LUA_REGISTRYINDEX, func_ref);
+        
+        /* Run the script that is on the top of the stack */
         if( lua_pcall(L, 0, 0, 0) ) {
             xerror("Error Running Main Script - %s", lua_tostring(L, -1));
             //return 1;
         }
+
         
      /* This calculates the length of time that it took to run the script
         and then subtracts that time from the rate and calls usleep to hold
