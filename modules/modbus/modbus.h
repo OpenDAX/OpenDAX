@@ -114,6 +114,8 @@ struct mb_port {
     unsigned int maxattempts;    /* Number of failed attempts to allow before closing and exiting the port */
     struct mb_cmd *commands;     /* Linked list of Modbus commands */
     int fd;                      /* File descriptor to the port */
+    int dienow;
+    pthread_t thread;
     pthread_mutex_t port_mutex;  /* Port Mutex */
     unsigned char running;       /* Flag to indicate the port is running */
     unsigned char inhibit;       /* When set the port will not be started */

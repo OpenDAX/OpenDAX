@@ -25,14 +25,16 @@
 /* Module Flags */
 #define MFLAG_RESTART       0x01
 #define MFLAG_OPENPIPES     0x02
+#define MFLAG_REGISTER      0x04
 
-typedef unsigned int mod_handle_t;
+//typedef unsigned int mod_handle_t;
 
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dax_Module {
-    mod_handle_t handle;
+    //mod_handle_t handle;
     char *name;
-    pid_t pid;
+    pid_t pid;          /* the modules process id */
+    long int mid;       /* the modules id (currently the same as the pid) */
     int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
     char **arglist;     /* exec() ready array of arguments */

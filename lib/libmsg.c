@@ -74,6 +74,11 @@ static int _message_recv(int command, void *payload, size_t *size, int response)
     while(!done) {
         DAX_DEBUG2("Looking for message type = %ld", msgtype);
         result = msgrcv(__msqid,(struct msgbuff *)(&inmsg), DAX_MSGMAX, msgtype, 0);
+        if(result < 0) { /* TODO: Probably need some sane cleanup here */
+            dax_debug(1, "_message_recv() returned with - %s", strerror(errno));
+            return ERR_MSG_RECV;
+        }
+        
         if(inmsg.command == command) {
             done = 1;
             *size = (size_t)(result - MSG_HDR_SIZE);

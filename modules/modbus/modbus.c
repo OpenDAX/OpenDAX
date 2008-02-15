@@ -307,7 +307,6 @@ int mb_open_port(struct mb_port *m_port) {
 /* Opens the port passed in m_port and starts the thread that
    will handle the port */
 int mb_start_port(struct mb_port *m_port) {
-    pthread_t thread;
     pthread_attr_t attr;
     
     /* If the port is not already open */
@@ -325,7 +324,7 @@ int mb_start_port(struct mb_port *m_port) {
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         
         if(m_port->type == MASTER) {
-            if(pthread_create(&thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
+            if(pthread_create(&m_port->thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
                 dax_error( "Unable to start thread for port - %s", m_port->name);
                 return -1;
             } else {
@@ -442,8 +441,14 @@ void masterRTUthread(struct mb_port *mp) {
                 /* Only if the command is enabled and the interval counter is over */
                 if(mc->method && (++mc->icount >= mc->interval)) { 
                     mc->icount = 0;
-                    mb_send_command(mp, mc);
-                    if(mp->maxattempts && mp->attempt >= mp->maxattempts) {
+                    if(mp->maxattempts) {
+                        mp->attempt++;
+                        DAX_DEBUG2("Incrementing attempt - %d", mp->attempt);
+                    }
+                    if( ! mb_send_command(mp, mc) )
+                        mp->attempt = 0; /* Good response, reset counter */
+                    
+                    if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
                         bail = 1;
                         mp->inhibit_temp = 0;
                         mp->inhibit = 1;
@@ -468,6 +473,7 @@ void masterRTUthread(struct mb_port *mp) {
     }
     dax_error("Too Many Errors: Shutting down port - %s", mp->name);
     mp->fd = 0;
+    mp->dienow = 0;
     mp->running = 0;
 }
 
@@ -600,6 +606,7 @@ static int handleresponse(u_int8_t *buff, struct mb_cmd *cmd) {
     int n;
     u_int16_t temp;
     
+    DAX_DEBUG2("handleresponse() - Function Code = %d", cmd->function);
     cmd->responses++;
     if(buff[1] >= 0x80) 
         return buff[2];
@@ -619,12 +626,12 @@ static int handleresponse(u_int8_t *buff, struct mb_cmd *cmd) {
                 if(dt_setword(cmd->address + n, temp)) return -1;
             }
             break;
-            case 5:
-            case 6:
+        case 5:
+        case 6:
             //COPYWORD(&temp, &buff[2]);
             //if(dt_setword(cmd->address,temp)) return -1;
             break;
-            default:
+        default:
             break;
     }
     return 0;
@@ -660,35 +667,38 @@ int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
     
     do { /* retry loop */
         pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
-        if(mp->maxattempts) {
-            mp->attempt++;
-            DAX_DEBUG2("Incrementing attempt - %d", mp->attempt);
-        }        
+                
 		result = sendrequest(mp, mc);
 		if(result > 0) {
 			msglen = getresponse(buff, mp);
-		}
-        /* Unlock the port */
-        pthread_mutex_unlock(&mp->port_mutex);
-        /* Should be 0 when a conditional command simply doesn't run */
-        if(result == 0) return result;
+		    pthread_mutex_unlock(&mp->port_mutex);
+        } else if(result == 0) {
+            /* Should be 0 when a conditional command simply doesn't run */
+            pthread_mutex_unlock(&mp->port_mutex);
+            return result;
+        } else {
+            pthread_mutex_unlock(&mp->port_mutex);
+            return -1;
+        }
         
         if(msglen > 0) {
             result = handleresponse(buff,mc);
             if(result > 0) {
                 mc->exceptions++;
                 mc->lasterror = result | ME_EXCEPTION;
+                DAX_DEBUG2("Exception Received - %d", result);
             } else { /* Everything is good */
-                mc->lasterror=0;
+                mc->lasterror = 0;
             }
-            mp->attempt = 0; /* Good response, reset counter */
             return 0; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
+            DAX_DEBUG("Timeout");
 			mc->timeouts++;
 			mc->lasterror = ME_TIMEOUT;
         } else {
             /* Checksum failed in response */
-            mc->crcerrors++;
+            DAX_DEBUG("Checksum");
+			mc->crcerrors++;
             mc->lasterror = ME_CHECKSUM;
         }
     } while(try++ <= mp->retries);

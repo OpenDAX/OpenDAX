@@ -27,13 +27,13 @@
 
 #include <string.h>
 #include <getopt.h>
-//#include <math.h>
 
 static char *_pidfile;
 static char *_configfile;
 static char *_statustag;
 static int _verbosity;
 static int _daemonize;
+static int _maxstartup;
 
 /* Inititialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
@@ -49,6 +49,7 @@ static void initconfig(void) {
     _verbosity = 0;
     _statustag = NULL;
     _pidfile = NULL;
+    _maxstartup = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
@@ -124,6 +125,7 @@ static int _add_module(lua_State *L) {
     
     lua_getfield(L, -4, "startup");
     startup = (int)lua_tonumber(L, -1);
+    if(startup > _maxstartup) _maxstartup = startup;
     
     lua_getfield(L, -5, "openpipes");
     if(lua_toboolean(L, -1)) {
@@ -133,6 +135,11 @@ static int _add_module(lua_State *L) {
     lua_getfield(L, -6, "restart");
     if(lua_toboolean(L, -1)) {
         flags |= MFLAG_RESTART;
+    }
+    
+    lua_getfield(L, -7, "register");
+    if(lua_toboolean(L, -1) ) {
+        flags |= MFLAG_REGISTER;
     }
     
     module_add(name, path, arglist, startup, flags);
@@ -223,4 +230,8 @@ char *get_statustag(void) {
 
 char *get_pidfile(void) {
     return _pidfile;
+}
+
+int get_maxstartup(void) {
+    return _maxstartup;
 }

@@ -33,23 +33,26 @@ extern struct Config config;
 static void messagethread(void);
 void child_signal(int);
 void quit_signal(int);
+void catch_signal(int);
 
 int main(int argc, const char *argv[]) {
     struct sigaction sa;
     pthread_t message_thread;
 	int result;
     
-    openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
+    //openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
     xlog(0,"OpenDAX started");
 
     /* Set up the signal handlers */
-    memset (&sa,0,sizeof(struct sigaction));
-    sa.sa_handler=&child_signal;
-    sigaction (SIGCHLD,&sa,NULL);
-    sa.sa_handler=&quit_signal;
-    sigaction (SIGQUIT,&sa,NULL);
-    sigaction (SIGINT,&sa,NULL);
-    sigaction (SIGTERM,&sa,NULL);
+    memset (&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = &child_signal;
+    sigaction (SIGCHLD, &sa, NULL);
+    sa.sa_handler = &quit_signal;
+    sigaction (SIGQUIT, &sa, NULL);
+    sigaction (SIGINT, &sa, NULL);
+    sigaction (SIGTERM, &sa, NULL);
+    sa.sa_handler = &catch_signal;
+    sigaction(SIGHUP, &sa, NULL);
 
     /* TODO: This is the program architecture in a nutshell...
         check_already_running();
@@ -126,9 +129,16 @@ void child_signal(int sig) {
 
 /* this handles shutting down of the core */
 void quit_signal(int sig) {
-    xlog(0,"Quitting due to signal %d",sig);
+    xlog(0,"Quitting due to signal %d", sig);
     /* TODO: Should stop all running modules */
-    kill(0,SIGTERM); /* ...this'll do for now */
+    kill(0, SIGTERM); /* ...this'll do for now */
+    /* TODO: Should verify that all the children are dead.  If not
+       then send a SIGKILL signal (don't block in here though) */
     msg_destroy_queue(); /* Destroy the message queue */
     exit(-1);
+}
+
+void catch_signal(int sig) {
+    xlog(0, "Received signal %d", sig);
+    
 }

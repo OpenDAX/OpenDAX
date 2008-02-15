@@ -34,13 +34,15 @@ typedef struct {
 } dead_module;
 
 /* Module List Handling Functions */
-mod_handle_t module_add(char *name, char *path, char *arglist, int startup, unsigned int flags);
-int module_del(mod_handle_t);
+//--mod_handle_t module_add(char *name, char *path, char *arglist, int startup, unsigned int flags);
+dax_module *module_add(char *name, char *path, char *arglist, int startup, unsigned int flags);
+//--int module_del(mod_handle_t);
+int module_del(dax_module *);
 
 /* Module runtime functions */
 void module_start_all(void);
-pid_t module_start (mod_handle_t);
-int module_stop(mod_handle_t);
+pid_t module_start (dax_module *);
+int module_stop(dax_module *);
 void module_register(char *, pid_t);
 void module_unregister(pid_t);
 //mod_handle_t module_get_pid(pid_t);

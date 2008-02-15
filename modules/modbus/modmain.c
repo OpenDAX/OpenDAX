@@ -19,7 +19,6 @@
 #include <common.h>
 #include <opendax.h>
 
-//#include <syslog.h>
 #include <string.h>
 #include <signal.h>
 #include <sys/stat.h>
@@ -31,9 +30,9 @@
 
 extern struct Config config;
 
-//static void daemonize(void);
-//static void writepidfile(void);
 void catchsignal(int sig);
+void catchpipe(int sig);
+
 static void getout(int);
 
 void outdata(struct mb_port *,u_int8_t *,unsigned int);
@@ -42,15 +41,20 @@ void indata(struct mb_port *,u_int8_t *,unsigned int);
 int main (int argc, const char * argv[]) {
     int result, n, time;
     struct mb_port *mp;
-    /* Set up the signal handler */
-    //TODO: Should use sigaction() instead??
-    (void)signal(SIGHUP, catchsignal);
-    (void)signal(SIGINT, catchsignal);
-    (void)signal(SIGTERM, catchsignal);
-    (void)signal(SIGPIPE, catchsignal);
-    (void)signal(SIGQUIT, catchsignal);
-    /* Probably should use this to see if we've lost a port thread */
-    (void)signal(SIGCHLD, SIG_IGN);
+    struct sigaction sa;
+    
+    /* Set up the signal handlers */
+    memset (&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = &catchsignal;
+    sigaction(SIGCHLD, &sa, NULL);
+    sigaction(SIGQUIT, &sa, NULL);
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGHUP, &sa, NULL);
+    sigaction(SIGUSR1, &sa, NULL);
+    sa.sa_handler = &catchpipe;
+    sigaction(SIGPIPE, &sa, NULL);
+    
     
     dax_debug(1, "Modbus Starting");
     /* Read the configuration from the command line and the file.
@@ -72,17 +76,12 @@ int main (int argc, const char * argv[]) {
         if(time > 60) time = 60;
     }
     
-    /* If configured daemonize the program */
-    //if(config.daemonize) {
-    //    daemonize("modbus");
-    //} else {
     /* Set the input and output callbacks if we aren't going to the background */
-        for(n = 0; n < config.portcount; n++) {
-            mb_set_output_callback(&config.ports[n], outdata);
-            mb_set_input_callback(&config.ports[n], indata);
-        }
-    //}
-    /* Start the threads that handle the sockets */
+    /* TODO: Configuration option for these??? */
+    for(n = 0; n < config.portcount; n++) {
+        mb_set_output_callback(&config.ports[n], outdata);
+        mb_set_input_callback(&config.ports[n], indata);
+    }
     
     while(1) { /* Infinite loop, threads are doing all the work.*/
         /* Starts the port threads if they are not running */
@@ -110,79 +109,9 @@ recover from a USB serial port being pulled and then replaced or a device server
 }
 
 
-/* This funciton daemonizes the program. */
-#ifdef SLKJFOIENOIBOEOIHFWELKJ
-static void daemonize(void) {
-    pid_t result;
-    int n;
-    char s[10];
-   /* Replace with xlog() */
-    if(config.verbose) syslog(LOG_NOTICE,"Daemonizing the process");
-    /* Call fork() and exit as the parent.  This returns control to the 
-       command line and guarantees the program is not a process group
-       leader. */
-    result=fork();
-    if(result<0) {
-        syslog(LOG_ERR,"Failed initial process creation");
-        getout(-1);
-    } else if(result>0) {
-        exit(0);
-    }
-
-    /*Call setsid() to dump the controlling terminal*/
-    result=setsid();
-   
-    if(result<0) {
-        syslog(LOG_ERR,"Unable to dump controling terminal");
-        getout(-1);
-    }
-
-    /* Call fork() and exit as the parent.  This assures that we
-       will never again be able to connect to a controlling 
-       terminal */
-    result=fork();
-    if(result<0) {
-        syslog(LOG_ERR,"Unable to fork the final fork");
-        getout(-1);
-    } else if(result>0)
-        exit(0);
-   
-    /* chdir() to / so that we don't hold any directories open */
-    chdir("/");
-    /* need control of the permissions of files that we write */
-    umask(0);
-    /* writes the PID to STDOUT */
-    sprintf(s,"%d",getpid());
-    write(2,s,strlen(s));
-    writepidfile();
-    
-    /* Closes the logger before we pull the rug out from under it
-       by closing all the file descriptors */
-    closelog();
-    /* close all open file descriptors */
-    for (n=getdtablesize();n>=0;--n) close(n);
-    /*reopen stdout stdin and stderr to /dev/null */
-    n = open("/dev/null",O_RDWR);
-    dup(n); dup(n);
-    /* reopen the logger */
-    openlog("mbd",LOG_NDELAY,LOG_DAEMON);
-}
-
-/* Writes the PID to the pidfile if one is configured */
-static void writepidfile(void) {
-    int pidfd=0;
-    char pid[10];
-    umask(0);
-    pidfd=open(config.pidfile,O_RDWR | O_CREAT | O_TRUNC,S_IRUSR | S_IWUSR);
-    if(!pidfd) 
-        dax_log("Unable to open PID file - %s",config.pidfile);
-    else {
-        sprintf(pid,"%d",getpid());
-        write(pidfd,pid,strlen(pid)); /*writes to the PID file*/
-    }
-    unlink(config.pidfile);
-}
-#endif
+/* TODO: We need to have some kind of watchdog thread that accepts all
+   the signals for the module and then deals with them appropriately.
+   There also needs to be a wakeup routine for the port threads somehow. */
 
 /* This function is used as the signal handler for all the signals
 * that are going to be caught by the program */
@@ -192,17 +121,25 @@ void catchsignal(int sig) {
         //reconfigure();
     } else if(sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
         dax_log("Exiting with signal %d", sig);
-    getout(0);
+        getout(0);
     } else if(sig == SIGCHLD) {
         dax_log("Got SIGCHLD");
        /*There is probably some really cool child process handling stuff to do here
          but I don't quite know what to do yet. */
-    } else if(sig == SIGPIPE) {
-        /* TODO: We should shutdown or restart a port or something here */
-        dax_log("Got SIGPIPE");
+     } else if(sig == SIGUSR1) {
+        dax_log("Got SIGUSR1");
     }
 }
 
+void catchpipe(int sig) {
+    int n;
+    
+    for(n = 0; n < config.portcount; n++) {
+        if(pthread_equal(pthread_self(), config.ports[n].thread)) {
+            config.ports[n].dienow = 1;
+        }
+    }
+}
 
 static void getout(int exitcode) {
     int n;
