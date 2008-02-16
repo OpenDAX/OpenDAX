@@ -45,8 +45,6 @@ int main(int argc, const char *argv[]) {
 
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
-    sa.sa_handler = &child_signal;
-    sigaction (SIGCHLD, &sa, NULL);
     sa.sa_handler = &quit_signal;
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
@@ -79,6 +77,9 @@ int main(int argc, const char *argv[]) {
             xerror("Unable to go to the background");
         }
     }
+    
+    sa.sa_handler = &child_signal;
+    sigaction (SIGCHLD, &sa, NULL);
     
     //--setverbosity(config.verbosity);
     

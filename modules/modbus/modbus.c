@@ -445,7 +445,7 @@ void masterRTUthread(struct mb_port *mp) {
                         mp->attempt++;
                         DAX_DEBUG2("Incrementing attempt - %d", mp->attempt);
                     }
-                    if( ! mb_send_command(mp, mc) )
+                    if( mb_send_command(mp, mc) > 0 )
                         mp->attempt = 0; /* Good response, reset counter */
                     
                     if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {

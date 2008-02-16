@@ -309,13 +309,18 @@ static int _add_port(lua_State *L) {
     p->timeout = (unsigned int)lua_tonumber(L, -1);
     if(p->timeout == 0) p->timeout = 1000;
     
-    lua_getfield(L, -5, "inhibit");
+    lua_getfield(L, -5, "retries");
+    p->retries = (unsigned int)lua_tonumber(L, -1);
+    if(p->retries == 0) p->timeout = 1;
+    if(p->retries > MAX_RETRIES) p->retries = MAX_RETRIES;
+    
+    lua_getfield(L, -6, "inhibit");
     p->inhibit_time = (unsigned int)lua_tonumber(L, -1);
     
-    lua_getfield(L, -6, "maxattempts");
+    lua_getfield(L, -7, "maxattempts");
     p->maxattempts = (unsigned int)lua_tonumber(L, -1);
     
-    lua_pop(L, 6);
+    lua_pop(L, 7);
     /* The lua script gets the index +1 */
     config.portcount++;
     lua_pushnumber(L, config.portcount);

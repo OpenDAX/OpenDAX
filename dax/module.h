@@ -48,6 +48,10 @@ void module_unregister(pid_t);
 //mod_handle_t module_get_pid(pid_t);
 dax_module *module_get_pid(pid_t);
 
+#ifdef DEBUG
+void print_modules(void);
+#endif
+
 /* module maintanance */
 void module_scan(void);
 

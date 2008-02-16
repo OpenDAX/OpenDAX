@@ -49,6 +49,10 @@
 
 #define MB_FRAME_LEN 255
 
+#ifndef MAX_RETRIES
+#  define MAX_RETRIES 100
+#endif
+
 #define ALIAS_LENGTH 33
 #define ALIAS_COUNT 64
 /* Device Port Types */

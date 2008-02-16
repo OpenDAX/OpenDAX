@@ -83,6 +83,8 @@ static int _message_send(long int module, int command, void *payload, size_t siz
         count++;
         tag_write_bytes(STAT_MSG_SENT, &count, sizeof(u_int32_t));
     } else {
+        xerror("Attempt to send to unauthorized PID %ld", module);
+        print_modules();
         result = -1;
     }
     return result;

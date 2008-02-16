@@ -494,3 +494,24 @@ static dax_module *_get_module_name(char *name) {
     
     return NULL;
 }
+
+#ifdef DEBUG
+void print_modules(void) {
+    dax_module *last;
+    int n;
+    /* In case we ain't got no list */
+    if(_current_mod == NULL) return;
+    /* Figure out where we need to stop */
+    last = _current_mod->prev;
+    
+    for(n = 0; n < _module_count; n++) {
+    //while(1) {
+        printf("Module - %s - %d\n", _current_mod->name, _current_mod->pid);
+        _current_mod = _current_mod->next;
+        //if(_current_mod == last) {
+        //    return;
+        //}
+    }
+    return;
+}
+#endif
