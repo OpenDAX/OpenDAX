@@ -36,13 +36,15 @@ struct Config config;
 
 /* Inititialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
+
     config.pidfile = NULL;
     config.tagname = NULL;
-    config.configfile = NULL;
     config.tablesize = 0;
     config.verbosity = 0;
     config.daemonize = 0;
     config.ports = NULL;
+        
+    asprintf(&config.configfile, "%s/%s", ETC_DIR, "modbus.conf");
 }
 
 /* This function parses the command line options and sets
