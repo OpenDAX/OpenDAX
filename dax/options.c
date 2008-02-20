@@ -40,11 +40,12 @@ static void initconfig(void) {
     int length;
     
     if(!_configfile) {
-        length = strlen(ETC_DIR) + strlen("/daxlua.conf") +1;
+        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
         _configfile = (char *)malloc(sizeof(char) * length);
         if(_configfile) 
-            sprintf(_configfile,"%s%s",ETC_DIR,"/daxlua.conf");
+            sprintf(_configfile,"%s%s",ETC_DIR,"/opendax.conf");
     }
+	xlog(2, "Reading Configuration file %s\n", _configfile);
     _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
     _verbosity = 0;
     _statustag = NULL;
