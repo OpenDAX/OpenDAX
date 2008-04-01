@@ -21,8 +21,10 @@
  
 #include <libdax.h>
 #include <dax/libcommon.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
+//#include <sys/ipc.h>
+//#include <sys/msg.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <string.h>
 
 
@@ -35,9 +37,9 @@ static pid_t __modid;
 static int _message_send(long int module, int command, void *payload, size_t size) {
     dax_message outmsg;
     int result;
-    outmsg.module = module;
+    //--outmsg.module = module;
     outmsg.command = command;
-    outmsg.pid = __modid;
+    //--outmsg.pid = __modid;
     outmsg.size = size;
     memcpy(outmsg.data, payload, size);
     result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + size, 0);
@@ -96,18 +98,40 @@ static int _message_recv(int command, void *payload, size_t *size, int response)
     return 0;
 }
 
-/* TODO: We need some kind of asynchronous message handler.  It should not
-block if there are no messages for us in the queue.  Now when does it need
-to be called?  It might depend on the module. */
+/* TODO: This might need to be two functions, one for register and the other
+   for unregister. */
 
-/* Connects to the message queue and sends a registration to the core */
+/* Decide whether we are local or remote, connect to the socket and send
+   a registration message to the server. If name is NULL then send an
+   unregistration to the server.*/
 static int mod_reg(char *name) {
+    int fd, len, err, rval;
+    struct sockaddr_un addr;
+    
+    /* create a UNIX domain stream socket */
+    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        return(-1);
+    
+    /* fill socket address structure with our address */
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, opt_get_socketname(), sizeof(addr.sun_path));
+    
+    len = offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
+    
+    if (connect(fd, (struct sockaddr *)&addr, len) < 0) {
+        dax_error("Unable to connect to socket");
+    }
+
+
+#ifdef DELETE_ALL_THIS    
     size_t size;
     int result;
     
     __msqid = msgget(DAX_IPC_KEY, 0660);
     if(__msqid < 0) {
-        return ERR_NO_QUEUE;
+//        return ERR_NO_QUEUE;
+        return -1;
     }
     if(name) {
         if(strlen(name) > 254) {
@@ -126,6 +150,7 @@ static int mod_reg(char *name) {
     if(result) { 
         return ERR_MSG_SEND;
     }
+#endif
     return 0;
 }
 

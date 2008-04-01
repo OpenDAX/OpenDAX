@@ -205,7 +205,7 @@ void module_start_all(void) {
     /* Figure out where we need to stop */
     last = _current_mod->prev;
     
-    x = get_maxstartup();
+    x = opt_maxstartup();
     
     for(i = 1; i <= x; i++) {
         for(j = 0; j < _module_count; j++) {

@@ -24,43 +24,14 @@
 
 #include <common.h>
 
-/* All this silliness is because the different distributions have the libraries
-   and header files for lua in different places with different names.
-   There has got to be a better way. */
-#if defined(HAVE_LUA5_1_LUA_H)
-  #include <lua5.1/lua.h>
-#elif defined(HAVE_LUA51_LUA_H)
-  #include <lua51/lua.h>
-#elif defined(HAVE_LUA_LUA_H)
-  #include <lua/lua.h>
-#elif defined(HAVE_LUA_H)
-  #include <lua.h>
-#else
-  #error Missing lua.h
-#endif
+/* luaif.c - Lua Interface functions */
+int setup_interpreter(lua_State *L);
 
-#if defined(HAVE_LUA51_LAUXLIB_H)
-  #include <lua51/lauxlib.h>
-#elif defined(HAVE_LUA5_1_LAUXLIB_H)
-  #include <lua5.1/lauxlib.h>
-#elif defined(HAVE_LUA_LAUXLIB_H)
-  #include <lua/lauxlib.h>
-#elif defined(HAVE_LAUXLIB_H)
-  #include <lauxlib.h>
-#else
-  #error Missing lauxlib.h
-#endif
-
-#if defined(HAVE_LUA51_LUALIB_H)
-  #include <lua51/lualib.h>
-#elif defined(HAVE_LUA5_1_LUALIB_H)
-  #include <lua5.1/lualib.h>
-#elif defined(HAVE_LUA_LUALIB_H)
-  #include <lua/lualib.h>
-#elif defined(HAVE_LUALIB_H)
-  #include <lualib.h>
-#else
-  #error Missing lualib.h
-#endif 
+/* options.c - Configuration functions */
+int configure(int argc, char *argv[]);
+char *get_init(void);
+char *get_main(void);
+int get_rate(void);
+int get_verbosity(void);
 
 #endif /* !__DAXLUA_H */

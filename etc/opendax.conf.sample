@@ -10,7 +10,7 @@ verbosity = 10
 
 --pidfile = "/var/run/opendax.pid"
 
-modroot = "/Users/phil/opendax/modules/"
+modroot = "/Users/phil/svn/opendax/branches/0.2/modules/"
 
 m = {}
 
@@ -21,11 +21,11 @@ m.openpipes = false
 m.name      = "test"
 m.path      = modroot.."test/daxtest"
 
---add_module(m)
+add_module(m)
 
 m.name      = "modbus"
 m.path      = modroot.."modbus/modbus"
 m.args      = "-C /Users/phil/opendax/etc/modbus.conf"
 
-add_module(m)
+--add_module(m)
 

@@ -29,6 +29,6 @@
 //--int _message_send(long int module,int command,void *payload, size_t size);
 //--int _message_recv(int command, void *payload, size_t *size);
 
-
+char *opt_get_socketname(void);
 
 #endif /* !__LIBDAX_H */

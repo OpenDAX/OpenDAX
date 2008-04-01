@@ -15,13 +15,15 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
-
- * Configuration header code file for the Lua script interpreter
+ 
+ * This file contains libdax configuration functions
  */
 
-#ifndef __OPTIONS_H
-#define __OPTIONS_H
+#include <libdax.h>
+#include <dax/libcommon.h>
 
 
-
-#endif /* !__OPTIONS_H */
+/* TODO: Make this file really do something */
+char *opt_get_socketname(void) {
+   return "/tmp/opendax";
+}

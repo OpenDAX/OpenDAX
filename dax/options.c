@@ -31,9 +31,13 @@
 static char *_pidfile;
 static char *_configfile;
 static char *_statustag;
+/* TODO: The socket path needs to be configuration */
+static char _socketdir[] = "/tmp";
+static char _socketname[] = "/tmp/opendax";
 static int _verbosity;
 static int _daemonize;
 static int _maxstartup;
+
 
 /* Inititialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
@@ -43,9 +47,8 @@ static void initconfig(void) {
         length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
         _configfile = (char *)malloc(sizeof(char) * length);
         if(_configfile) 
-            sprintf(_configfile,"%s%s",ETC_DIR,"/opendax.conf");
+            sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
     }
-	xlog(2, "Reading Configuration file %s\n", _configfile);
     _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
     _verbosity = 0;
     _statustag = NULL;
@@ -152,6 +155,7 @@ static int readconfigfile(void)  {
     lua_State *L;
     char *string;
     
+    xlog(2, "Reading Configuration file %s\n", _configfile);
     L = lua_open();
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
@@ -204,7 +208,7 @@ static int readconfigfile(void)  {
    After the configurations have been initialized the command line is
    parsed.  Then the configuration file is read and after that if any
    parameter has not been set the defaults are used. */
-int dax_configure(int argc, const char *argv[]) {
+int opt_configure(int argc, const char *argv[]) {
     
     initconfig();
     parsecommandline(argc, argv);
@@ -213,26 +217,34 @@ int dax_configure(int argc, const char *argv[]) {
     }
     setdefaults();
     
-    xlog(2, "Daemonize set to %d", _daemonize);
-    xlog(2, "Status Tagname is set to %s", _statustag);
-    xlog(2, "PID File Name set to %s", _pidfile);
-    xlog(2, "Verbosity set to %d", _verbosity);
+    xlog(LOG_CONFIG, "Daemonize set to %d", _daemonize);
+    xlog(LOG_CONFIG, "Status Tagname is set to %s", _statustag);
+    xlog(LOG_CONFIG, "PID File Name set to %s", _pidfile);
+    //xlog(LOG_CONFIG, "Verbosity set to %d", _verbosity);
     
     return 0;
 }
  
-int get_daemonize(void) {
+int opt_daemonize(void) {
     return _daemonize;
 }
 
-char *get_statustag(void) {
+char *opt_statustag(void) {
     return _statustag;
 }
 
-char *get_pidfile(void) {
+char *opt_pidfile(void) {
     return _pidfile;
 }
 
-int get_maxstartup(void) {
+int opt_maxstartup(void) {
     return _maxstartup;
+}
+
+char *opt_socketdir(void) {
+    return _socketdir;
+}
+
+char *opt_socketname(void) {
+    return _socketname;
 }

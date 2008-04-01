@@ -16,6 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#include <opendax.h>
 
 #ifndef __FUNC_H
 #define __FUNC_H
@@ -34,11 +35,11 @@ void *xcalloc(size_t, size_t);
    goes to STDOUT and STDERR */
 //#define DAX_LOGGER
 
-void xfatal(const char *,...);
-void xerror(const char *,...);
-void xnotice(const char *,...);
-void setverbosity(int);
-void xlog(int,const char *,...);
+void xfatal(const char *, ...);
+void xerror(const char *, ...);
+void xnotice(const char *, ...);
+void setverbosity(u_int32_t);
+void xlog(u_int32_t ,const char *, ...);
 
 /* Portability functions */
 

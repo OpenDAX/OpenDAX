@@ -34,51 +34,15 @@
 #  define DEFAULT_PID "/var/run/opendax.pid"
 #endif
 
-/* All this silliness is because the different distributions have the libraries
- and header files for lua in different places with different names.
- There has got to be a better way. */
-#if defined(HAVE_LUA5_1_LUA_H)
-#  include <lua5.1/lua.h>
-#elif defined(HAVE_LUA51_LUA_H)
-#  include <lua51/lua.h>
-#elif defined(HAVE_LUA_LUA_H)
-#  include <lua/lua.h>
-#elif defined(HAVE_LUA_H)
-#  include <lua.h>
-#else
-#  error Missing lua.h
-#endif
+int opt_configure(int argc, const char *argv[]);
 
-#if defined(HAVE_LUA51_LAUXLIB_H)
-#  include <lua51/lauxlib.h>
-#elif defined(HAVE_LUA5_1_LAUXLIB_H)
-#  include <lua5.1/lauxlib.h>
-#elif defined(HAVE_LUA_LAUXLIB_H)
-#  include <lua/lauxlib.h>
-#elif defined(HAVE_LAUXLIB_H)
-#  include <lauxlib.h>
-#else
-#  error Missing lauxlib.h
-#endif
+/* These functions return the configuration parameters */
+int opt_daemonize(void);
+char *opt_statustag(void);
+char *opt_pidfile(void);
+int opt_maxstartup(void);
+char *opt_socketdir(void);
+char *opt_socketname(void);
 
-#if defined(HAVE_LUA51_LUALIB_H)
-#  include <lua51/lualib.h>
-#elif defined(HAVE_LUA5_1_LUALIB_H)
-#  include <lua5.1/lualib.h>
-#elif defined(HAVE_LUA_LUALIB_H)
-#  include <lua/lualib.h>
-#elif defined(HAVE_LUALIB_H)
-#  include <lualib.h>
-#else
-#  error Missing lualib.h
-#endif 
-
-
-int dax_configure(int argc, const char *argv[]);
-
-int get_daemonize(void);
-char *get_statustag(void);
-char *get_pidfile(void);
-int get_maxstartup(void);
 
 #endif /* !__OPTIONS_H */

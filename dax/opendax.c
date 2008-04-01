@@ -70,9 +70,9 @@ int main(int argc, const char *argv[]) {
     setverbosity(10); /*TODO: Needs to be configuration */
     
     /* Read configuration from defaults, file and command line */
-    dax_configure(argc, argv);
+    opt_configure(argc, argv);
     /* Go to the background */
-    if(get_daemonize()) {
+    if(opt_daemonize()) {
         if(daemonize("OpenDAX")) {
             xerror("Unable to go to the background");
         }
@@ -83,8 +83,8 @@ int main(int argc, const char *argv[]) {
     
     //--setverbosity(config.verbosity);
     
-    result = msg_setup_queue();    /* This creates and sets up the message queue */
-    xerror("msg_setup_queue() returned %d", result);
+    result = msg_setup();    /* This creates and sets up the message queue */
+    xerror("msg_setup() returned %d", result);
 	initialize_tagbase(); /* initiallize the tagname list and database */
     
 	/* Start the message handling thread */
@@ -104,14 +104,9 @@ int main(int argc, const char *argv[]) {
     }
 }
 
+/* TODO: Are we going to do this in another thread??? */
 /* This is the main message handling thread.  It should never return. */
 static void messagethread(void) {
-    /*TODO: So far this function just blocks to receive messages.  It should
-    handle cases where the message reception was interrupted by signals and
-    alarms.  Occasionally it should check the message queue for orphaned
-    messages that may have been left by some misbehaving modules.  This
-    algorithm should increase in frequency when it finds lost messages and
-    decrease in frequency when it doesn't.*/
     while(1) {
         /* TODO: How far up should errors be passed */
         msg_receive();
@@ -135,7 +130,7 @@ void quit_signal(int sig) {
     kill(0, SIGTERM); /* ...this'll do for now */
     /* TODO: Should verify that all the children are dead.  If not
        then send a SIGKILL signal (don't block in here though) */
-    msg_destroy_queue(); /* Destroy the message queue */
+    msg_destroy(); /* Destroy the message queue */
     exit(-1);
 }
 

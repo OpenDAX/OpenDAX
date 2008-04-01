@@ -23,15 +23,21 @@
 #include <func.h>
 #include <module.h>
 #include <tagbase.h>
+#include <options.h>
 
-#include <sys/ipc.h>
-#include <sys/msg.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <string.h>
 
 #define RESPONSE 1
 #define ASYNC 0
 
-static int __msqid;
+/* These are the listening sockets for the local UNIX domain
+   socket and the remote TCP socekt. */
+static int _localfd;
+static int _remotefd;
+static fd_set _fdset;
+static int _maxfd;
 
 /* This array holds the functions for each message command */
 #define NUM_COMMANDS 12
@@ -55,11 +61,11 @@ int msg_evnt_get(dax_message *msg);
    is being sent to the module.  In that case payload should point to a single int that
    indicates the error */
 static int _message_send(long int module, int command, void *payload, size_t size, int response) {
+    int result;
+#ifdef DELETE_ALL_THIS_LSIKIEHHGF    
     static u_int32_t count = 0;
     dax_message outmsg;
     size_t newsize;
-    int result;
-    
     outmsg.module = module;
     if(response) outmsg.module |= MSG_RESPONSE; /* Add the response message flag */
     outmsg.command = command;
@@ -87,21 +93,58 @@ static int _message_send(long int module, int command, void *payload, size_t siz
         print_modules();
         result = -1;
     }
+#endif
     return result;
 }
 
+/* Sets up the local UNIX domain socket for listening.
+   _localfd is the listening socket. */
+int msg_setup_local_socket(void) {
+    //socklen_t len;
+    struct sockaddr_un addr;
+    
+    _localfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+    if(_localfd < 0) {
+        xfatal("Unable to create local socket - %s", strerror(errno));
+    }
+    
+    bzero(&addr, sizeof(addr));
+    strncpy(addr.sun_path, opt_socketname(), sizeof(addr.sun_path));
+    addr.sun_family = AF_LOCAL;
+    unlink(addr.sun_path); /* Delete the socket if it exists on the filesystem */
+    if(bind(_localfd, (const struct sockaddr *)&addr, sizeof(addr))) {
+        xfatal("Unable to bind to local socket: %s", addr.sun_path);
+    }
+    
+    if(listen(_localfd, 5) < 0) {
+        xfatal("Unable to listen for some reason");
+    }
+    msg_add_fd(_localfd);
+    
+    printf("Created socket - %d\n", _localfd);
+    /* TODO: Need to store the name of the sun_path so we can delete the file later */
+    return 0;
+}
+
+/* Sets up the remote TCP socket for listening.
+   _remotefd is the listening socket. */
+/* TODO: write this function */
+int msg_setup_remote_socket(void) {
+    return 0;
+}
 
 /* Creates and sets up the main message queue for the program.
    It's a fatal error if we cannot create this queue */
-int msg_setup_queue(void) {
-    /* TODO: Do we bail if the queue exists or use an existing one?  The latter for debugging. */
-    __msqid = msgget(DAX_IPC_KEY, (IPC_CREAT | 0660));
-    /*__msqid = msgget(DAX_IPC_KEY, (IPC_CREAT | IPC_EXCL | 0660));*/
-    if(__msqid < 0) {
-        __msqid = 0;
-        xfatal("Message Queue Cannot Be Created - %s", strerror(errno));
-    }
-    xlog(2, "Message Queue Created - id = %d", __msqid);
+int msg_setup(void) {
+    
+    /* TODO: See if we are already running, by trying to send ourselves a message */
+    _maxfd = 0;
+    FD_ZERO(&_fdset);
+    
+    msg_setup_local_socket();
+    msg_setup_remote_socket();
+    
+    
     /* The functions are added to an array of function pointers with their
         messsage type used as the index.  This makes it really easy to call
         the handler functions from the messaging thread. */
@@ -118,30 +161,83 @@ int msg_setup_queue(void) {
     cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
     cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
     
-    return __msqid;
+    return 0;
 }
 
 /* This destroys the queue if it was created */
-void msg_destroy_queue(void) {
-    int result=0;
+void msg_destroy(void) {
     
-    if(__msqid) {
-        result = msgctl(__msqid, IPC_RMID, NULL);
-    }
-    if(result) {
-        xerror("Unable to delete message queue %d", __msqid);
-    } else {
-        xlog(2,"Message queue %d being destroyed", __msqid);
+    unlink(opt_socketname());
+    xlog(LOG_MAJOR, "Resources being destroyed");
+    
+}
+
+/* These two functions are wrappers to deal with adding and deleting
+   file descriptors to the global _fdset and dealing with _maxfd */
+void msg_add_fd(int fd) {
+    FD_SET(fd, &_fdset);
+    if(fd > _maxfd) _maxfd = fd;
+}
+
+void msg_del_fd(int fd) {
+    int n;
+    
+    FD_CLR(fd, &_fdset);
+    
+    /* If it's the largest one then we need to refigure _maxfd */
+    if(fd == _maxfd) {
+        for(n = 0; n < _maxfd; n++) {
+            if(FD_ISSET(n, &_fdset)) {
+                _maxfd = n;
+            }
+        }
     }
 }
 
 /* This function blocks waiting for a message to be received.  Once a message
    is retrieved from the system the proper handling function is called */
 int msg_receive(void) {
-    static u_int32_t count = 0;
-    dax_message daxmsg;
-    int result;
-
+    fd_set tmpset;
+    struct timeval tm;
+    struct sockaddr_un addr;
+    int result, fd, n;
+    socklen_t len;
+    void *buff;
+    
+    FD_COPY(&_fdset, &tmpset);
+    tm.tv_sec = 1;
+    tm.tv_usec = 0;
+    result = select(_maxfd + 1, &tmpset, NULL, NULL, &tm);
+    if(result < 0) {
+        /* TODO: Deal with these errors */
+        xlog(LOG_COMM, "msg_receive select error: %s", strerror(errno));
+    } else if(result == 0) {
+        xlog(LOG_COMM, "msg_receive timeout\n");
+        return 0;
+    } else {
+        for(n = 0; n < _maxfd; n++) {
+            if(FD_ISSET(n, &tmpset)) {
+                /* TODO: Need to check for the remote listening socket too */
+                if(n == _localfd) { /* This is the local listening socket */
+                    fd = accept(_localfd, (struct sockaddr *)&addr, &len);
+                    if(fd < 0) {
+                        /* TODO: Need to handle these errors */
+                        xerror("Whoa - Problem accepting local socket");
+                    } else {
+                        msg_add_fd(fd);
+                    }
+                } else {
+                    //
+                    //
+                    //
+                    ;
+                }
+            }
+        }
+    }
+    
+    
+#ifdef LKSJDOIUGEOIRIFJJFJJFJFJFJ
 	result = msgrcv(__msqid, (struct msgbuff *)(&daxmsg), sizeof(dax_message), 1, 0);
     if(result < 0) {
         xerror("msg_receive - %s", strerror(errno));
@@ -162,6 +258,7 @@ int msg_receive(void) {
         xerror("unknown message command received %d", daxmsg.command);
         return ERR_MSG_BAD;
     }
+#endif
     return 0;
 }
 

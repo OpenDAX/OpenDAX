@@ -27,6 +27,9 @@
 
 #define TEST 1000
 
+/* TODO: Rewrite this testing module to use a Lua script
+   to decide what gets tested */
+
 int main(int argc,char *argv[]) {
     int tests_failed = 0;
     int n;
@@ -39,6 +42,7 @@ int main(int argc,char *argv[]) {
     dax_set_verbosity(1);
     dax_mod_register("test");
     
+    /*
     if(check_tag_addition()) {
         dax_log("Tagname addition test - FAILED");
         tests_failed++;
@@ -52,11 +56,13 @@ int main(int argc,char *argv[]) {
     } else {
         dax_log("Tagname retrieving test - PASSED");
     }
+    */
     
     /* TEST TO DO
         Tag Read / Write Test
     */
     
+#ifdef DKFOOEIT74YEJKIOUWERHLVKSJDHIUHFEW
     if(check_tag_events()) {
         dax_log("Tag Event Test - FAILED");
         tests_failed++;
@@ -131,5 +137,6 @@ int main(int argc,char *argv[]) {
     dax_mod_unregister();
     
     dax_debug(1, "OpenDAX Test Finished, %d tests failed", tests_failed);
+#endif
     return 0;
 }

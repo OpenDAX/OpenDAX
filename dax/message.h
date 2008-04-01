@@ -27,8 +27,11 @@
 #include <dax/libcommon.h>
 #include <opendax.h>
 
-int msg_setup_queue(void);
-void msg_destroy_queue(void);
+int msg_setup(void);
+void msg_destroy(void);
 int msg_receive(void);
+void msg_add_fd(int);
+void msg_del_fd(int);
+
 
 #endif /* !__MESSAGE_H */

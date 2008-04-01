@@ -19,46 +19,8 @@
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
 
+#include <common.h>
 #include <modbus.h>
-
-/* All this silliness is because the different distributions have the libraries
- and header files for lua in different places with different names.
- There has got to be a better way. */
-#if defined(HAVE_LUA5_1_LUA_H)
- #include <lua5.1/lua.h>
-#elif defined(HAVE_LUA51_LUA_H)
- #include <lua51/lua.h>
-#elif defined(HAVE_LUA_LUA_H)
- #include <lua/lua.h>
-#elif defined(HAVE_LUA_H)
- #include <lua.h>
-#else
- #error Missing lua.h
-#endif
-
-#if defined(HAVE_LUA51_LAUXLIB_H)
- #include <lua51/lauxlib.h>
-#elif defined(HAVE_LUA5_1_LAUXLIB_H)
- #include <lua5.1/lauxlib.h>
-#elif defined(HAVE_LUA_LAUXLIB_H)
- #include <lua/lauxlib.h>
-#elif defined(HAVE_LAUXLIB_H)
- #include <lauxlib.h>
-#else
- #error Missing lauxlib.h
-#endif
-
-#if defined(HAVE_LUA51_LUALIB_H)
- #include <lua51/lualib.h>
-#elif defined(HAVE_LUA5_1_LUALIB_H)
- #include <lua5.1/lualib.h>
-#elif defined(HAVE_LUA_LUALIB_H)
- #include <lua/lualib.h>
-#elif defined(HAVE_LUALIB_H)
- #include <lualib.h>
-#else
- #error Missing lualib.h
-#endif 
 
 
 #ifndef DEFAULT_PID

@@ -56,11 +56,18 @@
 #define DAX_32BITS  0x0005
 #define DAX_64BITS  0x0006
 
+#define LOG_MAJOR   0x0001  /* Major Program Milestones */
+#define LOG_MINOR   0x0002  /* Minor Program Milestones */
+#define LOG_FUNC    0x0004  /* Function Entries */
+#define LOG_COMM    0x0008  /* Communcations Milestones */
+#define LOG_MSG     0x0010  /* Messages */
+#define LOG_CONFIG  0x0020  /* Configurations */
+
 /* Macro to get the size of the datatype */
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
 /* Library function errors */
-#define ERR_NO_QUEUE  -1 /* The Message Queue does not exist */
+#define ERR_NO_SOCKET -1 /* The Message socket does not exist or cannot be created*/
 #define ERR_2BIG      -2 /* The argument is too big */
 #define ERR_ARG       -3 /* Bad argument */
 #define ERR_NOTFOUND  -4 /* Not found */

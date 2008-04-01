@@ -57,15 +57,10 @@
 #  define MSG_RESPONSE   0x100000000LL /* Flag for defining a response message */
 #endif
 
-/* Maximum size allowed for a single message in the message queue */
-/* TODO: I don't think this is working right.  Where is MSGMAX defined?
- This sould be something for Autoconf to do.  Also some systems
- may be able to read this at run time.  Perhaps a runtime check
- can be done? */
-#ifdef MSGMAX
-#  define DAX_MSGMAX MSGMAX
-#else
-#  define DAX_MSGMAX 2048
+/* Maximum size allowed for a single message */
+/* TODO: Should this be configurable */
+#ifndef DAX_MSGMAX
+#  define DAX_MSGMAX 4096
 #endif
 
 /* This defines the size of the message minus the actual data */
@@ -75,10 +70,10 @@
 
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */
 typedef struct {
-    long int module; /* Destination module */
-    int command;     /* Which function to call */
-    pid_t pid;       /* PID of the module that sent the message */
     size_t size;     /* size of the data sent */
+    //long int module; /* Destination module : Do we need this with the sockts??? */
+    int command;     /* Which function to call */
+    pid_t pid;       /* PID of the module that sent the message : Still needed???*/
     char data[MSG_DATA_SIZE];
 } dax_message;
 

@@ -22,7 +22,6 @@
 #ifndef __LUAIF_H
 #define __LUAIF_H
 
-int setup_interpreter(lua_State *L);
 
 
 #endif 

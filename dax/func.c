@@ -30,7 +30,7 @@
 #include <signal.h>
 #include <func.h>
 
-static int _verbosity = 0;
+static u_int32_t _logflags = 0;
 static int _background = 0;
 
 /* Memory management functions.  These are just to override the
@@ -61,7 +61,7 @@ void *xcalloc(size_t count, size_t size) {
 /* TODO: These should get changed to deal with logging
    and properly exiting the program.  For now just print to
    stderr and then send a \n" */
-void xfatal(const char *format,...) {
+void xfatal(const char *format, ...) {
     va_list val;
     va_start(val, format);
 #ifdef DAX_LOGGER
@@ -74,7 +74,7 @@ void xfatal(const char *format,...) {
     kill(getpid(), SIGQUIT);
 }
 
-void xerror(const char *format,...) {
+void xerror(const char *format, ...) {
     va_list val;
     va_start(val, format);
 #ifdef DAX_LOGGER
@@ -86,7 +86,7 @@ void xerror(const char *format,...) {
     va_end(val);
 }
 
-void xnotice(const char *format,...) {
+void xnotice(const char *format, ...) {
     va_list val;
     va_start(val,format);
 #ifdef DAX_LOGGER
@@ -98,20 +98,18 @@ void xnotice(const char *format,...) {
     va_end(val);
 }
 
-void setverbosity(int verbosity) {
+void setverbosity(u_int32_t verbosity) {
     if(verbosity < 0)
-        _verbosity = 0;
-    else if(verbosity > 10)
-        _verbosity = 10;
+        _logflags = 0;
     else 
-        _verbosity = verbosity;
-    xlog(0, "Set Verbosity to %d", _verbosity);
+        _logflags = verbosity;
+    xlog(LOG_MAJOR, "Set Verbosity to %d", _logflags);
 }
 
 /* Sends the string to the logger verbosity is greater than __verbosity */
-void xlog(int verbosity, const char *format,...) {
+void xlog(u_int32_t flags, const char *format, ...) {
     va_list val;
-    if(verbosity <= _verbosity) {
+    if(flags & _logflags) {
         va_start(val, format);
 #ifdef DAX_LOGGER
         vsyslog(LOG_NOTICE, format, val);
