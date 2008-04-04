@@ -116,17 +116,10 @@ int dax_string_to_type(const char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
 const char *dax_type_to_string(int type);
 
-/* Only registered modules will get responses from the core */
-int dax_mod_register(char *);   /* Registers the Module with the core */
-int dax_mod_unregister(void);   /* Unregister the Module with the core */
+/* Only registered modules will get responses from the server */
+int dax_mod_register(char *);   /* Registers the Module with the server */
+int dax_mod_unregister(void);   /* Unregister the Module with the server */
 handle_t dax_tag_add(char *name, unsigned int type, unsigned int count);
-
-/* The following functions are for reading and writing data.  These 
-   are generic functions and are used by other functions within the
-   library.  They can be used by the modules as well but they don't
-   do any bounds checking of the tag handles.  This will make them
-   more efficient but less stable if the module misbehaves */
-
 
 /* Low level tag retrieval function.  Will not decode subscripts. */
 int dax_get_tag(char *name, dax_tag *tag);
@@ -134,6 +127,13 @@ int dax_get_tag(char *name, dax_tag *tag);
 int dax_tag_byname(char *name, dax_tag *tag);
 /* Get tag by index */
 int dax_tag_byindex(int index, dax_tag *tag);
+
+/* The following functions are for reading and writing data.  These 
+   are generic functions and are used by other functions within the
+   library.  They can be used by the modules as well but they don't
+   do any bounds checking of the tag handles.  This will make them
+   more efficient but less stable if the module misbehaves.  These
+   may go away. */
 
 /* These functions are where all the data transfer takes place. */
 /* simple untyped tag reading function */

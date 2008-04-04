@@ -192,6 +192,7 @@ void msg_del_fd(int fd) {
             }
         }
     }
+    /* TODO: Should remove the fd from the _buffer too */
 }
 
 /* This function blocks waiting for a message to be received.  Once a message
@@ -205,13 +206,14 @@ int msg_receive(void) {
     void *buff;
     
     FD_COPY(&_fdset, &tmpset);
-    tm.tv_sec = 1;
+    tm.tv_sec = 1; /* TODO: this should be configuration */
     tm.tv_usec = 0;
     result = select(_maxfd + 1, &tmpset, NULL, NULL, &tm);
     if(result < 0) {
         /* TODO: Deal with these errors */
         xlog(LOG_COMM, "msg_receive select error: %s", strerror(errno));
     } else if(result == 0) {
+        buff_freeall(); /* this erases all of the _buffer nodes */
         xlog(LOG_COMM, "msg_receive timeout\n");
         return 0;
     } else {
@@ -227,38 +229,11 @@ int msg_receive(void) {
                         msg_add_fd(fd);
                     }
                 } else {
-                    //
-                    //
-                    //
-                    ;
+                    buff_read(fd);
                 }
             }
         }
     }
-    
-    
-#ifdef LKSJDOIUGEOIRIFJJFJJFJFJFJ
-	result = msgrcv(__msqid, (struct msgbuff *)(&daxmsg), sizeof(dax_message), 1, 0);
-    if(result < 0) {
-        xerror("msg_receive - %s", strerror(errno));
-		xerror("__msqid = %d", __msqid);
-		sleep(1); /* So it doesn't get out of hand */
-        return result;
-    }
-    count++;
-    tag_write_bytes(STAT_MSG_RCVD, &count, sizeof(u_int32_t));
-    if(result < (MSG_HDR_SIZE + daxmsg.size)) {
-        xerror("message received is not of the specified size.");
-        return ERR_MSG_BAD;
-    }
-    if(daxmsg.command > 0 && daxmsg.command <= NUM_COMMANDS) {
-        /* Call the command function from the array */
-        (*cmd_arr[daxmsg.command])(&daxmsg);
-    } else {
-        xerror("unknown message command received %d", daxmsg.command);
-        return ERR_MSG_BAD;
-    }
-#endif
     return 0;
 }
 
@@ -409,7 +384,7 @@ int msg_evnt_add(dax_message *msg) {
     xlog(10, "Add Event Message from %d", msg->pid);
     memcpy(&event, msg->data, sizeof(dax_event_message));
     
-    module = module_get_pid(msg->pid);
+    module = module_find_pid(msg->pid);
     if( module != NULL ) {
         event_id = event_add(event.handle, event.size, module);
     }

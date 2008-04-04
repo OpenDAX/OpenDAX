@@ -382,9 +382,24 @@ void module_unregister(pid_t pid) {
    PID as the identifier for that module in the messaging
    system.  I might have to have differnet ID's for
    different threads. */
-dax_module *module_get_pid(pid_t pid) {
+dax_module *module_find_pid(pid_t pid) {
     return _get_module_pid(pid);
 }
+
+dax_module *module_find_fd(int fd) {
+    int n;
+    
+    /* In case we ain't go no list */
+    if(_current_mod == NULL) return NULL;
+    
+    for(n = 0; n < _module_count; n++) {
+        if(_current_mod->sock_fd == fd) return _current_mod;
+        _current_mod = _current_mod->next;
+    }
+    
+    return NULL;
+}
+
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called
@@ -443,26 +458,6 @@ void module_dmq_add(pid_t pid,int status) {
 }
 
 
-
-/* static function to get a module pointer from a handle */
-#ifdef OIUYOIUYOWIUERYTOIUWYEROIUYURTIUEYR
-static dax_module *_get_module(mod_handle_t handle) {
-    dax_module *last;
-    /* In case we ain't go no list */
-    if(_current_mod == NULL) return NULL;
-    /* Figure out where we need to stop */
-    last = _current_mod->prev;
-    if(last->handle == handle) return last;
-
-    while(_current_mod->handle != handle) {
-        _current_mod = _current_mod->next;
-        if(_current_mod == last) {
-            return NULL;
-        }
-    }
-    return _current_mod;
-}
-#endif
 
 /* Lookup and return the pointer to the module with pid */
 static dax_module *_get_module_pid(pid_t pid) {

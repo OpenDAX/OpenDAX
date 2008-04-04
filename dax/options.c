@@ -37,6 +37,7 @@ static char _socketname[] = "/tmp/opendax";
 static int _verbosity;
 static int _daemonize;
 static int _maxstartup;
+static int _min_buffers;
 
 
 /* Inititialize the configuration to NULL or 0 for cleanliness */
@@ -54,6 +55,7 @@ static void initconfig(void) {
     _statustag = NULL;
     _pidfile = NULL;
     _maxstartup = 0;
+    _min_buffers = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
@@ -62,6 +64,7 @@ static void setdefaults(void) {
     if(_daemonize < 0) _daemonize = 1;
     if(!_statustag) _statustag = strdup("_status");
     if(!_pidfile) _pidfile = strdup(DEFAULT_PID);
+    if(!_min_buffers) _min_buffers = DEFAULT_MIN_BUFFERS;
 }
 
 /* This function parses the command line options and sets
@@ -176,6 +179,7 @@ static int readconfigfile(void)  {
     lua_getglobal(L, "statustag");
     lua_getglobal(L, "pidfile");
     lua_getglobal(L, "verbosity");
+    lua_getglobal(L, "min_buffers");
     
     if(_daemonize < 0) { /* negative if not already set */
         _daemonize = lua_toboolean(L, 1);
@@ -197,6 +201,10 @@ static int readconfigfile(void)  {
         _verbosity = (int)lua_tonumber(L, 4);
         setverbosity(_verbosity);
     }
+    if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
+        _min_buffers = (int)lua_tonumber(L, 5);
+    }
+    
     /* Clean up and get out */
     lua_close(L);
     
@@ -247,4 +255,8 @@ char *opt_socketdir(void) {
 
 char *opt_socketname(void) {
     return _socketname;
+}
+
+int opt_min_buffers(void) {
+    return _min_buffers;
 }

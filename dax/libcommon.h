@@ -36,7 +36,7 @@
 #endif
 
 /* For now we'll use this as the key for all the SysV IPC stuff */
-#define DAX_IPC_KEY 0x707070
+//--#define DAX_IPC_KEY 0x707070
 
 /* Message functions */
 #define MSG_MOD_REG    0x0001 /* Register the module with the core */
@@ -64,13 +64,13 @@
 #endif
 
 /* This defines the size of the message minus the actual data */
-#define MSG_HDR_SIZE (sizeof(int) + sizeof(pid_t) + sizeof(size_t))
+#define MSG_HDR_SIZE (sizeof(int) + sizeof(size_t))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */
 typedef struct {
-    size_t size;     /* size of the data sent */
+    u_int32_t size;     /* size of the data sent */
     //long int module; /* Destination module : Do we need this with the sockts??? */
     int command;     /* Which function to call */
     pid_t pid;       /* PID of the module that sent the message : Still needed???*/
