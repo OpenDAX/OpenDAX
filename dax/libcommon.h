@@ -64,16 +64,15 @@
 #endif
 
 /* This defines the size of the message minus the actual data */
-#define MSG_HDR_SIZE (sizeof(int) + sizeof(size_t))
+#define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t) + sizeof(int))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */
 typedef struct {
     u_int32_t size;     /* size of the data sent */
-    //long int module; /* Destination module : Do we need this with the sockts??? */
-    int command;     /* Which function to call */
-    pid_t pid;       /* PID of the module that sent the message : Still needed???*/
+    u_int32_t command;  /* Which function to call */
+    int fd;             /* We'll use the fd to identify the module*/
     char data[MSG_DATA_SIZE];
 } dax_message;
 

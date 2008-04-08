@@ -33,10 +33,13 @@ void msg_destroy(void);
 int msg_receive(void);
 void msg_add_fd(int);
 void msg_del_fd(int);
+int msg_dispatcher(int, unsigned char *);
+
 
 /* buffer.c functions */
 int buff_read(int fd);
 void buff_wipe(void);
+void buff_freeall(void);
 
 
 #endif /* !__MESSAGE_H */

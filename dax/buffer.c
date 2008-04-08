@@ -27,6 +27,7 @@
 
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <arpa/inet.h>
 #include <string.h>
 
 /* Notes:
@@ -124,20 +125,17 @@ static dax_buffnode *find_buff_slot(int fd) {
     return NULL; /* Never get here */
 }
 
-static int message_complete_check(dax_buffnode *node) {
-    return 0;
-}
-
-
 int buff_read(int fd) {
     dax_buffnode *node;
-    size_t result, size;
+    size_t result;
+    u_int32_t size;
     
     node = find_buff_slot(fd);
     
     /* If we can't get a buffer then return error */
     if(node == NULL) return ERR_ALLOC;
     
+    /* We don't want to read too much now do we */
     size = DAX_MSGMAX - node->index;
     result = read(fd, &node->buffer[node->index], size);
     
@@ -147,8 +145,18 @@ int buff_read(int fd) {
     }
     
     node->index += result;
-    message_complete_check(node);
-
+    
+    /* Check the size and let the caller know how it turns out. */
+    /* First four bytes of a message should always be the size of
+       the message and it should be in network byte order */
+    size = ntohl(*(u_int32_t *)node->buffer);
+    if(node->index < (size - 1)) {
+        return 0;
+    } else if(node->index >= (size - 1)) {
+        return msg_dispatcher(fd, node->buffer);
+    }else if(size > DAX_MSGMAX) {
+        return ERR_2BIG;
+    }
     return 0;
 }
     

@@ -393,7 +393,7 @@ dax_module *module_find_fd(int fd) {
     if(_current_mod == NULL) return NULL;
     
     for(n = 0; n < _module_count; n++) {
-        if(_current_mod->sock_fd == fd) return _current_mod;
+        if(_current_mod->fd == fd) return _current_mod;
         _current_mod = _current_mod->next;
     }
     
