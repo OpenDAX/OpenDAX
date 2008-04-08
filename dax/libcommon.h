@@ -63,6 +63,20 @@
 #  define DAX_MSGMAX 4096
 #endif
 
+/* These are the values that the registration system uses to 
+   determine whether or not the module will have to reformat
+   the data because of different machine architectures. */
+/* TODO: I need to spend some time on these so that I know that
+   they will actually be good tests. Integers are okay but I may
+   want to put some thought into the floats.  Got to make sure
+   that none of the bytes are the same or they can be mixed up and
+   still work?? */
+#define REG_TEST_INT    0xBCDE
+#define REG_TEST_DINT   0x56789ABC
+#define REG_TEST_LINT   0x123456789ABCDEF0
+#define REG_TEST_REAL   3.141592
+#define REG_TEST_LREAL  -58765463.8766677466354676356634
+
 /* This defines the size of the message minus the actual data */
 #define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t) + sizeof(int))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)

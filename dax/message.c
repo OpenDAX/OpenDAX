@@ -121,7 +121,7 @@ int msg_setup_local_socket(void) {
     }
     msg_add_fd(_localfd);
     
-    printf("Created socket - %d\n", _localfd);
+    printf("Created local socket - %d\n", _localfd);
     /* TODO: Need to store the name of the sun_path so we can delete the file later */
     return 0;
 }
@@ -144,6 +144,7 @@ int msg_setup(void) {
     msg_setup_local_socket();
     msg_setup_remote_socket();
     
+    buff_initialize(); /* This initializes the communications buffers */
     
     /* The functions are added to an array of function pointers with their
         messsage type used as the index.  This makes it really easy to call
@@ -175,8 +176,10 @@ void msg_destroy(void) {
 /* These two functions are wrappers to deal with adding and deleting
    file descriptors to the global _fdset and dealing with _maxfd */
 void msg_add_fd(int fd) {
+    printf("Adding fd - %d : ",fd);
     FD_SET(fd, &_fdset);
     if(fd > _maxfd) _maxfd = fd;
+    printf("_maxfd = %d\n", _maxfd);
 }
 
 void msg_del_fd(int fd) {
@@ -186,7 +189,7 @@ void msg_del_fd(int fd) {
     
     /* If it's the largest one then we need to refigure _maxfd */
     if(fd == _maxfd) {
-        for(n = 0; n < _maxfd; n++) {
+        for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &_fdset)) {
                 _maxfd = n;
             }
@@ -204,30 +207,41 @@ int msg_receive(void) {
     int result, fd, n;
     socklen_t len;
     
+    FD_ZERO(&tmpset);
     FD_COPY(&_fdset, &tmpset);
     tm.tv_sec = 1; /* TODO: this should be configuration */
     tm.tv_usec = 0;
     result = select(_maxfd + 1, &tmpset, NULL, NULL, &tm);
     if(result < 0) {
         /* TODO: Deal with these errors */
-        xlog(LOG_COMM, "msg_receive select error: %s", strerror(errno));
+        printf("msg_receive select error: %s\n", strerror(errno));
+        //xlog(LOG_COMM, "msg_receive select error: %s", strerror(errno));
+        return ERR_MSG_RECV;
     } else if(result == 0) {
         buff_freeall(); /* this erases all of the _buffer nodes */
-        xlog(LOG_COMM, "msg_receive timeout\n");
+        xlog(LOG_COMM, "msg_receive timeout");
         return 0;
     } else {
-        for(n = 0; n < _maxfd; n++) {
+        for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &tmpset)) {
-                if(n == _localfd || n == _remotefd) { /* These are the listening sockets */
+                printf("Found fd set - %d\n", n);
+                if(n == _localfd) { /* This is the local listening socket */
+                    printf("Accepting socket on - %d\n", n);
                     fd = accept(_localfd, (struct sockaddr *)&addr, &len);
-                    if(fd < 0) {
+                    if(fd <= 0) {
                         /* TODO: Need to handle these errors */
                         xerror("Accepting socket: %s", strerror(errno));
                     } else {
                         msg_add_fd(fd);
                     }
                 } else {
-                    buff_read(fd);
+                    printf( "Reading buffer for fd - %d\n", n);
+                    result = buff_read(n);
+                    if(result == 0) { /* This is the end of file */
+                        msg_del_fd(n); /* TODO: Deal with the module if I need too */
+                    } else if(result < 0) {
+                        return result; /* Pass the error up */
+                    }
                 }
             }
         }
@@ -273,10 +287,10 @@ int msg_dispatcher(int fd, unsigned char *buff) {
    defined. */
 int msg_mod_register(dax_message *msg) {
     if(msg->size) {
-        xlog(4, "Registering Module %s pid = %d", msg->data, msg->fd);
+        xlog(4, "Registering Module %s fd = %d", msg->data, msg->fd);
         module_register(msg->data, msg->fd);
     } else {
-        xlog(4, "Unregistering Module pid = %d", msg->fd);
+        xlog(4, "Unregistering Module fd = %d", msg->fd);
         module_unregister(msg->fd);
     }
     return 0;

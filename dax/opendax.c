@@ -99,17 +99,19 @@ int main(int argc, const char *argv[]) {
     /* END TESTING STUFF */
     
     while(1) { /* Main loop */
+        /* TODO: This might could be some kind of condition
+           variable or signal thing instead of just the sleep(). */
         module_scan();
         sleep(1);
     }
 }
 
-/* TODO: Are we going to do this in another thread??? */
+/* TODO: Does this really need to be a separate thread. */
 /* This is the main message handling thread.  It should never return. */
 static void messagethread(void) {
     while(1) {
         /* TODO: How far up should errors be passed */
-        msg_receive();
+        if(msg_receive()) sleep(1);
     }
 }
 

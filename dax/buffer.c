@@ -140,7 +140,9 @@ int buff_read(int fd) {
     result = read(fd, &node->buffer[node->index], size);
     
     if(result < 0) {
-        xerror("Unable to read data from socket %d", fd);
+        /* TODO: Should we handle the case when this returns due to a signal */
+        printf("Unable to read data from socket %d\d", fd);
+        //xerror("Unable to read data from socket %d", fd);
         return ERR_MSG_RECV;
     }
     

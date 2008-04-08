@@ -28,27 +28,35 @@
 #include <string.h>
 
 
-static int __msqid;
+//--static int __msqid;
 /* This is the module id.  It is the PID of the program
    at the time of registration.  The process or thread that
    registers should stay running or we can have a problem. */
 static pid_t __modid;
+static int _sfd; /* Server's File Descriptor */
+static char _marsh; /* Whether we are supposed to marshal the data before it's sent */
 
-static int _message_send(long int module, int command, void *payload, size_t size) {
-    dax_message outmsg;
+static int _message_send(int command, void *payload, size_t size) {
     int result;
-    //--outmsg.module = module;
-    outmsg.command = command;
-    //--outmsg.pid = __modid;
-    outmsg.size = size;
-    memcpy(outmsg.data, payload, size);
-    result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + size, 0);
-    /* TODO: need to handle the case where the system call returns because of a signal.
-        This msgsnd will block if the queue is full and a signal will bail us out.
-        This may be good this may not but it'll need to be handled here somehow.
-        also need to handle errors returned here*/
-    if(result) {
-        dax_error("msgsnd() returned %d", result);
+    char buff[DAX_MSGMAX];
+    
+    /* We always send the size in network order */
+    ((u_int32_t *)buff)[0] = htonl(size + 8);
+    /* The command is a 32 bit number so we check the _marsh flag */
+    if(_marsh) {
+        ((u_int32_t *)buff)[1] = htonl(command);
+    } else {
+        ((u_int32_t *)buff)[1] = command;
+    }
+    memcpy(&buff[8], payload, size);
+    
+    /* TODO: We need to set some kind of timeout here.  This could block
+       forever if something goes wrong.  It may be a signal or something too. */
+    result = write(_sfd, buff, size + 8);
+    
+    if(result < 0) {
+    /* TODO: Should we handle the case when this returns due to a signal */
+        dax_error("_message_send: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
     return 0;
@@ -64,6 +72,7 @@ static int _message_send(long int module, int command, void *payload, size_t siz
 /* TODO: This function may only be called for response messages so it could be
    simplified. */
 static int _message_recv(int command, void *payload, size_t *size, int response) {
+#ifdef DELETE_THIS_STUFF_LEIVNEOIWHLKNVAODIHQERT
     dax_message inmsg;
     int result, done;
     long msgtype;
@@ -95,6 +104,7 @@ static int _message_recv(int command, void *payload, size_t *size, int response)
         }
         /* TODO: Also need to handle cases when signals or errors happen here */
     }
+#endif
     return 0;
 }
 
@@ -106,6 +116,7 @@ static int _message_recv(int command, void *payload, size_t *size, int response)
    unregistration to the server.*/
 static int mod_reg(char *name) {
     int fd, len, err, rval;
+    int buff[10];
     struct sockaddr_un addr;
     
     /* create a UNIX domain stream socket */
@@ -120,37 +131,13 @@ static int mod_reg(char *name) {
     len = offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
     
     if (connect(fd, (struct sockaddr *)&addr, len) < 0) {
-        dax_error("Unable to connect to socket");
-    }
-
-
-#ifdef DELETE_ALL_THIS    
-    size_t size;
-    int result;
-    
-    __msqid = msgget(DAX_IPC_KEY, 0660);
-    if(__msqid < 0) {
-//        return ERR_NO_QUEUE;
-        return -1;
-    }
-    if(name) {
-        if(strlen(name) > 254) {
-            return ERR_2BIG;
-        }
-        size = strlen(name) + 1;
+        dax_error("Unable to connect to socket - %s", strerror(errno));
+        return ERR_NO_SOCKET;
     } else {
-        size = 0;
+        _sfd = fd;
     }
-    /* TODO: this call will block if queue is full.  Should also check
-             for exit status that would be caused by signals EINTR.  Now do
-             we return on EINTR or do we wait in a loop here?  Probably should
-             arrange to have an alarm signal sent to us after a few seconds so
-             this will have some kind of timeout. */
-    result = _message_send(1, MSG_MOD_REG, name, size);
-    if(result) { 
-        return ERR_MSG_SEND;
-    }
-#endif
+    memcpy(buff, name, 40);
+    _message_send(MSG_MOD_REG,buff,40); /* JUST FOR FUN */ 
     return 0;
 }
 
@@ -187,7 +174,7 @@ handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
     } else {
         return ERR_TAG_BAD;
     }
-    result = _message_send(1, MSG_TAG_ADD, &(tag.name),size);
+    result = _message_send( MSG_TAG_ADD, &(tag.name),size);
     if(result) { 
         return ERR_MSG_SEND;
     }
@@ -207,7 +194,7 @@ int dax_get_tag(char *name, dax_tag *tag) {
     /* TODO: Check the tag cache here */
     /* TODO: Some of these may need to be debug messages so they won't print */
     /* It seems like we should bounds check *name but _message-send will clip it! */
-    result = _message_send(1, MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
+    result = _message_send( MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
     if(result) {
         dax_error("Can't send MSG_TAG_GET message");
         return result;
@@ -321,7 +308,7 @@ int dax_tag_byname(char *name, dax_tag *tag) {
 int dax_tag_byindex(int index, dax_tag *tag) {
     int result;
     size_t size;
-    result = _message_send(1, MSG_TAG_GET, &index, sizeof(int));
+    result = _message_send( MSG_TAG_GET, &index, sizeof(int));
     if(result) {
         dax_error("Can't send MSG_TAG_GET message");
         return result;
@@ -355,7 +342,7 @@ int dax_tag_read(handle_t handle, void *data, size_t size) {
         }
         payload.handle = handle + (m_size * 8 * n);
         payload.size = sendsize;
-        result = _message_send(1, MSG_TAG_READ, (void *)&payload, sizeof(struct Payload));
+        result = _message_send(MSG_TAG_READ, (void *)&payload, sizeof(struct Payload));
         result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp, 1);
     }
     return result;
@@ -381,7 +368,7 @@ void dax_tag_write(handle_t handle, void *data, size_t size) {
         msg.handle = handle + (m_size * 8 * n);
         memcpy(msg.data,data+(m_size * n),sendsize);
         
-        _message_send(1,MSG_TAG_WRITE,(void *)&msg,sendsize+sizeof(handle_t));
+        _message_send(MSG_TAG_WRITE,(void *)&msg,sendsize+sizeof(handle_t));
     }
 }
 
@@ -405,7 +392,7 @@ void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
         msg.handle = handle + (m_size * 8 * n);
         memcpy(msg.data, data+(m_size * n), sendsize);
         memcpy(msg.data + sendsize, mask+(m_size * n), sendsize);
-        _message_send(1,MSG_TAG_MWRITE,(void *)&msg,(sendsize * 2)+sizeof(handle_t));
+        _message_send(MSG_TAG_MWRITE,(void *)&msg,(sendsize * 2)+sizeof(handle_t));
     }
 }
 
@@ -430,7 +417,7 @@ int dax_event_add(char *tagname, int count) {
         msg.size = TYPESIZE(tag.type) / 8 * tag.count;
     }
     
-    if(_message_send(1, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
+    if(_message_send( MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
         return ERR_MSG_SEND;
     } else {
         test = _message_recv(MSG_EVNT_ADD, &result, &size, 1);

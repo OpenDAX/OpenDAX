@@ -109,7 +109,7 @@ void setverbosity(u_int32_t verbosity) {
 /* Sends the string to the logger verbosity is greater than __verbosity */
 void xlog(u_int32_t flags, const char *format, ...) {
     va_list val;
-    if(flags & _logflags) {
+    if(flags & _logflags || 1) { /* TODO: Fix this so that it'll work */
         va_start(val, format);
 #ifdef DAX_LOGGER
         vsyslog(LOG_NOTICE, format, val);

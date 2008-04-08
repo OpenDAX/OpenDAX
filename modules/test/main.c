@@ -40,7 +40,9 @@ int main(int argc,char *argv[]) {
     //openlog("test", LOG_NDELAY, LOG_DAEMON);
     dax_log("Starting module test");
     dax_set_verbosity(1);
-    dax_mod_register("test");
+    if(dax_mod_register("test"))
+        dax_fatal("Unable to register with the server");
+    sleep(10);
     
     /*
     if(check_tag_addition()) {
