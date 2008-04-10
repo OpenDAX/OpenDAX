@@ -63,47 +63,32 @@ int msg_evnt_get(dax_message *msg);
 /* Generic message sending function.  If size is zero then it is assumed that an error
    is being sent to the module.  In that case payload should point to a single int that
    indicates the error */
-static int _message_send(long int module, int command, void *payload, size_t size, int response) {
+static int _message_send(int fd, int command, void *payload, size_t size, int response) {
     int result;
-#ifdef DELETE_ALL_THIS_LSIKIEHHGF    
     static u_int32_t count = 0;
-    dax_message outmsg;
     size_t newsize;
-    outmsg.module = module;
-    if(response) outmsg.module |= MSG_RESPONSE; /* Add the response message flag */
-    outmsg.command = command;
-    outmsg.pid = getpid();
-    outmsg.size = size;
-    if(size) { /* Sending a normal response */
-        memcpy(outmsg.data, payload, size);
-        newsize = size;
-    } else { /* Send error response */
-        memcpy(outmsg.data, payload, sizeof(int));
-        newsize = sizeof(int);
+    char buff[DAX_MSGMAX];
+    
+    ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
+    if(response) ((u_int32_t *)buff)[1] = htonl(command);
+    else         ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
+    memcpy(&buff[MSG_HDR_SIZE], payload, size);
+    
+    /* TODO: We need to set some kind of timeout here.  This could block
+     forever if something goes wrong.  It may be a signal or something too. */
+    result = write(fd, buff, size + MSG_HDR_SIZE);
+    
+    if(result < 0) {
+        /* TODO: Should we handle the case when this returns due to a signal */
+        xerror("_message_send: %s", strerror(errno));
+        return ERR_MSG_SEND;
     }
-    /* Only send messages to modules that are registered */
-    if(module_get_pid(module)) {
-        /* TODO: need to handle the case where the system call returns because of a signal.
-        This msgsnd will block if the queue is full and a signal will bail us out.
-        This may be good this may not but it'll need to be handled here somehow.
-        also need to handle errors returned here*/
-        result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + newsize, 0);
-        
-        count++;
-        tag_write_bytes(STAT_MSG_SENT, &count, sizeof(u_int32_t));
-    } else {
-        xerror("Attempt to send to unauthorized PID %ld", module);
-        print_modules();
-        result = -1;
-    }
-#endif
-    return result;
+    return 0;    
 }
 
 /* Sets up the local UNIX domain socket for listening.
    _localfd is the listening socket. */
 int msg_setup_local_socket(void) {
-    //socklen_t len;
     struct sockaddr_un addr;
     
     _localfd = socket(AF_LOCAL, SOCK_STREAM, 0);
@@ -188,6 +173,7 @@ void msg_add_fd(int fd) {
 void msg_del_fd(int fd) {
     int n;
     
+    xlog(LOG_COMM, "Removing fd %d", fd);
     FD_CLR(fd, &_fdset);
     
     /* If it's the largest one then we need to refigure _maxfd */
@@ -198,6 +184,7 @@ void msg_del_fd(int fd) {
             }
         }
     }
+    close(fd); /* Just to make sure */
     buff_free(fd);
 }
 
@@ -230,9 +217,9 @@ int msg_receive(void) {
                 if(n == _localfd) { /* This is the local listening socket */
                     printf("Accepting socket on - %d\n", n);
                     fd = accept(_localfd, (struct sockaddr *)&addr, &len);
-                    if(fd <= 0) {
+                    if(fd < 0) {
                         /* TODO: Need to handle these errors */
-                        xerror("Accepting socket: %s", strerror(errno));
+                        xerror("Error Accepting socket: %s", strerror(errno));
                     } else {
                         msg_add_fd(fd);
                     }
@@ -240,6 +227,7 @@ int msg_receive(void) {
                     printf( "Reading buffer for fd - %d\n", n);
                     result = buff_read(n);
                     if(result == 0) { /* This is the end of file */
+                        printf(" buff_read() returned 0??\n");
                         msg_del_fd(n); /* TODO: Deal with the module if I need too */
                     } else if(result < 0) {
                         return result; /* Pass the error up */
@@ -257,24 +245,14 @@ int msg_receive(void) {
    unmarshal the data portion of the message if need be. */
 int msg_dispatcher(int fd, unsigned char *buff) {
     dax_message message;
-    unsigned char unpack;
-    dax_module *module;
+    //--dax_module *module;
     
-    /* This finds the module that is attached to fd */
-    module = module_find_fd(fd);
-    /* if not found then we'll have to assume that this is a
-       registration message and will have to be unpacked */
-    if(module == NULL) {
-        unpack = 1;
-    } else {
-        unpack = module->unpack;
-    }
     /* The first four bytes are the size and the size is always
        sent in network order */
     message.size = ntohl(*(u_int32_t *)buff);
-    /* The next four bytes are the DAX command */
-    if(unpack) message.command = ntohl(((u_int32_t *)buff)[1]);
-    else       message.command = ((u_int32_t *)buff)[1];
+    /* The next four bytes are the DAX command also sent in network
+       byte order. */
+    message.command = ntohl(*(u_int32_t *)&buff[4]);
     
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     
@@ -290,12 +268,21 @@ int msg_dispatcher(int fd, unsigned char *buff) {
    defined. */
 int msg_mod_register(dax_message *msg) {
     pid_t pid; /* Now how do I figure this out??? */
-    int n;
+    char buff[30];
+    
     if(msg->size > MSG_HDR_SIZE) {
-        xlog(4, "Registering Module %s fd = %d", msg->data, msg->fd);
+        xlog(4, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
+        /*
         printf("First Test Number = 0x%X\n", *((u_int16_t *)&msg->data[0]));
+        
         printf("2nd   Test Number = 0x%X\n", *((u_int32_t *)&msg->data[2]));
+        for(n=2; n<6; n++) printf("0x%X ", (unsigned char)msg->data[n]);
+        printf("\n");
+        
         printf("3rd   Test Number = 0x%llX\n", *((u_int64_t *)&msg->data[6]));
+        for(n=6; n<14; n++) printf("0x%X ", (unsigned char)msg->data[n]);
+        printf("\n");
+        
         printf("4th   Test Number = %f\n", *((float *)&msg->data[14]));
         for(n=14; n<18; n++) printf("0x%X ", (unsigned char)msg->data[n]);
         printf("\n");
@@ -303,10 +290,19 @@ int msg_mod_register(dax_message *msg) {
         printf("5th   Test Number = %f == %f\n", *((double *)&msg->data[18]), REG_TEST_LREAL);
         for(n=18; n<26; n++) printf("0x%X ",(unsigned char)msg->data[n]);
         printf("\n");
+        */
+        pid = ntohl(*((u_int32_t *)&msg->data[0]));
+        printf("PID = %d\n", pid);
+        printf("Name = %s\n", &msg->data[8]);
+        module_register(&msg->data[8], pid, msg->fd);
         
-        printf("PID = %d\n", *((u_int32_t *)&msg->data[26]));
-        printf("Name = %s\n", &msg->data[30]);
-        module_register(&msg->data[30], pid, msg->fd);
+        /* This puts the test data into the buffer for sending. */
+        *((u_int16_t *)&buff[0]) = REG_TEST_INT;    /* 16 bit test data */
+        *((u_int32_t *)&buff[2]) = REG_TEST_DINT;   /* 32 bit integer test data */
+        *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
+        *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
+        *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
+        
     } else {
         xlog(4, "Unregistering Module fd = %d", msg->fd);
         module_unregister(msg->fd);

@@ -33,19 +33,14 @@ static int _message_send(int command, void *payload, size_t size) {
     int result;
     char buff[DAX_MSGMAX];
     
-    /* We always send the size in network order */
-    ((u_int32_t *)buff)[0] = htonl(size + 8);
-    /* The command is a 32 bit number so we check the _marsh flag */
-    if(_pack) {
-        ((u_int32_t *)buff)[1] = htonl(command);
-    } else {
-        ((u_int32_t *)buff)[1] = command;
-    }
-    memcpy(&buff[8], payload, size);
+    /* We always send the size and command in network order */
+    ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
+    ((u_int32_t *)buff)[1] = htonl(command);
+    memcpy(&buff[MSG_HDR_SIZE], payload, size);
     
     /* TODO: We need to set some kind of timeout here.  This could block
        forever if something goes wrong.  It may be a signal or something too. */
-    result = write(_sfd, buff, size + 8);
+    result = write(_sfd, buff, size + MSG_HDR_SIZE);
     
     if(result < 0) {
     /* TODO: Should we handle the case when this returns due to a signal */
@@ -132,7 +127,7 @@ int dax_mod_register(char *name) {
    be handled correctly. */
 /* This is how much room the packing test data takes up in the message.
    It should be adjusted anytime the 'name' must move down in the message */
-#define REG_HDR_SIZE 30
+#define REG_HDR_SIZE 8
     /* Whatever is left of the message size can be used for the module name */
     len = strlen(name) + 1;
     if(len > (MSG_DATA_SIZE - REG_HDR_SIZE)) {
@@ -141,17 +136,10 @@ int dax_mod_register(char *name) {
     }
     buff = alloca(len + REG_HDR_SIZE);
     
-    /* This puts the test data into the buffer for sending. */
-    *((u_int16_t *)&buff[0]) = REG_TEST_INT;    /* 16 bit test data */
-    *((u_int32_t *)&buff[2]) = REG_TEST_DINT;   /* 32 bit integer test data */
-    *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
-    *((float *)&buff[14]) = REG_TEST_REAL;      /* 32 bit float test data */
-    *((double *)&buff[18]) = REG_TEST_LREAL;    /* 64 bit float test data */
-    *((u_int32_t *)&buff[26]) = getpid();       /* 32 bits for the PID */
+    *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
+    strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
     
-    strcpy(&buff[REG_HDR_SIZE], name);
     /* For registration we pack the data no matter what */
-    _pack = 1; 
     _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len); 
     return 0;
 }
