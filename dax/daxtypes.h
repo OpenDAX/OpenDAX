@@ -43,7 +43,7 @@ typedef struct dax_Module {
     int pipe_out;       /* Redirected to the modules stdout */
     int pipe_err;       /* Redirected to the modules stderr */
     int fd;             /* The socket file descriptor for this module */
-    char umarsh;        /* Whether the socket data will be marshaled */
+    char unpack;        /* Whether socket data needs special packaging */
     time_t starttime;
     struct dax_Module *next,*prev;
 } dax_module;

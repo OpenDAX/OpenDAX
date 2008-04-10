@@ -36,11 +36,10 @@ static dax_module *_current_mod = NULL;
 static int _module_count = 0;
 static int _register_timeout = 1000;
 
-static char **_arglist_tok(char *,char *);
-//static dax_module *_get_module(mod_handle_t);
+static char **_arglist_tok(char *, char *);
 static dax_module *_get_module_pid(pid_t);
 static dax_module *_get_module_name(char *);
-static int _cleanup_module(pid_t,int);
+static int _cleanup_module(pid_t, int);
 
 /* This array is the dead module list.
    TODO: This should be improved to allow it to grow when needed.
@@ -335,7 +334,7 @@ int module_stop(dax_module *mod) {
 /* The dax core will not send messages to modules that are not register.  Also
    modules that are not started by the core need a way to announce themselves.
    name can be passed as NULL for modules that were started from DAX */
-void module_register(char *name ,pid_t pid) {
+void module_register(char *name ,pid_t pid, int fd) {
     dax_module *mod;
     char *newname;
     size_t size;
@@ -361,6 +360,7 @@ void module_register(char *name ,pid_t pid) {
     if(mod) {
         mod->pid = pid;
         mod->mid = pid;
+        mod->fd = fd;
         mod->state |= MSTATE_RUNNING;
         mod->state |= MSTATE_REGISTERED;
     } else {
@@ -368,9 +368,10 @@ void module_register(char *name ,pid_t pid) {
     }
 }
 
-void module_unregister(pid_t pid) {
+void module_unregister(int fd) {
     dax_module *mod;
-    mod = _get_module_pid(pid);
+    //mod = _get_module_pid(pid);
+    mod = module_find_fd(fd);
     if(mod) {
         mod->state &= (~MSTATE_REGISTERED);
     }

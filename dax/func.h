@@ -37,8 +37,7 @@ void *xcalloc(size_t, size_t);
 
 void xfatal(const char *, ...);
 void xerror(const char *, ...);
-void xnotice(const char *, ...);
-void setverbosity(u_int32_t);
+void set_log_topic(u_int32_t);
 void xlog(u_int32_t ,const char *, ...);
 
 /* Portability functions */

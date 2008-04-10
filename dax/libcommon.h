@@ -39,7 +39,7 @@
 //--#define DAX_IPC_KEY 0x707070
 
 /* Message functions */
-#define MSG_MOD_REG    0x0001 /* Register the module with the core */
+#define MSG_MOD_REG    0x0001 /* Register the module with the server */
 #define MSG_TAG_ADD    0x0002 /* Add a tag */
 #define MSG_TAG_DEL    0x0003 /* Delete a tag from the database */
 #define MSG_TAG_GET    0x0004 /* Get the handle, type, size etc for the tag */
@@ -57,12 +57,6 @@
 #  define MSG_RESPONSE   0x100000000LL /* Flag for defining a response message */
 #endif
 
-/* Maximum size allowed for a single message */
-/* TODO: Should this be configurable */
-#ifndef DAX_MSGMAX
-#  define DAX_MSGMAX 4096
-#endif
-
 /* These are the values that the registration system uses to 
    determine whether or not the module will have to reformat
    the data because of different machine architectures. */
@@ -73,21 +67,30 @@
    still work?? */
 #define REG_TEST_INT    0xBCDE
 #define REG_TEST_DINT   0x56789ABC
-#define REG_TEST_LINT   0x123456789ABCDEF0
-#define REG_TEST_REAL   3.141592
-#define REG_TEST_LREAL  -58765463.8766677466354676356634
+#define REG_TEST_LINT   0x123456789ABCDEF0LL
+#define REG_TEST_REAL   3.14159265
+#define REG_TEST_LREAL  -58765463.8766677
+
+/* Maximum size allowed for a single message */
+#ifndef DAX_MSGMAX
+#  define DAX_MSGMAX 4096
+#endif
 
 /* This defines the size of the message minus the actual data */
-#define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t) + sizeof(int))
+#define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */
 typedef struct {
+    /* Message Header Stuff.  Changes here should be reflected in the 
+       MSG_HDR_SIZE definition above */
     u_int32_t size;     /* size of the data sent */
     u_int32_t command;  /* Which function to call */
-    int fd;             /* We'll use the fd to identify the module*/
+    /* Main data payload */
     char data[MSG_DATA_SIZE];
+    /* The following stuff isn't in the socket message */
+    int fd;             /* We'll use the fd to identify the module*/
 } dax_message;
 
 /* This datatype can be copied into the data[] area of the main dax_message when

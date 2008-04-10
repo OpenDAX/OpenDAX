@@ -21,20 +21,13 @@
  
 #include <libdax.h>
 #include <dax/libcommon.h>
-//#include <sys/ipc.h>
-//#include <sys/msg.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <string.h>
 
 
-//--static int __msqid;
-/* This is the module id.  It is the PID of the program
-   at the time of registration.  The process or thread that
-   registers should stay running or we can have a problem. */
-static pid_t __modid;
-static int _sfd; /* Server's File Descriptor */
-static char _marsh; /* Whether we are supposed to marshal the data before it's sent */
+static int _sfd;   /* Server's File Descriptor */
+static char _pack; /* Whether we are supposed to pack the data before it's sent */
 
 static int _message_send(int command, void *payload, size_t size) {
     int result;
@@ -43,7 +36,7 @@ static int _message_send(int command, void *payload, size_t size) {
     /* We always send the size in network order */
     ((u_int32_t *)buff)[0] = htonl(size + 8);
     /* The command is a 32 bit number so we check the _marsh flag */
-    if(_marsh) {
+    if(_pack) {
         ((u_int32_t *)buff)[1] = htonl(command);
     } else {
         ((u_int32_t *)buff)[1] = command;
@@ -65,12 +58,8 @@ static int _message_send(int command, void *payload, size_t size) {
 /* This function waits for a message with the given command to come in. If
    a message of another command comes in it will send that message out to
    an asynchronous command handler.  This is due to a race condition that could
-   happen if someone puts a message in the queue after we send a request but
+   happen if the server puts a message in the queue after we send a request but
    before we retrieve the result. */
-/* TODO: I suppose that it's possible for a module to hang here.  Perhaps opendax
-   can send a wake up message every now and then so this function can timeout */
-/* TODO: This function may only be called for response messages so it could be
-   simplified. */
 static int _message_recv(int command, void *payload, size_t *size, int response) {
 #ifdef DELETE_THIS_STUFF_LEIVNEOIWHLKNVAODIHQERT
     dax_message inmsg;
@@ -108,16 +97,18 @@ static int _message_recv(int command, void *payload, size_t *size, int response)
     return 0;
 }
 
-/* TODO: This might need to be two functions, one for register and the other
-   for unregister. */
-
-/* Decide whether we are local or remote, connect to the socket and send
-   a registration message to the server. If name is NULL then send an
-   unregistration to the server.*/
-static int mod_reg(char *name) {
+/* Send regsitration message to the server.  This message sends
+   the name that we want to be, it sends the test data so the 
+   server can decide if we need to pack our data.  The returned
+   message should show whether we need to pack our data and the
+   name that the server decided to give us.  The server can change
+   our name if it's a duplicate. */
+int dax_mod_register(char *name) {
     int fd, len, err, rval;
-    int buff[10];
+    char *buff;
     struct sockaddr_un addr;
+
+    dax_debug(10, "Sending registration for name - %s", name);
     
     /* create a UNIX domain stream socket */
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
@@ -136,22 +127,38 @@ static int mod_reg(char *name) {
     } else {
         _sfd = fd;
     }
-    memcpy(buff, name, 40);
-    _message_send(MSG_MOD_REG,buff,40); /* JUST FOR FUN */ 
+
+/* TODO: Boundary check that a name that is longer than data size will
+   be handled correctly. */
+/* This is how much room the packing test data takes up in the message.
+   It should be adjusted anytime the 'name' must move down in the message */
+#define REG_HDR_SIZE 30
+    /* Whatever is left of the message size can be used for the module name */
+    len = strlen(name) + 1;
+    if(len > (MSG_DATA_SIZE - REG_HDR_SIZE)) {
+        len = MSG_DATA_SIZE - REG_HDR_SIZE;
+        name[len] = '\0';
+    }
+    buff = alloca(len + REG_HDR_SIZE);
+    
+    /* This puts the test data into the buffer for sending. */
+    *((u_int16_t *)&buff[0]) = REG_TEST_INT;    /* 16 bit test data */
+    *((u_int32_t *)&buff[2]) = REG_TEST_DINT;   /* 32 bit integer test data */
+    *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
+    *((float *)&buff[14]) = REG_TEST_REAL;      /* 32 bit float test data */
+    *((double *)&buff[18]) = REG_TEST_LREAL;    /* 64 bit float test data */
+    *((u_int32_t *)&buff[26]) = getpid();       /* 32 bits for the PID */
+    
+    strcpy(&buff[REG_HDR_SIZE], name);
+    /* For registration we pack the data no matter what */
+    _pack = 1; 
+    _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len); 
     return 0;
 }
 
-int dax_mod_register(char *name) {
-    dax_debug(10, "Sending registration for name - %s", name);
-    /* Our message id will be the pid at this point.  We will
-       use this from now on. */
-    __modid = getpid();
-    return mod_reg(name);
-}
-
+/* TODO: Write this function */
 int dax_mod_unregister(void) {
-    dax_debug(10, "Sending un-registration");
-    return mod_reg(NULL);
+    return 0;
 }
 
 /* Sends a message to dax to add a tag.  The payload is basically the

@@ -41,7 +41,7 @@ int module_del(dax_module *);
 void module_start_all(void);
 pid_t module_start (dax_module *);
 int module_stop(dax_module *);
-void module_register(char *, pid_t);
+void module_register(char *, pid_t, int);
 void module_unregister(pid_t);
 dax_module *module_find_pid(pid_t);
 dax_module *module_find_fd(int fd);

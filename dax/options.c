@@ -196,10 +196,12 @@ static int readconfigfile(void)  {
             _pidfile = strdup(string);
         }
     }
-    
+    /* TODO: This needs to be changed to handle the new topic handlers */
     if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
         _verbosity = (int)lua_tonumber(L, 4);
-        setverbosity(_verbosity);
+        //set_log_topic(_verbosity);
+        set_log_topic(0xFFFFFFFF);
+        
     }
     if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
         _min_buffers = (int)lua_tonumber(L, 5);

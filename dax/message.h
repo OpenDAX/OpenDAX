@@ -37,8 +37,10 @@ int msg_dispatcher(int, unsigned char *);
 
 
 /* buffer.c functions */
+int buff_initialize(void);
 int buff_read(int fd);
 void buff_wipe(void);
+void buff_free(int);
 void buff_freeall(void);
 
 

@@ -67,7 +67,7 @@ int main(int argc, const char *argv[]) {
 	  * start_main_loop();
     */
     
-    setverbosity(10); /*TODO: Needs to be configuration */
+    set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
     
     /* Read configuration from defaults, file and command line */
     opt_configure(argc, argv);

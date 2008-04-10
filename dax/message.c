@@ -43,6 +43,9 @@ static int _maxfd;
 #define NUM_COMMANDS 12
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
+/* Macro to check whether or not the command 'x' is valid */
+#define CHECK_COMMAND(x) (((x) < 0 || (x) > 11) ? 1 : 0)
+
 int msg_mod_register(dax_message *msg);
 int msg_tag_add(dax_message *msg);
 int msg_tag_del(dax_message *msg);
@@ -195,7 +198,7 @@ void msg_del_fd(int fd) {
             }
         }
     }
-    /* TODO: Should remove the fd from the _buffer too */
+    buff_free(fd);
 }
 
 /* This function blocks waiting for a message to be received.  Once a message
@@ -219,7 +222,6 @@ int msg_receive(void) {
         return ERR_MSG_RECV;
     } else if(result == 0) {
         buff_freeall(); /* this erases all of the _buffer nodes */
-        xlog(LOG_COMM, "msg_receive timeout");
         return 0;
     } else {
         for(n = 0; n <= _maxfd; n++) {
@@ -255,27 +257,28 @@ int msg_receive(void) {
    unmarshal the data portion of the message if need be. */
 int msg_dispatcher(int fd, unsigned char *buff) {
     dax_message message;
-    unsigned char umarsh;
+    unsigned char unpack;
     dax_module *module;
     
     /* This finds the module that is attached to fd */
     module = module_find_fd(fd);
     /* if not found then we'll have to assume that this is a
-       registration message and will have to be unmarshalled */
+       registration message and will have to be unpacked */
     if(module == NULL) {
-        umarsh = 0;
+        unpack = 1;
     } else {
-        umarsh = module->umarsh;
+        unpack = module->unpack;
     }
     /* The first four bytes are the size and the size is always
        sent in network order */
     message.size = ntohl(*(u_int32_t *)buff);
     /* The next four bytes are the DAX command */
-    if(umarsh) message.command = ntohl(((u_int32_t *)buff)[1]);
+    if(unpack) message.command = ntohl(((u_int32_t *)buff)[1]);
     else       message.command = ((u_int32_t *)buff)[1];
     
-    message.fd = fd; /* just for grins */
+    if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     
+    message.fd = fd;    
     memcpy(message.data, &buff[8], message.size - MSG_HDR_SIZE);
     /* Now call the function to deal with it */
     return (*cmd_arr[message.command])(&message);
@@ -286,9 +289,24 @@ int msg_dispatcher(int fd, unsigned char *buff) {
    from and array of function pointers so there should be one for each command
    defined. */
 int msg_mod_register(dax_message *msg) {
-    if(msg->size) {
+    pid_t pid; /* Now how do I figure this out??? */
+    int n;
+    if(msg->size > MSG_HDR_SIZE) {
         xlog(4, "Registering Module %s fd = %d", msg->data, msg->fd);
-        module_register(msg->data, msg->fd);
+        printf("First Test Number = 0x%X\n", *((u_int16_t *)&msg->data[0]));
+        printf("2nd   Test Number = 0x%X\n", *((u_int32_t *)&msg->data[2]));
+        printf("3rd   Test Number = 0x%llX\n", *((u_int64_t *)&msg->data[6]));
+        printf("4th   Test Number = %f\n", *((float *)&msg->data[14]));
+        for(n=14; n<18; n++) printf("0x%X ", (unsigned char)msg->data[n]);
+        printf("\n");
+        
+        printf("5th   Test Number = %f == %f\n", *((double *)&msg->data[18]), REG_TEST_LREAL);
+        for(n=18; n<26; n++) printf("0x%X ",(unsigned char)msg->data[n]);
+        printf("\n");
+        
+        printf("PID = %d\n", *((u_int32_t *)&msg->data[26]));
+        printf("Name = %s\n", &msg->data[30]);
+        module_register(&msg->data[30], pid, msg->fd);
     } else {
         xlog(4, "Unregistering Module fd = %d", msg->fd);
         module_unregister(msg->fd);

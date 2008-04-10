@@ -141,8 +141,7 @@ int buff_read(int fd) {
     
     if(result < 0) {
         /* TODO: Should we handle the case when this returns due to a signal */
-        printf("Unable to read data from socket %d\d", fd);
-        //xerror("Unable to read data from socket %d", fd);
+        xerror("Unable to read data from socket %d", fd);
         return ERR_MSG_RECV;
     }
     
@@ -164,6 +163,19 @@ int buff_read(int fd) {
     
 /* TODO: Check boundary conditions where min_buffers = 0 or 1.  Shouldn't
    be able to equal 0 but try to break it. */
+
+void buff_free(int fd) {
+    dax_buffnode *node;
+    node = _buffer;
+    
+    while(node != NULL) {
+        if(node->fd == fd) {
+            node->fd = 0;
+            return;
+        }
+        node = node->next;
+    }
+}
 
 /* This function essentially marks all of the buffers as free.  If there are
    more than min_buffers it'll free() the last one.  Kindof a poor boy

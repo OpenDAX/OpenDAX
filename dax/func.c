@@ -86,30 +86,15 @@ void xerror(const char *format, ...) {
     va_end(val);
 }
 
-void xnotice(const char *format, ...) {
-    va_list val;
-    va_start(val,format);
-#ifdef DAX_LOGGER
-    vsyslog(LOG_NOTICE,format,val);
-#else
-    vfprintf(stderr,format,val);
-    fprintf(stderr,"\n");
-#endif
-    va_end(val);
-}
-
-void setverbosity(u_int32_t verbosity) {
-    if(verbosity < 0)
-        _logflags = 0;
-    else 
-        _logflags = verbosity;
-    xlog(LOG_MAJOR, "Set Verbosity to %d", _logflags);
+void set_log_topic(u_int32_t topic) {
+    _logflags = topic;
+    xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
 
 /* Sends the string to the logger verbosity is greater than __verbosity */
 void xlog(u_int32_t flags, const char *format, ...) {
     va_list val;
-    if(flags & _logflags || 1) { /* TODO: Fix this so that it'll work */
+    if(flags & _logflags) {
         va_start(val, format);
 #ifdef DAX_LOGGER
         vsyslog(LOG_NOTICE, format, val);
@@ -141,7 +126,7 @@ static void writepidfile(char *progname) {
     snprintf(filename, 40, "%s/%s", PID_FILE_PATH, progname);
     pidfd=open(filename, O_RDWR | O_CREAT | O_TRUNC,S_IRUSR | S_IWUSR);
     if(!pidfd) 
-        xnotice("Unable to open PID file - %s",filename);
+        xerror("Unable to open PID file - %s",filename);
     else {
         sprintf(pid, "%d", getpid());
         write(pidfd, pid, strlen(pid)); /*writes to the PID file*/
