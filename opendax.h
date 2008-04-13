@@ -67,15 +67,16 @@
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
 /* Library function errors */
-#define ERR_NO_SOCKET -1 /* The Message socket does not exist or cannot be created*/
-#define ERR_2BIG      -2 /* The argument is too big */
-#define ERR_ARG       -3 /* Bad argument */
-#define ERR_NOTFOUND  -4 /* Not found */
-#define ERR_MSG_SEND  -5 /* Unable to send message */
-#define ERR_MSG_RECV  -6 /* Unable to receive message */
-#define ERR_TAG_BAD   -7 /* Bad tagname */
-#define ERR_ALLOC     -8 /* Unable to allocate resource */
-#define ERR_MSG_BAD   -9 /* Bad Message Received */
+#define ERR_GENERIC   -1  /* Commenting this out may reveal code that needs work */
+#define ERR_NO_SOCKET -2  /* The Message socket does not exist or cannot be created*/
+#define ERR_2BIG      -3  /* The argument is too big */
+#define ERR_ARG       -4  /* Bad argument */
+#define ERR_NOTFOUND  -5  /* Not found */
+#define ERR_MSG_SEND  -6  /* Unable to send message */
+#define ERR_MSG_RECV  -7  /* Unable to receive message */
+#define ERR_TAG_BAD   -8  /* Bad tagname */
+#define ERR_ALLOC     -9  /* Unable to allocate resource */
+#define ERR_MSG_BAD   -10 /* Bad Message Received */
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
@@ -92,8 +93,10 @@ typedef struct {
     unsigned int count;
 } dax_tag;
 
+void dax_set_verbosity(int); /* TODO: This should be deleted eventually */
+void dax_set_debug_topic(u_int32_t);
 
-void dax_set_verbosity(int);
+
 /* These functions accept a function pointer to functions that would
    print debug and error messages.  The functions should be declared as...
    void functionname(const char *); */
@@ -106,7 +109,7 @@ int dax_set_log(void (*log)(const char *msg));
    overridden by the above _set functions.  The reason for the complexity
    is that these functions are also used internally by the library and
    this keeps everything consistent. */
-void dax_debug(int level, const char *format, ...);
+void dax_debug(int topic, const char *format, ...);
 void dax_error(const char *format, ...);
 void dax_log(const char *format, ...);
 void dax_fatal(const char *format, ...);

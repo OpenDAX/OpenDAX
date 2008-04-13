@@ -26,6 +26,7 @@
 #include <signal.h>
 
 static int _verbosity = 0;
+static int _logflags = 0;
 
 /* These functions handle the logging and error callback function */
 
@@ -40,6 +41,11 @@ void dax_set_verbosity(int level) {
     if(level < 0) _verbosity = 0;
     else if(level > 10) _verbosity = 10;
     else _verbosity = level;
+}
+
+void dax_set_debug_topic(u_int32_t topic) {
+    _logflags = topic;
+    dax_debug(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
 
 /* Function for modules to set the debug message callback */
@@ -74,7 +80,7 @@ void dax_debug(int level, const char *format, ...) {
     va_list val;
     
     /* check if the callback has been set and _verbosity is set high enough */
-    if(level <= _verbosity) {
+    if(level & _logflags) {
         va_start(val, format);
         if(_dax_debug) {
             vsnprintf(output, DEBUG_STRING_SIZE, format, val);
@@ -113,8 +119,7 @@ void dax_log(const char *format, ...) {
     va_list val;
     va_start(val, format);
     
-    /* Check that the callback has been set */
-    if(_dax_error) {
+    if(_dax_log) {
         vsnprintf(output, DEBUG_STRING_SIZE, format, val);
         _dax_log(format);
     } else {

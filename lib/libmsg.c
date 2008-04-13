@@ -55,40 +55,47 @@ static int _message_send(int command, void *payload, size_t size) {
    an asynchronous command handler.  This is due to a race condition that could
    happen if the server puts a message in the queue after we send a request but
    before we retrieve the result. */
-static int _message_recv(int command, void *payload, size_t *size, int response) {
-#ifdef DELETE_THIS_STUFF_LEIVNEOIWHLKNVAODIHQERT
-    dax_message inmsg;
-    int result, done;
-    long msgtype;
+static int _message_recv(int command, void *payload, int *size, int response) {
+    char buff[DAX_MSGMAX];
+    int index, done, msg_size, result;
+    done = index = msg_size = 0;
     
-    msgtype = (long)__modid;
-    if(response) {
-        msgtype += MSG_RESPONSE;
-    }
-    done = 0;
-    while(!done) {
-        //DAX_DEBUG2("Looking for message type = %ld", msgtype);
-        result = msgrcv(__msqid,(struct msgbuff *)(&inmsg), DAX_MSGMAX, msgtype, 0);
-        if(result < 0) { /* TODO: Probably need some sane cleanup here */
-            dax_debug(1, "_message_recv() returned with - %s", strerror(errno));
+    while( index < msg_size || index < MSG_HDR_SIZE) {
+        result = read(_sfd, &buff[index], DAX_MSGMAX);
+        printf("M-read returned %d\n", result);
+        for(done = 0; done < result; done ++) {
+            printf("0x%02X[%c] " , buff[done], buff[done]);
+        } printf("\n");
+        if(result < 0) {
+            dax_log(LOG_COMM, "_message_recv read failed: %s", strerror(errno));
             return ERR_MSG_RECV;
+        } else if(result == 0) {
+            printf("TODO: I don't know what to do with read returning 0\n");
+            return -1;
+        } else {
+            index += result;
         }
         
-        if(inmsg.command == command) {
-            done = 1;
-            *size = (size_t)(result - MSG_HDR_SIZE);
-            memcpy(payload, inmsg.data, *size);
-            if( inmsg.size == 0 ) { /* If size is zero then it's an error response */
-                /* return the error code found in the data portion */
-                return *((int *)inmsg.data);
+        if(index >= MSG_HDR_SIZE) {
+            msg_size = ntohl(*(u_int32_t *)buff);
+            if(msg_size > DAX_MSGMAX) {
+                dax_log(LOG_COMM, "_message_recv message size is too big");
+                return ERR_MSG_BAD;
             }
-        } else {
-            dax_error( "Asynchronous message received\n");
-            /* TODO: Should never receive an asynchronous message here */
         }
-        /* TODO: Also need to handle cases when signals or errors happen here */
     }
-#endif
+    if(ntohl(*(u_int32_t *)&buff[4]) != command) {
+        printf("TODO: Whoa we got the wrong command\n");
+    } else { /* This is the command we wanted */
+        if(size) {
+            if(msg_size > *size) {
+                return ERR_2BIG;
+            } else {
+                memcpy(payload, &buff[MSG_HDR_SIZE], msg_size - MSG_HDR_SIZE);
+                *size = msg_size - MSG_HDR_SIZE; /* size is value result */
+            }
+        }
+    }
     return 0;
 }
 
@@ -100,10 +107,10 @@ static int _message_recv(int command, void *payload, size_t *size, int response)
    our name if it's a duplicate. */
 int dax_mod_register(char *name) {
     int fd, len, err, rval;
-    char *buff;
+    char buff[DAX_MSGMAX];
     struct sockaddr_un addr;
 
-    dax_debug(10, "Sending registration for name - %s", name);
+    dax_debug(LOG_COMM, "Sending registration for name - %s", name);
     
     /* create a UNIX domain stream socket */
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
@@ -115,13 +122,14 @@ int dax_mod_register(char *name) {
     strncpy(addr.sun_path, opt_get_socketname(), sizeof(addr.sun_path));
     
     len = offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
-    
     if (connect(fd, (struct sockaddr *)&addr, len) < 0) {
         dax_error("Unable to connect to socket - %s", strerror(errno));
         return ERR_NO_SOCKET;
     } else {
         _sfd = fd;
+        dax_debug(LOG_COMM, "Connected to Server fd = %d", fd);
     }
+    
 
 /* TODO: Boundary check that a name that is longer than data size will
    be handled correctly. */
@@ -134,13 +142,14 @@ int dax_mod_register(char *name) {
         len = MSG_DATA_SIZE - REG_HDR_SIZE;
         name[len] = '\0';
     }
-    buff = alloca(len + REG_HDR_SIZE);
     
     *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
     strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
     
     /* For registration we pack the data no matter what */
-    _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len); 
+    _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len);
+    len = DAX_MSGMAX;
+    _message_recv(MSG_MOD_REG, buff,&len, 1);
     return 0;
 }
 

@@ -40,6 +40,8 @@ int main(int argc,char *argv[]) {
     //openlog("test", LOG_NDELAY, LOG_DAEMON);
     dax_log("Starting module test");
     dax_set_verbosity(1);
+    dax_set_debug_topic(0xFFFF); /* This should get them all out there */
+    
     if(dax_mod_register("test"))
         dax_fatal("Unable to register with the server");
     sleep(10);

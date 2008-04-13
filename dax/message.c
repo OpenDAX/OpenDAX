@@ -32,6 +32,10 @@
 #define RESPONSE 1
 #define ASYNC 0
 
+#ifndef FD_COPY
+# define FD_COPY(x,y) memcpy((y),(x),sizeof(fd_set))
+#endif
+
 /* These are the listening sockets for the local UNIX domain
    socket and the remote TCP socekt. */
 static int _localfd;
@@ -72,12 +76,12 @@ static int _message_send(int fd, int command, void *payload, size_t size, int re
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
     if(response) ((u_int32_t *)buff)[1] = htonl(command);
     else         ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
+    /* TODO: Bounds check this */
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
     
     /* TODO: We need to set some kind of timeout here.  This could block
      forever if something goes wrong.  It may be a signal or something too. */
     result = write(fd, buff, size + MSG_HDR_SIZE);
-    
     if(result < 0) {
         /* TODO: Should we handle the case when this returns due to a signal */
         xerror("_message_send: %s", strerror(errno));
@@ -91,7 +95,7 @@ static int _message_send(int fd, int command, void *payload, size_t size, int re
 int msg_setup_local_socket(void) {
     struct sockaddr_un addr;
     
-    _localfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+    _localfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if(_localfd < 0) {
         xfatal("Unable to create local socket - %s", strerror(errno));
     }
@@ -173,7 +177,7 @@ void msg_add_fd(int fd) {
 void msg_del_fd(int fd) {
     int n;
     
-    xlog(LOG_COMM, "Removing fd %d", fd);
+    xlog(LOG_COMM, "Connection Closed for fd %d", fd);
     FD_CLR(fd, &_fdset);
     
     /* If it's the largest one then we need to refigure _maxfd */
@@ -201,11 +205,12 @@ int msg_receive(void) {
     FD_COPY(&_fdset, &tmpset);
     tm.tv_sec = 1; /* TODO: this should be configuration */
     tm.tv_usec = 0;
+    
     result = select(_maxfd + 1, &tmpset, NULL, NULL, &tm);
+    
     if(result < 0) {
         /* TODO: Deal with these errors */
-        printf("msg_receive select error: %s\n", strerror(errno));
-        //xlog(LOG_COMM, "msg_receive select error: %s", strerror(errno));
+        xerror("msg_receive select error: %s", strerror(errno));
         return ERR_MSG_RECV;
     } else if(result == 0) {
         buff_freeall(); /* this erases all of the _buffer nodes */
@@ -213,9 +218,8 @@ int msg_receive(void) {
     } else {
         for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &tmpset)) {
-                printf("Found fd set - %d\n", n);
                 if(n == _localfd) { /* This is the local listening socket */
-                    printf("Accepting socket on - %d\n", n);
+                    xlog(LOG_COMM, "Accepted socket on fd %d", n);
                     fd = accept(_localfd, (struct sockaddr *)&addr, &len);
                     if(fd < 0) {
                         /* TODO: Need to handle these errors */
@@ -224,11 +228,11 @@ int msg_receive(void) {
                         msg_add_fd(fd);
                     }
                 } else {
-                    printf( "Reading buffer for fd - %d\n", n);
+                    //--printf( "Reading buffer for fd - %d\n", n);
                     result = buff_read(n);
-                    if(result == 0) { /* This is the end of file */
-                        printf(" buff_read() returned 0??\n");
-                        msg_del_fd(n); /* TODO: Deal with the module if I need too */
+                    if(result == ERR_NO_SOCKET) { /* This is the end of file */
+                        /* TODO: Deal with the module if I need too */
+                        msg_del_fd(n);
                     } else if(result < 0) {
                         return result; /* Pass the error up */
                     }
@@ -302,6 +306,7 @@ int msg_mod_register(dax_message *msg) {
         *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
         *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
         *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
+        _message_send(msg->fd, MSG_MOD_REG, "Registration", 13, 1);
         
     } else {
         xlog(4, "Unregistering Module fd = %d", msg->fd);

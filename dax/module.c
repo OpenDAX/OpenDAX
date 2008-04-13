@@ -342,6 +342,8 @@ void module_register(char *name ,pid_t pid, int fd) {
     /* First see if we already have a module of the given PID
        This should happen if DAX started the module */
     mod = _get_module_pid(pid);
+    /* TODO: We need to check that the fd doesn't already exist or we'll
+       have some communication trouble */
     if(!mod) {
         /* Do we already have a module of this name */
         mod = _get_module_name(name);

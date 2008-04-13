@@ -143,6 +143,8 @@ int buff_read(int fd) {
         /* TODO: Should we handle the case when this returns due to a signal */
         xerror("Unable to read data from socket %d", fd);
         return ERR_MSG_RECV;
+    } if(result == 0) { /* EOF means the other guy is closed */
+        return ERR_NO_SOCKET;
     }
     
     node->index += result;
@@ -152,7 +154,7 @@ int buff_read(int fd) {
        the message and it should be in network byte order */
     size = ntohl(*(u_int32_t *)node->buffer);
     if(node->index < (size - 1)) {
-        return 0;
+        return ERR_MSG_BAD;
     } else if(node->index >= (size - 1)) {
         return msg_dispatcher(fd, node->buffer);
     }else if(size > DAX_MSGMAX) {
