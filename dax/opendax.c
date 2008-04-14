@@ -121,7 +121,7 @@ void child_signal(int sig) {
     pid_t pid;
 
     pid = wait(&status);
-    xlog(1,"Caught Child Dying %d\n",pid);
+    xlog(1,"Caught Child Dying %d",pid);
     module_dmq_add(pid,status);
 }
 

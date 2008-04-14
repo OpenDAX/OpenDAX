@@ -24,6 +24,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <string.h>
+#include <math.h>
 
 
 static int _sfd;   /* Server's File Descriptor */
@@ -64,7 +65,7 @@ static int _message_recv(int command, void *payload, int *size, int response) {
         result = read(_sfd, &buff[index], DAX_MSGMAX);
         printf("M-read returned %d\n", result);
         for(done = 0; done < result; done ++) {
-            printf("0x%02X[%c] " , buff[done], buff[done]);
+            printf("0x%02X[%c] " , (unsigned char)buff[done], (unsigned char)buff[done]);
         } printf("\n");
         if(result < 0) {
             dax_log(LOG_COMM, "_message_recv read failed: %s", strerror(errno));
@@ -106,7 +107,7 @@ static int _message_recv(int command, void *payload, int *size, int response) {
    name that the server decided to give us.  The server can change
    our name if it's a duplicate. */
 int dax_mod_register(char *name) {
-    int fd, len, err, rval;
+    int fd, len, n;
     char buff[DAX_MSGMAX];
     struct sockaddr_un addr;
 
@@ -150,6 +151,41 @@ int dax_mod_register(char *name) {
     _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len);
     len = DAX_MSGMAX;
     _message_recv(MSG_MOD_REG, buff,&len, 1);
+    /*** TEST JUNK *****/
+    printf("First Test Number = 0x%X == 0x%X\n", *((u_int16_t *)&buff[0]), REG_TEST_INT);
+    
+    printf("2nd   Test Number = 0x%X == 0x%X\n", *((u_int32_t *)&buff[2]), REG_TEST_DINT);
+    for(n=2; n<6; n++) printf("0x%X ", (unsigned char)buff[n]);
+    printf("\n");
+    
+    printf("3rd   Test Number = 0x%llX == 0x%llX\n", *((u_int64_t *)&buff[6]), REG_TEST_LINT);
+    for(n=6; n<14; n++) printf("0x%X ", (unsigned char)buff[n]);
+    printf("\n");
+    
+    printf("4th   Test Number = %f == %f\n", *((float *)&buff[14]), REG_TEST_REAL);
+    for(n=14; n<18; n++) printf("0x%X ", (unsigned char)buff[n]);
+    printf("\n");
+    
+    printf("5th   Test Number = %lf == %lf\n", *((double *)&buff[18]), REG_TEST_LREAL);
+    for(n=18; n<26; n++) printf("0x%X ",(unsigned char)buff[n]);
+    printf("\n");
+    printf("The name returned is %s\n\n", &buff[26]);
+    
+    if( (*((u_int16_t *)&buff[0]) == REG_TEST_INT) &&     
+        (*((u_int32_t *)&buff[2]) == REG_TEST_DINT) && 
+        (*((u_int64_t *)&buff[6]) == REG_TEST_LINT)) {   
+        printf("Integers are okay\n");
+    } else {
+        printf("Integers are bad\n");
+    }
+    /* There has got to be a better way to compare that we are getting good floating point numbers */
+    if( fabs(*((float *)&buff[14]) - REG_TEST_REAL) / REG_TEST_REAL   < 0.0000001 && 
+        fabs(*((double *)&buff[18]) - REG_TEST_LREAL) / REG_TEST_REAL < 0.0000001) {   
+        printf("Floats are okay\n");
+    } else {
+        printf("floats are bad\n");
+    }
+    
     return 0;
 }
 

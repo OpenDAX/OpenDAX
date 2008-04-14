@@ -334,7 +334,7 @@ int module_stop(dax_module *mod) {
 /* The dax core will not send messages to modules that are not register.  Also
    modules that are not started by the core need a way to announce themselves.
    name can be passed as NULL for modules that were started from DAX */
-void module_register(char *name ,pid_t pid, int fd) {
+dax_module *module_register(char *name ,pid_t pid, int fd) {
     dax_module *mod;
     char *newname;
     size_t size;
@@ -367,7 +367,9 @@ void module_register(char *name ,pid_t pid, int fd) {
         mod->state |= MSTATE_REGISTERED;
     } else {
         xerror("Major problem registering module - %s : %d", name, pid);
+        return NULL;
     }
+    return mod;
 }
 
 void module_unregister(int fd) {
@@ -430,7 +432,7 @@ static int _cleanup_module(pid_t pid, int status) {
     the PID that we passed but we should check because there may not 
     be a module with our PID */
     if(mod) {
-        xlog(2, "Cleaning up Module %d\n", pid);
+        xlog(2, "Cleaning up Module %d", pid);
         /* Close the stdio pipe fd's */
         close(mod->pipe_in);
         close(mod->pipe_out);

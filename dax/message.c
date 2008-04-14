@@ -177,7 +177,6 @@ void msg_add_fd(int fd) {
 void msg_del_fd(int fd) {
     int n;
     
-    xlog(LOG_COMM, "Connection Closed for fd %d", fd);
     FD_CLR(fd, &_fdset);
     
     /* If it's the largest one then we need to refigure _maxfd */
@@ -232,6 +231,7 @@ int msg_receive(void) {
                     result = buff_read(n);
                     if(result == ERR_NO_SOCKET) { /* This is the end of file */
                         /* TODO: Deal with the module if I need too */
+                        xlog(LOG_COMM, "Connection Closed for fd %d", fd);
                         msg_del_fd(n);
                     } else if(result < 0) {
                         return result; /* Pass the error up */
@@ -272,33 +272,15 @@ int msg_dispatcher(int fd, unsigned char *buff) {
    defined. */
 int msg_mod_register(dax_message *msg) {
     pid_t pid; /* Now how do I figure this out??? */
-    char buff[30];
+    char buff[DAX_MSGMAX];
+    dax_module *mod;
     
     if(msg->size > MSG_HDR_SIZE) {
         xlog(4, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
-        /*
-        printf("First Test Number = 0x%X\n", *((u_int16_t *)&msg->data[0]));
-        
-        printf("2nd   Test Number = 0x%X\n", *((u_int32_t *)&msg->data[2]));
-        for(n=2; n<6; n++) printf("0x%X ", (unsigned char)msg->data[n]);
-        printf("\n");
-        
-        printf("3rd   Test Number = 0x%llX\n", *((u_int64_t *)&msg->data[6]));
-        for(n=6; n<14; n++) printf("0x%X ", (unsigned char)msg->data[n]);
-        printf("\n");
-        
-        printf("4th   Test Number = %f\n", *((float *)&msg->data[14]));
-        for(n=14; n<18; n++) printf("0x%X ", (unsigned char)msg->data[n]);
-        printf("\n");
-        
-        printf("5th   Test Number = %f == %f\n", *((double *)&msg->data[18]), REG_TEST_LREAL);
-        for(n=18; n<26; n++) printf("0x%X ",(unsigned char)msg->data[n]);
-        printf("\n");
-        */
         pid = ntohl(*((u_int32_t *)&msg->data[0]));
         printf("PID = %d\n", pid);
-        printf("Name = %s\n", &msg->data[8]);
-        module_register(&msg->data[8], pid, msg->fd);
+        printf("Name = %s\n", &msg->data[MSG_HDR_SIZE]);
+        mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
         
         /* This puts the test data into the buffer for sending. */
         *((u_int16_t *)&buff[0]) = REG_TEST_INT;    /* 16 bit test data */
@@ -306,7 +288,9 @@ int msg_mod_register(dax_message *msg) {
         *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
         *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
         *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
-        _message_send(msg->fd, MSG_MOD_REG, "Registration", 13, 1);
+        strncpy(&buff[26], mod->name, DAX_MSGMAX - 26 - 1);
+        printf("Sending %d bytes\n", 26 + strlen(mod->name) +1);
+        _message_send(msg->fd, MSG_MOD_REG, buff, 26 + strlen(mod->name) + 1, 1);
         
     } else {
         xlog(4, "Unregistering Module fd = %d", msg->fd);
