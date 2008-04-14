@@ -26,6 +26,9 @@
 #include <common.h>
 #include <opendax.h>
 
+#define REF_INT_SWAP 0x0001
+#define REF_FLT_SWAP 0x0002
+
 //--int _message_send(long int module,int command,void *payload, size_t size);
 //--int _message_recv(int command, void *payload, size_t *size);
 

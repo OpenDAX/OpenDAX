@@ -217,6 +217,7 @@ int msg_receive(void) {
     } else {
         for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &tmpset)) {
+                printf("FD_ISSET() for %d\n",n);
                 if(n == _localfd) { /* This is the local listening socket */
                     xlog(LOG_COMM, "Accepted socket on fd %d", n);
                     fd = accept(_localfd, (struct sockaddr *)&addr, &len);
@@ -231,7 +232,7 @@ int msg_receive(void) {
                     result = buff_read(n);
                     if(result == ERR_NO_SOCKET) { /* This is the end of file */
                         /* TODO: Deal with the module if I need too */
-                        xlog(LOG_COMM, "Connection Closed for fd %d", fd);
+                        xlog(LOG_COMM, "Connection Closed for fd %d", n);
                         msg_del_fd(n);
                     } else if(result < 0) {
                         return result; /* Pass the error up */
@@ -278,7 +279,7 @@ int msg_mod_register(dax_message *msg) {
     if(msg->size > MSG_HDR_SIZE) {
         xlog(4, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
         pid = ntohl(*((u_int32_t *)&msg->data[0]));
-        printf("PID = %d\n", pid);
+        printf("PID = %d : ", pid);
         printf("Name = %s\n", &msg->data[MSG_HDR_SIZE]);
         mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
         
@@ -289,7 +290,7 @@ int msg_mod_register(dax_message *msg) {
         *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
         *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
         strncpy(&buff[26], mod->name, DAX_MSGMAX - 26 - 1);
-        printf("Sending %d bytes\n", 26 + strlen(mod->name) +1);
+        //--printf("Sending %d bytes\n", 26 + strlen(mod->name) +1);
         _message_send(msg->fd, MSG_MOD_REG, buff, 26 + strlen(mod->name) + 1, 1);
         
     } else {

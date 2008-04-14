@@ -96,7 +96,7 @@ int buff_initialize(void) {
 /* Return the index of the buffer node that is either presently
    assigned to the fd or if there isn't one a free one */
 static dax_buffnode *find_buff_slot(int fd) {
-    dax_buffnode *node, *firstfree;
+    dax_buffnode *node, *firstfree, *result;
     
     node = _buffer;
     firstfree = NULL;
@@ -111,18 +111,19 @@ static dax_buffnode *find_buff_slot(int fd) {
     /* couldn't find one that matched the fd so
        if we have one that was free return it */
     if(firstfree != NULL) {
-        return firstfree;
+        result = firstfree;
+        //--return firstfree;
     } else {
-        firstfree = new_buffnode();
-        if(firstfree != NULL) {
+        result = new_buffnode();
+        if(result != NULL) {
             node = _buffer;
             /* double linked list would eliminate this ??? */
             while(node->next != NULL) node = node->next;
-            node->next = firstfree;
+            node->next = result;
         }
-        return firstfree;
     }
-    return NULL; /* Never get here */
+    if(result) result->fd = fd;
+    return result;
 }
 
 int buff_read(int fd) {
