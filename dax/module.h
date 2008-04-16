@@ -23,7 +23,7 @@
 #include <common.h>
 #include <dax/daxtypes.h>
 
-#define MSTATE_RUNNING      0x00 /* Running normally */
+#define MSTATE_RUNNING      0x00 /* Running normally (may not yet be registered) */
 #define MSTATE_WAITING      0x01 /* Waiting for restart */
 #define MSTATE_CHILD        0x02 /* Module was started by this program */
 #define MSTATE_REGISTERED   0x04 /* Is the module registered */

@@ -117,7 +117,7 @@ int dax_mod_register(char *name) {
     /* create a UNIX domain stream socket */
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         return(-1);
-    
+    /* TODO: Gotta set a timeout for this stuff. */
     /* fill socket address structure with our address */
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
@@ -176,6 +176,10 @@ int dax_mod_register(char *name) {
 
 /* TODO: Write this function */
 int dax_mod_unregister(void) {
+    int len;
+    _message_send(MSG_MOD_REG, NULL, 0);
+    len = 0;
+    _message_recv(MSG_MOD_REG, NULL, &len, 1);
     return 0;
 }
 

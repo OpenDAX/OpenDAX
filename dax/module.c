@@ -419,7 +419,7 @@ void module_scan(void) {
             _dmq[n].pid = 0;
         }
     }
-    
+    /* TODO: do a waitpid(-1, NULL, WNOHANG); to clean up any zombies */
     /* TODO: Restart modules if necessary */
 }
 
@@ -432,7 +432,7 @@ static int _cleanup_module(pid_t pid, int status) {
     the PID that we passed but we should check because there may not 
     be a module with our PID */
     if(mod) {
-        xlog(2, "Cleaning up Module %d", pid);
+        xlog(LOG_MINOR, "Cleaning up Module %d", pid);
         /* Close the stdio pipe fd's */
         close(mod->pipe_in);
         close(mod->pipe_out);

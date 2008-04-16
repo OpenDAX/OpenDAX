@@ -44,7 +44,8 @@ int main(int argc,char *argv[]) {
     
     if(dax_mod_register("test"))
         dax_fatal("Unable to register with the server");
-    sleep(10);
+    sleep(5);
+    dax_mod_unregister();
     
     /*
     if(check_tag_addition()) {

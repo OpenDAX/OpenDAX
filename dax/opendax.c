@@ -52,22 +52,8 @@ int main(int argc, const char *argv[]) {
     sa.sa_handler = &catch_signal;
     sigaction(SIGHUP, &sa, NULL);
 
-    /* TODO: This is the program architecture in a nutshell...
-        check_already_running();
-            if we are then do what the options say or possibly 
-            re-run the configuration.
-	 *? read_configuration();
-      * daemonize();
-        setverbosity();
-      * create_message_queue();
-	  * initialize_tagbase();
-	  * start_message_thread();
-        setup_slave / redundant sockets();
-      * start_modules();
-	  * start_main_loop();
-    */
-    
     set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
+    set_log_topic(-1); /*TODO: Needs to be configuration */
     
     /* Read configuration from defaults, file and command line */
     opt_configure(argc, argv);
@@ -81,10 +67,8 @@ int main(int argc, const char *argv[]) {
     sa.sa_handler = &child_signal;
     sigaction (SIGCHLD, &sa, NULL);
     
-    //--setverbosity(config.verbosity);
-    
-    result = msg_setup();    /* This creates and sets up the message queue */
-    xerror("msg_setup() returned %d", result);
+    result = msg_setup();    /* This creates and sets up the message sockets */
+    if(result) xerror("msg_setup() returned %d", result);
 	initialize_tagbase(); /* initiallize the tagname list and database */
     
 	/* Start the message handling thread */

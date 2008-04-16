@@ -113,8 +113,7 @@ int msg_setup_local_socket(void) {
     }
     msg_add_fd(_localfd);
     
-    printf("Created local socket - %d\n", _localfd);
-    /* TODO: Need to store the name of the sun_path so we can delete the file later */
+    xlog(LOG_COMM, "Created local socket - %d", _localfd);
     return 0;
 }
 
@@ -125,11 +124,11 @@ int msg_setup_remote_socket(void) {
     return 0;
 }
 
-/* Creates and sets up the main message queue for the program.
-   It's a fatal error if we cannot create this queue */
+/* Creates and sets up the local message socket for the program.
+   It's a fatal error if we cannot create the local socket.  The
+   remote socket creation is allowed to fail without exiting.  This
+   also sets up the array of command function pointers */
 int msg_setup(void) {
-    
-    /* TODO: See if we are already running, by trying to send ourselves a message */
     _maxfd = 0;
     FD_ZERO(&_fdset);
     
@@ -217,18 +216,18 @@ int msg_receive(void) {
     } else {
         for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &tmpset)) {
-                printf("FD_ISSET() for %d\n",n);
                 if(n == _localfd) { /* This is the local listening socket */
                     xlog(LOG_COMM, "Accepted socket on fd %d", n);
+                    /* TODO: Should accept be in a while loop and non blocking?? */
                     fd = accept(_localfd, (struct sockaddr *)&addr, &len);
                     if(fd < 0) {
                         /* TODO: Need to handle these errors */
-                        xerror("Error Accepting socket: %s", strerror(errno));
+                        //xerror("Error Accepting socket: %s", strerror(errno));
+                        xfatal("Error Accepting socket: %s", strerror(errno));
                     } else {
                         msg_add_fd(fd);
                     }
                 } else {
-                    //--printf( "Reading buffer for fd - %d\n", n);
                     result = buff_read(n);
                     if(result == ERR_NO_SOCKET) { /* This is the end of file */
                         /* TODO: Deal with the module if I need too */
@@ -296,6 +295,7 @@ int msg_mod_register(dax_message *msg) {
     } else {
         xlog(4, "Unregistering Module fd = %d", msg->fd);
         module_unregister(msg->fd);
+        _message_send(msg->fd, MSG_MOD_REG, buff, 0, 1);
     }
     return 0;
 }
