@@ -33,6 +33,36 @@
 static u_int32_t _logflags = 0;
 static int _background = 0;
 
+/* Wrapper functions - Mostly system calls that need special handling */
+
+/* Wrapper for write.  This will block and retry until all the bytes
+   have been written or an error other than EINTR is returned */
+ssize_t xwrite(int fd, const void *buff, size_t nbyte) {
+    const void *sbuff;
+    size_t left;
+    ssize_t result;
+    
+    sbuff = buff;
+    left = nbyte;
+    
+    while(left > 0) {
+        result = write(fd, sbuff, left);
+        if(result <= 0) {
+            /* If we get interrupted by a signal... */
+            if(result < 0 && errno == EINTR) {
+                /*... then go again */
+                result = 0;
+            } else {
+                /* return error */
+                return -1;
+            }
+        }
+        left -= result;
+        sbuff += result;
+    }
+    return nbyte;
+}
+
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
  * something createive with them later. */

@@ -80,6 +80,10 @@ dax_module * module_add(char *name, char *path, char *arglist, int startup, unsi
         if(startup > 0) new->startup = startup;
         else startup = 0;
         
+        new->pipe_in = -1;
+        new->pipe_out = -1;
+        new->pipe_err = -1;
+        
         /* Add the module path to the struct */
         if(path) {
             new->path = strdup(path);
@@ -231,7 +235,7 @@ inline static int _childpipes(int *);
 /* This function is used to start a module */
 pid_t module_start(dax_module *mod) {
     pid_t child_pid;
-    int result=0;
+    int result = 0;
     int pipes[6];
  
     if(mod) {
@@ -434,9 +438,10 @@ static int _cleanup_module(pid_t pid, int status) {
     if(mod) {
         xlog(LOG_MINOR, "Cleaning up Module %d", pid);
         /* Close the stdio pipe fd's */
-        close(mod->pipe_in);
-        close(mod->pipe_out);
-        close(mod->pipe_err);
+        /* TODO: really should fix these */
+        //close(mod->pipe_in);
+        //close(mod->pipe_out);
+        //close(mod->pipe_err);
         mod->pid = 0;
         mod->exit_status = status;
         mod->state = MSTATE_WAITING;
@@ -457,7 +462,7 @@ void module_dmq_add(pid_t pid,int status) {
     while(_dmq[n].pid != 0 && n < DMQ_SIZE) {
         n++;
     }
-    xlog(10,"Adding Dead Module pid=%d index=%d",pid,n);
+    //xlog(10,"Adding Dead Module pid=%d index=%d",pid,n);
     _dmq[n].pid = pid;
     _dmq[n].status = status;
 }

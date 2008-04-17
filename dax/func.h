@@ -21,10 +21,12 @@
 #ifndef __FUNC_H
 #define __FUNC_H
 
+/* Wrappers for system calls */
+ssize_t xwrite(int , const void *, size_t);
+
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
  * something createive with them later. */
-
 
 void *xmalloc(size_t);
 void *xrealloc(void *, size_t);

@@ -49,8 +49,8 @@ int main(int argc, const char *argv[]) {
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-    sa.sa_handler = &catch_signal;
-    sigaction(SIGHUP, &sa, NULL);
+    //sa.sa_handler = &catch_signal;
+    //sigaction(SIGHUP, &sa, NULL);
 
     set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
     set_log_topic(-1); /*TODO: Needs to be configuration */
@@ -104,9 +104,13 @@ void child_signal(int sig) {
     int status;
     pid_t pid;
 
-    pid = wait(&status);
-    xlog(1,"Caught Child Dying %d",pid);
-    module_dmq_add(pid,status);
+    do {
+        pid = waitpid(-1, &status, WNOHANG);
+        if(pid > 0) { 
+        //xlog(1,"Caught Child Dying %d",pid);
+            module_dmq_add(pid,status);
+        }
+    } while(pid > 0);
 }
 
 /* this handles shutting down of the core */

@@ -79,11 +79,8 @@ static int _message_send(int fd, int command, void *payload, size_t size, int re
     /* TODO: Bounds check this */
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
     
-    /* TODO: We need to set some kind of timeout here.  This could block
-     forever if something goes wrong.  It may be a signal or something too. */
-    result = write(fd, buff, size + MSG_HDR_SIZE);
+    result = xwrite(fd, buff, size + MSG_HDR_SIZE);
     if(result < 0) {
-        /* TODO: Should we handle the case when this returns due to a signal */
         xerror("_message_send: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
@@ -174,7 +171,7 @@ void msg_add_fd(int fd) {
 }
 
 void msg_del_fd(int fd) {
-    int n;
+    int n, tmpfd;
     
     FD_CLR(fd, &_fdset);
     
@@ -182,9 +179,13 @@ void msg_del_fd(int fd) {
     if(fd == _maxfd) {
         for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &_fdset)) {
-                _maxfd = n;
+                tmpfd = n;
             }
         }
+        _maxfd = tmpfd;
+    }
+    if(fd == 0) {
+        printf("              WHY ARE WE CLOSING ZERO!!!!!\n");
     }
     close(fd); /* Just to make sure */
     buff_free(fd);
