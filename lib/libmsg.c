@@ -195,7 +195,7 @@ handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
         if(strlen(name) > DAX_TAGNAME_SIZE) {
             return ERR_2BIG;
         }
-        size=sizeof(dax_tag)-sizeof(handle_t);
+        size = sizeof(dax_tag) - sizeof(handle_t);
         /* TODO Need to do some more error checking here */
         strcpy(tag.name,name);
         tag.type=type;
@@ -203,7 +203,7 @@ handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
     } else {
         return ERR_TAG_BAD;
     }
-    result = _message_send( MSG_TAG_ADD, &(tag.name),size);
+    result = _message_send( MSG_TAG_ADD, &(tag.name), size);
     if(result) { 
         return ERR_MSG_SEND;
     }

@@ -26,8 +26,33 @@
 #include <common.h>
 #include <opendax.h>
 
+/* Data Conversion Functions */
 #define REF_INT_SWAP 0x0001
 #define REF_FLT_SWAP 0x0002
+
+/* 16 Bit conversion functions */
+#define mtos_word mtos_uint
+#define stom_word stom_uint
+
+int16_t mtos_int(int16_t);
+u_int16_t mtos_uint(u_int16_t);
+
+int16_t stom_int(int16_t);
+u_int16_t stom_uint(u_int16_t);
+
+/* 32 Bit conversion functions */
+#define mtos_word mtos_uint
+#define stom_word stom_uint
+#define mtos_time mtos_uint
+#define stom_time stom_uint
+
+int32_t mtos_dint(int32_t);
+u_int32_t mtos_udint(u_int32_t);
+float mtos_real(float);
+
+int32_t stom_dint(int32_t);
+u_int32_t stom_udint(u_int32_t);
+float stom_real(float);
 
 //--int _message_send(long int module,int command,void *payload, size_t size);
 //--int _message_recv(int command, void *payload, size_t *size);
