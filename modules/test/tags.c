@@ -76,7 +76,7 @@ void add_random_tags(int tagcount) {
         if(result < 0) {
             dax_debug(10, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
         } else {
-          //  xlog(10, "%s added at handle 0x%8X", tagname, result);
+            xlog(10, "%s added at handle 0x%8X", tagname, result);
         }
     }
 }
@@ -119,7 +119,7 @@ static int tagtopass(char *name) {
     
     handle = dax_tag_add(name, DAX_BOOL, 1);
     if(handle < 0) {
-        dax_debug(1,"Test Failed - %s was not allowed", name);
+        dax_debug(1, "Test Failed - %s was not allowed", name);
         return -1;
     }
     return 0;
@@ -130,7 +130,7 @@ static int tagtofail(char *name) {
     
     handle = dax_tag_add(name, DAX_BOOL, 1);
     if(handle >= 0) {
-        dax_debug(1,"Test Failed - %s was allowed", name);
+        dax_debug(1, "Test Failed - %s was allowed", name);
         return -1;
     }
     return 0;

@@ -44,17 +44,34 @@ int main(int argc,char *argv[]) {
     
     if(dax_mod_register("test"))
         dax_fatal("Unable to register with the server");
-    sleep(5);
-    dax_mod_unregister();
     
-    /*
+     
     if(check_tag_addition()) {
         dax_log("Tagname addition test - FAILED");
         tests_failed++;
     } else {
         dax_log("Tagname addition test - PASSED");
     }
+    /*
+    //check_tag_addition();
+    dax_tag_add("1ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("2ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("3ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("4ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("5ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("6ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("7ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("8ShouldntWork", DAX_BOOL, 1);
+    dax_tag_add("9ShouldntWork", DAX_BOOL, 1);
+    */
+    add_random_tags(100);
+    sleep(1);
+    add_random_tags(100);
+    sleep(1);
+    add_random_tags(100);
     
+    
+    /*
     if(check_tag_retrieve()) {
         dax_log("Tagname retrieving test - FAILED");
         tests_failed++;
@@ -89,9 +106,8 @@ int main(int argc,char *argv[]) {
         printf("Before write 0x%X: After Read 0x%X\n",dummy[n], test[n]);
     }
     
-    /* 
-    add_random_tags(1000);
     
+    /*
     for(n = 0; n<126; n++) {
         if(n % 5) {
             sprintf(tagname,"BOOL%d",n);
@@ -138,10 +154,10 @@ int main(int argc,char *argv[]) {
     } else {
         dax_log("Tagbase verification test - PASSED");
     }
-    
+#endif    
+    sleep(5);
     dax_mod_unregister();
-    
     dax_debug(1, "OpenDAX Test Finished, %d tests failed", tests_failed);
-#endif
+    
     return 0;
 }

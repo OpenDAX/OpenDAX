@@ -112,7 +112,6 @@ static dax_buffnode *find_buff_slot(int fd) {
        if we have one that was free return it */
     if(firstfree != NULL) {
         result = firstfree;
-        //--return firstfree;
     } else {
         result = new_buffnode();
         if(result != NULL) {
@@ -174,6 +173,7 @@ void buff_free(int fd) {
     while(node != NULL) {
         if(node->fd == fd) {
             node->fd = 0;
+            node->index = 0;
             return;
         }
         node = node->next;

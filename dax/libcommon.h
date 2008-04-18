@@ -53,9 +53,8 @@
 #define MSG_EVNT_GET   0x000C /* Get an event definition */
 /* More to come */
 
-#ifndef MSG_RESPONSE
-#  define MSG_RESPONSE   0x100000000LL /* Flag for defining a response message */
-#endif
+#define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
+#define MSG_ERROR      0x2000000LL /* Flag for defining an error message */
 
 /* These are the values that the registration system uses to 
    determine whether or not the module will have to reformat

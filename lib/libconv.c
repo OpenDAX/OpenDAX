@@ -25,6 +25,8 @@
 
 /* TODO: All of these functions need to be written.  Right now we just
    assume that all is good and that we don't need any of this. */
+/* TODO: Might also be nice to have some that will handle a whole buffer
+   of data instead of just a single point */
 
 /* 16 Bit Conversion Functions */
 int16_t mtos_int(int16_t x) {

@@ -96,12 +96,13 @@ handle_t tag_add(char *name, unsigned int type, unsigned int count) {
     handle_t handle;
     if(count == 0) return -6;
 
+    printf("tag_add() called with name = %s, type = %d, count = %d\n", name, type, count);
     if(__tagcount >= __taglistsize) {
         if(taglist_grow()) {
             xerror("Out of memory for symbol table");
             return -1;
         } else {
-            xlog(8,"Taglist increased to %d items", __taglistsize);
+            xlog(LOG_MINOR,"Taglist increased to %d items", __taglistsize);
         }
     }
     

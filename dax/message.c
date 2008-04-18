@@ -29,8 +29,9 @@
 #include <sys/un.h>
 #include <string.h>
 
-#define RESPONSE 1
 #define ASYNC 0
+#define RESPONSE 1
+#define ERROR 2
 
 #ifndef FD_COPY
 # define FD_COPY(x,y) memcpy((y),(x),sizeof(fd_set))
@@ -74,8 +75,9 @@ static int _message_send(int fd, int command, void *payload, size_t size, int re
     char buff[DAX_MSGMAX];
     
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
-    if(response) ((u_int32_t *)buff)[1] = htonl(command);
-    else         ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
+    if(response == RESPONSE)   ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
+    else if(response == ERROR) ((u_int32_t *)buff)[1] = htonl(command | MSG_ERROR);
+    else                       ((u_int32_t *)buff)[1] = htonl(command);         
     /* TODO: Bounds check this */
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
     
@@ -212,6 +214,7 @@ int msg_receive(void) {
         xerror("msg_receive select error: %s", strerror(errno));
         return ERR_MSG_RECV;
     } else if(result == 0) {
+        //xerror("msg_receive timeout");
         buff_freeall(); /* this erases all of the _buffer nodes */
         return 0;
     } else {
@@ -250,7 +253,6 @@ int msg_receive(void) {
    unmarshal the data portion of the message if need be. */
 int msg_dispatcher(int fd, unsigned char *buff) {
     dax_message message;
-    //--dax_module *module;
     
     /* The first four bytes are the size and the size is always
        sent in network order */
@@ -258,11 +260,12 @@ int msg_dispatcher(int fd, unsigned char *buff) {
     /* The next four bytes are the DAX command also sent in network
        byte order. */
     message.command = ntohl(*(u_int32_t *)&buff[4]);
+    printf("We've received message : command = %d, size = %d\n", message.command, message.size);
     
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
-    
     message.fd = fd;    
     memcpy(message.data, &buff[8], message.size - MSG_HDR_SIZE);
+    buff_free(fd);
     /* Now call the function to deal with it */
     return (*cmd_arr[message.command])(&message);
 }
@@ -302,19 +305,24 @@ int msg_mod_register(dax_message *msg) {
 }
 
 int msg_tag_add(dax_message *msg) {
-    dax_tag tag; /* We use a structure within the data[] area of the message */
+    //dax_tag tag; /* We use a structure within the data[] area of the message */
     handle_t handle;
+    char name[DAX_TAGNAME_SIZE + 1];
+    u_int32_t type;
+    u_int32_t count;
     
-    xlog(10,"Tag Add Message from %d", msg->fd);
-    memcpy(tag.name, msg->data, sizeof(dax_tag) - sizeof(handle_t));
-    handle = tag_add(tag.name, tag.type, tag.count);
-    /* TODO: Gotta handle the error condition here or the module locks up waiting on the message */
+    xlog(LOG_MSG, "Tag Add Message from %d", msg->fd);
+    
+    type = *((u_int32_t *)&msg->data[0]);
+    count = *((u_int32_t *)&msg->data[4]);
+    
+    handle = tag_add(&msg->data[8], type, count);
     
     if(handle >= 0) {
         _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), RESPONSE);
     } else {
-        _message_send(msg->fd, MSG_TAG_ADD, &handle, 0, RESPONSE);
-        return -1; /* do I need this????? */
+        _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), ERROR);
+        //return -1; /* do I need this????? */
     }
     return 0;
 }

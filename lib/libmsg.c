@@ -85,9 +85,13 @@ static int _message_recv(int command, void *payload, int *size, int response) {
             }
         }
     }
-    if(ntohl(*(u_int32_t *)&buff[4]) != command) {
-        printf("TODO: Whoa we got the wrong command\n");
-    } else { /* This is the command we wanted */
+    /* This gets the command out of the buffer */
+    result = ntohl(*((u_int32_t *)&buff[4]));
+    
+    /* Test if the error flag is set and then return the error code */
+    if(result == (command | MSG_ERROR)) {
+        return stom_dint((*(int32_t *)&buff[8]));
+    } else if(result == (command | (response ? MSG_RESPONSE : 0))) {
         if(size) {
             if(msg_size > *size) {
                 return ERR_2BIG;
@@ -96,6 +100,8 @@ static int _message_recv(int command, void *payload, int *size, int response) {
                 *size = msg_size - MSG_HDR_SIZE; /* size is value result */
             }
         }
+    } else { /* This is the command we wanted */
+        printf("TODO: Whoa we got the wrong command\n");
     }
     return 0;
 }
@@ -151,7 +157,7 @@ int dax_mod_register(char *name) {
     /* For registration we pack the data no matter what */
     _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len);
     len = DAX_MSGMAX;
-    _message_recv(MSG_MOD_REG, buff,&len, 1);
+    _message_recv(MSG_MOD_REG, buff, &len, 1);
     /* Here we check to see if the data that we got in the registration message is in the same
        format as we use here on the client module. This should be offloaded to a separate
        function that can determine what needs to be done to the incoming and outgoing data to
@@ -186,31 +192,34 @@ int dax_mod_unregister(void) {
 /* Sends a message to dax to add a tag.  The payload is basically the
    tagname without the handle. */
 handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
-    dax_tag tag;
+    //dax_tag tag;
     int size;
     int result;
+    char buff[DAX_TAGNAME_SIZE + 8 + 1];
     
     if(count == 0) return ERR_ARG;
     if(name) {
-        if(strlen(name) > DAX_TAGNAME_SIZE) {
+        if((size = strlen(name)) > DAX_TAGNAME_SIZE) {
             return ERR_2BIG;
         }
-        size = sizeof(dax_tag) - sizeof(handle_t);
+        /* Add the 8 bytes for type and count to one byte for NULL */
+        size += 9;
         /* TODO Need to do some more error checking here */
-        strcpy(tag.name,name);
-        tag.type=type;
-        tag.count=count;
+        *((u_int32_t *)&buff[0]) = mtos_udint(type);
+        *((u_int32_t *)&buff[4]) = mtos_udint(count);
+        
+        strcpy(&buff[8], name);
     } else {
         return ERR_TAG_BAD;
     }
-    result = _message_send( MSG_TAG_ADD, &(tag.name), size);
+    
+    result = _message_send( MSG_TAG_ADD, buff, size);
     if(result) { 
         return ERR_MSG_SEND;
     }
-    /*  We're putting a lot of faith in the sending function here.  That
-        might be okay in this instance */
-    result= _message_recv(MSG_TAG_ADD, &(tag.handle), &size, 1);
-    return tag.handle;
+    
+    result= _message_recv(MSG_TAG_ADD, buff, &size, 1);
+    return result;
 }
 
 
