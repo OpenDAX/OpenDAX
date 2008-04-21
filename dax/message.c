@@ -80,7 +80,7 @@ static int _message_send(int fd, int command, void *payload, size_t size, int re
     else                       ((u_int32_t *)buff)[1] = htonl(command);         
     /* TODO: Bounds check this */
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
-    
+    //--printf("S - Sending message back to mdoule %d: command = 0x%x: size = %d\n", fd, command, size);
     result = xwrite(fd, buff, size + MSG_HDR_SIZE);
     if(result < 0) {
         xerror("_message_send: %s", strerror(errno));
@@ -166,10 +166,10 @@ void msg_destroy(void) {
 /* These two functions are wrappers to deal with adding and deleting
    file descriptors to the global _fdset and dealing with _maxfd */
 void msg_add_fd(int fd) {
-    printf("Adding fd - %d : ",fd);
+    //--printf("Adding fd - %d : ",fd);
     FD_SET(fd, &_fdset);
     if(fd > _maxfd) _maxfd = fd;
-    printf("_maxfd = %d\n", _maxfd);
+    //--printf("_maxfd = %d\n", _maxfd);
 }
 
 void msg_del_fd(int fd) {
@@ -185,9 +185,6 @@ void msg_del_fd(int fd) {
             }
         }
         _maxfd = tmpfd;
-    }
-    if(fd == 0) {
-        printf("              WHY ARE WE CLOSING ZERO!!!!!\n");
     }
     close(fd); /* Just to make sure */
     buff_free(fd);
@@ -260,7 +257,7 @@ int msg_dispatcher(int fd, unsigned char *buff) {
     /* The next four bytes are the DAX command also sent in network
        byte order. */
     message.command = ntohl(*(u_int32_t *)&buff[4]);
-    printf("We've received message : command = %d, size = %d\n", message.command, message.size);
+    //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
     
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     message.fd = fd;    
@@ -282,8 +279,8 @@ int msg_mod_register(dax_message *msg) {
     if(msg->size > MSG_HDR_SIZE) {
         xlog(4, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
         pid = ntohl(*((u_int32_t *)&msg->data[0]));
-        printf("PID = %d : ", pid);
-        printf("Name = %s\n", &msg->data[MSG_HDR_SIZE]);
+        //--printf("PID = %d : ", pid);
+        //--printf("Name = %s\n", &msg->data[MSG_HDR_SIZE]);
         mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
         
         /* This puts the test data into the buffer for sending. */
@@ -322,7 +319,6 @@ int msg_tag_add(dax_message *msg) {
         _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), RESPONSE);
     } else {
         _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), ERROR);
-        //return -1; /* do I need this????? */
     }
     return 0;
 }
@@ -343,23 +339,27 @@ int msg_tag_del(dax_message *msg) {
 int msg_tag_get(dax_message *msg) {
     int result, index;
     _dax_tag *tag;
+    u_int32_t buff[3];
     
-    if(msg->size == sizeof(int)) { /* Is it a string or index */
+    if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
         index = *((int *)msg->data); /* cast void * -> int * then indirect */
         tag = tag_get_index(index); /* get the tag */
         if(tag == NULL) result = ERR_ARG;
         xlog(10, "Tag Get Message from %d for index %d",msg->fd,index);
-    } else {
-        ((char *)msg->data)[DAX_TAGNAME_SIZE] = 0x00; /* Just to avoid trouble */
-        tag = tag_get_name((char *)msg->data);
+    } else { /* A name was passed */
+        ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Just to avoid trouble */
+        tag = tag_get_name((char *)&msg->data[1]);
         if(tag == NULL) result = ERR_NOTFOUND;
         xlog(10, "Tag Get Message from %d for name %s", msg->fd, (char *)msg->data);
     }
     if(tag) {
-        _message_send(msg->fd, MSG_TAG_GET, tag, sizeof(dax_tag), RESPONSE);
-        xlog(10,"Returned tag to calling module %d",msg->fd);
+        buff[0] =(u_int32_t)tag->handle;
+        buff[1] = tag->type;
+        buff[2] = tag->count;
+        _message_send(msg->fd, MSG_TAG_GET, buff, sizeof(buff), RESPONSE);
+        xlog(10,"Returned tag to calling module %d", msg->fd);
     } else {
-        _message_send(msg->fd, MSG_TAG_GET, &result, 0, RESPONSE);
+        _message_send(msg->fd, MSG_TAG_GET, &result, sizeof(result), ERROR);
         xlog(10,"Bad tag query for MSG_TAG_GET");
     }
     return 0;
