@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
  * This header contains all of the type definitions that are common between the
- * opendax core and the library.  It's mostly messaging definitions.
+ * opendax server and the library.  It's mostly messaging definitions.
  */
 
 #ifndef __LIBCOMMON_H
@@ -99,6 +99,7 @@ typedef struct {
 
 /* This datatype can be copied into the data[] area of the main dax_message when
  the first part of the message is a tag hangle. */
+
 typedef struct {
     handle_t handle;
     char data[MSG_TAG_DATA_SIZE];
@@ -108,5 +109,6 @@ typedef struct {
     handle_t handle;
     size_t size;
 } dax_event_message;
+
 
 #endif /* ! __LIBCOMMON_H */

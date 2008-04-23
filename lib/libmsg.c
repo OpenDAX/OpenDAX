@@ -30,7 +30,9 @@
 static int _sfd;   /* Server's File Descriptor */
 static unsigned int _reformat; /* Flags to show how to reformat the incoming data */
 
-static int _message_send(int command, void *payload, size_t size) {
+static int
+_message_send(int command, void *payload, size_t size)
+{
     int result;
     char buff[DAX_MSGMAX];
     
@@ -56,17 +58,21 @@ static int _message_send(int command, void *payload, size_t size) {
    an asynchronous command handler.  This is due to a race condition that could
    happen if the server puts a message in the queue after we send a request but
    before we retrieve the result. */
-static int _message_recv(int command, void *payload, int *size, int response) {
+static int
+_message_recv(int command, void *payload, int *size, int response)
+{
     char buff[DAX_MSGMAX];
     int index, done, msg_size, result;
     done = index = msg_size = 0;
     
     while( index < msg_size || index < MSG_HDR_SIZE) {
         result = read(_sfd, &buff[index], DAX_MSGMAX);
+        /*****TESTING STUFF******/
         //printf("M-read returned %d\n", result);
         //for(done = 0; done < result; done ++) {
         //    printf("0x%02X[%c] " , (unsigned char)buff[done], (unsigned char)buff[done]);
         //} printf("\n");
+        
         if(result < 0) {
             dax_debug(LOG_COMM, "_message_recv read failed: %s", strerror(errno));
             return ERR_MSG_RECV;
@@ -93,7 +99,8 @@ static int _message_recv(int command, void *payload, int *size, int response) {
         return stom_dint((*(int32_t *)&buff[8]));
     } else if(result == (command | (response ? MSG_RESPONSE : 0))) {
         if(size) {
-            if(msg_size > *size) {
+            if((msg_size - MSG_HDR_SIZE) > *size) {
+                printf("Why do we think it's too big. msg_size = %d, *size = %d\n", msg_size, *size);
                 return ERR_2BIG;
             } else {
                 memcpy(payload, &buff[MSG_HDR_SIZE], msg_size - MSG_HDR_SIZE);
@@ -112,7 +119,9 @@ static int _message_recv(int command, void *payload, int *size, int response) {
    message should show whether we need to pack our data and the
    name that the server decided to give us.  The server can change
    our name if it's a duplicate. */
-int dax_mod_register(char *name) {
+int
+dax_mod_register(char *name)
+{
     int fd, len;
     char buff[DAX_MSGMAX];
     struct sockaddr_un addr;
@@ -181,7 +190,9 @@ int dax_mod_register(char *name) {
 }
 
 /* TODO: Write this function */
-int dax_mod_unregister(void) {
+int
+dax_mod_unregister(void)
+{
     int len;
     _message_send(MSG_MOD_REG, NULL, 0);
     len = 0;
@@ -191,7 +202,9 @@ int dax_mod_unregister(void) {
 
 /* Sends a message to dax to add a tag.  The payload is basically the
    tagname without the handle. */
-handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
+handle_t
+dax_tag_add(char *name, unsigned int type, unsigned int count)
+{
     //dax_tag tag;
     int size;
     int result;
@@ -218,36 +231,57 @@ handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
         return ERR_MSG_SEND;
     }
     
-    result= _message_recv(MSG_TAG_ADD, buff, &size, 1);
-    return result;
+    size = 4; /* we just need the handle */
+    result = _message_recv(MSG_TAG_ADD, buff, &size, 1);
+    if(result == 0) {
+        return *(int32_t *)buff;
+    } else {
+        return result;
+    }
 }
 
 
 /* Get the tag by name. */
-/* TODO: Resolve array and bit references in the tagname */
 int dax_get_tag(char *name, dax_tag *tag) {
-    int result;
-    int size;
+    int result, size;
+    char *buff;
     
+    if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
+    /* We make buff big enough for the outgoing message and the incoming
+       response message which would have 3 additional int32s */
+    buff = alloca(size + 14);
+    buff[0] = TAG_GET_NAME;
+    strcpy(&buff[1], name);
     /* TODO: Check the tag cache here */
-    /* TODO: Some of these may need to be debug messages so they won't print */
-    /* It seems like we should bounds check *name but _message-send will clip it! */
-    result = _message_send( MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
+    /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
+    result = _message_send( MSG_TAG_GET, buff, size + 2);
     if(result) {
         dax_error("Can't send MSG_TAG_GET message");
         return result;
     }
-    result = _message_recv(MSG_TAG_GET, (void *)tag, &size, 1);
+    size += 14; /* This makes room for the type, count and handle */
+    
+    result = _message_recv(MSG_TAG_GET, buff, &size, 1);
     if(result) {
-        dax_error("Problem receiving message MSG_TAG_GET");
+        dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
+        return ERR_MSG_RECV;
+    } else {
+        //--strcpy(tag->name, name);
+        tag->handle = stom_dint( *((int *)&buff[0]) );
+        tag->type = stom_udint(*((u_int32_t *)&buff[4]));
+        tag->count = stom_udint(*((u_int32_t *)&buff[8]));
+        buff[size - 1] = '\0'; /* Just to make sure */
+        strcpy(tag->name, &buff[12]);
+        return 0;
     }
-    return result;
 }
 
 /* This function takes the name argument and figures out the text part and puts
    that in 'tagname' then it sees if there is an index in [] or if there is
    a '.' for a bit index.  It puts those in the pointers that are passed */
-static inline int parsetag(char *name, char *tagname, int *index, int *bit) {
+static inline int
+parsetag(char *name, char *tagname, int *index, int *bit)
+{
     int n = 0;
     int i = 0;
     int tagend = 0;
@@ -267,6 +301,8 @@ static inline int parsetag(char *name, char *tagname, int *index, int *bit) {
             test[i] = '\0';
             *index = (int)strtol(test, NULL, 10);
             n++;
+        /* Handle bit offsets */
+        /* TODO: This will need a little tweaking for custom data types. */
         } else if(name[n] == '.') {
             if(*index < 0) {
                 tagend = n;
@@ -297,8 +333,6 @@ int dax_tag_byname(char *name, dax_tag *tag) {
     if(parsetag(name, tagname, &index, &bit)) {
         return ERR_TAG_BAD;
     }
-    /*********** TESTING ONLY **************/
-    //--dax_debug(1,"parsetag returned tagname=\'%s\' index=%d bit=%d", tagname, index, bit);
     
     result = dax_get_tag(tagname, &tag_test);
     if(result) {
@@ -338,24 +372,38 @@ int dax_tag_byname(char *name, dax_tag *tag) {
         tag->type = DAX_BOOL;
         tag->count = 1;
     }
-    tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
+    // handle will remain the same now
+    //--tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
     return 0;
 }
 
 /* Retrieves the tag by index.  */
+/* TODO: Do we really need this function.  It has some problems */
+#ifdef DELETE_THIS_IUYJVNIUBIEWUHYBC
 int dax_tag_byindex(int index, dax_tag *tag) {
-    int result;
-    int size;
-    result = _message_send( MSG_TAG_GET, &index, sizeof(int));
+    int result, size;
+    char buff[DAX_TAGNAME_SIZE + 13];
+    buff[0] = TAG_GET_INDEX;
+    *((int32_t *)&buff[1]) = index;
+    result = _message_send(MSG_TAG_GET, buff, sizeof(int32_t) + 1);
     if(result) {
         dax_error("Can't send MSG_TAG_GET message");
         return result;
     }
-    result = _message_recv(MSG_TAG_GET, (void *)tag, &size, 1);
+    /* Maximum size of buffer, the 13 is the NULL plus three integers */
+    size = DAX_TAGNAME_SIZE + 13
+    result = _message_recv(MSG_TAG_GET, buff, &size, 1);
     if(result == ERR_ARG) return ERR_ARG;
+    tag->handle = stom_dint(*((int32_t *)&buff[0]));
+    tag->type = stom_dint(*((int32_t *)&buff[4]));
+    tag->count = stom_dint(*((int32_t *)&buff[8]));
+    buff[DAX_TAGNAME_SIZE + 12] = '\0'; /* Just to be safe */
+    strcpy(tag->name, &buff[12]);
+    
     return 0;
 }
-
+#endif
+ 
 /* The following three functions are the core of the data handling
    system in Dax.  They are the raw reading and writing functions.
    Each takes a handle, a buffer pointer, and a size in bytes.  */

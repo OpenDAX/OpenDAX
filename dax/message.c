@@ -329,38 +329,41 @@ int msg_tag_del(dax_message *msg) {
     return 0;
 }
 
-/* This function retrieves a tag from the database.  If the size is
-   a single int then it returns the tag at that index if the size is
-   the DAX_TAGNAME_SIZE then it uses that as the name and returns that
-   tag. */
 
 /* TODO: Need to handle cases where the name isn't found and where the 
    index requested isn't within bounds */
-int msg_tag_get(dax_message *msg) {
-    int result, index;
-    _dax_tag *tag;
-    u_int32_t buff[3];
+int
+msg_tag_get(dax_message *msg)
+{
+    int result, index, size;
+    dax_tag tag;
+    char *buff;
     
     if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
         index = *((int *)msg->data); /* cast void * -> int * then indirect */
-        tag = tag_get_index(index); /* get the tag */
-        if(tag == NULL) result = ERR_ARG;
-        xlog(10, "Tag Get Message from %d for index %d",msg->fd,index);
+        result = tag_get_index(index, &tag); /* get the tag */
+        //if(tag == NULL) result = ERR_ARG;
+        xlog(LOG_MSG, "Tag Get Message from %d for index %d", msg->fd, index);
     } else { /* A name was passed */
         ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Just to avoid trouble */
-        tag = tag_get_name((char *)&msg->data[1]);
-        if(tag == NULL) result = ERR_NOTFOUND;
-        xlog(10, "Tag Get Message from %d for name %s", msg->fd, (char *)msg->data);
+        /* TODO: This is just a waste.  It should be redone */
+        result = tag_get_name((char *)&msg->data[1], &tag);
+        //if(tag == NULL) result = ERR_NOTFOUND;
+        xlog(LOG_MSG, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
     }
-    if(tag) {
-        buff[0] =(u_int32_t)tag->handle;
-        buff[1] = tag->type;
-        buff[2] = tag->count;
-        _message_send(msg->fd, MSG_TAG_GET, buff, sizeof(buff), RESPONSE);
-        xlog(10,"Returned tag to calling module %d", msg->fd);
+    size = strlen(tag.name) + 13;
+    buff = alloca(size);
+    if(buff == NULL) result = ERR_ALLOC;
+    if(!result) {
+        *((u_int32_t *)&buff[0]) = tag.handle;
+        *((u_int32_t *)&buff[4]) = tag.type;
+        *((u_int32_t *)&buff[8]) = tag.count;
+        strcpy(&buff[12], tag.name);
+        _message_send(msg->fd, MSG_TAG_GET, buff, size, RESPONSE);
+        xlog(LOG_MSG | LOG_OBSCURE, "Returning tag - '%s' to module %d",tag.name, msg->fd);
     } else {
         _message_send(msg->fd, MSG_TAG_GET, &result, sizeof(result), ERROR);
-        xlog(10,"Bad tag query for MSG_TAG_GET");
+        xlog(LOG_MSG, "Bad tag query for MSG_TAG_GET");
     }
     return 0;
 }
@@ -384,11 +387,11 @@ int msg_tag_read(dax_message *msg) {
     
 	xlog(10,"Tag Read Message from %d, handle 0x%X, size %d",msg->fd, handle, size);
     
-    if(tag_read_bytes(handle, data, size) == size) { /* Good read from tagbase */
+    //if(tag_read_bytes(handle, data, size) == size) { /* Good read from tagbase */
         _message_send(msg->fd, MSG_TAG_READ, &data, size, RESPONSE);
-    } else { /* Send Error */
+    //} else { /* Send Error */
         _message_send(msg->fd, MSG_TAG_READ, &data, 0, RESPONSE);
-    }
+    //}
     return 0;
 }
 
@@ -404,9 +407,9 @@ int msg_tag_write(dax_message *msg) {
 
 	xlog(10,"Tag Write Message from module %d, handle 0x%X, size %d", msg->fd, handle, size);
 
-    if(tag_write_bytes(handle,data,size) != size) {
-        xerror("Unable to write tag 0x%X with size %d",handle, size);
-    }
+    //if(tag_write_bytes(handle,data,size) != size) {
+    //    xerror("Unable to write tag 0x%X with size %d",handle, size);
+    //}
     return 0;
 }
 
@@ -424,9 +427,9 @@ int msg_tag_mask_write(dax_message *msg) {
 	
 	xlog(10,"Tag Mask Write Message from module %d, handle 0x%X, size %d", msg->fd, handle, size);
 	
-    if(tag_mask_write(handle, data, mask, size) != size) {
-        xerror("Unable to write tag 0x%X with size %d", handle, size);
-    }
+    //if(tag_mask_write(handle, data, mask, size) != size) {
+    //    xerror("Unable to write tag 0x%X with size %d", handle, size);
+    //}
     return 0;
 }
 
@@ -445,7 +448,7 @@ int msg_evnt_add(dax_message *msg) {
     
     module = module_find_fd(msg->fd);
     if( module != NULL ) {
-        event_id = event_add(event.handle, event.size, module);
+        //event_id = event_add(event.handle, event.size, module);
     }
         
     if(event_id < 0) { /* Send Error */

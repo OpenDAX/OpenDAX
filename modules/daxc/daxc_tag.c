@@ -41,6 +41,8 @@ static inline void show_tag(int n, dax_tag temp_tag) {
  we list from the first to the first + second if not then we list
  the next X tags and increment lastindex. */
 int tag_list(void) {
+
+#ifdef DELETE_ALL_THIS_OIROIEURBOIUERHOIUERHOIUFOIU
     dax_tag temp_tag;
     static int lastindex;
     char *arg[] = {NULL, NULL};
@@ -67,6 +69,7 @@ int tag_list(void) {
             /* List tags from start to start + count */
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
+                /* This needs to be done with a TAG_LIST function instead of this!!!!!
                 for(n = start; n < (start + count); n++) {
                     if(dax_tag_byindex(n, &temp_tag)) {
                         printf("No More Tags To List\n");
@@ -75,9 +78,11 @@ int tag_list(void) {
                         show_tag(n, temp_tag);
                     }
                 }
+                 */
             } else {
                 /* List the next 'start' amount of tags */
                 for(n = lastindex; n < (start + lastindex); n++) {
+                    /* This needs to be done with a TAG_LIST function instead of this!!!!!
                     if(dax_tag_byindex(n, &temp_tag)) {
                         printf("No More Tags To List\n");
                         lastindex = 0;
@@ -85,6 +90,7 @@ int tag_list(void) {
                     } else {
                         show_tag(n, temp_tag);
                     }
+                     */
                 }
                 lastindex += start;
             }
@@ -97,6 +103,7 @@ int tag_list(void) {
             n++;
         }
     }
+#endif
     return 0;
 }
 

@@ -15,8 +15,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
- * This header contains the private type definitions 
- * for the opendax server and library
+ * This header contains the private type definitions for the opendax server.
+ * For definitions common to the server and the library see libcommon.h
  */
 
 #ifndef __DAXTYPES_H

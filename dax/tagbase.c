@@ -43,141 +43,296 @@
  * This may create some fragmentation but it'll make the logic simpler.
  */
 
-_dax_tag *__taglist;
+static _dax_tag_db *__db;
+static _dax_tag_index *__index;
 static long int __tagcount = 0;
-static long int __taglistsize = 0;
+static long int __dbsize = 0;
 
-u_int32_t *__db; /* Primary Point Database */
-static long int __databasesize = 0;
+//u_int32_t *__db; /* Primary Point Database */
+//static long int __databasesize = 0;
 
 static int __next_event_id = 0;
 
-/* Non public function declarations */
-static int validate_name(char *);
-static int get_by_name(char *);
-static int checktype(unsigned int);
-static inline handle_t getnewhandle(unsigned int, unsigned int);
-static int taglist_grow(void);
-static int database_grow(void);
-static int event_check(handle_t handle, size_t size);
+/* Private function definitions */
+
+/* checks whether type is a valid datatype */
+static int
+_checktype(unsigned int type)
+{
+    if(type & DAX_BOOL)  return 1;
+    if(type & DAX_BYTE)  return 1;
+    if(type & DAX_SINT)  return 1;
+    if(type & DAX_WORD)  return 1;
+    if(type & DAX_INT)   return 1;
+    if(type & DAX_UINT)  return 1;
+    if(type & DAX_DWORD) return 1;
+    if(type & DAX_DINT)  return 1;
+    if(type & DAX_UDINT) return 1;
+    if(type & DAX_TIME)  return 1;
+    if(type & DAX_REAL)  return 1;
+    if(type & DAX_LWORD) return 1;
+    if(type & DAX_LINT)  return 1;
+    if(type & DAX_ULINT) return 1;
+    if(type & DAX_LREAL) return 1;
+    /* TODO: Should add custom datatype handling here */
+    return 0;
+}
+
+/* Determine whether or not the tag name is okay */
+static int
+_validate_name(char *name)
+{
+    int n;
+    if(strlen(name) > DAX_TAGNAME_SIZE) {
+        return -1;
+    }
+    /* First character has to be a letter or '_' */
+    if( !isalpha(name[0]) && name[0] != '_' ) {
+        return -1;
+    }
+    /* The rest of the name can be letters, numbers or '_' */
+    for(n = 1; n < strlen(name) ;n++) {
+        if( !isalpha(name[n]) && (name[n] != '_') &&  !isdigit(name[n]) ) {
+            return -1;
+        }
+    }
+    return 0; /* Return good for now */
+}
+
+/* This function searches the __index array to find the tag with
+   the given name.  It returns the index into the __index array */
+static int
+_get_by_name(char *name) 
+{
+    /* TODO: Better search algorithm */
+    int i;
+    for(i = 0; i < __tagcount; i++) {
+        if(!strcmp(name, __index[i].name))
+            return i;
+    }
+    return ERR_NOTFOUND;
+}
+
+/* Grow the database when necessary */
+static int
+_database_grow(void)
+{
+    _dax_tag_index *new_index;
+    _dax_tag_db *new_db;
+    
+    new_index = xrealloc(__index, (__dbsize + DAX_DATABASE_INC) * sizeof(_dax_tag_index));
+    new_db = xrealloc(__db, (__dbsize + DAX_DATABASE_INC) * sizeof(_dax_tag_db));
+    
+    if( new_index != NULL && new_db != NULL) {
+        __index = new_index;
+        __db = new_db;
+        __dbsize += DAX_DATABASE_INC;
+        return 0;
+    } else {
+        /* This is to shrink the one that didn't get allocated
+           so that they won't be lop sided */
+        if(new_index) __index = xrealloc(__index, __dbsize * sizeof(_dax_tag_index));
+        if(new_db) __db = xrealloc(__db, __dbsize * sizeof(_dax_tag_db));
+        
+        return ERR_ALLOC;
+    }
+}
+
 
 /* Allocates the symbol table and the database array.  There's no return
    value because failure of this function is fatal */
-void initialize_tagbase(void) {
-    __taglist = (_dax_tag *)xmalloc(sizeof(_dax_tag) * DAX_TAGLIST_SIZE);
-    if(!__taglist) {
-        xfatal("Unable to allocate the symbol table");
-    }
-    __taglistsize = DAX_TAGLIST_SIZE;
-    /* Allocate the primary database */
-    __db = (u_int32_t *)xmalloc(sizeof(u_int32_t) * DAX_DATABASE_SIZE);
+void
+initialize_tagbase(void)
+{
+    __db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!__db) {
         xfatal("Unable to allocate the database");
     }
-    __databasesize = DAX_DATABASE_SIZE;
+    __dbsize = DAX_TAGLIST_SIZE;
+    /* Allocate the primary database */
+    __index = (_dax_tag_index *)xmalloc(sizeof(_dax_tag_index) * DAX_TAGLIST_SIZE);
+    if(!__db) {
+        xfatal("Unable to allocate the database");
+    }
     
-    xlog(10, "Database created with size = %d", __databasesize);
+    xlog(LOG_MINOR, "Database created with size = %d", __dbsize);
     /* Set all the memory to zero */
-    memset(__taglist, 0x00, sizeof(_dax_tag) * DAX_TAGLIST_SIZE);
-    memset(__db, 0x00, sizeof(u_int32_t) * DAX_DATABASE_SIZE);
+    //--memset(__taglist, 0x00, sizeof(_dax_tag) * DAX_TAGLIST_SIZE);
+    //--memset(__db, 0x00, sizeof(u_int32_t) * DAX_DATABASE_SIZE);
     
     /* Create the _status tag at handle zero */
     if(tag_add("_status", DAX_DWORD, STATUS_SIZE)) {
         xfatal("_status not created properly");
     }
     /* Write the current size of the database to the _status tag */
-    tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
-    }
+    //tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
+}
 
-
-/* This adds a tag to the database. */
-handle_t tag_add(char *name, unsigned int type, unsigned int count) {
+static int
+_add_index(char *name, int index)
+{
     int n;
-    handle_t handle;
-    if(count == 0) return -6;
-
-    //--printf("tag_add() called with name = %s, type = %d, count = %d\n", name, type, count);
-    if(__tagcount >= __taglistsize) {
-        if(taglist_grow()) {
-            xerror("Out of memory for symbol table");
-            return -1;
-        } else {
-            xlog(LOG_MINOR,"Taglist increased to %d items", __taglistsize);
-        }
-    }
+    char *temp;
     
-    if(!checktype(type)) {
-        xerror("Unknown datatype %x", type);
-        return -2; /* is the datatype valid */
-    }
-    if(validate_name(name)) {
-        xerror("%s is not a valid tag name", name);
-        return -3;
-    }
-    
-    if( (n = get_by_name(name)) >= 0) {
-        /* If the tag is identical then just return the handle */
-        if(__taglist[n].type == type && __taglist[n].count == count) {
-            return __taglist[n].handle;
-        } else {
-            xerror("Duplicate tag name %s", name);
-        }    
-        return -4;
-    }
- /* Get the first available handle for the size of the type */
-    if(__tagcount == 0)   handle = 0;
-    else                  handle = getnewhandle(type, count);
- /* If handle is less than zero then we couldn't allocate room */   
-    if(handle < 0) {
-        /* We already sent an error from gethandle() */
-        /*xerror("Problem growing the database"); */
-        return -5;
-    }
- /* Okay we've passed all the tests so let's add the tag.
-    The taglist must be sorted by handle for all of this stuff to work */
-    if(__tagcount == 0 || (handle > __taglist[__tagcount - 1].handle) ) {
-        n = __tagcount; /* First or last in the list */
-    } else {
+    /* Let's allocate the memory for the string first in case it fails */
+    temp = strdup(name);
+    if(temp == NULL) return ERR_ALLOC;
+    /* TODO: Linear search for now.  This needs to be a binary search */
+    if(__tagcount == 0) {
+        n = 0;
+    } else { 
         for(n = 1; n < __tagcount; n++) {
-            if(handle > __taglist[n - 1].handle && handle < __taglist[n].handle) {
-                /* Make a hole in the array */
-                memmove(&__taglist[n + 1], &__taglist[n],
-                       (__taglistsize - n - 1) * sizeof(_dax_tag));
+            if(strcmp(__index[n].name, name) > 0) {
+                memmove(&__index[n + 1], &__index[n],(__dbsize - n - 1) * sizeof(_dax_tag_index));
                 break;
             }
         }
     }
- /* Assign everything to the new tag, copy the string and git */
-    __taglist[n].handle = handle;
-    __taglist[n].count = count;
-    __taglist[n].type = type;
-    if(!strncpy(__taglist[n].name, name, DAX_TAGNAME_SIZE)) {
-        xerror("Unable to copy tagname %s");
-        return -6;
-    }
-    __taglist[n].events = NULL;
-    __tagcount++;
-    tag_write_bytes(STAT_TAG_CNT, &__tagcount, sizeof(u_int32_t));
-    
-    xlog(10,"tag_add() - Tag %s added at handle 0x%X", name, handle);
-    return handle;
+    /* Assign pointer to database node in the index */
+    __index[n].handle = index;
+    /* The name pointer in the __index and the __db point to the same string */
+    __index[n].name = temp;
+    __db[index].name = temp;
+    return 0;
 }
 
+
+/* This adds a tag to the database. */
+handle_t
+tag_add(char *name, unsigned int type, unsigned int count)
+{
+    int n;
+    unsigned int size;
+    if(count == 0) return ERR_ARG;
+
+    //--printf("tag_add() called with name = %s, type = %d, count = %d\n", name, type, count);
+    if(__tagcount >= __dbsize) {
+        if(_database_grow()) {
+            xerror("Failure to increae database size");
+            return ERR_ALLOC;
+        } else {
+            xlog(LOG_MINOR, "Database increased to %d items", __dbsize);
+        }
+    }
+    
+    if(!_checktype(type)) {
+        xerror("Unknown datatype %x", type);
+        return ERR_ARG; /* is the datatype valid */
+    }
+    if(_validate_name(name)) {
+        xerror("%s is not a valid tag name", name);
+        return ERR_TAG_BAD;
+    }
+    
+    /* Check for an existing tagname in the database */
+    if( (n = _get_by_name(name)) >= 0) {
+        /* If the tag is identical then just return the handle */
+        if(__db[n].type == type && __db[n].count == count) {
+            return n;
+        } else {
+            xerror("Duplicate tag name %s", name);
+            return ERR_TAG_DUPL;
+        }    
+    } else {
+        n = __tagcount;
+    }
+ /* Assign everything to the new tag, copy the string and git */
+    //__taglist[n].handle = handle;
+    printf("Tag to be added at index %d\n", n);
+    __db[n].count = count;
+    __db[n].type = type;
+    
+    /* Figure the size in bytes */
+    if(type == DAX_BOOL) size = count / 8 + 1;
+    else                 size = (TYPESIZE(type) / 8) * count;
+    /* Allocate the data area */
+    if((__db[n].data = xmalloc(size)) == NULL)
+        return ERR_ALLOC;
+    else
+        bzero(__db[n].data, size);
+    
+    __db[n].events = NULL;
+    
+    if(_add_index(name, n)) {
+        /* free up our previous allocation if we can't put this in the __index */
+        free(__db[n].data);
+        return ERR_ALLOC;
+    }
+    /* Only if everything works will we increment the count */
+    __tagcount++;
+    /* TODO: replace this with a real time build of the status tag when it's requested */    
+    //tag_write_bytes(STAT_TAG_CNT, &__tagcount, sizeof(u_int32_t));
+    
+    xlog(LOG_MINOR, "tag_add() - Tag %s added at handle 0x%X", name, n);
+    return n;
+}
+
+
+/* TODO: Make this function do something.  We don't want to move the tags up
+   in the array so this function will have to leave a hole.  We'll have to mark
+   the hole somehow. */
+int
+tag_del(char *name)
+{
+    /* TODO: No deleting handle 0x0000 */
+    return 0; /* Return good for now */
+}
+
+
+/* Finds a tag based on it's name.  Basically just a wrapper for get_by_name().
+ Returns a pointer to the tag given by 'name' NULL if not found */
+int tag_get_name(char *name, dax_tag *tag) {
+    int i, handle;
+    
+    i = _get_by_name(name);
+    if( i < 0) {
+        return ERR_NOTFOUND;
+    } else {
+        handle = __index[i].handle;
+        tag->handle = handle;
+        tag->type = __db[handle].type;
+        tag->count = __db[handle].count;
+        //--tag->name = __db[index].name;
+        strcpy(tag->name, __db[handle].name);
+        return 0;
+    }
+}
+
+/* Finds a tag based on it's index in the array.  Returns a pointer to 
+ the tag give by index, NULL if index is out of range.  Incex should
+ not be assumed to remain constant throughout the programs lifetiem. */
+int tag_get_index(int index, dax_tag *tag) {
+    if(index < 0 || index >= __tagcount) {
+        return ERR_ARG;
+    } else {
+        tag->handle = index;
+        tag->type = __db[index].type;
+        tag->count = __db[index].count;
+        //--tag->name = __db[index].name;
+        strcpy(tag->name, __db[index].name);
+        return 0;
+        //--return &__db[index];
+    }
+}
+
+
+#ifdef DELETE_ALL_THIS_STUFF_ERIUEBVIUWEIUGASDJBFVIERW
+
 /* Find the next handle for a single bit or bit array.  It starts by
-   running through the __taglist[] and looking to see if it can find
-   any room between the existing data points.  It does this by figuring
-   the size of the new tag and if it's a bit it does a simple subtraction
-   if it's bigger than a byte then it rounds the number up to it's proper
-   place.  Having the larger datatypes aligned will help with reading and
-   writing of the data later.  If it can't find a gap then it'll put the
-   handle at the end of the database and then check to see if the database
-   is big enough.  If not it grows the database.
-
-   This function assumes that the taglist is sorted by handle lowest first
-
-   TODO: Will have to be rewritten for custom datatypes.  The size of a custom
-         datatype will not be as simple as the TYPESIZE() macro.
-*/
+ running through the __taglist[] and looking to see if it can find
+ any room between the existing data points.  It does this by figuring
+ the size of the new tag and if it's a bit it does a simple subtraction
+ if it's bigger than a byte then it rounds the number up to it's proper
+ place.  Having the larger datatypes aligned will help with reading and
+ writing of the data later.  If it can't find a gap then it'll put the
+ handle at the end of the database and then check to see if the database
+ is big enough.  If not it grows the database.
+ 
+ This function assumes that the taglist is sorted by handle lowest first
+ 
+ TODO: Will have to be rewritten for custom datatypes.  The size of a custom
+ datatype will not be as simple as the TYPESIZE() macro.
+ */
 static inline handle_t getnewhandle(unsigned int type, unsigned int count) {
     int n, size, mask;
     _dax_tag *this, *next;
@@ -188,11 +343,11 @@ static inline handle_t getnewhandle(unsigned int type, unsigned int count) {
         this = &__taglist[n]; next = &__taglist[n + 1]; /* just to make it easier */
         /* this is the handle of the bit following this bits allocation */
         nextbit = this->handle + (long)(this->count * TYPESIZE(this->type));
-
-     /* If it's not a single bit type then we need to even up nextbit
-        We do this by first calculating a mask to see if we are already
-        even and if we are then return.  If not then set the mask bits into
-        nextbit and then increment by one to get the even number */
+        
+        /* If it's not a single bit type then we need to even up nextbit
+         We do this by first calculating a mask to see if we are already
+         even and if we are then return.  If not then set the mask bits into
+         nextbit and then increment by one to get the even number */
         if((type & 0x0F) == DAX_1BIT) { /* bits can go anywhere */
             if((next->handle - nextbit) >= (long)(size * count)) {
                 return nextbit;
@@ -209,10 +364,10 @@ static inline handle_t getnewhandle(unsigned int type, unsigned int count) {
             }
         }
     }
- /* We are at the end of the loops so there are no gaps large enough for our
-    new point.  We need to make sure that there is enough room left the 
-    database, grow it if necessary, and assign the handle to the end */
-
+    /* We are at the end of the loops so there are no gaps large enough for our
+     new point.  We need to make sure that there is enough room left the 
+     database, grow it if necessary, and assign the handle to the end */
+    
     this = &__taglist[__tagcount - 1]; /* Get the last tag in the list */
     nextbit = this->handle + (this->count * TYPESIZE(this->type));
     
@@ -236,40 +391,6 @@ static inline handle_t getnewhandle(unsigned int type, unsigned int count) {
 }
 
 
-/* TODO: Make this function do something.  */
-int tag_del(char *name) {
-    /* TODO: No deleting handle 0x0000 */
-    return 0; /* Return good for now */
-}
-
-/* Determine whether or not the tag name is okay */
-static int validate_name(char *name) {
-    int n;
-    if(strlen(name) > DAX_TAGNAME_SIZE) {
-        return -1;
-    }
-    /* First character has to be a letter or '_' */
-    if( !isalpha(name[0]) && name[0] != '_' ) {
-        return -1;
-    }
-    /* The rest of the name can be letters, numbers or '_' */
-    for(n = 1; n < strlen(name) ;n++) {
-        if( !isalpha(name[n]) && (name[n] != '_') &&  !isdigit(name[n]) ) {
-            return -1;
-        }
-    }
-    return 0; /* Return good for now */
-}
-
-/* This function retrieves the index of the tag identified by name */
-static int get_by_name(char *name) {
-    int i;
-    for(i = 0; i < __tagcount; i++) {
-        if(!strcmp(name, __taglist[i].name))
-            return i;
-    }
-    return -1;
-}
 
 /* This function searches the taglist for the handle.  It uses a bisection
    search and returns the array index of the tag that contains the handle.
@@ -304,87 +425,10 @@ static int get_by_handle(handle_t handle) {
     }
 }
 
-/* This function finds the tag index of the tag that is defined by handle
-   If this handle is within the tag and not the starting handle of the tag
-   this function will return error. */
-/* TODO: Not sure that we need this function */
-#ifdef __FIND_HANDLE_DELETE
-static int find_handle(handle_t handle) {
-    int try,high,low,n;
-    low = n = 0;
-    high = __tagcount-1;
-    try = high / 2;
-    if(handle < 0 || handle > __taglist[__tagcount-1].handle) {
-        return -1; /* handle does not exist */
-    } else {
-        /* Bisection search */
-        while(__taglist[try].handle != handle && high != low) {
-            if(__taglist[try].handle < handle) {
-                low = try;
-            } else {
-                high = try;
-            }
-            xlog(10,"High = %d, Low = %d, Try = %d",high,low,try);
-            try = low + (high - low) / 2;
-            if(n++ > 10) return -1;
-        }
-    }
-    return try;
-}
-#endif /* __FIND_HANDLE_DELETE */
 
 
-/* checks whether type is a valid datatype */
-static int checktype(unsigned int type) {
-    if(type & DAX_BOOL)  return 1;
-    if(type & DAX_BYTE)  return 1;
-    if(type & DAX_SINT)  return 1;
-    if(type & DAX_WORD)  return 1;
-    if(type & DAX_INT)   return 1;
-    if(type & DAX_UINT)  return 1;
-    if(type & DAX_DWORD) return 1;
-    if(type & DAX_DINT)  return 1;
-    if(type & DAX_UDINT) return 1;
-    if(type & DAX_TIME)  return 1;
-    if(type & DAX_REAL)  return 1;
-    if(type & DAX_LWORD) return 1;
-    if(type & DAX_LINT)  return 1;
-    if(type & DAX_ULINT) return 1;
-    if(type & DAX_LREAL) return 1;
-    /* TODO: Should add custom datatype handling here */
-    return 0;
-}
 
-/* Grow the tagname database when necessary */
-static int taglist_grow(void) {
-    _dax_tag *new_list;
-    new_list = xrealloc(__taglist, (__taglistsize + DAX_TAGLIST_INC) * sizeof(_dax_tag));
-    if( new_list != NULL ) {
-        //BUG: There is a bug in this somewhere
-        //memset(&(__taglist[__taglistsize]), 0x00,  DAX_TAGLIST_INC * sizeof(dax_tag));
-        __taglist = new_list;
-        __taglistsize += DAX_TAGLIST_INC;
-        return 0;
-    } else {
-        return -1;
-    }
-}
 
-/* Grow the database when necessary */
-static int database_grow(void) {
-    u_int32_t *new_db;
-    new_db = xrealloc(__db, (__databasesize + DAX_DATABASE_INC) * sizeof(u_int32_t));
-    if( new_db != NULL) {
-        //memset(&__db[__databasesize], 0x00, DAX_DATABASE_INC * sizeof(u_int32_t));
-        __db = new_db;
-        __databasesize += DAX_DATABASE_INC;
-        /* Write the current size of the database to the _status tag */
-        tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
-        return 0;
-    } else {
-        return -1;
-    }
-}
 
 /* Get's a handle from a tagname */
 handle_t tag_get_handle(char *name) {
@@ -394,37 +438,7 @@ handle_t tag_get_handle(char *name) {
     else return x;
 }
 
-/* Retrieves the type of the point at the given handle */
-/*int tag_get_type(handle_t handle) {
-    int x;
-    x=find_handle(handle);
-    if(x<0) return x;
-    else return __taglist[x].type;
-}*/
 
-
-/* Finds a tag based on it's name.  Basically just a wrapper for get_by_name().
-   Returns a pointer to the tag given by 'name' NULL if not found */
-_dax_tag *tag_get_name(char *name) {
-    int x;
-    x = get_by_name(name);
-    if( x < 0) {
-        return NULL;
-    } else {
-        return &__taglist[x];
-    }
-}
-
-/* Finds a tag based on it's index in the array.  Returns a pointer to 
-   the tag give by index, NULL if index is out of range.  Incex should
-   not be assumed to remain constant throughout the programs lifetiem. */
-_dax_tag *tag_get_index(int index) {
-    if(index < 0 || index >= __tagcount) {
-        return NULL;
-    } else {
-        return &__taglist[index];
-    }
-}
 
 
 /* This function reads the data starting with handle.  Size is in
@@ -584,3 +598,17 @@ int event_del(int id) {
 static int event_check(handle_t handle, size_t size) {
     return 0;
 }
+
+
+#endif //--DELTETING STUFF
+
+#ifdef DAX_DIAG
+void 
+diag_list_tags(void)
+{
+    int n;
+    for(n=0; n<__tagcount; n++) {
+        printf("__db[%d] = %s[%d] type = %d\n",n, __db[n].name, __db[n].count, __db[n].type);
+    }
+}
+#endif DAX_DIAG

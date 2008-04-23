@@ -76,7 +76,7 @@ void add_random_tags(int tagcount) {
         if(result < 0) {
             dax_debug(10, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
         } else {
-            xlog(10, "%s added at handle 0x%8X", tagname, result);
+            dax_debug(10, "%s added at handle 0x%8X", tagname, result);
         }
     }
 }
@@ -85,6 +85,7 @@ void add_random_tags(int tagcount) {
    the tags are properly sorted in the array and that there is no
    overlap of tags */
 int check_tagbase(void) {
+#ifdef DELETE_ALL_THISLSDKJFLSJDFLKJSLDJFLSKJIEIEURIIIEIIEIIE
     dax_tag last_tag, this_tag;
     int n = 0;
     long int lastbit;
@@ -111,6 +112,8 @@ int check_tagbase(void) {
         n++;
     }
     return 0;
+#endif
+    return -1;
 }
 
 
@@ -153,13 +156,15 @@ int check_tag_addition(void) {
 }
 
 /* This test runs the tagname retrival process through it's paces */
-static handle_t getshouldpass(char *name, handle_t h, unsigned int type, unsigned int count) {
+/* TODO: add some kind of mechanism to make sure that we get the right index or bit offset */
+static int getshouldpass(char *name, handle_t h, unsigned int type, unsigned int count) {
     dax_tag test_tag;
     dax_debug(2,"Testing tagname \"%s\" to find.", name);
     if(dax_tag_byname(name, &test_tag)) {
         dax_debug(1,"Test Failed - \"%s\" Should have been found", name);
         return -1;
     } else if(test_tag.handle != h) {
+        //printf("..........server handle = 0x%X, passed handle = 0x%X\n", test_tag.handle, h);
         dax_debug(1,"Test Failed - Handle doesn't match for \"%s\"", name);
         return -1;
     } else if(test_tag.type != type) {
@@ -174,7 +179,7 @@ static handle_t getshouldpass(char *name, handle_t h, unsigned int type, unsigne
 }
 
 /* This test runs the tagname retrival process through it's paces */
-static handle_t getshouldfail(char *name) {
+static int getshouldfail(char *name) {
     dax_tag test_tag;
     dax_debug(2, "Testing tagname \"%s\" to not find.", name);
     if(! dax_tag_byname(name, &test_tag)) {
@@ -191,10 +196,28 @@ int check_tag_retrieve(void) {
     handle_t handle;
     int fail = 0;
     handle = dax_tag_add("TestTag", DAX_INT, 10);
+    
     if(handle < 0) {
         dax_debug(1, "OOPs TestTag should have been allowed to be added");
         return -1;
     }
+    if(getshouldpass("TestTag", handle, DAX_INT, 10)) fail = -1;
+    if(getshouldpass("TestTag[0]", handle, DAX_INT, 1)) fail = -1;
+    if(getshouldpass("TestTag.0", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag.1", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag.15", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag[0].0", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldpass("TestTag[1]", handle, DAX_INT, 1)) fail = -1;
+    if(getshouldpass("TestTag[9]", handle, DAX_INT, 1)) fail = -1;
+    if(getshouldfail("TestTag[10]")) fail = -1;
+    if(getshouldpass("TestTag.159", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldfail("TestTag.160")) fail = -1;
+    if(getshouldpass("TestTag[9].15", handle, DAX_BOOL, 1)) fail = -1;
+    if(getshouldfail("TestTag[9].16")) fail = -1;
+    if(getshouldfail("TestTag[8].16")) fail = -1;
+    if(getshouldfail("TestTag[5].16")) fail = -1;
+
+    /* This is the old one *
     if(getshouldpass("TestTag", handle, DAX_INT, 10)) fail = -1;
     if(getshouldpass("TestTag[0]", handle, DAX_INT, 1)) fail = -1;
     if(getshouldpass("TestTag.0", handle, DAX_BOOL, 1)) fail = -1;
@@ -210,6 +233,7 @@ int check_tag_retrieve(void) {
     if(getshouldfail("TestTag[9].16")) fail = -1;
     if(getshouldfail("TestTag[8].16")) fail = -1;
     if(getshouldfail("TestTag[5].16")) fail = -1;
+*/
     
     return fail;
 }

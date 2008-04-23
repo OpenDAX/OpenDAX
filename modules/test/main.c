@@ -45,40 +45,20 @@ int main(int argc,char *argv[]) {
     if(dax_mod_register("test"))
         dax_fatal("Unable to register with the server");
     
-     
     if(check_tag_addition()) {
         dax_log("Tagname addition test - FAILED");
         tests_failed++;
     } else {
         dax_log("Tagname addition test - PASSED");
     }
-    /*
-    //check_tag_addition();
-    dax_tag_add("1ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("2ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("3ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("4ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("5ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("6ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("7ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("8ShouldntWork", DAX_BOOL, 1);
-    dax_tag_add("9ShouldntWork", DAX_BOOL, 1);
-    */
-    add_random_tags(100);
-    sleep(1);
-    add_random_tags(100);
-    sleep(1);
-    add_random_tags(100);
     
-    
-    /*
     if(check_tag_retrieve()) {
         dax_log("Tagname retrieving test - FAILED");
         tests_failed++;
     } else {
         dax_log("Tagname retrieving test - PASSED");
     }
-    */
+    
     
     /* TEST TO DO
         Tag Read / Write Test
@@ -155,9 +135,9 @@ int main(int argc,char *argv[]) {
         dax_log("Tagbase verification test - PASSED");
     }
 #endif    
+    dax_debug(1, "OpenDAX Test Finished, %d tests failed", tests_failed);
     sleep(5);
     dax_mod_unregister();
-    dax_debug(1, "OpenDAX Test Finished, %d tests failed", tests_failed);
     
     return 0;
 }

@@ -71,32 +71,42 @@ typedef struct dax_event_t {
     struct dax_event_t *next;
 } _dax_event;
 
-/* This is the internal structure for the tag array.  The external
-   representation is dax_tag.  There is an assumption that _dax_tag
-   and dax_tag have the same top.  This is so that memcpy() functions
-   can be used to move tags in and out of the array without too 
-   much effort. */
+/* This is the internal structure for the tag array. */
 typedef struct {
-    handle_t handle;
-    char name[DAX_TAGNAME_SIZE + 1];
     unsigned int type;
     unsigned int count;
+    char *name;
     _dax_event *events;
-} _dax_tag;
+    void *data;
+} _dax_tag_db;
 
+typedef struct {
+    /* TODO: Name's size is no longer fixed, should it be?
+             It still is in the library.  Let's leave it for now?? */
+    char *name;
+    int handle;
+} _dax_tag_index;
 
 void initialize_tagbase(void);
 handle_t tag_add(char *name, unsigned int type, unsigned int count);
 int tag_del(char *name);
+int tag_get_name(char *, dax_tag *);
+int tag_get_index(int, dax_tag *);
+
+/*
 handle_t tag_get_handle(char *name);
-/* Do we really need this one?? 
-int tag_get_type(handle_t handle); */
-_dax_tag *tag_get_name(char *name);
-_dax_tag *tag_get_index(int index);
 int tag_read_bytes(handle_t handle, void *data, size_t size);
 int tag_write_bytes(handle_t handle, void *data, size_t size);
 int tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
 int event_add(handle_t handle, size_t size, dax_module *module);
 int event_del(int id);
+*/
+
+#define DAX_DIAG
+#ifdef DAX_DIAG
+/* Diagnostic functions: should not be compiled in production */
+void diag_list_tags(void);
+
+#endif /* DAX_DIAG */
 
 #endif /* !__TAGBASE_H */

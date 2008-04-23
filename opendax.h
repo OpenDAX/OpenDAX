@@ -56,12 +56,16 @@
 #define DAX_32BITS  0x0005
 #define DAX_64BITS  0x0006
 
-#define LOG_MAJOR   0x0001  /* Major Program Milestones */
-#define LOG_MINOR   0x0002  /* Minor Program Milestones */
-#define LOG_FUNC    0x0004  /* Function Entries */
-#define LOG_COMM    0x0008  /* Communcations Milestones */
-#define LOG_MSG     0x0010  /* Messages */
-#define LOG_CONFIG  0x0020  /* Configurations */
+/* These are the debug logging topics.  Each debug message is
+   assigned one or more of these topics and will only be logged
+   when the corresponding bit is set in the configuration */
+#define LOG_MAJOR   0x00000001  /* Major Program Milestones */
+#define LOG_MINOR   0x00000002  /* Minor Program Milestones */
+#define LOG_FUNC    0x00000004  /* Function Entries */
+#define LOG_COMM    0x00000008  /* Communcations Milestones */
+#define LOG_MSG     0x00000010  /* Messages */
+#define LOG_CONFIG  0x00000020  /* Configurations */
+#define LOG_OBSCURE 0x80000000  /* Obscure Flag: to be used with the rest of the flags */
 
 /* Macro to get the size of the datatype */
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
@@ -75,22 +79,27 @@
 #define ERR_MSG_SEND  -6  /* Unable to send message */
 #define ERR_MSG_RECV  -7  /* Unable to receive message */
 #define ERR_TAG_BAD   -8  /* Bad tagname */
-#define ERR_ALLOC     -9  /* Unable to allocate resource */
-#define ERR_MSG_BAD   -10 /* Bad Message Received */
+#define ERR_TAG_DUPL  -9  /* Duplicate tagname */
+#define ERR_ALLOC     -10 /* Unable to allocate resource */
+#define ERR_MSG_BAD   -11 /* Bad Message Received */
 
 /* Defines the maximum length of a tagname */
+/* TODO: Get rid of this. */
 #ifndef DAX_TAGNAME_SIZE
  #define DAX_TAGNAME_SIZE 32
 #endif
 
+/* TODO: Should I have some more typedefs for DAX_DINT, DAX_REAL etc. */
+typedef int16_t dax_int_t;
 typedef int handle_t;
 
-/* This is a generic representation of a tag for the library */
+/* This is a generic representation of a tag, it may or may
+   not actually represent how tags are stored. */
 typedef struct {
     handle_t handle;
-    char name[DAX_TAGNAME_SIZE + 1];
     unsigned int type;
     unsigned int count;
+    char name[DAX_TAGNAME_SIZE + 1];
 } dax_tag;
 
 void dax_set_verbosity(int); /* TODO: This should be deleted eventually */

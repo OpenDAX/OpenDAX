@@ -115,7 +115,10 @@ void child_signal(int sig) {
 
 /* this handles shutting down of the core */
 void quit_signal(int sig) {
-    xlog(0,"Quitting due to signal %d", sig);
+    xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
+    
+    //diag_list_tags();
+    
     /* TODO: Should stop all running modules */
     kill(0, SIGTERM); /* ...this'll do for now */
     /* TODO: Should verify that all the children are dead.  If not
