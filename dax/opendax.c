@@ -35,7 +35,9 @@ void child_signal(int);
 void quit_signal(int);
 void catch_signal(int);
 
-int main(int argc, const char *argv[]) {
+int
+main(int argc, const char *argv[])
+{
     struct sigaction sa;
     pthread_t message_thread;
 	int result;
@@ -72,7 +74,7 @@ int main(int argc, const char *argv[]) {
 	initialize_tagbase(); /* initiallize the tagname list and database */
     
 	/* Start the message handling thread */
-    if(pthread_create(&message_thread,NULL,(void *)&messagethread,NULL)) {
+    if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
         xfatal("Unable to create message thread");
     }
         
@@ -92,33 +94,41 @@ int main(int argc, const char *argv[]) {
 
 /* TODO: Does this really need to be a separate thread. */
 /* This is the main message handling thread.  It should never return. */
-static void messagethread(void) {
+static void
+messagethread(void)
+{
     while(1) {
         /* TODO: How far up should errors be passed */
         if(msg_receive()) sleep(1);
     }
 }
 
-/* This handles the shutting down of a module */
-void child_signal(int sig) {
+/* Clean up any child modules that have shut down */
+void
+child_signal(int sig)
+{
     int status;
     pid_t pid;
 
     do {
         pid = waitpid(-1, &status, WNOHANG);
         if(pid > 0) { 
-        //xlog(1,"Caught Child Dying %d",pid);
             module_dmq_add(pid,status);
         }
     } while(pid > 0);
 }
 
-/* this handles shutting down of the core */
-void quit_signal(int sig) {
+/* this handles shutting down of the server */
+/* TODO: There's the easy way out and then there is the hard way out.
+ * I need to figure out which is which and then act appropriately.
+ */
+void
+quit_signal(int sig)
+{
     xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
     
     //diag_list_tags();
-    
+    /* TODO: Need to kill the message_thread */
     /* TODO: Should stop all running modules */
     kill(0, SIGTERM); /* ...this'll do for now */
     /* TODO: Should verify that all the children are dead.  If not
@@ -127,7 +137,8 @@ void quit_signal(int sig) {
     exit(-1);
 }
 
-void catch_signal(int sig) {
-    xlog(0, "Received signal %d", sig);
-    
+void
+catch_signal(int sig)
+{
+    xlog(0, "Received signal %d", sig);    
 }

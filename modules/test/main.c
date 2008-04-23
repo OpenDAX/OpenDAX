@@ -59,7 +59,7 @@ int main(int argc,char *argv[]) {
         dax_log("Tagname retrieving test - PASSED");
     }
     
-    
+    //add_random_tags(100);
     /* TEST TO DO
         Tag Read / Write Test
     */

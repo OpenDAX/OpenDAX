@@ -96,9 +96,11 @@ typedef int handle_t;
 /* This is a generic representation of a tag, it may or may
    not actually represent how tags are stored. */
 typedef struct {
-    handle_t handle;
-    unsigned int type;
-    unsigned int count;
+    handle_t handle;    /* Unique tag handle */
+    unsigned int type;  /* Tags data type */
+    unsigned int count; /* The number of items in the tag array */
+    int index;          /* Index if we are looking at a particular item */
+    int bit;            /* Bit offset if we are using bitwise operations */
     char name[DAX_TAGNAME_SIZE + 1];
 } dax_tag;
 

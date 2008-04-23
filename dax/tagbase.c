@@ -292,7 +292,6 @@ int tag_get_name(char *name, dax_tag *tag) {
         tag->handle = handle;
         tag->type = __db[handle].type;
         tag->count = __db[handle].count;
-        //--tag->name = __db[index].name;
         strcpy(tag->name, __db[handle].name);
         return 0;
     }
@@ -308,10 +307,8 @@ int tag_get_index(int index, dax_tag *tag) {
         tag->handle = index;
         tag->type = __db[index].type;
         tag->count = __db[index].count;
-        //--tag->name = __db[index].name;
         strcpy(tag->name, __db[index].name);
         return 0;
-        //--return &__db[index];
     }
 }
 

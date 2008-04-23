@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * This file contains libdax functions that need to send messages to the queue
+ * This file contains libdax functions that need to send messages to the server
  */
  
 #include <libdax.h>
@@ -205,7 +205,6 @@ dax_mod_unregister(void)
 handle_t
 dax_tag_add(char *name, unsigned int type, unsigned int count)
 {
-    //dax_tag tag;
     int size;
     int result;
     char buff[DAX_TAGNAME_SIZE + 8 + 1];
@@ -356,8 +355,7 @@ int dax_tag_byname(char *name, dax_tag *tag) {
        size and handle of the tag */
     tag->name[0] = '\0'; /* We don't return the name */
     if(index < 0 && bit < 0) {
-        index = 0; /* Make these zeros so we can do math on them */
-        bit = 0;
+        index = 0;        bit = 0;
         tag->type = tag_test.type;
         tag->count = tag_test.count;
     } else if(index < 0 && bit >=0) {
@@ -372,6 +370,8 @@ int dax_tag_byname(char *name, dax_tag *tag) {
         tag->type = DAX_BOOL;
         tag->count = 1;
     }
+    tag->index = index;
+    tag->bit = bit;
     // handle will remain the same now
     //--tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
     return 0;

@@ -108,8 +108,9 @@ int tag_list(void) {
 }
 
 
-static inline void string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index) {
-    
+static inline void
+string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
+{    
     switch (type) {
         case DAX_BYTE:
         case DAX_SINT:
@@ -156,7 +157,9 @@ static inline void string_to_dax(char *val, unsigned int type, void *buff, void 
 }
 
 
-int tag_set(void) {
+int
+tag_set(void)
+{
     char *name;
     char *val;
     int n,x,index,result;
@@ -239,7 +242,9 @@ int tag_set(void) {
 
 /* This function figures out what type of data the tag is and translates
  *buff appropriately and pushes the value onto the lua stack */
-static inline void dax_to_string(unsigned int type, void *buff) {
+static inline void
+dax_to_string(unsigned int type, void *buff)
+{
     switch (type) {
             /* Each number has to be cast to the right datatype then dereferenced
              and then cast to double for pushing into the Lua stack */
@@ -279,7 +284,9 @@ static inline void dax_to_string(unsigned int type, void *buff) {
 }
 
 
-int tag_get(void) {
+int
+tag_get(void)
+{
     char *name;
     dax_tag tag;
     int size, n;
