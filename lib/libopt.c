@@ -24,6 +24,14 @@
 
 
 /* TODO: Make this file really do something */
-char *opt_get_socketname(void) {
+char *
+opt_get_socketname(void)
+{
    return "/tmp/opendax";
+}
+
+int
+opt_get_cache_limit(void)
+{
+    return TAG_CACHE_LIMIT;
 }

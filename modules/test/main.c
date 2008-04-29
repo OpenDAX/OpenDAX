@@ -44,7 +44,7 @@ int main(int argc,char *argv[]) {
     
     if(dax_mod_register("test"))
         dax_fatal("Unable to register with the server");
-    
+    /*
     if(check_tag_addition()) {
         dax_log("Tagname addition test - FAILED");
         tests_failed++;
@@ -58,6 +58,29 @@ int main(int argc,char *argv[]) {
     } else {
         dax_log("Tagname retrieving test - PASSED");
     }
+
+    if( check_tagbase() ) {
+        dax_log("Tagbase verification test - FAILED");
+        tests_failed++;
+    } else {
+        dax_log("Tagbase verification test - PASSED");
+    }
+     */
+    /* TODO: Change this to do something interesting. */
+    handle = dax_tag_add("WriteTest", DAX_INT, 10);
+    if( handle < 0 ) {
+        dax_log("AH CRAP!!!\n");
+    } else {
+        n = 0x1234;
+        dax_tag_write(handle, 2, &n, 2);
+        n = 0;
+        dax_tag_read(handle, 2, &n, 2);
+        printf("Okay we read back 0x%X\n", n);
+    }
+    
+    /* TODO: Check the corner conditions of the tag reading and writing.
+     * Offset, size vs. tag size etc. */
+    
     
     //add_random_tags(100);
     /* TEST TO DO
@@ -128,12 +151,6 @@ int main(int argc,char *argv[]) {
     */
      
     /* Verify the integrity of the tag database */
-    if( check_tagbase() ) {
-        dax_log("Tagbase verification test - FAILED");
-        tests_failed++;
-    } else {
-        dax_log("Tagbase verification test - PASSED");
-    }
 #endif    
     dax_debug(1, "OpenDAX Test Finished, %d tests failed", tests_failed);
     sleep(5);

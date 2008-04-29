@@ -58,8 +58,7 @@
 
 /* Subcommands for the MSG_TAG_GET command */
 #define TAG_GET_NAME   0x01 /* Retrieve the tag by name */
-#define TAG_GET_INDEX  0x02 /* Retrieve the tag by it's index */
-#define TAG_GET_HANDLE 0x04 /* Retrieve the tag by it's handle */
+#define TAG_GET_HANDLE 0x02 /* Retrieve the tag by it's handle */
 
 /* These are the values that the registration system uses to 
    determine whether or not the module will have to reformat

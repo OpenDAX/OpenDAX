@@ -78,6 +78,18 @@ _checktype(unsigned int type)
     return 0;
 }
 
+
+/* Determine the size of the tag in bytes.  It'll
+   be big trouble if the handle is out of bounds.
+   This will also return 0 when the tag has been deleted
+   which is designated by zero type and zero count */
+static inline size_t
+_get_tag_size(handle_t h)
+{
+    if(__db[h].type == DAX_BOOL) return __db[h].count / 8 + 1;
+    else                 return (TYPESIZE(__db[h].type) / 8) * __db[h].count;
+}
+
 /* Determine whether or not the tag name is okay */
 static int
 _validate_name(char *name)
@@ -108,7 +120,7 @@ _get_by_name(char *name)
     int i;
     for(i = 0; i < __tagcount; i++) {
         if(!strcmp(name, __index[i].name))
-            return i;
+            return __index[i].handle;
     }
     return ERR_NOTFOUND;
 }
@@ -238,7 +250,7 @@ tag_add(char *name, unsigned int type, unsigned int count)
     }
  /* Assign everything to the new tag, copy the string and git */
     //__taglist[n].handle = handle;
-    printf("Tag to be added at index %d\n", n);
+    //printf("Tag to be added at index %d\n", n);
     __db[n].count = count;
     __db[n].type = type;
     
@@ -263,7 +275,7 @@ tag_add(char *name, unsigned int type, unsigned int count)
     /* TODO: replace this with a real time build of the status tag when it's requested */    
     //tag_write_bytes(STAT_TAG_CNT, &__tagcount, sizeof(u_int32_t));
     
-    xlog(LOG_MINOR, "tag_add() - Tag %s added at handle 0x%X", name, n);
+    //xlog(LOG_MINOR, "tag_add() - Tag %s added at handle 0x%X", name, n);
     return n;
 }
 
@@ -282,17 +294,18 @@ tag_del(char *name)
 /* Finds a tag based on it's name.  Basically just a wrapper for get_by_name().
  Returns a pointer to the tag given by 'name' NULL if not found */
 int tag_get_name(char *name, dax_tag *tag) {
-    int i, handle;
+    int i; //, handle;
     
     i = _get_by_name(name);
     if( i < 0) {
         return ERR_NOTFOUND;
     } else {
-        handle = __index[i].handle;
-        tag->handle = handle;
-        tag->type = __db[handle].type;
-        tag->count = __db[handle].count;
-        strcpy(tag->name, __db[handle].name);
+        //handle = __index[i].handle;
+        //handle = i; //__index[i].handle;
+        tag->handle = i;
+        tag->type = __db[i].type;
+        tag->count = __db[i].count;
+        strcpy(tag->name, __db[i].name);
         return 0;
     }
 }
@@ -311,6 +324,66 @@ int tag_get_index(int index, dax_tag *tag) {
         return 0;
     }
 }
+
+/* These are the low level tag reading / writing interface to the
+ * database.
+ * This function reads the data from the tag given by handle at
+ * the byte offset.  It will write size bytes into data and will
+ * return 0 on success and some negative number on failure.
+ */
+int
+tag_read(handle_t handle, int offset, void *data, size_t size)
+{
+    
+    /* Bounds check handle */
+    if(handle < 0 || handle >= __tagcount) {
+        return ERR_ARG;
+    }
+    /* Bounds check size */
+    if( (offset + size) > _get_tag_size(handle)) {
+        return ERR_2BIG;
+    }
+    /* Copy the data into the right place. */
+    memcpy(data, &__db[handle].data[offset], size);
+    return 0;
+}
+
+/* This function writes data to the __db just like the above function reads it */
+int
+tag_write(handle_t handle, int offset, void *data, size_t size)
+{
+    /* Bounds check handle */
+    if(handle < 0 || handle >= __tagcount) {
+        return ERR_ARG;
+    }
+    /* Bounds check size */
+    if( (offset + size) > _get_tag_size(handle)) {
+        return ERR_2BIG;
+    }
+    /* Copy the data into the right place. */
+    memcpy(&__db[handle].data[offset], data, size);
+    return 0;
+}
+
+/* Writes the data to the tagbase but only if the corresponding mask bit is set */
+int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size) {
+    u_int8_t *db, *newdata, *newmask;
+    size_t n;
+    handle /= 8; /* ditch the bottom three bits */
+    //if((__databasesize * 4) - handle < size) {
+        return -1; /* Whoa don't overflow my buffer */
+    //}
+    
+    db = (u_int8_t *)__db; /* Cast __db to byte */
+    newdata = (u_int8_t *)data;
+    newmask = (u_int8_t *)mask;
+    
+    for(n = 0; n < size; n++) {
+        db[handle + n] = (newdata[n] & newmask[n]) | (db[handle + n] & ~newmask[n]);
+    }
+    return size;
+}
+
 
 
 #ifdef DELETE_ALL_THIS_STUFF_ERIUEBVIUWEIUGASDJBFVIERW
@@ -438,61 +511,6 @@ handle_t tag_get_handle(char *name) {
 
 
 
-/* This function reads the data starting with handle.  Size is in
- * bytes.  If *data doesn't have enough room we'll be in big trouble.
- * basically this thing shifts handle 3 bits right to make handle a byte
- * index into the __db.  Then we cast __db to a byte and add handle to that
- * to get a pointer to the data that we want.  Then a good 'ol memcpy does 
- * the trick.
- */
-int tag_read_bytes(handle_t handle, void *data, size_t size) {
-    u_int8_t *src;
-    handle /= 8;
-    /* Make sure we don't overflow the database */
-    if((__databasesize*4)-handle < size) {
-        return -1;  /* asking for too much data */
-    }
-    src = (u_int8_t *)__db; /* Cast __db to byte and set src */
-    src += handle; /* index dest */
-    if(memcpy(data, src, size)==NULL) {
-        return -2;
-    }
-    return size;
-}
-
-/* This function writes data to the __db just like the above function reads it */
-int tag_write_bytes(handle_t handle, void *data, size_t size) {
-    u_int8_t *dest;
-    handle /= 8; /* ditch the bottom three bits */
-    if((__databasesize * 4) - handle < size) {
-        return -1; /* Whoa don't overflow my buffer */
-    }
-    dest = (u_int8_t *)__db; /* Cast __db to byte */
-    dest += handle;
-    if(memcpy(dest, data, size)==NULL) {
-        return -2;
-    }
-    return size;
-}
-
-/* Writes the data to the tagbase but only if the corresponding mask bit is set */
-int tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
-    u_int8_t *db, *newdata, *newmask;
-    size_t n;
-    handle /= 8; /* ditch the bottom three bits */
-    if((__databasesize * 4) - handle < size) {
-        return -1; /* Whoa don't overflow my buffer */
-    }
-    
-    db = (u_int8_t *)__db; /* Cast __db to byte */
-    newdata = (u_int8_t *)data;
-    newmask = (u_int8_t *)mask;
-    
-    for(n = 0; n < size; n++) {
-        db[handle + n] = (newdata[n] & newmask[n]) | (db[handle + n] & ~newmask[n]);
-    }
-    return size;
-}
 
 /* Event handling code. Events are simply a notification mechanism when
    a tag (or a portion) of a tag changes.  The events are linked lists 

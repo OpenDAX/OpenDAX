@@ -241,7 +241,9 @@ dax_tag_add(char *name, unsigned int type, unsigned int count)
 
 
 /* Get the tag by name. */
-int dax_get_tag(char *name, dax_tag *tag) {
+static int
+_dax_get_tag(char *name, dax_tag *tag)
+{
     int result, size;
     char *buff;
     
@@ -251,7 +253,7 @@ int dax_get_tag(char *name, dax_tag *tag) {
     buff = alloca(size + 14);
     buff[0] = TAG_GET_NAME;
     strcpy(&buff[1], name);
-    /* TODO: Check the tag cache here */
+    /* TODO: Check the tag cache here - If we are keeping the name in the cache */
     /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
     result = _message_send( MSG_TAG_GET, buff, size + 2);
     if(result) {
@@ -265,7 +267,6 @@ int dax_get_tag(char *name, dax_tag *tag) {
         dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
         return ERR_MSG_RECV;
     } else {
-        //--strcpy(tag->name, name);
         tag->handle = stom_dint( *((int *)&buff[0]) );
         tag->type = stom_udint(*((u_int32_t *)&buff[4]));
         tag->count = stom_udint(*((u_int32_t *)&buff[8]));
@@ -301,6 +302,7 @@ parsetag(char *name, char *tagname, int *index, int *bit)
             *index = (int)strtol(test, NULL, 10);
             n++;
         /* Handle bit offsets */
+        /* TODO: Might not allow bit level addressing at all. */
         /* TODO: This will need a little tweaking for custom data types. */
         } else if(name[n] == '.') {
             if(*index < 0) {
@@ -324,7 +326,9 @@ parsetag(char *name, char *tagname, int *index, int *bit)
 
 /* These tag name getting routines will have to be rewritten when we get
 the custom data types going.  Returns zero on success. */
-int dax_tag_byname(char *name, dax_tag *tag) {
+int
+dax_tag_byname(char *name, dax_tag *tag)
+{
     dax_tag tag_test;
     char tagname[DAX_TAGNAME_SIZE + 1];
     int index, bit, result, size;
@@ -333,7 +337,7 @@ int dax_tag_byname(char *name, dax_tag *tag) {
         return ERR_TAG_BAD;
     }
     
-    result = dax_get_tag(tagname, &tag_test);
+    result = _dax_get_tag(tagname, &tag_test);
     if(result) {
         return result;
     }
@@ -377,23 +381,27 @@ int dax_tag_byname(char *name, dax_tag *tag) {
     return 0;
 }
 
-/* Retrieves the tag by index.  */
-/* TODO: Do we really need this function.  It has some problems */
-#ifdef DELETE_THIS_IUYJVNIUBIEWUHYBC
-int dax_tag_byindex(int index, dax_tag *tag) {
+/* Retrieves the tag by handle.  */
+int
+dax_tag_byhandle(handle_t handle, dax_tag *tag)
+{
     int result, size;
     char buff[DAX_TAGNAME_SIZE + 13];
-    buff[0] = TAG_GET_INDEX;
-    *((int32_t *)&buff[1]) = index;
-    result = _message_send(MSG_TAG_GET, buff, sizeof(int32_t) + 1);
+    
+    buff[0] = TAG_GET_HANDLE;
+    *((handle_t *)&buff[1]) = handle;
+    result = _message_send(MSG_TAG_GET, buff, sizeof(handle_t) + 1);
     if(result) {
         dax_error("Can't send MSG_TAG_GET message");
         return result;
     }
     /* Maximum size of buffer, the 13 is the NULL plus three integers */
-    size = DAX_TAGNAME_SIZE + 13
+    size = DAX_TAGNAME_SIZE + 13;
     result = _message_recv(MSG_TAG_GET, buff, &size, 1);
-    if(result == ERR_ARG) return ERR_ARG;
+    if(result) {
+        dax_error("Unable to retrieve tag for handle %d\n", handle);
+        return result;
+    }
     tag->handle = stom_dint(*((int32_t *)&buff[0]));
     tag->type = stom_dint(*((int32_t *)&buff[4]));
     tag->count = stom_dint(*((int32_t *)&buff[8]));
@@ -402,64 +410,77 @@ int dax_tag_byindex(int index, dax_tag *tag) {
     
     return 0;
 }
-#endif
  
 /* The following three functions are the core of the data handling
    system in Dax.  They are the raw reading and writing functions.
    Each takes a handle, a buffer pointer, and a size in bytes.  */
 
 /* TODO: This function should return some kind of error */
-int dax_tag_read(handle_t handle, void *data, size_t size) {
-    int n, count, m_size, sendsize, tmp;
+int dax_tag_read(handle_t handle, int offset, void *data, size_t size) {
+    int n, count, m_size, sendsize;
     int result = 0;
-    struct Payload { /* TODO: This is a bad idea - compilers can format these different */
-        handle_t handle;
-        size_t size;
-    } payload;
+    int buff[3];
+    
     /* This calculates the amount of data that we can send with a single message
         It subtracts a handle_t from the data size for use as the tag handle.*/
     m_size = MSG_DATA_SIZE;
-    count=((size-1) / m_size) +1;
-    for(n=0; n < count; n++) {
+    count = ((size - 1) / m_size) + 1;
+    for(n = 0; n < count; n++) {
         if(n == (count - 1)) { /* Last Packet */
             sendsize = size % m_size; /* What's left over */
         } else {
             sendsize = m_size;
         }
-        payload.handle = handle + (m_size * 8 * n);
-        payload.size = sendsize;
-        result = _message_send(MSG_TAG_READ, (void *)&payload, sizeof(struct Payload));
-        result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp, 1);
+        buff[0] = handle;
+        buff[1] = offset + n * m_size;
+        buff[2] = sendsize;
+        
+        result = _message_send(MSG_TAG_READ, (void *)buff, sizeof(buff));
+        if(result) {
+            return result;
+        }
+        result = _message_recv(MSG_TAG_READ, &((char *)data)[m_size * n], &sendsize, 1);
+        if(result) {
+            return result;
+        }
     }
-    return result;
+    return 0;
 }
 
 /* This is a type neutral way to just write bytes to the data table */
-/* TODO: Do we return error on this one or not??? Maybe with some flags?? */
-void dax_tag_write(handle_t handle, void *data, size_t size) {
-    size_t n,count,m_size,sendsize;
-    dax_tag_message msg;
+int
+dax_tag_write(handle_t handle, int offset, void *data, size_t size)
+{
+    size_t n, count, m_size, sendsize;
+    int result;
+    char buff[MSG_DATA_SIZE];
     
     /* This calculates the amount of data that we can send with a single message
-       It subtracts a handle_t from the data size for use as the tag handle.*/
-    m_size = MSG_DATA_SIZE-sizeof(handle_t);
-    count=((size-1)/m_size)+1;
-    for(n=0;n<count;n++) {
-        if(n == (count-1)) { /* Last Packet */
+       It subtracts a handle_t from the data size for use as the tag handle and
+       an int, because we'll send the handle and the offset.*/
+    m_size = MSG_DATA_SIZE - sizeof(handle_t) - sizeof(int);
+    /* count is the number of messages that we will have to send to transport this data. */
+    count = ( (size - 1) / m_size ) + 1;
+    for(n = 0; n < count; n++) {
+        if(n == (count - 1)) { /* Last Packet */
             sendsize = size % m_size; /* What's left over */
         } else {
             sendsize = m_size;
         }
         /* Write the data to the message structure */
-        msg.handle = handle + (m_size * 8 * n);
-        memcpy(msg.data,data+(m_size * n),sendsize);
+        *((handle_t *)&buff[0]) = handle;
+        *((int *)&buff[4]) = offset + n * m_size;
+        memcpy(&buff[8], data + (m_size * n), sendsize);
         
-        _message_send(MSG_TAG_WRITE,(void *)&msg,sendsize+sizeof(handle_t));
+        result = _message_send(MSG_TAG_WRITE, buff, sendsize + sizeof(handle_t) + sizeof(int));
+        if(result) return result;
+        result = _message_recv(MSG_TAG_WRITE, buff, 0, 1);
+        if(result) return result;
     }
+    return 0;
 }
 
-/* TODO: is there an error condition that we need to deal with here?? */
-void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
+int dax_tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size) {
     size_t n,count,m_size,sendsize;
     dax_tag_message msg;
     
@@ -480,6 +501,7 @@ void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
         memcpy(msg.data + sendsize, mask+(m_size * n), sendsize);
         _message_send(MSG_TAG_MWRITE,(void *)&msg,(sendsize * 2)+sizeof(handle_t));
     }
+    return 0;
 }
 
 /* Adds an event for the given tag.  The count is how many of those

@@ -259,6 +259,7 @@ int msg_dispatcher(int fd, unsigned char *buff) {
     message.command = ntohl(*(u_int32_t *)&buff[4]);
     //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
     
+    /* TODO: The module will lock up if we do this */
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     message.fd = fd;    
     memcpy(message.data, &buff[8], message.size - MSG_HDR_SIZE);
@@ -308,12 +309,14 @@ int msg_tag_add(dax_message *msg) {
     u_int32_t type;
     u_int32_t count;
     
-    xlog(LOG_MSG, "Tag Add Message from %d", msg->fd);
     
     type = *((u_int32_t *)&msg->data[0]);
     count = *((u_int32_t *)&msg->data[4]);
     
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message from module %d, name '%s', type 0x%X, count %d", msg->fd, &msg->data[8], type, count);
+    
     handle = tag_add(&msg->data[8], type, count);
+    
     
     if(handle >= 0) {
         _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), RESPONSE);
@@ -339,11 +342,11 @@ msg_tag_get(dax_message *msg)
     dax_tag tag;
     char *buff;
     
-    if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
-        index = *((int *)msg->data); /* cast void * -> int * then indirect */
+    if(msg->data[0] == TAG_GET_HANDLE) { /* Is it a string or index */
+        index = *((handle_t *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
         result = tag_get_index(index, &tag); /* get the tag */
         //if(tag == NULL) result = ERR_ARG;
-        xlog(LOG_MSG, "Tag Get Message from %d for index %d", msg->fd, index);
+        xlog(LOG_MSG, "Tag Get Message from %d for handle %d", msg->fd, index);
     } else { /* A name was passed */
         ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Just to avoid trouble */
         /* TODO: This is just a waste.  It should be redone */
@@ -376,40 +379,58 @@ int msg_tag_list(dax_message *msg) {
 /* The first part of the payload of the message is the handle
    of the tag that we want to read and the next part is the size
    of the buffer that we want to read */
-int msg_tag_read(dax_message *msg) {
+int
+msg_tag_read(dax_message *msg)
+{
     char data[MSG_DATA_SIZE];
     handle_t handle;
+    int result, offset, n;
     size_t size;
     
-	/* These crazy cast move data things are nuts.  They work but their nuts. */
-    size = *(size_t *)((dax_tag_message *)msg->data)->data;
-    handle = ((dax_tag_message *)msg->data)->handle;
+    handle = *((handle_t *)&msg->data[0]);
+    offset = *((int *)&msg->data[4]);
+    size = *((size_t *)&msg->data[8]);
     
-	xlog(10,"Tag Read Message from %d, handle 0x%X, size %d",msg->fd, handle, size);
-    
-    //if(tag_read_bytes(handle, data, size) == size) { /* Good read from tagbase */
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Read Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
+    if( size > msg->size) {
+        result = ERR_2BIG;
+        _message_send(msg->fd, MSG_TAG_READ, &result, sizeof(result), ERROR);
+        return ERR_2BIG;
+    }
+  
+    result = tag_read(handle, offset, &data, size);
+    if(result) {
+        _message_send(msg->fd, MSG_TAG_READ, &result, sizeof(result), ERROR);
+    } else {
         _message_send(msg->fd, MSG_TAG_READ, &data, size, RESPONSE);
-    //} else { /* Send Error */
-        _message_send(msg->fd, MSG_TAG_READ, &data, 0, RESPONSE);
-    //}
+    }
     return 0;
 }
 
 /* Generic write message */
-int msg_tag_write(dax_message *msg) {
+int
+msg_tag_write(dax_message *msg)
+{
     handle_t handle;
+    int result, offset;
     void *data;
     size_t size;
     
-    size = msg->size - sizeof(handle_t);
-    handle = ((dax_tag_message *)msg->data)->handle;
-    data = ((dax_tag_message *)msg->data)->data;
+	
+    size = msg->size - sizeof(handle_t) - sizeof(int);
+    handle = *((handle_t *)&msg->data[0]);
+    offset = *((int *)&msg->data[4]);
+    data = &msg->data[8];
 
-	xlog(10,"Tag Write Message from module %d, handle 0x%X, size %d", msg->fd, handle, size);
+    xlog(10, "Tag Write Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
 
-    //if(tag_write_bytes(handle,data,size) != size) {
-    //    xerror("Unable to write tag 0x%X with size %d",handle, size);
-    //}
+    result = tag_write(handle, offset, data, size);
+    if(result) {
+        _message_send(msg->fd, MSG_TAG_WRITE, &result, sizeof(result), ERROR);
+        xerror("Unable to write tag 0x%X with size %d",handle, size);
+    } else {
+        _message_send(msg->fd, MSG_TAG_WRITE, NULL, 0, RESPONSE);
+    }    
     return 0;
 }
 

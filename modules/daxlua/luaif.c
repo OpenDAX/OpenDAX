@@ -149,7 +149,7 @@ static int _dax_get(lua_State *L) {
         if(buff == NULL) {
             luaL_error(L, "Unable to allocate buffer size = %d", size);
         }
-        dax_tag_read(tag.handle, buff, size);
+        dax_tag_read(tag.handle, 0, buff, size);
         //--DEBUG: printf("tag.count = %d, tag.type = %s\n", tag.count, dax_type_to_string(tag.type));
         
         /* Push the data up to the lua interpreter stack */
@@ -289,13 +289,13 @@ static int _dax_set(lua_State *L) {
             }
         }
         /* Write the data to DAX */
-        dax_tag_mask_write(tag.handle, buff, mask, size);
+        dax_tag_mask_write(tag.handle, 0, buff, mask, size);
     } else { /* Retrieved tag is a single point */
         if(tag.type == DAX_BOOL) {
             dax_tag_write_bit(tag.handle, lua_toboolean(L, -1));
         } else {
             lua_to_dax(L, tag.type, buff, mask, 0);
-            dax_tag_write(tag.handle, buff, size);
+            dax_tag_write(tag.handle, 0, buff, size);
         }
     }
     return 0; /* return number of retvals */

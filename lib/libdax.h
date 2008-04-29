@@ -26,6 +26,10 @@
 #include <common.h>
 #include <opendax.h>
 
+#ifndef TAG_CACHE_LIMIT
+#  define TAG_CACHE_LIMIT 32
+#endif
+
 /* Data Conversion Functions */
 #define REF_INT_SWAP 0x0001
 #define REF_FLT_SWAP 0x0002

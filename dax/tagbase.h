@@ -77,7 +77,7 @@ typedef struct {
     unsigned int count;
     char *name;
     _dax_event *events;
-    void *data;
+    char *data;
 } _dax_tag_db;
 
 typedef struct {
@@ -93,11 +93,12 @@ int tag_del(char *name);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
 
+int tag_read(handle_t handle, int offset, void *data, size_t size);
+int tag_write(handle_t handle, int offset, void *data, size_t size);
+int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size);
+
 /*
 handle_t tag_get_handle(char *name);
-int tag_read_bytes(handle_t handle, void *data, size_t size);
-int tag_write_bytes(handle_t handle, void *data, size_t size);
-int tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
 int event_add(handle_t handle, size_t size, dax_module *module);
 int event_del(int id);
 */

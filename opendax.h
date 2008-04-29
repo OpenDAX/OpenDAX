@@ -136,11 +136,11 @@ int dax_mod_unregister(void);   /* Unregister the Module with the server */
 handle_t dax_tag_add(char *name, unsigned int type, unsigned int count);
 
 /* Low level tag retrieval function.  Will not decode subscripts. */
-int dax_get_tag(char *name, dax_tag *tag);
+//int dax_get_tag(char *name, dax_tag *tag);
 /* Get tag by name, will decode members and subscripts */
 int dax_tag_byname(char *name, dax_tag *tag);
 /* Get tag by index */
-int dax_tag_byindex(int index, dax_tag *tag);
+int dax_tag_byhandle(handle_t index, dax_tag *tag);
 
 /* The following functions are for reading and writing data.  These 
    are generic functions and are used by other functions within the
@@ -151,11 +151,11 @@ int dax_tag_byindex(int index, dax_tag *tag);
 
 /* These functions are where all the data transfer takes place. */
 /* simple untyped tag reading function */
-int dax_tag_read(handle_t handle, void *data, size_t size);
+int dax_tag_read(handle_t handle, int offset, void *data, size_t size);
 /* simple untyped tag writing function */
-void dax_tag_write(handle_t handle, void *data, size_t size);
+int dax_tag_write(handle_t handle, int offset, void *data, size_t size);
 /* simple untyped masked tag write */
-void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size);
+int dax_tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size);
     
 /* reads a single bit */
 char dax_tag_read_bit(handle_t handle);

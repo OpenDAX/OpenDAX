@@ -84,36 +84,36 @@ void add_random_tags(int tagcount) {
 /* This checks the integrity of the tag database.  It makes sure that
    the tags are properly sorted in the array and that there is no
    overlap of tags */
-int check_tagbase(void) {
-#ifdef DELETE_ALL_THISLSDKJFLSJDFLKJSLDJFLSKJIEIEURIIIEIIEIIE
-    dax_tag last_tag, this_tag;
+/* TODO: This function seems be less useful since we changed the tagbase format */
+int
+check_tagbase(void)
+{
     int n = 0;
+    dax_tag last_tag, this_tag;
     long int lastbit;
-    
-    if( dax_tag_byindex(n++, &last_tag) ) {
+ 
+    if( dax_tag_byhandle(n++, &last_tag) ) {
         dax_debug(10, "CheckTagBase() - Unable to get first tag");
         return -1;
     }
     
-    while( !dax_tag_byindex(n, &this_tag) ) {
+    while( !dax_tag_byhandle(n, &this_tag) ) {
         /* Check the sort order */
         if(this_tag.handle <= last_tag.handle) {
-            dax_debug(10,"CheckTagBase() - Tag array not properly sorted at index %d",n);
+            dax_debug(10, "CheckTagBase() - Tag array not properly sorted at index %d", n);
             return -2;
         }
+        printf("Tag being checked = %s\n", last_tag.name);
         /* check for overlap - Don't use TYPESIZE() macro.  We're testing it too */
         lastbit = last_tag.handle + ( 0x0001 << (last_tag.type & 0x0F)) * last_tag.count;
-        if( lastbit > this_tag.handle) {
-            dax_debug(10,"CheckTagBase() - Overlap in tag array at index %d",n);
-            return -3;
-        }
-        /* TODO: calculate fragmentation, datasize etc. */
+        //if( lastbit > this_tag.handle) {
+        //    dax_debug(10, "CheckTagBase() - Overlap in tag array at index %d", n);
+        //    return -3;
+        //}
         memcpy(&last_tag, &this_tag, sizeof(dax_tag)); /* copy old to new */
         n++;
     }
     return 0;
-#endif
-    return -1;
 }
 
 

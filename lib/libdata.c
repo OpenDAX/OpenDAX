@@ -25,19 +25,106 @@
 #endif
 #include <dax/libcommon.h>
 
-/* Use this tag type when we don't care about the name */
+/*** Tag Cache Handling Code ***
+ The tag cache is a linked list of parts of the tags.
+ Right now the tag name is not included.  The last
+ tag searched for will bubble up one item in the list
+ each time it's found.  This will make the top of the list
+ the most searched for tags and the bottom the lesser used tags.
+ */
+
+/* This is the structure for our tag cache */
 typedef struct {
     handle_t handle;
     unsigned int type;
     unsigned int count;
-} io_tag;
+    struct tag_cnode *next;
+} tag_cnode;
+
+static tag_cnode *_cache_head; /* First node in the cache list */
+static tag_cnode *_cache_end;  /* Always points to the last node */
+static int _cache_limit;       /* Total number of nodes that we'll allocate */
+static int _cache_count;       /* How many nodes we actually have */
+
+int
+init_tag_cache(void)
+{
+    _cache_head = NULL;
+    _cache_end = NULL;
+    _cache_limit = opt_get_cache_limit();
+    _cache_count = 0;
+}
+
+int
+check_tag_cache(handle_t handle, dax_tag *tag)
+{
+    tag_cnode *prev, *this;
+    tag_cnode temp;
+    
+    if(_cache_head != NULL) {
+        this = _cache_head;
+    } else {
+        return ERR_NOTFOUND;
+    }
+    while( this != NULL && this->handle != handle) {
+        prev = this;
+        this = this->next;
+    }
+    if(this == NULL) return ERR_NOTFOUND;
+    /* Store the return values in tag */
+    tag->handle = handle;
+    tag->type = this->type;
+    tag->count = this->count;
+    
+    /* Bubble up */
+    /* Right now the data is small so we just swap it.*/
+    /* TODO: Fix this and do it right */
+    if(this != _cache_head) {
+        temp = *this;
+        *this = *prev;
+        *prev = temp;
+    }
+}
+
+int
+cache_tag_add(dax_tag tag)
+{
+    tag_cnode *new;
+    
+    if(_cache_end == NULL) { /* First one */
+        new = malloc(sizeof(tag_cnode));
+        if(new) {
+            _cache_head = new;
+            _cache_end = new;
+            _cache_count++;
+        } else {
+            return ERR_ALLOC;
+        }
+    } else if(_cache_count < _cache_limit) { /* Add to end */
+        new = malloc(sizeof(tag_cnode));
+        if(new) {
+            _cache_end->next = new;
+            _cache_end = new;
+            _cache_count++;
+        } else {
+            return ERR_ALLOC;
+        }
+    } else {
+        new = _cache_end;
+    }
+    new->handle = tag.handle;
+    new->type = tag.type;
+    new->count = tag.count;
+    return 0;
+}
+
 
 /* returns zero if the bit is clear, 1 if it's set */
 /* TODO: Shouldn't we return an error somehow? */
 char dax_tag_read_bit(handle_t handle) {
     u_int8_t data;
     /* read the one byte that contains the handle the bit we want */
-    dax_tag_read(handle & ~0x07, &data, 1);
+    dax_tag_read(handle & ~0x07, 0, &data, 1);
     if(data & (1 << (handle % 8))) {
         return 1;
     }
@@ -53,7 +140,7 @@ int dax_tag_write_bit(handle_t handle, u_int8_t data) {
         input = 0x00;
     }
     mask = 1 << (handle % 8);
-    dax_tag_mask_write(handle & ~0x07, &input, &mask, 1);
+    dax_tag_mask_write(handle & ~0x07, 0, &input, &mask, 1);
     return 0;
 }
 
@@ -70,7 +157,7 @@ int dax_tag_read_bits(handle_t handle, void *data, size_t size) {
     
  /* If handle and size are even bytes then this is just a byte read */
     if( handle % 8 == 0 && size % 8 == 0) {
-        return dax_tag_read(handle, data, buff_len);
+        return dax_tag_read(handle, 0, data, buff_len);
     }
 
     buff_len = (((handle + size - 1) & ~0x07) - (handle & ~0x07)) / 8 + 1;
@@ -78,7 +165,7 @@ int dax_tag_read_bits(handle_t handle, void *data, size_t size) {
     if(buffer == NULL) {
         return -1;
     }
-    if(dax_tag_read(handle, buffer, buff_len)) {
+    if(dax_tag_read(handle, 0, buffer, buff_len)) {
         return -1;
     }
     buffer_bit = handle % 8;
@@ -153,14 +240,14 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
             buffer_idx++;
             if(buffer_idx == DAX_BIT_MSG_SIZE) {
                 /* Out of room in the buffer, send the message */
-                dax_tag_mask_write(next_handle, buffer, mask, buffer_idx);
+                dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx);
                 next_handle += DAX_BIT_MSG_SIZE;
                 buffer_idx = 0;
                 for(n=0; n < DAX_BIT_MSG_SIZE; n++) mask[n]=0x00;
             }
         }
     }
-    dax_tag_mask_write(next_handle, buffer, mask, buffer_idx + 1);
+    dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx + 1);
     /* TODO: Need to do some real error checking here and return a good number */
     return size;
 }
@@ -202,7 +289,7 @@ int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size
             buffer_idx++;
             if(buffer_idx == DAX_BIT_MSG_SIZE) {
                 /* Out of room in the buffer, send the message */
-                dax_tag_mask_write(next_handle, buffer, mask, buffer_idx);
+                dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx);
                 next_handle += DAX_BIT_MSG_SIZE;
                 buffer_idx = 0;
                 bzero(mask, DAX_BIT_MSG_SIZE);
@@ -210,7 +297,7 @@ int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size
             }
         }
     }
-    dax_tag_mask_write(next_handle, buffer, mask, buffer_idx + 1);
+    dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx + 1);
     /* TODO: Need to do some real error checking here and return a good number */
     return size;
 }
