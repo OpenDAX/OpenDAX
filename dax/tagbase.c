@@ -249,8 +249,6 @@ tag_add(char *name, unsigned int type, unsigned int count)
         n = __tagcount;
     }
  /* Assign everything to the new tag, copy the string and git */
-    //__taglist[n].handle = handle;
-    //printf("Tag to be added at index %d\n", n);
     __db[n].count = count;
     __db[n].type = type;
     
@@ -367,21 +365,26 @@ tag_write(handle_t handle, int offset, void *data, size_t size)
 
 /* Writes the data to the tagbase but only if the corresponding mask bit is set */
 int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size) {
-    u_int8_t *db, *newdata, *newmask;
-    size_t n;
-    handle /= 8; /* ditch the bottom three bits */
-    //if((__databasesize * 4) - handle < size) {
-        return -1; /* Whoa don't overflow my buffer */
-    //}
-    
-    db = (u_int8_t *)__db; /* Cast __db to byte */
-    newdata = (u_int8_t *)data;
-    newmask = (u_int8_t *)mask;
+    char *db, *newdata, *newmask;
+    int n;
+
+    /* Bounds check handle */
+    if(handle < 0 || handle >= __tagcount) {
+        return ERR_ARG;
+    }
+    /* Bounds check size */
+    if( (offset + size) > _get_tag_size(handle)) {
+        return ERR_2BIG;
+    }
+    /* Just to make it easier */
+    db = &__db[handle].data[offset]; 
+    newdata = (char *)data;
+    newmask = (char *)mask;
     
     for(n = 0; n < size; n++) {
-        db[handle + n] = (newdata[n] & newmask[n]) | (db[handle + n] & ~newmask[n]);
+        db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
     }
-    return size;
+    return 0;
 }
 
 
@@ -494,10 +497,6 @@ static int get_by_handle(handle_t handle) {
         return -1;
     }
 }
-
-
-
-
 
 
 /* Get's a handle from a tagname */

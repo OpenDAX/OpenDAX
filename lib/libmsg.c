@@ -40,7 +40,7 @@ _message_send(int command, void *payload, size_t size)
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
     ((u_int32_t *)buff)[1] = htonl(command);
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
-    
+    //--printf("M - Message send, size = %d\n", ntohl(((u_int32_t *)buff)[0]));
     /* TODO: We need to set some kind of timeout here.  This could block
        forever if something goes wrong.  It may be a signal or something too. */
     result = write(_sfd, buff, size + MSG_HDR_SIZE);
@@ -412,11 +412,17 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
 }
  
 /* The following three functions are the core of the data handling
-   system in Dax.  They are the raw reading and writing functions.
-   Each takes a handle, a buffer pointer, and a size in bytes.  */
-
-/* TODO: This function should return some kind of error */
-int dax_tag_read(handle_t handle, int offset, void *data, size_t size) {
+ * system in Dax.  They are the raw reading and writing functions.
+ * handle is the handle of the tag as returned by the dax_tag_add()
+ * function, offset is the byte offset into the data area of the tag
+ * data is a pointer to a data area where the data will be written
+ * and size is the number of bytes to read. If data isn't allocated
+ * then bad things will happen.  The data will come out of here exactly
+ * like it appears in the server.  It is up to the module to convert
+ * the data to the modules number format. */
+int
+dax_tag_read(handle_t handle, int offset, void *data, size_t size)
+{
     int n, count, m_size, sendsize;
     int result = 0;
     int buff[3];
@@ -431,9 +437,9 @@ int dax_tag_read(handle_t handle, int offset, void *data, size_t size) {
         } else {
             sendsize = m_size;
         }
-        buff[0] = handle;
-        buff[1] = offset + n * m_size;
-        buff[2] = sendsize;
+        buff[0] = mtos_dint(handle);
+        buff[1] = mtos_dint(offset + n * m_size);
+        buff[2] = mtos_dint(sendsize);
         
         result = _message_send(MSG_TAG_READ, (void *)buff, sizeof(buff));
         if(result) {
@@ -447,7 +453,11 @@ int dax_tag_read(handle_t handle, int offset, void *data, size_t size) {
     return 0;
 }
 
-/* This is a type neutral way to just write bytes to the data table */
+/* This is a type neutral way to just write bytes to the data table.
+ * It is assumed that the data is already in the servers number format.
+ * size is the total number of bytes to send, the offset is the byte
+ * offset into the data area of the tag.
+ */
 int
 dax_tag_write(handle_t handle, int offset, void *data, size_t size)
 {
@@ -467,9 +477,9 @@ dax_tag_write(handle_t handle, int offset, void *data, size_t size)
         } else {
             sendsize = m_size;
         }
-        /* Write the data to the message structure */
-        *((handle_t *)&buff[0]) = handle;
-        *((int *)&buff[4]) = offset + n * m_size;
+        /* Write the data to the message buffer */
+        *((handle_t *)&buff[0]) = mtos_dint(handle);
+        *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
         memcpy(&buff[8], data + (m_size * n), sendsize);
         
         result = _message_send(MSG_TAG_WRITE, buff, sendsize + sizeof(handle_t) + sizeof(int));
@@ -480,26 +490,35 @@ dax_tag_write(handle_t handle, int offset, void *data, size_t size)
     return 0;
 }
 
-int dax_tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size) {
-    size_t n,count,m_size,sendsize;
-    dax_tag_message msg;
+/* Same as the dax_tag_write() function except that only bits that are in *mask
+ * will be changed. */
+int
+dax_tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size)
+{
+    size_t n, count, m_size, sendsize;
+    char buff[MSG_DATA_SIZE];
+    int result;
     
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle.*/
-    /* TODO: Verify that all this works if m_size is odd */
-	m_size = (MSG_DATA_SIZE-sizeof(handle_t)) / 2;
-    count=((size-1)/m_size)+1;
-    for(n=0;n<count;n++) {
-        if(n == (count-1)) { /* Last Packet */
+	m_size = (MSG_DATA_SIZE - sizeof(handle_t) - sizeof(int)) / 2;
+    count=((size - 1) / m_size) + 1;
+    for(n = 0; n < count; n++) {
+        if(n == (count - 1)) { /* Last Packet */
 		    sendsize = (size % m_size); /* What's left over */
         } else {
             sendsize = m_size;
         }
-		/* Write the data to the message structure */
-        msg.handle = handle + (m_size * 8 * n);
-        memcpy(msg.data, data+(m_size * n), sendsize);
-        memcpy(msg.data + sendsize, mask+(m_size * n), sendsize);
-        _message_send(MSG_TAG_MWRITE,(void *)&msg,(sendsize * 2)+sizeof(handle_t));
+        /* Write the data to the message buffer */
+        *((handle_t *)&buff[0]) = mtos_dint(handle);
+        *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
+        memcpy(&buff[8], data + (m_size * n), sendsize);
+        memcpy(&buff[8 + sendsize], mask + (m_size * n), sendsize);
+        
+        result = _message_send(MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(handle_t) + sizeof(int));
+        if(result) return result;
+        result = _message_recv(MSG_TAG_MWRITE, buff, 0, 1);
+        if(result) return result;
     }
     return 0;
 }

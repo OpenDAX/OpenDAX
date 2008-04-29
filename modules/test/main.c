@@ -71,11 +71,20 @@ int main(int argc,char *argv[]) {
     if( handle < 0 ) {
         dax_log("AH CRAP!!!\n");
     } else {
-        n = 0x1234;
-        dax_tag_write(handle, 2, &n, 2);
-        n = 0;
-        dax_tag_read(handle, 2, &n, 2);
-        printf("Okay we read back 0x%X\n", n);
+        dummy[0] = 0x1234;
+        dax_tag_write(handle, 2, dummy, 2);
+        dummy[0] = 0;
+        dax_tag_read(handle, 2, dummy, 2);
+        printf("Okay we read back 0x%X\n", dummy[0]);
+        
+        dummy[0] = 0xAA5A;
+        test[0] = 0xF0F0;
+        dax_tag_mask_write(handle, 2, dummy, test, 2);
+        dummy[0] = 0;
+        dax_tag_read(handle, 2, dummy, 2);
+        printf("Okay we read back 0x%X\n", dummy[0]);
+        
+        
     }
     
     /* TODO: Check the corner conditions of the tag reading and writing.

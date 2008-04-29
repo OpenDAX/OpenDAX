@@ -68,10 +68,10 @@ int msg_evnt_get(dax_message *msg);
 /* Generic message sending function.  If size is zero then it is assumed that an error
    is being sent to the module.  In that case payload should point to a single int that
    indicates the error */
-static int _message_send(int fd, int command, void *payload, size_t size, int response) {
+static int
+_message_send(int fd, int command, void *payload, size_t size, int response)
+{
     int result;
-    static u_int32_t count = 0;
-    size_t newsize;
     char buff[DAX_MSGMAX];
     
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
@@ -80,7 +80,6 @@ static int _message_send(int fd, int command, void *payload, size_t size, int re
     else                       ((u_int32_t *)buff)[1] = htonl(command);         
     /* TODO: Bounds check this */
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
-    //--printf("S - Sending message back to mdoule %d: command = 0x%x: size = %d\n", fd, command, size);
     result = xwrite(fd, buff, size + MSG_HDR_SIZE);
     if(result < 0) {
         xerror("_message_send: %s", strerror(errno));
@@ -91,7 +90,9 @@ static int _message_send(int fd, int command, void *payload, size_t size, int re
 
 /* Sets up the local UNIX domain socket for listening.
    _localfd is the listening socket. */
-int msg_setup_local_socket(void) {
+int
+msg_setup_local_socket(void)
+{
     struct sockaddr_un addr;
     
     _localfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -119,7 +120,9 @@ int msg_setup_local_socket(void) {
 /* Sets up the remote TCP socket for listening.
    _remotefd is the listening socket. */
 /* TODO: write this function */
-int msg_setup_remote_socket(void) {
+int
+msg_setup_remote_socket(void)
+{
     return 0;
 }
 
@@ -127,7 +130,9 @@ int msg_setup_remote_socket(void) {
    It's a fatal error if we cannot create the local socket.  The
    remote socket creation is allowed to fail without exiting.  This
    also sets up the array of command function pointers */
-int msg_setup(void) {
+int
+msg_setup(void)
+{
     _maxfd = 0;
     FD_ZERO(&_fdset);
     
@@ -156,23 +161,25 @@ int msg_setup(void) {
 }
 
 /* This destroys the queue if it was created */
-void msg_destroy(void) {
-    
+void
+msg_destroy(void)
+{
     unlink(opt_socketname());
     xlog(LOG_MAJOR, "Resources being destroyed");
-    
 }
 
 /* These two functions are wrappers to deal with adding and deleting
    file descriptors to the global _fdset and dealing with _maxfd */
-void msg_add_fd(int fd) {
-    //--printf("Adding fd - %d : ",fd);
+void
+msg_add_fd(int fd)
+{
     FD_SET(fd, &_fdset);
     if(fd > _maxfd) _maxfd = fd;
-    //--printf("_maxfd = %d\n", _maxfd);
 }
 
-void msg_del_fd(int fd) {
+void
+msg_del_fd(int fd)
+{
     int n, tmpfd;
     
     FD_CLR(fd, &_fdset);
@@ -192,7 +199,9 @@ void msg_del_fd(int fd) {
 
 /* This function blocks waiting for a message to be received.  Once a message
    is retrieved from the system the proper handling function is called */
-int msg_receive(void) {
+int
+msg_receive(void)
+{
     fd_set tmpset;
     struct timeval tm;
     struct sockaddr_un addr;
@@ -211,7 +220,6 @@ int msg_receive(void) {
         xerror("msg_receive select error: %s", strerror(errno));
         return ERR_MSG_RECV;
     } else if(result == 0) {
-        //xerror("msg_receive timeout");
         buff_freeall(); /* this erases all of the _buffer nodes */
         return 0;
     } else {
@@ -223,8 +231,7 @@ int msg_receive(void) {
                     fd = accept(_localfd, (struct sockaddr *)&addr, &len);
                     if(fd < 0) {
                         /* TODO: Need to handle these errors */
-                        //xerror("Error Accepting socket: %s", strerror(errno));
-                        xfatal("Error Accepting socket: %s", strerror(errno));
+                        xerror("Error Accepting socket: %s", strerror(errno));
                     } else {
                         msg_add_fd(fd);
                     }
@@ -248,12 +255,14 @@ int msg_receive(void) {
    and then calls the proper message handling function.  This message will
    unmarshal the header but it is up to the individual wrapper function to
    unmarshal the data portion of the message if need be. */
-int msg_dispatcher(int fd, unsigned char *buff) {
+int
+msg_dispatcher(int fd, unsigned char *buff)
+{
     dax_message message;
     
     /* The first four bytes are the size and the size is always
        sent in network order */
-    message.size = ntohl(*(u_int32_t *)buff);
+    message.size = ntohl(*(u_int32_t *)buff) - MSG_HDR_SIZE;
     /* The next four bytes are the DAX command also sent in network
        byte order. */
     message.command = ntohl(*(u_int32_t *)&buff[4]);
@@ -262,7 +271,7 @@ int msg_dispatcher(int fd, unsigned char *buff) {
     /* TODO: The module will lock up if we do this */
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     message.fd = fd;    
-    memcpy(message.data, &buff[8], message.size - MSG_HDR_SIZE);
+    memcpy(message.data, &buff[8], message.size);
     buff_free(fd);
     /* Now call the function to deal with it */
     return (*cmd_arr[message.command])(&message);
@@ -272,16 +281,17 @@ int msg_dispatcher(int fd, unsigned char *buff) {
 /* Each of these functions are matched to a message command.  These are called
    from and array of function pointers so there should be one for each command
    defined. */
-int msg_mod_register(dax_message *msg) {
+int
+msg_mod_register(dax_message *msg)
+{
     pid_t pid; /* Now how do I figure this out??? */
     char buff[DAX_MSGMAX];
     dax_module *mod;
     
-    if(msg->size > MSG_HDR_SIZE) {
+    if(msg->size > 0) {
         xlog(4, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
         pid = ntohl(*((u_int32_t *)&msg->data[0]));
-        //--printf("PID = %d : ", pid);
-        //--printf("Name = %s\n", &msg->data[MSG_HDR_SIZE]);
+        
         mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
         
         /* This puts the test data into the buffer for sending. */
@@ -291,7 +301,7 @@ int msg_mod_register(dax_message *msg) {
         *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
         *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
         strncpy(&buff[26], mod->name, DAX_MSGMAX - 26 - 1);
-        //--printf("Sending %d bytes\n", 26 + strlen(mod->name) +1);
+
         _message_send(msg->fd, MSG_MOD_REG, buff, 26 + strlen(mod->name) + 1, 1);
         
     } else {
@@ -302,21 +312,19 @@ int msg_mod_register(dax_message *msg) {
     return 0;
 }
 
-int msg_tag_add(dax_message *msg) {
-    //dax_tag tag; /* We use a structure within the data[] area of the message */
+int
+msg_tag_add(dax_message *msg)
+{
     handle_t handle;
-    char name[DAX_TAGNAME_SIZE + 1];
     u_int32_t type;
     u_int32_t count;
-    
-    
+        
     type = *((u_int32_t *)&msg->data[0]);
     count = *((u_int32_t *)&msg->data[4]);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message from module %d, name '%s', type 0x%X, count %d", msg->fd, &msg->data[8], type, count);
-    
     handle = tag_add(&msg->data[8], type, count);
     
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d, handle 0x%X", &msg->data[8], msg->fd, type, count, handle);
     
     if(handle >= 0) {
         _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), RESPONSE);
@@ -327,8 +335,10 @@ int msg_tag_add(dax_message *msg) {
 }
 
 /* TODO: Make this function do something */
-int msg_tag_del(dax_message *msg) {
-    xlog(10,"Tag Delete Message from %d",msg->fd);
+int
+msg_tag_del(dax_message *msg)
+{
+    xlog(LOG_MINOR | LOG_OBSCURE, "Tag Delete Message from %d", msg->fd);
     return 0;
 }
 
@@ -371,7 +381,9 @@ msg_tag_get(dax_message *msg)
     return 0;
 }
 
-int msg_tag_list(dax_message *msg) {
+int
+msg_tag_list(dax_message *msg)
+{
     xlog(10,"Tag List Message from %d", msg->fd);
     return 0;
 }
@@ -384,7 +396,7 @@ msg_tag_read(dax_message *msg)
 {
     char data[MSG_DATA_SIZE];
     handle_t handle;
-    int result, offset, n;
+    int result, offset;
     size_t size;
     
     handle = *((handle_t *)&msg->data[0]);
@@ -415,14 +427,13 @@ msg_tag_write(dax_message *msg)
     int result, offset;
     void *data;
     size_t size;
-    
-	
+    	
     size = msg->size - sizeof(handle_t) - sizeof(int);
     handle = *((handle_t *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
 
-    xlog(10, "Tag Write Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Write Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
 
     result = tag_write(handle, offset, data, size);
     if(result) {
@@ -435,31 +446,44 @@ msg_tag_write(dax_message *msg)
 }
 
 /* Generic write with bit mask */
-int msg_tag_mask_write(dax_message *msg) {
+int
+msg_tag_mask_write(dax_message *msg)
+{
     handle_t handle;
-    void *data;
-	void *mask;
+    int result, offset;
+    void *data, *mask;
     size_t size;
     
-    size = (msg->size - sizeof(handle_t)) / 2;
-    handle = ((dax_tag_message *)msg->data)->handle;
-    data = ((dax_tag_message *)msg->data)->data;
-	mask = (char *)data + size;
-	
-	xlog(10,"Tag Mask Write Message from module %d, handle 0x%X, size %d", msg->fd, handle, size);
-	
-    //if(tag_mask_write(handle, data, mask, size) != size) {
-    //    xerror("Unable to write tag 0x%X with size %d", handle, size);
-    //}
+    size = (msg->size - sizeof(handle_t) - sizeof(int)) / 2;
+    handle = *((handle_t *)&msg->data[0]);
+    offset = *((int *)&msg->data[4]);
+    data = &msg->data[8];
+    mask = &msg->data[8 + size];
+    
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Masked Write Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
+    
+    result = tag_mask_write(handle, offset, data, mask, size);
+    if(result) {
+        _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);
+        xerror("Unable to write tag 0x%X with size %d: result %d",handle, size, result);
+    } else {
+        _message_send(msg->fd, MSG_TAG_MWRITE, NULL, 0, RESPONSE);
+    }    
     return 0;
 }
 
-int msg_mod_get(dax_message *msg) {
+
+int
+msg_mod_get(dax_message *msg)
+{
     xlog(10,"Get Module Handle Message from %d", msg->fd);
     return 0;
 }
 
-int msg_evnt_add(dax_message *msg) {
+
+int
+msg_evnt_add(dax_message *msg)
+{
     dax_event_message event;
     dax_module *module;
     int event_id = -1;
@@ -480,10 +504,14 @@ int msg_evnt_add(dax_message *msg) {
     return 0;
 }
 
-int msg_evnt_del(dax_message *msg) {
+int
+msg_evnt_del(dax_message *msg)
+{
     return 0;
 }
 
-int msg_evnt_get(dax_message *msg) {
+int
+msg_evnt_get(dax_message *msg)
+{
     return 0;
 }
