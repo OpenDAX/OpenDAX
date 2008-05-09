@@ -15,7 +15,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- *  Main source code file for the OpenDAX test module
+ *  Main source code file for the OpenDAX API regression test module
  */
 
 #include <common.h>
@@ -28,14 +28,16 @@
 #define TEST 1000
 
 /* TODO: Rewrite this testing module to use a Lua script
-   to decide what gets tested */
+   to decide what gets tested and how */
 
 int main(int argc,char *argv[]) {
     int tests_failed = 0;
-    int n;
-    handle_t handle;
+    int n, result;
+    char buff[10];
+    handle_t handle[10];
     //char tagname[DAX_TAGNAME_SIZE +1];
-    u_int16_t dummy[20], test[20];
+    int dummy[20], test[20];
+    dax_tag test_tag;
     
     //openlog("test", LOG_NDELAY, LOG_DAEMON);
     dax_log("Starting module test");
@@ -66,27 +68,70 @@ int main(int argc,char *argv[]) {
         dax_log("Tagbase verification test - PASSED");
     }
      */
-    /* TODO: Change this to do something interesting. */
-    handle = dax_tag_add("WriteTest", DAX_INT, 10);
+    
+    handle[0] = dax_tag_add("WriteDINTTest", DAX_DINT, 10);
+    for(n = 0; n < 10; n++) {
+        dummy[n] = n*2;
+    }
+    dax_write_tag(handle[0], 0, dummy, 10, DAX_DINT);
+    
+    for(n = 0; n < 10; n++) {
+        dax_read_tag(handle[0], n, dummy, 1, DAX_DINT);
+        printf("WriteDINTTest[%d] = %d\n", n, dummy[0]);
+    }
+    
+    handle[1] = dax_tag_add("WriteBOOLTest", DAX_BOOL, 32);
+    buff[0] = 0x51; buff[1] = 0xAB;
+    dax_write_tag(handle[1], 0, buff, 16, DAX_BOOL);
+    //dax_write_tag(handle[1], 2, buff, 1, DAX_BOOL);
+    //dax_write_tag(handle[1], 4, buff, 1, DAX_BOOL);
+    //dax_write_tag(handle[1], 8, buff, 1, DAX_BOOL);
+    
+    for(n = 0; n < 16; n++) {
+        dax_read_tag(handle[1], n, buff, 1, DAX_BOOL);
+        printf("WriteBOOLTest[%d] = ", n);
+        
+        if(buff[0]) {
+            printf("1\n");
+        } else {
+            printf("0\n");
+        }
+    }
+       
+    /* TODO: Change this to do something interesting.
+    handle[0] = dax_tag_add("WriteTest", DAX_INT, 10);
     if( handle < 0 ) {
-        dax_log("AH CRAP!!!\n");
+        dax_log("AH SHUCKS!!!\n");
     } else {
         dummy[0] = 0x1234;
-        dax_tag_write(handle, 2, dummy, 2);
+        dax_write(handle[0], 2, dummy, 2);
         dummy[0] = 0;
-        dax_tag_read(handle, 2, dummy, 2);
+        dax_read(handle[0], 2, dummy, 2);
         printf("Okay we read back 0x%X\n", dummy[0]);
         
         dummy[0] = 0xAA5A;
         test[0] = 0xF0F0;
-        dax_tag_mask_write(handle, 2, dummy, test, 2);
+        dax_mask(handle[0], 2, dummy, test, 2);
         dummy[0] = 0;
-        dax_tag_read(handle, 2, dummy, 2);
+        dax_read(handle[0], 2, dummy, 2);
         printf("Okay we read back 0x%X\n", dummy[0]);
         
+        handle[1] = dax_tag_add("CacheTest1", DAX_INT, 1);
+        handle[2] = dax_tag_add("CacheTest2", DAX_DINT, 2);
+        handle[3] = dax_tag_add("CacheTest3", DAX_UINT, 3);
+        handle[4] = dax_tag_add("CacheTest4", DAX_LINT, 4);
         
+        for(n = 1; n<=4; n++) {
+            dax_tag_byhandle(handle[n], &test_tag);
+            //dax_tag_byhandle(handle[n], &test_tag);
+            printf("Tag handle 0x%X, type 0x%X, count %d\n", test_tag.handle, test_tag.type, test_tag.count);
+        }
+        for(n = 4; n>=1; n--) {
+            dax_tag_byhandle(handle[n], &test_tag);
+            printf("Tag handle 0x%X, type 0x%X, count %d\n", test_tag.handle, test_tag.type, test_tag.count);
+        }
     }
-    
+    */
     /* TODO: Check the corner conditions of the tag reading and writing.
      * Offset, size vs. tag size etc. */
     

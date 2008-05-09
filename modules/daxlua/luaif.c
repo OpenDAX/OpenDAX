@@ -31,7 +31,9 @@
     Returns the handle on success
     Raises an error on failure
 */
-static int _dax_tag_add(lua_State *L) {
+static int
+_dax_tag_add(lua_State *L)
+{
     char *name, *type;
     int count;
     handle_t result;
@@ -41,7 +43,7 @@ static int _dax_tag_add(lua_State *L) {
     }
     name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
     type = (char *)lua_tostring(L, 2); /* Get the datatype from the Lua stack */
-    count = (int)lua_tonumber(L, 3); /* Get the count from the Lua stack */
+    count = (int)lua_tonumber(L, 3);   /* Get the count from the Lua stack */
     
     if(name == NULL || type == NULL || count <=0) {
         lua_pushnumber(L, -1.0);
@@ -58,48 +60,52 @@ static int _dax_tag_add(lua_State *L) {
 
 /* This function figures out what type of data the tag is and translates
 *buff appropriately and pushes the value onto the lua stack */
-static inline void dax_pushdata(lua_State *L, unsigned int type, void *buff) {
+static inline void
+dax_pushdata(lua_State *L, unsigned int type, void *buff)
+{
     switch (type) {
         /* Each number has to be cast to the right datatype then dereferenced
            and then cast to double for pushing into the Lua stack */
         case DAX_BYTE:
         case DAX_SINT:
-            lua_pushnumber(L, (double)*((u_int8_t *)buff));
+            lua_pushnumber(L, (double)*((dax_sint_t *)buff));
             break;
         case DAX_WORD:
         case DAX_UINT:
-            lua_pushnumber(L, (double)*((u_int16_t *)buff));
+            lua_pushnumber(L, (double)*((dax_uint_t *)buff));
             break;
         case DAX_INT:
-            lua_pushnumber(L, (double)*((int16_t *)buff));
+            lua_pushnumber(L, (double)*((dax_int_t *)buff));
             break;
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
-            lua_pushnumber(L, (double)*((u_int32_t *)buff));
+            lua_pushnumber(L, (double)*((dax_udint_t *)buff));
             break;
         case DAX_DINT:
-            lua_pushnumber(L, (double)*((int32_t *)buff));
+            lua_pushnumber(L, (double)*((dax_dint_t *)buff));
             break;
         case DAX_REAL:
-            lua_pushnumber(L, (double)*((float *)buff));
+            lua_pushnumber(L, (double)*((dax_real_t *)buff));
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            lua_pushnumber(L, (double)*((u_int64_t *)buff));
+            lua_pushnumber(L, (double)*((dax_ulint_t *)buff));
             break;
         case DAX_LINT:
-            lua_pushnumber(L, (double)*((int64_t *)buff));
+            lua_pushnumber(L, (double)*((dax_lint_t *)buff));
             break;
         case DAX_LREAL:
-            lua_pushnumber(L, *((double *)buff));
+            lua_pushnumber(L, *((dax_lreal_t *)buff));
             break;
     }
 }
 
 /* Gets the value of the tag.  Accepts one argument, the tagname or handle
 and returns the value requested or raises an error on failure */
-static int _dax_get(lua_State *L) {
+static int
+_dax_get(lua_State *L)
+{
     char *name;
     dax_tag tag;
     int size, n;
@@ -118,7 +124,7 @@ static int _dax_get(lua_State *L) {
     if(tag.type == DAX_BOOL) {
         /* Check to see if it's an array */
         if(tag.count > 1 ) {
-            size = tag.count / 8 + 1;  //--@#$%@#^$%  Might not need the +1
+            size = tag.count / 8 + 1;
             buff = alloca(size);
             if(buff == NULL) {
                 luaL_error(L, "Unable to allocate buffer size = %d", size);
@@ -149,7 +155,7 @@ static int _dax_get(lua_State *L) {
         if(buff == NULL) {
             luaL_error(L, "Unable to allocate buffer size = %d", size);
         }
-        dax_tag_read(tag.handle, 0, buff, size);
+        dax_read(tag.handle, 0, buff, size);
         //--DEBUG: printf("tag.count = %d, tag.type = %s\n", tag.count, dax_type_to_string(tag.type));
         
         /* Push the data up to the lua interpreter stack */
@@ -170,7 +176,9 @@ static int _dax_get(lua_State *L) {
 }
 
 
-static inline void lua_to_dax(lua_State *L, unsigned int type, void *buff, void *mask, int index) {
+static inline void
+lua_to_dax(lua_State *L, unsigned int type, void *buff, void *mask, int index)
+{
     lua_Integer x;
     
     switch (type) {
@@ -230,7 +238,9 @@ static inline void lua_to_dax(lua_State *L, unsigned int type, void *buff, void 
     Second argument is the value to set the tag too.
     Raises an error on failure
 */
-static int _dax_set(lua_State *L) {
+static int
+_dax_set(lua_State *L)
+{
     char *name;
     dax_tag tag;
     int size, n, x, index;
@@ -289,13 +299,13 @@ static int _dax_set(lua_State *L) {
             }
         }
         /* Write the data to DAX */
-        dax_tag_mask_write(tag.handle, 0, buff, mask, size);
+        dax_mask(tag.handle, 0, buff, mask, size);
     } else { /* Retrieved tag is a single point */
         if(tag.type == DAX_BOOL) {
             dax_tag_write_bit(tag.handle, lua_toboolean(L, -1));
         } else {
             lua_to_dax(L, tag.type, buff, mask, 0);
-            dax_tag_write(tag.handle, 0, buff, size);
+            dax_write(tag.handle, 0, buff, size);
         }
     }
     return 0; /* return number of retvals */
@@ -303,7 +313,9 @@ static int _dax_set(lua_State *L) {
 
 /* Use this function to setup each interpreter with all the right function calls
 and libraries */
-int setup_interpreter(lua_State *L) {
+int
+setup_interpreter(lua_State *L)
+{
     lua_pushcfunction(L, _dax_tag_add);
     lua_setglobal(L,"dax_tag_add");
     

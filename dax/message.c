@@ -355,14 +355,12 @@ msg_tag_get(dax_message *msg)
     if(msg->data[0] == TAG_GET_HANDLE) { /* Is it a string or index */
         index = *((handle_t *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
         result = tag_get_index(index, &tag); /* get the tag */
-        //if(tag == NULL) result = ERR_ARG;
-        xlog(LOG_MSG, "Tag Get Message from %d for handle %d", msg->fd, index);
+        xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for handle 0x%X", msg->fd, index);
     } else { /* A name was passed */
         ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Just to avoid trouble */
         /* TODO: This is just a waste.  It should be redone */
         result = tag_get_name((char *)&msg->data[1], &tag);
-        //if(tag == NULL) result = ERR_NOTFOUND;
-        xlog(LOG_MSG, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
+        xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
     }
     size = strlen(tag.name) + 13;
     buff = alloca(size);
@@ -373,7 +371,7 @@ msg_tag_get(dax_message *msg)
         *((u_int32_t *)&buff[8]) = tag.count;
         strcpy(&buff[12], tag.name);
         _message_send(msg->fd, MSG_TAG_GET, buff, size, RESPONSE);
-        xlog(LOG_MSG | LOG_OBSCURE, "Returning tag - '%s' to module %d",tag.name, msg->fd);
+        xlog(LOG_MSG | LOG_OBSCURE, "Returning tag - '%s':0x%X to module %d",tag.name, tag.handle, msg->fd);
     } else {
         _message_send(msg->fd, MSG_TAG_GET, &result, sizeof(result), ERROR);
         xlog(LOG_MSG, "Bad tag query for MSG_TAG_GET");

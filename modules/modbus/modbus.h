@@ -29,11 +29,11 @@
 #include <database.h>
 
 
-#ifdef __BIG_ENDIAN__ /* Mac OSX Endianness */
+#ifdef __BIG_ENDIAN__ /* PPC Endianness */
 # define __MB_BIG_ENDIAN
 #endif
 
-#ifdef __BYTE_ORDER /* Linux Endianness */
+#ifdef __BYTE_ORDER /* x86 Endianness */
 # if __BYTE_ORDER == __BIG_ENDIAN
 #   define __MB_BIG_ENDIAN
 # endif

@@ -25,20 +25,20 @@
 #endif
 #include <dax/libcommon.h>
 
-/*** Tag Cache Handling Code ***
- The tag cache is a linked list of parts of the tags.
- Right now the tag name is not included.  The last
- tag searched for will bubble up one item in the list
- each time it's found.  This will make the top of the list
- the most searched for tags and the bottom the lesser used tags.
+/* Tag Cache Handling Code
+ * The tag cache is a linked list of parts of the tags.
+ * Right now the tag name is not included.  The last
+ * tag searched for will bubble up one item in the list
+ * each time it's found.  This will make the top of the list
+ * the most searched for tags and the bottom the lesser used tags.
  */
 
 /* This is the structure for our tag cache */
-typedef struct {
+typedef struct Tag_Cnode {
     handle_t handle;
     unsigned int type;
     unsigned int count;
-    struct tag_cnode *next;
+    struct Tag_Cnode *next;
 } tag_cnode;
 
 static tag_cnode *_cache_head; /* First node in the cache list */
@@ -53,6 +53,7 @@ init_tag_cache(void)
     _cache_end = NULL;
     _cache_limit = opt_get_cache_limit();
     _cache_count = 0;
+    return 0;
 }
 
 int
@@ -61,16 +62,23 @@ check_tag_cache(handle_t handle, dax_tag *tag)
     tag_cnode *prev, *this;
     tag_cnode temp;
     
+    printf("..Searching for tag at handle 0x%X..", handle);
+    
     if(_cache_head != NULL) {
         this = _cache_head;
     } else {
+        printf("..Cache empty\n");
         return ERR_NOTFOUND;
     }
-    while( this != NULL && this->handle != handle) {
+    while(this != NULL && this->handle != handle) {
         prev = this;
         this = this->next;
     }
-    if(this == NULL) return ERR_NOTFOUND;
+    if(this == NULL) {
+        printf("..End of cache list\n");
+        return ERR_NOTFOUND;
+    }
+    printf("..Found it\n");
     /* Store the return values in tag */
     tag->handle = handle;
     tag->type = this->type;
@@ -78,19 +86,26 @@ check_tag_cache(handle_t handle, dax_tag *tag)
     
     /* Bubble up */
     /* Right now the data is small so we just swap it.*/
-    /* TODO: Fix this and do it right */
+    /* TODO: Fix this and do it right, probably needs to 
+        be a doubly linked list to do this right. */
     if(this != _cache_head) {
-        temp = *this;
-        *this = *prev;
-        *prev = temp;
+        temp.handle = this->handle;
+        temp.type = this->type;
+        temp.count = this->count;
+        this->handle = prev->handle;
+        this->type = prev->type;
+        this->count = prev->count;
+        prev->handle = temp.handle;
+        prev->type = temp.type;
+        prev->count = temp.count;
     }
+    return 0;
 }
 
 int
-cache_tag_add(dax_tag tag)
+cache_tag_add(dax_tag *tag)
 {
     tag_cnode *new;
-    
     if(_cache_end == NULL) { /* First one */
         new = malloc(sizeof(tag_cnode));
         if(new) {
@@ -112,19 +127,294 @@ cache_tag_add(dax_tag tag)
     } else {
         new = _cache_end;
     }
-    new->handle = tag.handle;
-    new->type = tag.type;
-    new->count = tag.count;
+    new->handle = tag->handle;
+    new->type = tag->type;
+    new->count = tag->count;
+    new->next = NULL;
     return 0;
 }
 
 
+/* Type specific reading and writing functions.  These should be the most common
+ * methods to read and write tags to the sever.*/
+int
+dax_read_tag(handle_t handle, int index, void *data, int count, unsigned int type)
+{
+    int bytes, result, offset, n, i;
+    char *buff;
+    
+    if(type == DAX_BOOL) {
+        bytes = (index + count - 1)  / 8 - index / 8 + 1;
+        offset = index / 8;
+    } else {
+        bytes = (TYPESIZE(type) / 8) * count;
+        offset = (TYPESIZE(type) / 8) * index;
+    }
+    buff = alloca(bytes);
+    bzero(buff, bytes);
+    bzero(data, (count - 1) / 8 + 1);
+    result = dax_read(handle, offset, buff, bytes);
+    if(result) return result;
+    
+    switch(type) {
+        case DAX_BOOL:
+            i = index % 8;
+            for(n = 0; n < count; n++) {
+                if( (0x01 << i % 8) & buff[i / 8] ) {
+                    ((char *)data)[n / 8] |= (1 << (n % 8));
+                }
+                i++;
+            }
+            break;
+        case DAX_BYTE:
+        case DAX_SINT:
+            memcpy(data, buff, bytes);
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            for(n = 0; n < count; n++) {
+                ((dax_uint_t *)data)[n] = stom_uint(((dax_uint_t *)buff)[n]);
+            }
+            break;
+        case DAX_INT:
+            for(n = 0; n < count; n++) {
+                ((dax_int_t *)data)[n] = stom_int(((dax_int_t *)buff)[n]);
+            }
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+        case DAX_TIME:
+            for(n = 0; n < count; n++) {
+                ((dax_udint_t *)data)[n] = stom_udint(((dax_udint_t *)buff)[n]);
+            }
+            break;
+        case DAX_DINT:
+            for(n = 0; n < count; n++) {
+                ((dax_dint_t *)data)[n] = stom_dint(((dax_dint_t *)buff)[n]);
+            }
+            break;
+        case DAX_REAL:
+            for(n = 0; n < count; n++) {
+                ((dax_real_t *)data)[n] = stom_real(((dax_real_t *)buff)[n]);
+            }
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            for(n = 0; n < count; n++) {
+                ((dax_ulint_t *)data)[n] = stom_ulint(((dax_ulint_t *)buff)[n]);
+            }
+            break;
+        case DAX_LINT:
+            for(n = 0; n < count; n++) {
+                ((dax_lint_t *)data)[n] = stom_lint(((dax_lint_t *)buff)[n]);
+            }
+            break;
+        case DAX_LREAL:
+            for(n = 0; n < count; n++) {
+                ((dax_lreal_t *)data)[n] = stom_lreal(((dax_lreal_t *)buff)[n]);
+            }
+            break;
+        default:
+            return ERR_ARG;
+            break;
+    }    
+    return 0;
+}
+
+
+int
+dax_write_tag(handle_t handle, int index, void *data, int count, unsigned int type)
+{
+    int bytes, result, offset, n, i;
+    char *buff, *mask;
+    
+    if(type == DAX_BOOL) {
+        bytes = (index + count - 1)  / 8 - index / 8 + 1;
+        offset = index / 8;
+    } else {
+        bytes = (TYPESIZE(type) / 8) * count;
+        offset = (TYPESIZE(type) / 8) * index;
+    }
+    buff = alloca(bytes);
+    
+    switch(type) {
+        case DAX_BOOL:
+            mask = alloca(bytes);
+            bzero(buff, bytes);
+            bzero(mask, bytes);
+            
+            i = index % 8;
+            for(n = 0; n < count; n++) {
+                if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
+                    buff[i / 8] |= (1 << (i % 8));
+                }
+                mask[i / 8] |= (1 << (i % 8));
+                i++;
+            }            
+            break;
+        case DAX_BYTE:
+        case DAX_SINT:
+            memcpy(buff, data, bytes);
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            for(n = 0; n < count; n++) {
+                ((dax_uint_t *)buff)[n] = mtos_uint(((dax_uint_t *)data)[n]);
+            }
+            break;
+        case DAX_INT:
+            for(n = 0; n < count; n++) {
+                ((dax_int_t *)buff)[n] = mtos_int(((dax_int_t *)data)[n]);
+            }
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+        case DAX_TIME:
+            for(n = 0; n < count; n++) {
+                ((dax_udint_t *)buff)[n] = mtos_udint(((dax_udint_t *)data)[n]);
+            }
+            break;
+        case DAX_DINT:
+            for(n = 0; n < count; n++) {
+                ((dax_dint_t *)buff)[n] = mtos_dint(((dax_dint_t *)data)[n]);
+            }
+            break;
+        case DAX_REAL:
+            for(n = 0; n < count; n++) {
+                ((dax_real_t *)buff)[n] = mtos_real(((dax_real_t *)data)[n]);
+            }
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            for(n = 0; n < count; n++) {
+                ((dax_ulint_t *)buff)[n] = mtos_ulint(((dax_ulint_t *)data)[n]);
+            }
+            break;
+        case DAX_LINT:
+            for(n = 0; n < count; n++) {
+                ((dax_lint_t *)buff)[n] = mtos_lint(((dax_lint_t *)data)[n]);
+            }
+            break;
+        case DAX_LREAL:
+            for(n = 0; n < count; n++) {
+                ((dax_lreal_t *)buff)[n] = mtos_lreal(((dax_lreal_t *)data)[n]);
+            }
+            break;
+        default:
+            return ERR_ARG;
+            break;
+    }
+    if(type == DAX_BOOL) {
+        result = dax_mask(handle, offset, buff, mask, bytes);
+    } else {    
+        result = dax_write(handle, offset, buff, bytes);
+    }
+    return result;
+}
+
+int
+dax_mask_tag(handle_t handle, int index, void *data, void *mask, int count, unsigned int type)
+{
+    int bytes, result, offset, n, i;
+    char *buff, *maskbuff;
+    
+    if(type == DAX_BOOL) {
+        bytes = (index + count - 1)  / 8 - index / 8 + 1;
+        offset = index / 8;
+    } else {
+        bytes = (TYPESIZE(type) / 8) * count;
+        offset = (TYPESIZE(type) / 8) * index;
+    }
+    buff = alloca(bytes);
+    maskbuff = alloca(bytes);
+    
+    switch(type) {
+        case DAX_BOOL:
+            bzero(buff, bytes);
+            bzero(maskbuff, bytes);
+            
+            i = index % 8;
+            for(n = 0; n < count; n++) {
+                if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
+                    buff[i / 8] |= (1 << (i % 8));
+                }
+                maskbuff[i / 8] |= (1 << (i % 8));
+                i++;
+            }            
+            break;
+        case DAX_BYTE:
+        case DAX_SINT:
+            memcpy(buff, data, bytes);
+            memcpy(maskbuff, mask, bytes);
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            for(n = 0; n < count; n++) {
+                ((dax_uint_t *)buff)[n] = mtos_uint(((dax_uint_t *)data)[n]);
+                ((dax_uint_t *)maskbuff)[n] = mtos_uint(((dax_uint_t *)mask)[n]);
+            }
+            break;
+        case DAX_INT:
+            for(n = 0; n < count; n++) {
+                ((dax_int_t *)buff)[n] = mtos_int(((dax_int_t *)data)[n]);
+                ((dax_int_t *)maskbuff)[n] = mtos_int(((dax_int_t *)mask)[n]);
+            }
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+        case DAX_TIME:
+            for(n = 0; n < count; n++) {
+                ((dax_udint_t *)buff)[n] = mtos_udint(((dax_udint_t *)data)[n]);
+                ((dax_udint_t *)maskbuff)[n] = mtos_udint(((dax_udint_t *)mask)[n]);
+            }
+            break;
+        case DAX_DINT:
+            for(n = 0; n < count; n++) {
+                ((dax_dint_t *)buff)[n] = mtos_dint(((dax_dint_t *)data)[n]);
+                ((dax_dint_t *)maskbuff)[n] = mtos_dint(((dax_dint_t *)mask)[n]);
+            }
+            break;
+        case DAX_REAL:
+            for(n = 0; n < count; n++) {
+                ((dax_real_t *)buff)[n] = mtos_real(((dax_real_t *)data)[n]);
+                ((dax_real_t *)maskbuff)[n] = mtos_real(((dax_real_t *)mask)[n]);
+            }
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            for(n = 0; n < count; n++) {
+                ((dax_ulint_t *)buff)[n] = mtos_ulint(((dax_ulint_t *)data)[n]);
+                ((dax_ulint_t *)maskbuff)[n] = mtos_ulint(((dax_ulint_t *)mask)[n]);
+            }
+            break;
+        case DAX_LINT:
+            for(n = 0; n < count; n++) {
+                ((dax_lint_t *)buff)[n] = mtos_lint(((dax_lint_t *)data)[n]);
+                ((dax_lint_t *)maskbuff)[n] = mtos_lint(((dax_lint_t *)mask)[n]);
+            }
+            break;
+        case DAX_LREAL:
+            for(n = 0; n < count; n++) {
+                ((dax_lreal_t *)buff)[n] = mtos_lreal(((dax_lreal_t *)data)[n]);
+                ((dax_lreal_t *)maskbuff)[n] = mtos_lreal(((dax_lreal_t *)mask)[n]);
+            }
+            break;
+        default:
+            return ERR_ARG;
+            break;
+    }
+    result = dax_mask(handle, offset, buff, maskbuff, bytes);
+    return result;
+}
+
+
+/* TODO: I need to do something with all these bit manipulation functions */
 /* returns zero if the bit is clear, 1 if it's set */
 /* TODO: Shouldn't we return an error somehow? */
 char dax_tag_read_bit(handle_t handle) {
     u_int8_t data;
     /* read the one byte that contains the handle the bit we want */
-    dax_tag_read(handle & ~0x07, 0, &data, 1);
+    dax_read(handle & ~0x07, 0, &data, 1);
     if(data & (1 << (handle % 8))) {
         return 1;
     }
@@ -140,7 +430,7 @@ int dax_tag_write_bit(handle_t handle, u_int8_t data) {
         input = 0x00;
     }
     mask = 1 << (handle % 8);
-    dax_tag_mask_write(handle & ~0x07, 0, &input, &mask, 1);
+    dax_mask(handle & ~0x07, 0, &input, &mask, 1);
     return 0;
 }
 
@@ -157,7 +447,7 @@ int dax_tag_read_bits(handle_t handle, void *data, size_t size) {
     
  /* If handle and size are even bytes then this is just a byte read */
     if( handle % 8 == 0 && size % 8 == 0) {
-        return dax_tag_read(handle, 0, data, buff_len);
+        return dax_read(handle, 0, data, buff_len);
     }
 
     buff_len = (((handle + size - 1) & ~0x07) - (handle & ~0x07)) / 8 + 1;
@@ -165,7 +455,7 @@ int dax_tag_read_bits(handle_t handle, void *data, size_t size) {
     if(buffer == NULL) {
         return -1;
     }
-    if(dax_tag_read(handle, 0, buffer, buff_len)) {
+    if(dax_read(handle, 0, buffer, buff_len)) {
         return -1;
     }
     buffer_bit = handle % 8;
@@ -199,11 +489,8 @@ int dax_tag_read_bits(handle_t handle, void *data, size_t size) {
 /* Writes bits starting at handle, size is in bits not bytes */
 /* This function could be a lot simpler if we'd just allocate a buffer
    that is big enough for all the bits to fit and then let the 
-   dax_tag_mask_write() function handle splitting them up.  I'm betting
+   dax_mask() function handle splitting them up.  I'm betting
    on this being quite a bit faster.  It might not matter. */
-/* TODO: Need to test whether this thing will handle more than
-   one message worth of bits.  Modbus just can't produce that many
-   bits in one message */
 int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
     u_int8_t buffer[DAX_BIT_MSG_SIZE];
     u_int8_t mask[DAX_BIT_MSG_SIZE];
@@ -240,14 +527,14 @@ int dax_tag_write_bits(handle_t handle, void *data, size_t size) {
             buffer_idx++;
             if(buffer_idx == DAX_BIT_MSG_SIZE) {
                 /* Out of room in the buffer, send the message */
-                dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx);
+                dax_mask(next_handle, 0, buffer, mask, buffer_idx);
                 next_handle += DAX_BIT_MSG_SIZE;
                 buffer_idx = 0;
                 for(n=0; n < DAX_BIT_MSG_SIZE; n++) mask[n]=0x00;
             }
         }
     }
-    dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx + 1);
+    dax_mask(next_handle, 0, buffer, mask, buffer_idx + 1);
     /* TODO: Need to do some real error checking here and return a good number */
     return size;
 }
@@ -289,7 +576,7 @@ int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size
             buffer_idx++;
             if(buffer_idx == DAX_BIT_MSG_SIZE) {
                 /* Out of room in the buffer, send the message */
-                dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx);
+                dax_mask(next_handle, 0, buffer, mask, buffer_idx);
                 next_handle += DAX_BIT_MSG_SIZE;
                 buffer_idx = 0;
                 bzero(mask, DAX_BIT_MSG_SIZE);
@@ -297,7 +584,7 @@ int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size
             }
         }
     }
-    dax_tag_mask_write(next_handle, 0, buffer, mask, buffer_idx + 1);
+    dax_mask(next_handle, 0, buffer, mask, buffer_idx + 1);
     /* TODO: Need to do some real error checking here and return a good number */
     return size;
 }

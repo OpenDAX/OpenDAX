@@ -89,8 +89,22 @@
  #define DAX_TAGNAME_SIZE 32
 #endif
 
-/* TODO: Should I have some more typedefs for DAX_DINT, DAX_REAL etc. */
+/* typedefs to the basic DAX_? datatypes */
+typedef int8_t  dax_byte_t;
+typedef int8_t  dax_sint_t;
+typedef int16_t dax_word_t;
 typedef int16_t dax_int_t;
+typedef u_int16_t dax_uint_t;
+typedef int32_t dax_dword_t;
+typedef int32_t dax_dint_t;
+typedef u_int32_t dax_udint_t;
+typedef u_int32_t dax_time_t;
+typedef float dax_real_t;
+typedef int64_t dax_lword_t;
+typedef int64_t dax_lint_t;
+typedef u_int64_t dax_ulint_t;
+typedef double dax_lreal_t;
+
 typedef int handle_t;
 
 /* This is a generic representation of a tag, it may or may
@@ -151,12 +165,17 @@ int dax_tag_byhandle(handle_t index, dax_tag *tag);
 
 /* These functions are where all the data transfer takes place. */
 /* simple untyped tag reading function */
-int dax_tag_read(handle_t handle, int offset, void *data, size_t size);
+int dax_read(handle_t handle, int offset, void *data, size_t size);
 /* simple untyped tag writing function */
-int dax_tag_write(handle_t handle, int offset, void *data, size_t size);
+int dax_write(handle_t handle, int offset, void *data, size_t size);
 /* simple untyped masked tag write */
-int dax_tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size);
-    
+int dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size);
+
+int dax_read_tag(handle_t handle, int index, void *data, int count, unsigned int type);
+int dax_write_tag(handle_t handle, int index, void *data, int count, unsigned int type);
+int dax_mask_tag(handle_t handle, int index, void *data, void *mask, int count, unsigned int type);
+
+
 /* reads a single bit */
 char dax_tag_read_bit(handle_t handle);
 /* writes a single bit */

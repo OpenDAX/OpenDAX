@@ -38,11 +38,11 @@
 #define mtos_word mtos_uint
 #define stom_word stom_uint
 
-int16_t mtos_int(int16_t);
-u_int16_t mtos_uint(u_int16_t);
+dax_int_t mtos_int(dax_int_t);
+dax_uint_t mtos_uint(dax_uint_t);
 
-int16_t stom_int(int16_t);
-u_int16_t stom_uint(u_int16_t);
+dax_int_t stom_int(dax_int_t);
+dax_uint_t stom_uint(dax_uint_t);
 
 /* 32 Bit conversion functions */
 #define mtos_word mtos_uint
@@ -50,17 +50,33 @@ u_int16_t stom_uint(u_int16_t);
 #define mtos_time mtos_uint
 #define stom_time stom_uint
 
-int32_t mtos_dint(int32_t);
-u_int32_t mtos_udint(u_int32_t);
-float mtos_real(float);
+dax_dint_t mtos_dint(dax_dint_t);
+dax_udint_t mtos_udint(dax_udint_t);
+dax_real_t mtos_real(dax_real_t);
 
-int32_t stom_dint(int32_t);
-u_int32_t stom_udint(u_int32_t);
-float stom_real(float);
+dax_dint_t stom_dint(dax_dint_t);
+dax_udint_t stom_udint(dax_udint_t);
+dax_real_t stom_real(dax_real_t);
 
-//--int _message_send(long int module,int command,void *payload, size_t size);
-//--int _message_recv(int command, void *payload, size_t *size);
+/* 64 bit Conversions */
+#define mtos_lword mtos_ulint
+#define stom_lword stom_ulint
 
+dax_lint_t mtos_lint(dax_lint_t);
+dax_ulint_t mtos_ulint(dax_ulint_t);
+dax_lreal_t mtos_lreal(dax_lreal_t);
+
+dax_lint_t stom_lint(dax_lint_t);
+dax_ulint_t stom_ulint(dax_ulint_t);
+dax_lreal_t stom_lreal(dax_lreal_t);
+
+/* These functions handle the tag cache */
+int init_tag_cache(void);
+int check_tag_cache(handle_t, dax_tag *);
+int cache_tag_add(dax_tag *);
+
+/* Configuration Option Functions */
+int opt_get_cache_limit(void);
 char *opt_get_socketname(void);
 
 #endif /* !__LIBDAX_H */

@@ -147,6 +147,7 @@ dax_mod_register(char *name)
         dax_debug(LOG_COMM, "Connected to Server fd = %d", fd);
     }
     
+    init_tag_cache();
 
 /* TODO: Boundary check that a name that is longer than data size will
    be handled correctly. */
@@ -189,7 +190,6 @@ dax_mod_register(char *name)
     return _reformat;
 }
 
-/* TODO: Write this function */
 int
 dax_mod_unregister(void)
 {
@@ -205,8 +205,8 @@ dax_mod_unregister(void)
 handle_t
 dax_tag_add(char *name, unsigned int type, unsigned int count)
 {
-    int size;
-    int result;
+    int size, result;
+    dax_tag tag;
     char buff[DAX_TAGNAME_SIZE + 8 + 1];
     
     if(count == 0) return ERR_ARG;
@@ -233,6 +233,10 @@ dax_tag_add(char *name, unsigned int type, unsigned int count)
     size = 4; /* we just need the handle */
     result = _message_recv(MSG_TAG_ADD, buff, &size, 1);
     if(result == 0) {
+        tag.handle = *(int32_t *)buff;
+        tag.type = type;
+        tag.count = count;
+        cache_tag_add(&tag);
         return *(int32_t *)buff;
     } else {
         return result;
@@ -388,26 +392,29 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
     int result, size;
     char buff[DAX_TAGNAME_SIZE + 13];
     
-    buff[0] = TAG_GET_HANDLE;
-    *((handle_t *)&buff[1]) = handle;
-    result = _message_send(MSG_TAG_GET, buff, sizeof(handle_t) + 1);
-    if(result) {
-        dax_error("Can't send MSG_TAG_GET message");
-        return result;
+    if(check_tag_cache(handle, tag)) {
+        buff[0] = TAG_GET_HANDLE;
+        *((handle_t *)&buff[1]) = handle;
+        result = _message_send(MSG_TAG_GET, buff, sizeof(handle_t) + 1);
+        if(result) {
+            dax_error("Can't send MSG_TAG_GET message");
+            return result;
+        }
+        /* Maximum size of buffer, the 13 is the NULL plus three integers */
+        size = DAX_TAGNAME_SIZE + 13;
+        result = _message_recv(MSG_TAG_GET, buff, &size, 1);
+        if(result) {
+            dax_error("Unable to retrieve tag for handle %d\n", handle);
+            return result;
+        }
+        tag->handle = stom_dint(*((int32_t *)&buff[0]));
+        tag->type = stom_dint(*((int32_t *)&buff[4]));
+        tag->count = stom_dint(*((int32_t *)&buff[8]));
+        buff[DAX_TAGNAME_SIZE + 12] = '\0'; /* Just to be safe */
+        strcpy(tag->name, &buff[12]);
+        /* Add the tag to the tag cache */
+        cache_tag_add(tag);
     }
-    /* Maximum size of buffer, the 13 is the NULL plus three integers */
-    size = DAX_TAGNAME_SIZE + 13;
-    result = _message_recv(MSG_TAG_GET, buff, &size, 1);
-    if(result) {
-        dax_error("Unable to retrieve tag for handle %d\n", handle);
-        return result;
-    }
-    tag->handle = stom_dint(*((int32_t *)&buff[0]));
-    tag->type = stom_dint(*((int32_t *)&buff[4]));
-    tag->count = stom_dint(*((int32_t *)&buff[8]));
-    buff[DAX_TAGNAME_SIZE + 12] = '\0'; /* Just to be safe */
-    strcpy(tag->name, &buff[12]);
-    
     return 0;
 }
  
@@ -421,7 +428,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
  * like it appears in the server.  It is up to the module to convert
  * the data to the modules number format. */
 int
-dax_tag_read(handle_t handle, int offset, void *data, size_t size)
+dax_read(handle_t handle, int offset, void *data, size_t size)
 {
     int n, count, m_size, sendsize;
     int result = 0;
@@ -459,7 +466,7 @@ dax_tag_read(handle_t handle, int offset, void *data, size_t size)
  * offset into the data area of the tag.
  */
 int
-dax_tag_write(handle_t handle, int offset, void *data, size_t size)
+dax_write(handle_t handle, int offset, void *data, size_t size)
 {
     size_t n, count, m_size, sendsize;
     int result;
@@ -490,10 +497,10 @@ dax_tag_write(handle_t handle, int offset, void *data, size_t size)
     return 0;
 }
 
-/* Same as the dax_tag_write() function except that only bits that are in *mask
+/* Same as the dax_write() function except that only bits that are in *mask
  * will be changed. */
 int
-dax_tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size)
+dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size)
 {
     size_t n, count, m_size, sendsize;
     char buff[MSG_DATA_SIZE];

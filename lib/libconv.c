@@ -29,43 +29,99 @@
    of data instead of just a single point */
 
 /* 16 Bit Conversion Functions */
-int16_t mtos_int(int16_t x) {
+int16_t
+mtos_int(int16_t x)
+{
     return x;
 }
 
-u_int16_t mtos_uint(u_int16_t x) {
+u_int16_t
+mtos_uint(u_int16_t x)
+{
     return x;
 }
 
-int16_t stom_int(int16_t x) {
+int16_t
+stom_int(int16_t x)
+{
     return x;
 }
 
-u_int16_t stom_uint(u_int16_t x) {
+u_int16_t
+stom_uint(u_int16_t x)
+{
     return x;
 }
 
 /* 32 Bit conversion Functions */
-int32_t mtos_dint(int32_t x) {
+int32_t
+mtos_dint(int32_t x)
+{
     return x;
 }
 
-u_int32_t mtos_udint(u_int32_t x) {
+u_int32_t
+mtos_udint(u_int32_t x)
+{
     return x;
 }
 
-float mtos_real(float x) {
+float
+mtos_real(float x)
+{
     return x;
 }
 
-int32_t stom_dint(int32_t x) {
+int32_t
+stom_dint(int32_t x)
+{
     return x;
 }
 
-u_int32_t stom_udint(u_int32_t x) {
+u_int32_t
+stom_udint(u_int32_t x)
+{
     return x;
 }
 
-float stom_real(float x) {
+float
+stom_real(float x)
+{
+    return x;
+}
+
+dax_lint_t
+mtos_lint(dax_lint_t x)
+{
+    return x;
+}
+
+dax_ulint_t
+mtos_ulint(dax_ulint_t x)
+{
+    return x;
+}
+
+dax_lreal_t
+mtos_lreal(dax_lreal_t x)
+{
+    return x;
+}
+
+dax_lint_t
+stom_lint(dax_lint_t x)
+{
+    return x;
+}
+
+dax_ulint_t
+stom_ulint(dax_ulint_t x)
+{
+    return x;
+}
+
+dax_lreal_t
+stom_lreal(dax_lreal_t x)
+{
     return x;
 }

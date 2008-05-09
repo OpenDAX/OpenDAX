@@ -235,7 +235,7 @@ tag_set(void)
         }
     }
     //--printf("byte 0x%X, mask 0x%X\n",((char *)buff)[0], ((char *)mask)[0]);
-    dax_tag_mask_write(tag.handle, 0, buff, mask, size);
+    dax_mask(tag.handle, 0, buff, mask, size);
     return 0;
 }
 
@@ -337,7 +337,7 @@ tag_get(void)
             fprintf(stderr, "Unable to allocate buffer size = %d", size);
             return 1;
         }
-        dax_tag_read(tag.handle, 0, buff, size);
+        dax_read(tag.handle, 0, buff, size);
         //--DEBUG: printf("tag.count = %d, tag.type = %s\n", tag.count, dax_type_to_string(tag.type));
         
         for(n = 0; n < tag.count ; n++) {
