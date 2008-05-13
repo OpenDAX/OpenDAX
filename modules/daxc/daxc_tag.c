@@ -35,55 +35,6 @@ show_tag(int n, dax_tag temp_tag)
     //--printf(" \t %d\n", temp_tag.handle);
 }
 
-/* TODO: Need to add BOOL to this function */
-static inline void
-string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
-{    
-    switch (type) {
-        case DAX_BYTE:
-        case DAX_SINT:
-            ((dax_sint_t *)buff)[index] = (dax_sint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_sint_t *)mask)[index] = 0xFF;
-            break;
-        case DAX_WORD:
-        case DAX_UINT:
-            ((dax_uint_t *)buff)[index] = (dax_uint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_uint_t *)mask)[index] = 0xFFFF;
-            break;
-        case DAX_INT:
-            ((dax_int_t *)buff)[index] = (dax_int_t)strtol(val, NULL, 0);
-            if(mask) ((dax_int_t *)mask)[index] = 0xFFFF;
-            break;
-        case DAX_DWORD:
-        case DAX_UDINT:
-        case DAX_TIME:
-            ((dax_udint_t *)buff)[index] = (dax_udint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_udint_t *)mask)[index] = 0xFFFFFFFF;
-            break;
-        case DAX_DINT:
-            ((dax_dint_t *)buff)[index] = (dax_dint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_dint_t *)mask)[index] = 0xFFFFFFFF;
-            break;
-        case DAX_REAL:
-            ((dax_real_t *)buff)[index] = strtof(val, NULL);
-            if(mask) ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
-            break;
-        case DAX_LWORD:
-        case DAX_ULINT:
-            ((dax_ulint_t *)buff)[index] = (dax_ulint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_ulint_t *)mask)[index] = DAX_64_ONES;
-            break;
-        case DAX_LINT:
-            ((dax_lint_t *)buff)[index] = (dax_lint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_lint_t *)mask)[index] = DAX_64_ONES;
-            break;
-        case DAX_LREAL:
-            ((dax_lreal_t *)buff)[index] = strtod(val, NULL);
-            if(mask) ((u_int64_t *)mask)[index] = DAX_64_ONES;
-            break;
-    }
-}
-
 
 
 
@@ -220,6 +171,13 @@ dax_to_string(unsigned int type, void *buff, int index)
 {
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
+        case DAX_BOOL:
+            if((0x01 << index % 8) & ((int8_t *)buff)[index / 8]) {
+                printf("1\n");
+            } else {
+                printf("0\n");
+            }
+            break;
         case DAX_BYTE:
         case DAX_SINT:
             printf("%hhd\n", ((dax_sint_t *)buff)[index]);
@@ -254,6 +212,68 @@ dax_to_string(unsigned int type, void *buff, int index)
             break;
     }
 }
+
+/* This function figures out how to format the data from the string given
+ * by *val and places the result in *buff.  If *mask is NULL it is ignored */
+/* TODO: Need to add BOOL to this function */
+static inline void
+string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
+{   
+    long temp;
+    switch (type) {
+        case DAX_BOOL:
+            temp = strtol(val, NULL, 0);
+            if(temp == 0) {
+                ((int8_t *)buff)[index / 8] &= ~(0x01 << index % 8);
+            } else {
+                ((int8_t *)buff)[index / 8] |= (0x01 << index % 8);
+            }
+            break;
+        case DAX_BYTE:
+        case DAX_SINT:
+            ((dax_sint_t *)buff)[index] = (dax_sint_t)strtol(val, NULL, 0);
+            if(mask) ((dax_sint_t *)mask)[index] = 0xFF;
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            ((dax_uint_t *)buff)[index] = (dax_uint_t)strtol(val, NULL, 0);
+            if(mask) ((dax_uint_t *)mask)[index] = 0xFFFF;
+            break;
+        case DAX_INT:
+            ((dax_int_t *)buff)[index] = (dax_int_t)strtol(val, NULL, 0);
+            if(mask) ((dax_int_t *)mask)[index] = 0xFFFF;
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+        case DAX_TIME:
+            ((dax_udint_t *)buff)[index] = (dax_udint_t)strtol(val, NULL, 0);
+            if(mask) ((dax_udint_t *)mask)[index] = 0xFFFFFFFF;
+            break;
+        case DAX_DINT:
+            ((dax_dint_t *)buff)[index] = (dax_dint_t)strtol(val, NULL, 0);
+            if(mask) ((dax_dint_t *)mask)[index] = 0xFFFFFFFF;
+            break;
+        case DAX_REAL:
+            ((dax_real_t *)buff)[index] = strtof(val, NULL);
+            if(mask) ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            ((dax_ulint_t *)buff)[index] = (dax_ulint_t)strtol(val, NULL, 0);
+            if(mask) ((dax_ulint_t *)mask)[index] = DAX_64_ONES;
+            break;
+        case DAX_LINT:
+            ((dax_lint_t *)buff)[index] = (dax_lint_t)strtol(val, NULL, 0);
+            if(mask) ((dax_lint_t *)mask)[index] = DAX_64_ONES;
+            break;
+        case DAX_LREAL:
+            ((dax_lreal_t *)buff)[index] = strtod(val, NULL);
+            if(mask) ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            break;
+    }
+}
+
+
 
 /* TODO: Much duplicated code below, should be function call */
 
