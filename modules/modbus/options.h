@@ -46,7 +46,6 @@ struct Config {
     unsigned int tablesize;
     int portcount;
     int maxports;
-//    struct mb_port ports[MAX_PORTS]; /* Pointer to an array of ports */
     struct mb_port *ports; /* Pointer to an array of ports */
 };
 

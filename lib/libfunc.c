@@ -36,32 +36,42 @@ static void (*_dax_error)(const char *output) = NULL;
 static void (*_dax_log)(const char *output) = NULL;
 
 /* Set the verbosity level for the debug callback */
-void dax_set_verbosity(int level) {
+void
+dax_set_verbosity(int level)
+{
     /* bounds check */
     if(level < 0) _verbosity = 0;
     else if(level > 10) _verbosity = 10;
     else _verbosity = level;
 }
 
-void dax_set_debug_topic(u_int32_t topic) {
+void
+dax_set_debug_topic(u_int32_t topic)
+{
     _logflags = topic;
     dax_debug(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
 
 /* Function for modules to set the debug message callback */
-int dax_set_debug(void (*debug)(const char *format)) {
+int
+dax_set_debug(void (*debug)(const char *format))
+{
     _dax_debug = debug;
     return (int)_dax_debug;
 }
 
 /* Function for modules to set the error message callback */
-int dax_set_error(void (*error)(const char *format)) {
+int
+dax_set_error(void (*error)(const char *format))
+{
     _dax_error = error;
     return (int)_dax_error;
 }
 
 /* Function for modules to override the dax_log function */
-int dax_set_log(void (*log)(const char *format)) {
+int
+dax_set_log(void (*log)(const char *format))
+{
     _dax_log = log;
     return (int)_dax_log;
 }
@@ -75,7 +85,9 @@ int dax_set_log(void (*log)(const char *format)) {
 /* Function for use inside the library for sending debug messages.
    If the level is lower than the global _verbosity level then it will
    print the message.  Otherwise do nothing */
-void dax_debug(int level, const char *format, ...) {
+void
+dax_debug(int level, const char *format, ...)
+{
     char output[DEBUG_STRING_SIZE];
     va_list val;
     
@@ -95,7 +107,9 @@ void dax_debug(int level, const char *format, ...) {
 
 /* Prints an error message if the callback has been set otherwise
    sends the string to stderr. */
-void dax_error(const char *format, ...) {
+void
+dax_error(const char *format, ...)
+{
     char output[DEBUG_STRING_SIZE];
     va_list val;
     va_start(val, format);
@@ -114,7 +128,9 @@ void dax_error(const char *format, ...) {
 /* This function would be for logging events within the module */
 /* TODO: At some point this may send a message to opendax right
  now it either calls the callback or if none is given prints to stdout */
-void dax_log(const char *format, ...) {
+void
+dax_log(const char *format, ...)
+{
     char output[DEBUG_STRING_SIZE];
     va_list val;
     va_start(val, format);
@@ -129,7 +145,9 @@ void dax_log(const char *format, ...) {
     va_end(val);
 }
 
-void dax_fatal(const char *format, ...) {
+void
+dax_fatal(const char *format, ...)
+{
     char output[DEBUG_STRING_SIZE];
     va_list val;
     va_start(val, format);
@@ -147,7 +165,9 @@ void dax_fatal(const char *format, ...) {
 
 
 /* Returns a pointer to a string that is the name of the datatype */
-int dax_string_to_type(const char *type) {
+int
+dax_string_to_type(const char *type)
+{
     if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
     if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
     if(!strcasecmp(type, "SINT"))  return DAX_SINT;
@@ -167,7 +187,9 @@ int dax_string_to_type(const char *type) {
 }
 
 /* Returns a pointer to a string that is the name of the datatype */
-const char *dax_type_to_string(int type) {
+const char *
+dax_type_to_string(int type)
+{
     switch (type) {
         case DAX_BOOL:
             return "BOOL";
@@ -202,4 +224,41 @@ const char *dax_type_to_string(int type) {
         default:
             return NULL;
     }
+}
+
+/* This function takes the name argument and figures out the text part and puts
+ that in 'tagname' then it sees if there is an index in [] and puts that in *index.
+ The calling function should make sure that tagname is big enough */
+int
+dax_tag_parse(char *name, char *tagname, int *index)
+{
+    int n = 0;
+    int i = 0;
+    int tagend = 0;
+    char test[10];
+    *index = -1;
+    
+    while(name[n] != '\0') {
+        if(name[n] == '[') {
+            tagend = n++;
+            /* figure the tagindex here */
+            while(name[n] != ']') {
+                if(name[n] == '\0') return -1; /* Gotta get to a ']' before the end */
+                test[i++] = name[n++];
+                if(i == 9) return -1; /* Number is too long */
+            }
+            test[i] = '\0';
+            *index = (int)strtol(test, NULL, 10);
+            n++;
+        }
+        n++;
+        
+    }
+    if(tagend) {
+        strncpy(tagname, name, tagend);
+        tagname[tagend] = '\0';
+    } else {
+        strcpy(tagname, name);
+    }
+    return 0;
 }

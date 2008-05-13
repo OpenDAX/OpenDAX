@@ -180,6 +180,7 @@ initialize_tagbase(void)
     //tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
 }
 
+/* This adds the name of the tag to the index */
 static int
 _add_index(char *name, int index)
 {
@@ -214,6 +215,7 @@ handle_t
 tag_add(char *name, unsigned int type, unsigned int count)
 {
     int n;
+    void *newdata;
     unsigned int size;
     if(count == 0) return ERR_ARG;
 
@@ -235,12 +237,26 @@ tag_add(char *name, unsigned int type, unsigned int count)
         xerror("%s is not a valid tag name", name);
         return ERR_TAG_BAD;
     }
+
+    /* Figure the size in bytes */
+    if(type == DAX_BOOL) size = count / 8 + 1;
+    else                 size = (TYPESIZE(type) / 8) * count;
     
     /* Check for an existing tagname in the database */
     if( (n = _get_by_name(name)) >= 0) {
-        /* If the tag is identical then just return the handle */
-        if(__db[n].type == type && __db[n].count == count) {
+        /* If the tag is identical or bigger then just return the handle */
+        if(__db[n].type == type && __db[n].count >= count) {
             return n;
+        } else if(__db[n].type == type && __db[n].count < count) {
+            /* If the new count is greater than the existing count then lets
+               try to increase the size of the tags data */
+            newdata = realloc(__db[n].data, size);
+            if(newdata) {
+                __db[n].data = newdata;
+                return n;
+            } else {
+                return ERR_ALLOC;
+            }
         } else {
             xerror("Duplicate tag name %s", name);
             return ERR_TAG_DUPL;
@@ -252,9 +268,6 @@ tag_add(char *name, unsigned int type, unsigned int count)
     __db[n].count = count;
     __db[n].type = type;
     
-    /* Figure the size in bytes */
-    if(type == DAX_BOOL) size = count / 8 + 1;
-    else                 size = (TYPESIZE(type) / 8) * count;
     /* Allocate the data area */
     if((__db[n].data = xmalloc(size)) == NULL)
         return ERR_ALLOC;
@@ -332,7 +345,6 @@ int tag_get_index(int index, dax_tag *tag) {
 int
 tag_read(handle_t handle, int offset, void *data, size_t size)
 {
-    
     /* Bounds check handle */
     if(handle < 0 || handle >= __tagcount) {
         return ERR_ARG;
@@ -342,7 +354,7 @@ tag_read(handle_t handle, int offset, void *data, size_t size)
         return ERR_2BIG;
     }
     /* Copy the data into the right place. */
-    memcpy(data, &__db[handle].data[offset], size);
+    memcpy(data, &(__db[handle].data[offset]), size);
     return 0;
 }
 
@@ -359,7 +371,7 @@ tag_write(handle_t handle, int offset, void *data, size_t size)
         return ERR_2BIG;
     }
     /* Copy the data into the right place. */
-    memcpy(&__db[handle].data[offset], data, size);
+    memcpy(&(__db[handle].data[offset]), data, size);
     return 0;
 }
 

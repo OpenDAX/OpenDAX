@@ -90,20 +90,20 @@
 #endif
 
 /* typedefs to the basic DAX_? datatypes */
-typedef int8_t  dax_byte_t;
-typedef int8_t  dax_sint_t;
-typedef int16_t dax_word_t;
-typedef int16_t dax_int_t;
-typedef u_int16_t dax_uint_t;
-typedef int32_t dax_dword_t;
-typedef int32_t dax_dint_t;
-typedef u_int32_t dax_udint_t;
-typedef u_int32_t dax_time_t;
-typedef float dax_real_t;
-typedef int64_t dax_lword_t;
-typedef int64_t dax_lint_t;
-typedef u_int64_t dax_ulint_t;
-typedef double dax_lreal_t;
+typedef int8_t     dax_byte_t;
+typedef int8_t     dax_sint_t;
+typedef int16_t    dax_word_t;
+typedef int16_t    dax_int_t;
+typedef u_int16_t  dax_uint_t;
+typedef int32_t    dax_dword_t;
+typedef int32_t    dax_dint_t;
+typedef u_int32_t  dax_udint_t;
+typedef u_int32_t  dax_time_t;
+typedef float      dax_real_t;
+typedef int64_t    dax_lword_t;
+typedef int64_t    dax_lint_t;
+typedef u_int64_t  dax_ulint_t;
+typedef double     dax_lreal_t;
 
 typedef int handle_t;
 
@@ -143,14 +143,14 @@ void dax_fatal(const char *format, ...);
 int dax_string_to_type(const char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
 const char *dax_type_to_string(int type);
+/* Retrieves the tagname and index from the form of Tagname[i] */
+int dax_tag_parse(char *name, char *tagname, int *index);
 
 /* Only registered modules will get responses from the server */
 int dax_mod_register(char *);   /* Registers the Module with the server */
 int dax_mod_unregister(void);   /* Unregister the Module with the server */
 handle_t dax_tag_add(char *name, unsigned int type, unsigned int count);
 
-/* Low level tag retrieval function.  Will not decode subscripts. */
-//int dax_get_tag(char *name, dax_tag *tag);
 /* Get tag by name, will decode members and subscripts */
 int dax_tag_byname(char *name, dax_tag *tag);
 /* Get tag by index */

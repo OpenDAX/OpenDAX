@@ -86,7 +86,9 @@ static void parsecommandline(int argc, const char *argv[])  {
     } /* End While */           
 }
 
-static inline int get_serial_config(lua_State *L, struct mb_port *p) {
+static inline int
+get_serial_config(lua_State *L, struct mb_port *p)
+{
     char *string;
     
     lua_getfield(L, -1, "device");
@@ -143,7 +145,9 @@ static inline int get_serial_config(lua_State *L, struct mb_port *p) {
     return 0;
 }
 
-static inline int get_network_config(lua_State *L, struct mb_port *p) {
+static inline int
+get_network_config(lua_State *L, struct mb_port *p)
+{
     char *string;
     
     lua_getfield(L, -1, "ipaddress");
@@ -176,7 +180,9 @@ static inline int get_network_config(lua_State *L, struct mb_port *p) {
     return 0;
 }
 
-static inline int get_slave_config(lua_State *L, struct mb_port *p) {
+static inline int
+get_slave_config(lua_State *L, struct mb_port *p)
+{
     dax_error("Slave functionality is not yet implemented");
     
     lua_getfield(L, -1, "holdreg");
@@ -202,7 +208,9 @@ static inline int get_slave_config(lua_State *L, struct mb_port *p) {
 
 /* Lua interface function for adding a port.  It takes a single
    table as an argument and returns the Port's index */
-static int _add_port(lua_State *L) {
+static int
+_add_port(lua_State *L)
+{
     struct mb_port *p;
     char *string;
     
@@ -343,7 +351,9 @@ static int _add_port(lua_State *L) {
 /* Lua interface function for adding a modbus command to a port.  
    Accepts two arguments.  The first is the port to assign the command
    too, and the second is a table describing the command. */
-static int _add_command(lua_State *L) {
+static int
+_add_command(lua_State *L)
+{
     struct mb_cmd *c;
     char *string;
     int p; /* Port ID */
@@ -400,16 +410,25 @@ static int _add_command(lua_State *L) {
     lua_getfield(L, -6, "length");
     c->length = (int)lua_tonumber(L, -1);
     
-    lua_getfield(L, -7, "address");
-    c->address = (int)lua_tonumber(L, -1);
+    lua_getfield(L, -7, "index");
+    c->index = (int)lua_tonumber(L, -1);
     
-    lua_getfield(L, -8, "interval");
+    lua_getfield(L, -8, "tagname");
+    string = (char *)lua_tostring(L, -1);
+    if(string != NULL) {
+        dt_add_tag(string, c->index, c->function, c->length);
+    } else {
+        dax_debug(1, "No Tagname Given for Command on Port %d", p);
+    }
+    lua_getfield(L, -9, "interval");
     c->interval = (int)lua_tonumber(L, -1);
     
     return 0;
 }
 
-static void initscript(lua_State *L) {
+static void
+initscript(lua_State *L)
+{
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals.*/
@@ -425,7 +444,9 @@ static void initscript(lua_State *L) {
     
 }
 
-static int readconfigfile(void) {
+static int
+readconfigfile(void)
+{
     lua_State *L;
     char *string;
     
@@ -467,7 +488,9 @@ static int readconfigfile(void) {
 
 /* This function sets the defaults for the configuration if the
  commandline or the config file set them. */
-static void setdefaults(void) {
+static void
+setdefaults(void)
+{
     if(!config.tagname) {
         config.tagname = strdup(DEFAULT_TAGNAME);
     }
@@ -479,7 +502,9 @@ static void setdefaults(void) {
 /* This function should be called from main() to configure the program.
    First the defaults are set then the configuration file is parsed then
    the command line is handled.  This gives the command line priority.  */
-int modbus_configure(int argc, const char *argv[]) {
+int
+modbus_configure(int argc, const char *argv[])
+{
     initconfig();
     parsecommandline(argc, argv);
     if(config.verbosity > 0) dax_set_verbosity(config.verbosity);
@@ -491,11 +516,9 @@ int modbus_configure(int argc, const char *argv[]) {
     return 0;
 }
 
-
-
-
-
-int getbaudrate(int b_in) {
+int
+getbaudrate(int b_in)
+{
     switch(b_in) {
         case 300:
             return B300;
@@ -522,7 +545,9 @@ int getbaudrate(int b_in) {
 
 
 /* TODO: Really should print out more than this*/
-static void printconfig(void) {
+static void
+printconfig(void)
+{
     int n,i;
     struct mb_cmd *mc;
     printf("\n----------mbd Configuration-----------\n\n");
@@ -550,7 +575,7 @@ static void printconfig(void) {
                                                   mc->function,
                                                   mc->m_register,
                                                   mc->length,
-                                                  mc->address);
+                                                  mc->index);
             mc = mc->next;
         }
     }

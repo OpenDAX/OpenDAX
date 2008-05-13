@@ -35,7 +35,6 @@
 
 #include <modbus.h>
 #include <database.h>
-#include <opendax.h>
 
 static int openport(struct mb_port *);
 static int openIPport(struct mb_port *);
@@ -47,7 +46,9 @@ void masterRTUthread(struct mb_port *);
  ************************/
 
 /* Initializes the port structure given by pointer p */
-static void initport(struct mb_port *p) {
+static void
+initport(struct mb_port *p)
+{
     p->name = NULL;
     p->device = NULL;
     p->enable = 0;
@@ -81,13 +82,17 @@ static void initport(struct mb_port *p) {
 };
 
 /* Sets the command values to some defaults */
-static void initcmd(struct mb_cmd *c) {
+static void
+initcmd(struct mb_cmd *c)
+{
     c->method = 0;
     c->node = 0;
     c->function = 0;
     c->m_register = 0;
     c->length = 0;
-    c->address = 0;
+    //--c->address = 0;
+    c->handle = 0;
+    c->index = 0;
     c->interval = 0;
     
     c->icount = 0;
@@ -149,7 +154,9 @@ static char aCRCLo[] = {
 
 /* Modbus CRC16 checksum calculation. Taken straight from the modbus specification,
    but I fixed the typos and changed the name to protect the guilty */ 
-unsigned short crc16(unsigned char *msg, unsigned short length) {
+unsigned short
+crc16(unsigned char *msg, unsigned short length)
+{
     unsigned char CRCHi = 0xFF;
     unsigned char CRCLo = 0xFF;
     unsigned int index;
@@ -164,7 +171,9 @@ unsigned short crc16(unsigned char *msg, unsigned short length) {
 /* Checks the checksum of the modbus message given by *buff 
    length should be the length of the modbus data buffer INCLUDING the
    two byte checksum.  Returns 1 if checksum matches */
-static int crc16check(u_int8_t *buff,int length) {
+static int
+crc16check(u_int8_t *buff,int length)
+{
     u_int16_t crcLocal, crcRemote;
     if(length < 2) return 0; /* Otherwise a bad pointer will go to crc16 */
     crcLocal = crc16(buff, length-2);
@@ -174,7 +183,9 @@ static int crc16check(u_int8_t *buff,int length) {
 };
 
 /* Calculates the difference between the two times */
-inline unsigned long long timediff(struct timeval oldtime,struct timeval newtime) {
+inline unsigned long long
+timediff(struct timeval oldtime,struct timeval newtime)
+{
     return (newtime.tv_sec - oldtime.tv_sec) * 1000 + 
            (newtime.tv_usec / 1000)-(oldtime.tv_usec / 1000);
 };
@@ -213,7 +224,9 @@ void mb_destroy(void) {
 
 /* This allocates and initializes a port.  Returns the pointer to the port on 
    success or NULL on failure. */
-struct mb_port *mb_new_port(void) {
+struct mb_port *
+mb_new_port(void)
+{
     struct mb_port *mport;
     mport=(struct mb_port *)malloc(sizeof(struct mb_port));
     if(mport != NULL) {
@@ -224,21 +237,27 @@ struct mb_port *mb_new_port(void) {
 
 /* Allocates and initializes a master modbus command.  Returns the pointer
    to the new command or NULL on failure. */
-struct mb_cmd *mb_new_cmd(void) {
+struct mb_cmd *
+mb_new_cmd(void)
+{
     struct mb_cmd *mcmd;
-    mcmd=(struct mb_cmd *)malloc(sizeof(struct mb_cmd));
+    mcmd = (struct mb_cmd *)malloc(sizeof(struct mb_cmd));
     if(mcmd != NULL) {
         initcmd(mcmd);
     }
     return mcmd;    
 }
 
-void mb_set_output_callback(struct mb_port *mp, void (* outfunc)(struct mb_port *,u_int8_t *,unsigned int)) {
+void
+mb_set_output_callback(struct mb_port *mp, void (* outfunc)(struct mb_port *,u_int8_t *,unsigned int))
+{
     mp->out_callback = outfunc;
 }
 
 
-void mb_set_input_callback(struct mb_port *mp, void (* infunc)(struct mb_port *,u_int8_t *,unsigned int)) {
+void
+mb_set_input_callback(struct mb_port *mp, void (* infunc)(struct mb_port *,u_int8_t *,unsigned int))
+{
     mp->in_callback = infunc;
 }
 
@@ -247,7 +266,9 @@ void mb_set_input_callback(struct mb_port *mp, void (* infunc)(struct mb_port *,
    while running.  If all commands are to be asynchronous then this
    would not be necessary.  Slave ports would never use this.
    Returns 0 on success. */
-int mb_add_cmd(struct mb_port *p, struct mb_cmd *mc) {
+int
+mb_add_cmd(struct mb_port *p, struct mb_cmd *mc)
+{
     struct mb_cmd *node;
     
     if(p == NULL || mc == NULL) return -1;
@@ -266,7 +287,9 @@ int mb_add_cmd(struct mb_port *p, struct mb_cmd *mc) {
 
 /* Finds the modbus master command indexed by cmd.  Returns a pointer
    to the command when found and NULL on error. */
-struct mb_cmd *mb_get_cmd(struct mb_port *mp,unsigned int cmd) {
+struct
+mb_cmd *mb_get_cmd(struct mb_port *mp,unsigned int cmd)
+{
     struct mb_cmd *node;
     unsigned int n = 0;
     if(mp == NULL) return NULL;
@@ -285,7 +308,9 @@ struct mb_cmd *mb_get_cmd(struct mb_port *mp,unsigned int cmd) {
 
 /* Determines whether or not the port is a serial port or an IP
    socket and opens it appropriately */
-int mb_open_port(struct mb_port *m_port) {
+int
+mb_open_port(struct mb_port *m_port)
+{
     int fd;
     
     /* if the LAN bit or the TCP bit are set then we need a network
@@ -303,10 +328,11 @@ int mb_open_port(struct mb_port *m_port) {
     return fd;
 }
 
-/* This function is being superceded by other/cleaner functions */
 /* Opens the port passed in m_port and starts the thread that
    will handle the port */
-int mb_start_port(struct mb_port *m_port) {
+int
+mb_start_port(struct mb_port *m_port)
+{
     pthread_attr_t attr;
     
     /* If the port is not already open */
@@ -318,8 +344,8 @@ int mb_start_port(struct mb_port *m_port) {
     }
     if(m_port->fd > 0) {
         /* Set up the thread attributes 
-        The thread is set up to be detached so that it's resources will
-        be deallocated automatically. */
+         * The thread is set up to be detached so that it's resources will
+         * be deallocated automatically. */
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         
@@ -345,8 +371,11 @@ int mb_start_port(struct mb_port *m_port) {
     return 0; //should never get here
 }
 
+
 /* Open and set up the serial port */
-static int openport(struct mb_port *m_port) {
+static int
+openport(struct mb_port *m_port)
+{
     int fd;
     struct termios options;
     
@@ -382,7 +411,9 @@ static int openport(struct mb_port *m_port) {
 
 /* Opens a IP socket instead of a serial port for both
    the TCP protocol and the LAN protocol. */
-static int openIPport(struct mb_port *mp) {
+static int
+openIPport(struct mb_port *mp)
+{
     int fd;
     struct sockaddr_in addr;
     int result;
@@ -424,7 +455,9 @@ static int openIPport(struct mb_port *mp) {
 /* TODO: There needs to be a mechanism to bail out of here.  The mp->running should
 be set to 0 and the mp->fd closed.  This will cause the main while(1) loop to restart
 the port */
-void masterRTUthread(struct mb_port *mp) {
+void
+masterRTUthread(struct mb_port *mp)
+{
     long time_spent;
     struct mb_cmd *mc;
     struct timeval start, end;
@@ -478,9 +511,11 @@ void masterRTUthread(struct mb_port *mp) {
 }
 
 /* This function formulates and sends the modbus master request */
-static int sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd) {
-    u_int8_t buff[MB_FRAME_LEN],length;
-    u_int16_t crc,temp;
+static int
+sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
+{
+    u_int8_t buff[MB_FRAME_LEN], length;
+    u_int16_t crc, temp, result;
     
     /* build the request message */
     buff[0]=cmd->node;
@@ -492,12 +527,13 @@ static int sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd) {
         case 4:
             COPYWORD(&buff[2], &cmd->m_register);
             COPYWORD(&buff[4], &cmd->length);
-            length=6;
+            length = 6;
             break;
         case 5:
-            temp = dt_getbit(cmd->address);
+            //--temp = dt_getbit(cmd->handle, cmd->index);
+            result = dt_getbits(cmd->handle, cmd->index, &temp, 1);
+            /* TODO: Error Check result */
             if(cmd->method == MB_CONTINUOUS||(temp != cmd->lastcrc) || !cmd->firstrun ) {
-                //--printf("Get bit returned %d\n",temp);
                 COPYWORD(&buff[2], &cmd->m_register);
                 if(temp) buff[4] = 0xff;
                 else     buff[4] = 0x00;
@@ -510,9 +546,10 @@ static int sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd) {
                 return 0;
             }
             break;
-            case 6:
-            temp = dt_getword(cmd->address);
-            
+        case 6:
+            //--temp = dt_getword(cmd->address);
+            result = dt_getwords(cmd->handle, cmd->index, &temp, 1);
+            /* TODO: Error Check result */
             /* If the command is contiunous go, if conditional then 
              check the last checksum against the current datatable[] */
             if(cmd->method == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
@@ -551,7 +588,9 @@ static int sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd) {
  Returns 0 on timeout
  Returns -1 on CRC fail
  Returns the length of the message on success */
-static int getRTUresponse(u_int8_t *buff, struct mb_port *mp) {
+static int
+getRTUresponse(u_int8_t *buff, struct mb_port *mp)
+{
     unsigned int buffptr = 0;
     struct timeval oldtime, thistime;
     int result;
@@ -586,11 +625,15 @@ static int getRTUresponse(u_int8_t *buff, struct mb_port *mp) {
     return 0; /* Should never get here */
 }
 
-static int sendASCIIrequest(struct mb_port *mp,struct mb_cmd *cmd) {
+static int
+sendASCIIrequest(struct mb_port *mp,struct mb_cmd *cmd)
+{
     return 0;
 }
 
-static int getASCIIresponse(u_int8_t *buff,struct mb_port *mp) {
+static int
+getASCIIresponse(u_int8_t *buff,struct mb_port *mp)
+{
     return 0;
 }
 
@@ -602,9 +645,12 @@ static int getASCIIresponse(u_int8_t *buff,struct mb_port *mp) {
  like an RTU message so the ASCII response functions should translate
  the ASCII responses into RTUish messages */
 
-static int handleresponse(u_int8_t *buff, struct mb_cmd *cmd) {
-    int n;
-    u_int16_t temp;
+static int
+handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
+{
+    int n, result;
+    //u_int16_t temp;
+    u_int16_t *data;
     
     DAX_DEBUG2("handleresponse() - Function Code = %d", cmd->function);
     cmd->responses++;
@@ -617,14 +663,18 @@ static int handleresponse(u_int8_t *buff, struct mb_cmd *cmd) {
     /* If we get this far the message should be good */
     switch (cmd->function) {
         case 1:
-            dt_setbits(cmd->address, &buff[3], cmd->length);
+            //--dt_setbits(cmd->address, &buff[3], cmd->length);
+            result = dt_setbits(cmd->handle, cmd->index, &buff[3], cmd->length);
             break;
         case 3:
         case 4:
-            for(n=0;n < (buff[2]/2); n++) { /* BUFFER OVERFLOW???? */
-                COPYWORD(&temp, &buff[(n*2)+3]);
-                if(dt_setword(cmd->address + n, temp)) return -1;
+            data = alloca(buff[2] / 2);
+            for(n = 0; n < (buff[2] / 2); n++) {
+                COPYWORD(&data[n], &buff[(n * 2) + 3]);
             }
+            //--if(dt_setword(cmd->address + n, temp)) return -1;
+            /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
+            if(dt_setwords(cmd->handle, cmd->index, data, cmd->length)) return -1;
             break;
         case 5:
         case 6:
@@ -644,7 +694,9 @@ static int handleresponse(u_int8_t *buff, struct mb_cmd *cmd) {
    configured number of times and if successful returns 0.  If not, an error code
    is returned. mb_buff should be at least MB_FRAME_LEN in length */
 
-int mb_send_command(struct mb_port *mp, struct mb_cmd *mc) {
+int
+mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
+{
     u_int8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
     int try = 1;
     int result, msglen;

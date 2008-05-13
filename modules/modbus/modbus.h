@@ -27,7 +27,7 @@
  #include <sys/param.h>
 #endif
 #include <database.h>
-
+#include <opendax.h>
 
 #ifdef __BIG_ENDIAN__ /* PPC Endianness */
 # define __MB_BIG_ENDIAN
@@ -134,6 +134,7 @@ struct mb_port {
 #define	MB_DISABLE 0
 #define MB_CONTINUOUS 1
 #define	MB_ONCHANGE 2
+#define MB_TRIGGER 3
 
 struct mb_cmd {
     unsigned char method;    /* 0=disable 1=continuous 2=on change */
@@ -141,7 +142,9 @@ struct mb_cmd {
     u_int8_t function;       /* Function Code */
     u_int16_t m_register;    /* Modbus Register */
     u_int16_t length;        /* length of modbus data */
-    unsigned int address;    /* datatable address */
+    handle_t handle;         /* handle to the tag */
+    int index;               /* tag index */
+    //unsigned int address;    /* datatable address TODO: Remove this */
     unsigned int interval;   /* number of port scans between messages */
     unsigned int icount;     /* number of intervals passed */
     unsigned int requests;   /* total number of times this command has been sent */
@@ -153,13 +156,6 @@ struct mb_cmd {
     u_int16_t lastcrc;       /* used to determine if a conditional message should be sent */
     unsigned char firstrun;  /* Indicates that this command has been sent once */
     struct mb_cmd* next;
-};
-
-
-/* An alias is used to give a datatable point a nickname */
-struct mb_alias {
-    char name[ALIAS_LENGTH];
-    int m_address;
 };
 
 struct mb_port *mb_new_port(void);

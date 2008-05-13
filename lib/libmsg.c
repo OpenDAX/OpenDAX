@@ -336,7 +336,7 @@ dax_tag_byname(char *name, dax_tag *tag)
     dax_tag tag_test;
     char tagname[DAX_TAGNAME_SIZE + 1];
     int index, bit, result, size;
-    
+    /* TODO: Change this to use the new function */
     if(parsetag(name, tagname, &index, &bit)) {
         return ERR_TAG_BAD;
     }
@@ -404,7 +404,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
         size = DAX_TAGNAME_SIZE + 13;
         result = _message_recv(MSG_TAG_GET, buff, &size, 1);
         if(result) {
-            dax_error("Unable to retrieve tag for handle %d\n", handle);
+            dax_error("Unable to retrieve tag for handle %d", handle);
             return result;
         }
         tag->handle = stom_dint(*((int32_t *)&buff[0]));
@@ -430,7 +430,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
 int
 dax_read(handle_t handle, int offset, void *data, size_t size)
 {
-    int n, count, m_size, sendsize;
+    int n, count, m_size, sendsize, i;
     int result = 0;
     int buff[3];
     
@@ -453,6 +453,7 @@ dax_read(handle_t handle, int offset, void *data, size_t size)
             return result;
         }
         result = _message_recv(MSG_TAG_READ, &((char *)data)[m_size * n], &sendsize, 1);
+        
         if(result) {
             return result;
         }

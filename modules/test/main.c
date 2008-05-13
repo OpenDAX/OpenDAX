@@ -75,18 +75,21 @@ int main(int argc,char *argv[]) {
     }
     dax_write_tag(handle[0], 0, dummy, 10, DAX_DINT);
     
+    result = dax_read_tag(handle[0], 0, dummy, 10, DAX_DINT);
+    
     for(n = 0; n < 10; n++) {
-        dax_read_tag(handle[0], n, dummy, 1, DAX_DINT);
-        printf("WriteDINTTest[%d] = %d\n", n, dummy[0]);
+        //dax_read_tag(handle[0], n, dummy, 1, DAX_DINT);
+        printf("WriteDINTTest[%d] = %d\n", n, dummy[n]);
     }
     
-    handle[1] = dax_tag_add("WriteBOOLTest", DAX_BOOL, 32);
-    buff[0] = 0x51; buff[1] = 0xAB;
-    dax_write_tag(handle[1], 0, buff, 16, DAX_BOOL);
+    
+    //handle[1] = dax_tag_add("WriteBOOLTest", DAX_BOOL, 32);
+    //buff[0] = 0x51; buff[1] = 0xAB;
+    //dax_write_tag(handle[1], 0, buff, 16, DAX_BOOL);
     //dax_write_tag(handle[1], 2, buff, 1, DAX_BOOL);
     //dax_write_tag(handle[1], 4, buff, 1, DAX_BOOL);
     //dax_write_tag(handle[1], 8, buff, 1, DAX_BOOL);
-    
+    /*
     for(n = 0; n < 16; n++) {
         dax_read_tag(handle[1], n, buff, 1, DAX_BOOL);
         printf("WriteBOOLTest[%d] = ", n);
@@ -96,7 +99,7 @@ int main(int argc,char *argv[]) {
         } else {
             printf("0\n");
         }
-    }
+    }*/
        
     /* TODO: Change this to do something interesting.
     handle[0] = dax_tag_add("WriteTest", DAX_INT, 10);

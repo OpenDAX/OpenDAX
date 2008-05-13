@@ -20,13 +20,15 @@
 #define __DATABASE_H
 
 #include <sys/types.h>
+#include <opendax.h>
 
 int dt_init(unsigned int, char *);
 int dt_destroy(void);
-u_int16_t dt_getword(unsigned int);
-int dt_setword(unsigned int, u_int16_t);
-char dt_getbit(unsigned int);
-int dt_setbits(unsigned int , u_int8_t *, u_int16_t);
+int dt_add_tag(char *name, int index, int function, int length);
+int dt_getwords(handle_t handle, int index, void *data, int length);
+int dt_setwords(handle_t handle, int index, void *data, int length);
+int dt_getbits(handle_t handle, int index, void *data, int length);
+int dt_setbits(handle_t handle, int index, void *data, int length);
 
 
 #endif

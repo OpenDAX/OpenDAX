@@ -62,12 +62,12 @@ check_tag_cache(handle_t handle, dax_tag *tag)
     tag_cnode *prev, *this;
     tag_cnode temp;
     
-    printf("..Searching for tag at handle 0x%X..", handle);
+    //--printf("..Searching for tag at handle 0x%X..", handle);
     
     if(_cache_head != NULL) {
         this = _cache_head;
     } else {
-        printf("..Cache empty\n");
+        //--printf("..Cache empty\n");
         return ERR_NOTFOUND;
     }
     while(this != NULL && this->handle != handle) {
@@ -75,10 +75,10 @@ check_tag_cache(handle_t handle, dax_tag *tag)
         this = this->next;
     }
     if(this == NULL) {
-        printf("..End of cache list\n");
+        //--printf("..End of cache list\n");
         return ERR_NOTFOUND;
     }
-    printf("..Found it\n");
+    //--printf("..Found it\n");
     /* Store the return values in tag */
     tag->handle = handle;
     tag->type = this->type;
@@ -154,6 +154,7 @@ dax_read_tag(handle_t handle, int index, void *data, int count, unsigned int typ
     bzero(buff, bytes);
     bzero(data, (count - 1) / 8 + 1);
     result = dax_read(handle, offset, buff, bytes);
+    
     if(result) return result;
     
     switch(type) {
