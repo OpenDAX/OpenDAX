@@ -20,8 +20,18 @@
  */
 
 #include <daxlua.h>
-#include <opendax.h>
 #include <strings.h>
+#include <pthread.h>
+
+static pthread_mutex_t daxmutex;
+
+int
+daxlua_init(void)
+{
+    pthread_mutex_init(&daxmutex, NULL);
+    return 0;
+}
+
 
 /* Functions to expose to lua interpreter */
 /* Adds a tag to the dax tagbase.  Three arguments...
@@ -49,7 +59,11 @@ _dax_tag_add(lua_State *L)
         lua_pushnumber(L, -1.0);
         return 1;
     }
+    
+    pthread_mutex_lock(&daxmutex);
     result = dax_tag_add(name, dax_string_to_type(type), count);
+    pthread_mutex_unlock(&daxmutex);
+    
     if( result > 0 ) {
         lua_pushnumber(L, (double)result);
     } else {
@@ -104,7 +118,7 @@ dax_pushdata(lua_State *L, unsigned int type, void *buff)
 /* Gets the value of the tag.  Accepts one argument, the tagname or handle
 and returns the value requested or raises an error on failure */
 static int
-_dax_get(lua_State *L)
+_dax_read(lua_State *L)
 {
     char *name;
     dax_tag tag;
@@ -239,7 +253,7 @@ lua_to_dax(lua_State *L, unsigned int type, void *buff, void *mask, int index)
     Raises an error on failure
 */
 static int
-_dax_set(lua_State *L)
+_dax_write(lua_State *L)
 {
     char *name;
     dax_tag tag;
@@ -253,11 +267,11 @@ _dax_set(lua_State *L)
     }
     
     if( tag.type == DAX_BOOL ) {
-        if( tag.handle % 8 == 0) {
+        //if( tag.handle % 8 == 0) {
             size = tag.count / 8 + 1;
-        } else {
-            size = tag.count / 8 + 2;
-        }
+        //} else {
+        //    size = tag.count / 8 + 2;
+        //}
     } else {
         size = tag.count * TYPESIZE(tag.type) / 8;
     }
@@ -311,19 +325,24 @@ _dax_set(lua_State *L)
     return 0; /* return number of retvals */
 }
 
+/* TODO: Stuff to add.
+ * give the scripts a way to get their last scan
+ * give the scripts a way to enable and disable each other
+ */
+
 /* Use this function to setup each interpreter with all the right function calls
 and libraries */
 int
 setup_interpreter(lua_State *L)
 {
     lua_pushcfunction(L, _dax_tag_add);
-    lua_setglobal(L,"dax_tag_add");
+    lua_setglobal(L, "dax_tag_add");
     
-    lua_pushcfunction(L, _dax_get);
-    lua_setglobal(L,"dax_get");
+    lua_pushcfunction(L, _dax_read);
+    lua_setglobal(L, "dax_read");
     
-    lua_pushcfunction(L, _dax_set);
-    lua_setglobal(L,"dax_set");
+    lua_pushcfunction(L, _dax_write);
+    lua_setglobal(L, "dax_write");
     
     
     /* register the libraries that we need*/

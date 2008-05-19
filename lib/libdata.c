@@ -39,6 +39,7 @@ typedef struct Tag_Cnode {
     unsigned int type;
     unsigned int count;
     struct Tag_Cnode *next;
+    char name[DAX_TAGNAME_SIZE + 1];
 } tag_cnode;
 
 static tag_cnode *_cache_head; /* First node in the cache list */
@@ -62,12 +63,9 @@ check_tag_cache(handle_t handle, dax_tag *tag)
     tag_cnode *prev, *this;
     tag_cnode temp;
     
-    //--printf("..Searching for tag at handle 0x%X..", handle);
-    
     if(_cache_head != NULL) {
         this = _cache_head;
     } else {
-        //--printf("..Cache empty\n");
         return ERR_NOTFOUND;
     }
     while(this != NULL && this->handle != handle) {
@@ -75,29 +73,30 @@ check_tag_cache(handle_t handle, dax_tag *tag)
         this = this->next;
     }
     if(this == NULL) {
-        //--printf("..End of cache list\n");
         return ERR_NOTFOUND;
     }
-    //--printf("..Found it\n");
     /* Store the return values in tag */
+    strcpy(tag->name, this->name);
     tag->handle = handle;
     tag->type = this->type;
     tag->count = this->count;
     
     /* Bubble up */
-    /* Right now the data is small so we just swap it.*/
     /* TODO: Fix this and do it right, probably needs to 
-        be a doubly linked list to do this right. */
+     *  be a doubly linked list to do this right. */
     if(this != _cache_head) {
         temp.handle = this->handle;
         temp.type = this->type;
         temp.count = this->count;
+        strcpy(temp.name, this->name);
         this->handle = prev->handle;
         this->type = prev->type;
         this->count = prev->count;
+        strcpy(this->name, prev->name);
         prev->handle = temp.handle;
         prev->type = temp.type;
         prev->count = temp.count;
+        strcpy(prev->name, temp.name);
     }
     return 0;
 }
@@ -127,6 +126,7 @@ cache_tag_add(dax_tag *tag)
     } else {
         new = _cache_end;
     }
+    strcpy(new->name, tag->name);
     new->handle = tag->handle;
     new->type = tag->type;
     new->count = tag->count;

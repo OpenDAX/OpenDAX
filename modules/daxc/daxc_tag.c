@@ -31,8 +31,9 @@ show_tag(int n, dax_tag temp_tag)
         printf("[%d]", temp_tag.count);
     }
     /* Output the handle and the carriage return */
-    printf(" \t 0x%08X\n", temp_tag.handle);
+    //printf(" \t 0x%08X\n", temp_tag.handle);
     //--printf(" \t %d\n", temp_tag.handle);
+    printf("\n");
 }
 
 
@@ -93,11 +94,12 @@ tag_add(char **tokens)
  then we check for a second argument.  If we have two numbers then
  we list from the first to the first + second if not then we list
  the next X tags and increment lastindex. */
+
+/* TODO: If we allow tags to be deleted then gaps will appear in the list.
+ * We should deal with these appropriately */
 int
 tag_list(char **tokens)
 {
-    printf("Tag List Command\n");
-#ifdef DELETE_ALL_THIS_OIROIEURBOIUERHOIUERHOIUFOIU
     dax_tag temp_tag;
     static int lastindex;
     char *arg[] = {NULL, NULL};
@@ -124,28 +126,24 @@ tag_list(char **tokens)
             /* List tags from start to start + count */
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
-                /* This needs to be done with a TAG_LIST function instead of this!!!!!
-                 for(n = start; n < (start + count); n++) {
-                 if(dax_tag_byindex(n, &temp_tag)) {
-                 printf("No More Tags To List\n");
-                 return 1;
-                 } else {
-                 show_tag(n, temp_tag);
-                 }
-                 }
-                 */
+                for(n = start; n < (start + count); n++) {
+                    if(dax_tag_byhandle(n, &temp_tag)) {
+                        printf("No More Tags To List\n");
+                        return 1;
+                    } else {
+                        show_tag(n, temp_tag);
+                    }
+                }
             } else {
                 /* List the next 'start' amount of tags */
                 for(n = lastindex; n < (start + lastindex); n++) {
-                    /* This needs to be done with a TAG_LIST function instead of this!!!!!
-                     if(dax_tag_byindex(n, &temp_tag)) {
-                     printf("No More Tags To List\n");
-                     lastindex = 0;
-                     return 1;
-                     } else {
-                     show_tag(n, temp_tag);
-                     }
-                     */
+                    if(dax_tag_byhandle(n, &temp_tag)) {
+                        printf("No More Tags To List\n");
+                        lastindex = 0;
+                        return 1;
+                    } else {
+                        show_tag(n, temp_tag);
+                    }
                 }
                 lastindex += start;
             }
@@ -153,19 +151,17 @@ tag_list(char **tokens)
     } else {
         /* List all tags */
         n = 0;
-        while( !dax_tag_byindex(n, &temp_tag) ) {
-            show_tag(n,temp_tag);
+        while( !dax_tag_byhandle(n, &temp_tag) ) {
+            show_tag(n, temp_tag);
             n++;
         }
     }
-#endif
     return 0;
 }
 
 
 /* This function figures out what type of data the tag is and translates
  * buff appropriately and pushes the value onto the lua stack. */
-/* TODO: Need to add 'BOOL' to this function */
 static void inline
 dax_to_string(unsigned int type, void *buff, int index)
 {
@@ -215,7 +211,6 @@ dax_to_string(unsigned int type, void *buff, int index)
 
 /* This function figures out how to format the data from the string given
  * by *val and places the result in *buff.  If *mask is NULL it is ignored */
-/* TODO: Need to add BOOL to this function */
 static inline void
 string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
 {   
@@ -274,15 +269,12 @@ string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
 }
 
 
-
-/* TODO: Much duplicated code below, should be function call */
-
 int
 tag_read(char **tokens)
 {
     char name[DAX_TAGNAME_SIZE+ 1];
     handle_t handle;
-    int index = -1, result, points = 0, next, n;
+    int index = -1, result, points = 0, n;
     size_t size;
     dax_tag tag;
     void *buff;
@@ -345,24 +337,24 @@ tag_read(char **tokens)
     else                     size = (TYPESIZE(tag.type) / 8) * points;
     
     buff = malloc(size);
-    printf("buff = %p\n", buff);
+    //--printf("buff = %p\n", buff);
     if(!buff) {
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
         return 1;
     }
     
-    printf("Attempting read: handle = %d, index = %d, count = %d, type = %d\n", handle, index, points, tag.type);
+    //--printf("Attempting read: handle = %d, index = %d, count = %d, type = %d\n", handle, index, points, tag.type);
     result = dax_read_tag(handle, index, buff, points, tag.type);
     if(result) {
         fprintf(stderr, "ERROR: Problem reading tag from opendax: %d\n", result);
         result = 1;
     } else {
-    
+    /*
         for(n = 0; n < size; n++) {
             printf("0x%hhX ", ((char *)buff)[n]);
         }
         printf("\n");
-        
+     */   
         for(n = 0; n < points; n++) {
             dax_to_string(tag.type, buff, n);
         }

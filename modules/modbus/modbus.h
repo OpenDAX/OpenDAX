@@ -142,6 +142,7 @@ struct mb_cmd {
     u_int8_t function;       /* Function Code */
     u_int16_t m_register;    /* Modbus Register */
     u_int16_t length;        /* length of modbus data */
+    char *tagname;           /* tagname to use */
     handle_t handle;         /* handle to the tag */
     int index;               /* tag index */
     //unsigned int address;    /* datatable address TODO: Remove this */

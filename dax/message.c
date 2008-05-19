@@ -394,7 +394,7 @@ msg_tag_read(dax_message *msg)
 {
     char data[MSG_DATA_SIZE];
     handle_t handle;
-    int result, offset, n;
+    int result, offset;
     size_t size;
     
     handle = *((handle_t *)&msg->data[0]);

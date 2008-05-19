@@ -228,7 +228,7 @@ dax_type_to_string(int type)
 
 /* This function takes the name argument and figures out the text part and puts
  that in 'tagname' then it sees if there is an index in [] and puts that in *index.
- The calling function should make sure that tagname is big enough */
+ The calling function should make sure that *tagname is big enough */
 int
 dax_tag_parse(char *name, char *tagname, int *index)
 {

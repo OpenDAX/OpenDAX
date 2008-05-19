@@ -253,6 +253,7 @@ tag_add(char *name, unsigned int type, unsigned int count)
             newdata = realloc(__db[n].data, size);
             if(newdata) {
                 __db[n].data = newdata;
+                __db[n].count = count;
                 return n;
             } else {
                 return ERR_ALLOC;

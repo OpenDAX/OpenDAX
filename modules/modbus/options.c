@@ -416,7 +416,8 @@ _add_command(lua_State *L)
     lua_getfield(L, -8, "tagname");
     string = (char *)lua_tostring(L, -1);
     if(string != NULL) {
-        dt_add_tag(string, c->index, c->function, c->length);
+        c->tagname = strdup(string);
+        //dt_add_tag(string, c->index, c->function, c->length);
     } else {
         dax_debug(1, "No Tagname Given for Command on Port %d", p);
     }
@@ -571,10 +572,11 @@ printconfig(void)
         mc = config.ports[n].commands;
         i = 0;
         while(mc != NULL) {
-            printf(" Command[%d] %d %d %d %d %d\n",i++,mc->node,
+            printf(" Command[%d] %d %d %d %d %s %d\n",i++,mc->node,
                                                   mc->function,
                                                   mc->m_register,
                                                   mc->length,
+                                                  mc->tagname,
                                                   mc->index);
             mc = mc->next;
         }

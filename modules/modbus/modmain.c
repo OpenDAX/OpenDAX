@@ -41,6 +41,7 @@ void indata(struct mb_port *,u_int8_t *,unsigned int);
 int main (int argc, const char * argv[]) {
     int result, n, time;
     struct mb_port *mp;
+    struct mb_cmd *mc;
     struct sigaction sa;
     
     /* Set up the signal handlers */
@@ -69,6 +70,7 @@ int main (int argc, const char * argv[]) {
     time = 1; n = 0;
     while(dt_init(config.tablesize, config.tagname)) {
         dax_error("Unable to allocate the data table");
+        /* This stuff may not be relevant anymore */
         sleep(time);
         if(n++ > 5) {
             time *= 2; n = 0;
@@ -81,6 +83,17 @@ int main (int argc, const char * argv[]) {
     for(n = 0; n < config.portcount; n++) {
         mb_set_output_callback(&config.ports[n], outdata);
         mb_set_input_callback(&config.ports[n], indata);
+        
+        mc = config.ports[n].commands;
+        while(mc != NULL) {
+            mc->handle = dt_add_tag(mc->tagname, mc->index, mc->function, mc->length);
+            /* TODO: for now if we can't add the tag we'll keep the handle at zero.  The database
+             * routines won't read or write if the handle is zero.  We should do more */
+            if(mc->handle < 0) {
+                mc->handle = 0;
+            }
+            mc = mc->next; /* get next command from the linked list */
+        }
     }
     
     while(1) { /* Infinite loop, threads are doing all the work.*/

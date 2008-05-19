@@ -114,7 +114,7 @@ typedef struct {
     unsigned int type;  /* Tags data type */
     unsigned int count; /* The number of items in the tag array */
     int index;          /* Index if we are looking at a particular item */
-    int bit;            /* Bit offset if we are using bitwise operations */
+    //int bit;            /* Bit offset if we are using bitwise operations */
     char name[DAX_TAGNAME_SIZE + 1];
 } dax_tag;
 

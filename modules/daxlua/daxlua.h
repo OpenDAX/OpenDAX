@@ -22,16 +22,38 @@
 #ifndef __DAXLUA_H
 #define __DAXLUA_H
 
+#include <opendax.h>
 #include <common.h>
 
-/* luaif.c - Lua Interface functions */
-int setup_interpreter(lua_State *L);
+/* This defines the starting number of scripts in the array */
+#define NUM_SCRIPTS 8
+#define DEFAULT_RATE 1000
+
+typedef struct Script_t {
+    char enable;
+    pthread_t thread;
+    char *name;
+    char *filename;
+    long rate;
+    long lastscan;
+    int executions;
+    int tagcount;
+    dax_tag *tags;
+} script_t;
 
 /* options.c - Configuration functions */
 int configure(int argc, char *argv[]);
 char *get_init(void);
-char *get_main(void);
-int get_rate(void);
+int get_scriptcount(void);
+script_t *get_script(int index);
+
+//--char *get_main(void);
+//--int get_rate(void);
 int get_verbosity(void);
+
+/* luaif.c - Lua Interface functions */
+int daxlua_init(void);
+int setup_interpreter(lua_State *L);
+
 
 #endif /* !__DAXLUA_H */

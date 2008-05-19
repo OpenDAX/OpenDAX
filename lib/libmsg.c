@@ -165,6 +165,7 @@ dax_mod_register(char *name)
     strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
     
     /* For registration we pack the data no matter what */
+    /* TODO: check for errors here */
     _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len);
     len = DAX_MSGMAX;
     _message_recv(MSG_MOD_REG, buff, &len, 1);
@@ -193,11 +194,13 @@ dax_mod_register(char *name)
 int
 dax_mod_unregister(void)
 {
-    int len;
-    _message_send(MSG_MOD_REG, NULL, 0);
-    len = 0;
-    _message_recv(MSG_MOD_REG, NULL, &len, 1);
-    return 0;
+    int len, result;
+    result = _message_send(MSG_MOD_REG, NULL, 0);
+    if(! result ) {
+        len = 0;
+        result = _message_recv(MSG_MOD_REG, NULL, &len, 1);
+    }
+    return result;
 }
 
 /* Sends a message to dax to add a tag.  The payload is basically the
@@ -233,6 +236,7 @@ dax_tag_add(char *name, unsigned int type, unsigned int count)
     size = 4; /* we just need the handle */
     result = _message_recv(MSG_TAG_ADD, buff, &size, 1);
     if(result == 0) {
+        strcpy(tag.name, name);
         tag.handle = *(int32_t *)buff;
         tag.type = type;
         tag.count = count;
@@ -280,64 +284,18 @@ _dax_get_tag(char *name, dax_tag *tag)
     }
 }
 
-/* This function takes the name argument and figures out the text part and puts
-   that in 'tagname' then it sees if there is an index in [] or if there is
-   a '.' for a bit index.  It puts those in the pointers that are passed */
-static inline int
-parsetag(char *name, char *tagname, int *index, int *bit)
-{
-    int n = 0;
-    int i = 0;
-    int tagend = 0;
-    char test[10];
-    *index = -1;
-    *bit = -1;
-
-    while(name[n] != '\0') {
-        if(name[n] == '[') {
-            tagend = n++;
-            /* figure the tagindex here */
-            while(name[n] != ']') {
-                if(name[n] == '\0') return -1; /* Gotta get to a ']' before the end */
-                test[i++] = name[n++];
-                if(i == 9) return -1; /* Number is too long */
-            }
-            test[i] = '\0';
-            *index = (int)strtol(test, NULL, 10);
-            n++;
-        /* Handle bit offsets */
-        /* TODO: Might not allow bit level addressing at all. */
-        /* TODO: This will need a little tweaking for custom data types. */
-        } else if(name[n] == '.') {
-            if(*index < 0) {
-                tagend = n;
-            }
-            n++;
-            *bit = (int)strtol(&name[n], NULL, 10);
-            break;
-        } else {
-            n++;
-        }
-    }
-    if(tagend) { /********BUFFER OVERFLOW POTENTIAL***************/
-        strncpy(tagname, name, tagend);
-        tagname[tagend] = '\0';
-    } else {
-        strcpy(tagname, name);
-    }
-    return 0;
-}
 
 /* These tag name getting routines will have to be rewritten when we get
 the custom data types going.  Returns zero on success. */
+/* TODO: Need to clean up this function.  There is stuff I don't think I want in here */ 
 int
 dax_tag_byname(char *name, dax_tag *tag)
 {
     dax_tag tag_test;
     char tagname[DAX_TAGNAME_SIZE + 1];
     int index, bit, result, size;
-    /* TODO: Change this to use the new function */
-    if(parsetag(name, tagname, &index, &bit)) {
+    
+    if(dax_tag_parse(name, tagname, &index)) {
         return ERR_TAG_BAD;
     }
     
@@ -379,7 +337,7 @@ dax_tag_byname(char *name, dax_tag *tag)
         tag->count = 1;
     }
     tag->index = index;
-    tag->bit = bit;
+    //tag->bit = bit;
     // handle will remain the same now
     //--tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
     return 0;
@@ -404,7 +362,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
         size = DAX_TAGNAME_SIZE + 13;
         result = _message_recv(MSG_TAG_GET, buff, &size, 1);
         if(result) {
-            dax_error("Unable to retrieve tag for handle %d", handle);
+            //dax_error("Unable to retrieve tag for handle %d", handle);
             return result;
         }
         tag->handle = stom_dint(*((int32_t *)&buff[0]));
@@ -430,7 +388,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
 int
 dax_read(handle_t handle, int offset, void *data, size_t size)
 {
-    int n, count, m_size, sendsize, i;
+    int n, count, m_size, sendsize;
     int result = 0;
     int buff[3];
     

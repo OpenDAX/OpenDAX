@@ -28,7 +28,9 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-extern struct Config config;
+//--extern struct Config config;
+
+static int quitflag = 0;
 
 static void messagethread(void);
 void child_signal(int);
@@ -89,6 +91,16 @@ main(int argc, const char *argv[])
            variable or signal thing instead of just the sleep(). */
         module_scan();
         sleep(1);
+        /* If the quit flag is set then we clean up and get out */
+        if(quitflag) {
+            /* TODO: Need to kill the message_thread */
+            /* TODO: Should stop all running modules */
+            kill(0, SIGTERM); /* ...this'll do for now */
+            /* TODO: Should verify that all the children are dead.  If not
+             then send a SIGKILL signal */
+            msg_destroy(); /* Destroy the message queue */
+            exit(-1);
+        }
     }
 }
 
@@ -113,7 +125,7 @@ child_signal(int sig)
     do {
         pid = waitpid(-1, &status, WNOHANG);
         if(pid > 0) { 
-            module_dmq_add(pid,status);
+            module_dmq_add(pid, status);
         }
     } while(pid > 0);
 }
@@ -126,15 +138,7 @@ void
 quit_signal(int sig)
 {
     xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
-    
-    //diag_list_tags();
-    /* TODO: Need to kill the message_thread */
-    /* TODO: Should stop all running modules */
-    kill(0, SIGTERM); /* ...this'll do for now */
-    /* TODO: Should verify that all the children are dead.  If not
-       then send a SIGKILL signal (don't block in here though) */
-    msg_destroy(); /* Destroy the message queue */
-    exit(-1);
+    quitflag = 1;
 }
 
 void

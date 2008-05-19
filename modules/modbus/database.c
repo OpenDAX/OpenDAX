@@ -79,9 +79,13 @@ int
 dt_getwords(handle_t handle, int index, void *data, int length)
 {
     int result;
-    pthread_mutex_lock(&datamutex);
-    result = dax_read_tag(handle, index, data, length, DAX_UINT);
-    pthread_mutex_unlock(&datamutex);
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_read_tag(handle, index, data, length, DAX_UINT);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
     return result;
 }
 
@@ -89,9 +93,13 @@ int
 dt_setwords(handle_t handle, int index, void *data, int length)
 {
     int result;
-    pthread_mutex_lock(&datamutex);
-    result = dax_write_tag(handle, index, data, length, DAX_UINT);
-    pthread_mutex_unlock(&datamutex);
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_write_tag(handle, index, data, length, DAX_UINT);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
     return result;
 }
 
@@ -100,9 +108,13 @@ int
 dt_getbits(handle_t handle, int index, void *data, int length)
 {
     int result;
-    pthread_mutex_lock(&datamutex);
-    result = dax_read_tag(handle, index, data, length, DAX_BOOL);
-    pthread_mutex_unlock(&datamutex);
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_read_tag(handle, index, data, length, DAX_BOOL);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
     return result;
 }
 
@@ -110,8 +122,12 @@ int
 dt_setbits(handle_t handle, int index, void *data, int length)
 {
     int result;
-    pthread_mutex_lock(&datamutex);
-    result = dax_write_tag(handle, index, data, length, DAX_BOOL);
-    pthread_mutex_unlock(&datamutex);
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_write_tag(handle, index, data, length, DAX_BOOL);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
     return result;
 }
