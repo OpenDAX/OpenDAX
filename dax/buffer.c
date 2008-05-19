@@ -138,7 +138,7 @@ int buff_read(int fd) {
     /* We don't want to read too much now do we */
     size = DAX_MSGMAX - node->index;
     result = read(fd, &node->buffer[node->index], size);
-    //--printf("buff_read() read %d bytes\n", result);
+    
     if(result < 0) {
         /* TODO: Should we handle the case when this returns due to a signal */
         xerror("Unable to read data from socket %d", fd);

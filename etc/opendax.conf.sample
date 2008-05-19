@@ -32,5 +32,5 @@ m.name      = "modbus"
 m.path      = daxroot.."modules/modbus/modbus"
 m.args      = "-C " .. daxroot .. "etc/modbus.conf"
 
-add_module(m)
+--add_module(m)
 

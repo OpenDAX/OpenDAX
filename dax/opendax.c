@@ -111,7 +111,9 @@ messagethread(void)
 {
     while(1) {
         /* TODO: How far up should errors be passed */
-        if(msg_receive()) sleep(1);
+        if(msg_receive()) {
+            sleep(1);
+        }
     }
 }
 
