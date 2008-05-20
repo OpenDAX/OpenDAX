@@ -61,11 +61,9 @@ static dead_module _dmq[DMQ_SIZE];
    for the opendcs main process.)  If an existing module with the same
    name is found the handle of that module will be returned instead.
 */
-dax_module * module_add(char *name, char *path, char *arglist, int startup, unsigned int flags) {
-    /* The handle is incremented before first use.  The first added module
-       will be handle 2 so that the core process can always be one */
-    //--static mod_handle_t handle=1;
-
+dax_module *
+module_add(char *name, char *path, char *arglist, int startup, unsigned int flags)
+{
     dax_module *new, *try;
     xlog(10,"Adding module %s",name);
     
@@ -73,9 +71,8 @@ dax_module * module_add(char *name, char *path, char *arglist, int startup, unsi
         return try;
         //--return try->handle; /* Name already used */
     /* TODO: Handle the errors for the following somehow */
-    new = (dax_module *)xmalloc(sizeof(dax_module));
+    new = xmalloc(sizeof(dax_module));
     if(new) {
-        //--new->handle = ++handle;
         new->flags = flags;
         if(startup > 0) new->startup = startup;
         else startup = 0;

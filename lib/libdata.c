@@ -26,12 +26,15 @@
 #include <dax/libcommon.h>
 
 /* Tag Cache Handling Code
- * The tag cache is a linked list of parts of the tags.
- * Right now the tag name is not included.  The last
+ * The tag cache is a doubly linked circular list
+ * the head pointer is fixed at the top of the list
  * tag searched for will bubble up one item in the list
  * each time it's found.  This will make the top of the list
  * the most searched for tags and the bottom the lesser used tags.
  */
+
+/* TODO: I need a way to invalidate the tag cache so that changes
+   to the tag can be put into the tag cache */
 
 /* This is the structure for our tag cache */
 typedef struct Tag_Cnode {
@@ -39,11 +42,11 @@ typedef struct Tag_Cnode {
     unsigned int type;
     unsigned int count;
     struct Tag_Cnode *next;
+    struct Tag_Cnode *prev;
     char name[DAX_TAGNAME_SIZE + 1];
 } tag_cnode;
 
 static tag_cnode *_cache_head; /* First node in the cache list */
-static tag_cnode *_cache_end;  /* Always points to the last node */
 static int _cache_limit;       /* Total number of nodes that we'll allocate */
 static int _cache_count;       /* How many nodes we actually have */
 
@@ -51,53 +54,118 @@ int
 init_tag_cache(void)
 {
     _cache_head = NULL;
-    _cache_end = NULL;
     _cache_limit = opt_get_cache_limit();
     _cache_count = 0;
     return 0;
 }
 
-int
-check_tag_cache(handle_t handle, dax_tag *tag)
+/****** FOR TESTING ONLY ********
+static void
+print_cache(void)
 {
-    tag_cnode *prev, *this;
-    tag_cnode temp;
+    int n;
+    tag_cnode *this;
+    this = _cache_head;
+    printf("_cache_head->handle = {%d}\n", _cache_head->handle);
+    for(n=0; n<_cache_count; n++) {
+        printf("{%d} - %s\t\t", this->handle, this->name);
+        printf("this->prev = {%d}", this->prev->handle);
+        printf(" : this->next = {%d}\n", this->next->handle);
+        this = this->next;
+    }
+    printf("\n{ count = %d, head = %p }\n", _cache_count, _cache_head);
+    //printf("{ head->handle = %d, tail->handle = %d head->prev = %p, tail->next = %p}\n", 
+    //       _cache_head->handle, _cache_tail->handle, _cache_head->prev, _cache_tail->next);
+}
+*/
+ 
+/* This function assigns the data to *tag and bubbles
+   this up one node in the list */
+static inline void
+_cache_hit(tag_cnode *this, dax_tag *tag)
+{
+    tag_cnode *before, *after;
+    
+    /* Store the return values in tag */
+    strcpy(tag->name, this->name);
+    tag->handle = this->handle;
+    tag->type = this->type;
+    tag->count = this->count;
+    
+    /* Bubble up:
+     after is set to the node that we swap with
+     before is set to the node that will be before
+     us after the swap.  The special case is when our
+     node will become the first one, then we move the head. */
+    if(this != _cache_head) { /* Do nothing if we are already at the top */
+        /* If there are only two then we do it the easy way */
+        if(_cache_count == 2) {
+            _cache_head = _cache_head->next;
+        } else {
+            if(this == _cache_head->next) _cache_head = this;
+            after = this->prev;
+            before = after->prev;
+            before->next = this;
+            after->prev = this;
+            after->next = this->next;
+            this->next->prev = after;
+            this->next = after;
+            this->prev = before;
+        }
+    }
+    //--print_cache();
+}
+
+int
+check_cache_handle(handle_t handle, dax_tag *tag)
+{
+    tag_cnode *this;
     
     if(_cache_head != NULL) {
         this = _cache_head;
     } else {
         return ERR_NOTFOUND;
     }
-    while(this != NULL && this->handle != handle) {
-        prev = this;
+    if(_cache_head->handle != handle) {
         this = this->next;
+        
+        while(this != _cache_head && this->handle != handle) {
+            this = this->next;
+        }
+        if(this == _cache_head) {
+            return ERR_NOTFOUND;
+        }
     }
-    if(this == NULL) {
+    
+    _cache_hit(this, tag);
+    
+    return 0;
+}
+
+
+int
+check_cache_name(char *name, dax_tag *tag)
+{
+    tag_cnode *this;
+    
+    if(_cache_head != NULL) {
+        this = _cache_head;
+    } else {
         return ERR_NOTFOUND;
     }
-    /* Store the return values in tag */
-    strcpy(tag->name, this->name);
-    tag->handle = handle;
-    tag->type = this->type;
-    tag->count = this->count;
-    
-    /* Bubble up */
-    /* TODO: Fix this and do it right, probably needs to 
-     *  be a doubly linked list to do this right. */
-    if(this != _cache_head) {
-        temp.handle = this->handle;
-        temp.type = this->type;
-        temp.count = this->count;
-        strcpy(temp.name, this->name);
-        this->handle = prev->handle;
-        this->type = prev->type;
-        this->count = prev->count;
-        strcpy(this->name, prev->name);
-        prev->handle = temp.handle;
-        prev->type = temp.type;
-        prev->count = temp.count;
-        strcpy(prev->name, temp.name);
+    if( strcmp(_cache_head->name, name) ) {
+        this = this->next;
+        
+        while(this != _cache_head && strcmp(this->name, name)) {
+            this = this->next;
+        }
+        if(this == _cache_head) {
+            return ERR_NOTFOUND;
+        }
     }
+    
+    _cache_hit(this, tag);
+    
     return 0;
 }
 
@@ -105,32 +173,40 @@ int
 cache_tag_add(dax_tag *tag)
 {
     tag_cnode *new;
-    if(_cache_end == NULL) { /* First one */
+    
+    if(_cache_head == NULL) { /* First one */
+        //--printf("adding {%d} to the beginning\n", tag->handle);
         new = malloc(sizeof(tag_cnode));
         if(new) {
+            new->next = new;
+            new->prev = new;
             _cache_head = new;
-            _cache_end = new;
             _cache_count++;
         } else {
             return ERR_ALLOC;
         }
     } else if(_cache_count < _cache_limit) { /* Add to end */
+        //--printf("adding {%d} to the end\n", tag->handle);
         new = malloc(sizeof(tag_cnode));
         if(new) {
-            _cache_end->next = new;
-            _cache_end = new;
+            new->next = _cache_head;
+            new->prev = _cache_head->prev;
+            _cache_head->prev->next = new;
+            _cache_head->prev = new;
             _cache_count++;
         } else {
             return ERR_ALLOC;
         }
     } else {
-        new = _cache_end;
+        //--printf("Just putting {%d}  last\n", tag->handle);
+        new = _cache_head->prev;
     }
     strcpy(new->name, tag->name);
     new->handle = tag->handle;
     new->type = tag->type;
     new->count = tag->count;
-    new->next = NULL;
+    //--print_cache();
+    
     return 0;
 }
 

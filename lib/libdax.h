@@ -27,7 +27,7 @@
 #include <opendax.h>
 
 #ifndef TAG_CACHE_LIMIT
-#  define TAG_CACHE_LIMIT 32
+#  define TAG_CACHE_LIMIT 8
 #endif
 
 /* Data Conversion Functions */
@@ -72,7 +72,8 @@ dax_lreal_t stom_lreal(dax_lreal_t);
 
 /* These functions handle the tag cache */
 int init_tag_cache(void);
-int check_tag_cache(handle_t, dax_tag *);
+int check_cache_handle(handle_t, dax_tag *);
+int check_cache_name(char *, dax_tag *);
 int cache_tag_add(dax_tag *);
 
 /* Configuration Option Functions */

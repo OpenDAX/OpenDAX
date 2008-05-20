@@ -248,98 +248,43 @@ dax_tag_add(char *name, unsigned int type, unsigned int count)
 }
 
 
-/* Get the tag by name. */
-static int
-_dax_get_tag(char *name, dax_tag *tag)
-{
-    int result, size;
-    char *buff;
-    
-    if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
-    /* We make buff big enough for the outgoing message and the incoming
-       response message which would have 3 additional int32s */
-    buff = alloca(size + 14);
-    buff[0] = TAG_GET_NAME;
-    strcpy(&buff[1], name);
-    /* TODO: Check the tag cache here - If we are keeping the name in the cache */
-    /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
-    result = _message_send( MSG_TAG_GET, buff, size + 2);
-    if(result) {
-        dax_error("Can't send MSG_TAG_GET message");
-        return result;
-    }
-    size += 14; /* This makes room for the type, count and handle */
-    
-    result = _message_recv(MSG_TAG_GET, buff, &size, 1);
-    if(result) {
-        dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
-        return ERR_MSG_RECV;
-    } else {
-        tag->handle = stom_dint( *((int *)&buff[0]) );
-        tag->type = stom_udint(*((u_int32_t *)&buff[4]));
-        tag->count = stom_udint(*((u_int32_t *)&buff[8]));
-        buff[size - 1] = '\0'; /* Just to make sure */
-        strcpy(tag->name, &buff[12]);
-        return 0;
-    }
-}
-
-
 /* These tag name getting routines will have to be rewritten when we get
 the custom data types going.  Returns zero on success. */
 /* TODO: Need to clean up this function.  There is stuff I don't think I want in here */ 
 int
 dax_tag_byname(char *name, dax_tag *tag)
 {
-    dax_tag tag_test;
-    char tagname[DAX_TAGNAME_SIZE + 1];
-    int index, bit, result, size;
+    int result, size;
+    char *buff;
+        
+    if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
     
-    if(dax_tag_parse(name, tagname, &index)) {
-        return ERR_TAG_BAD;
+    if(check_cache_name(name, tag)) {
+        /* We make buff big enough for the outgoing message and the incoming
+           response message which would have 3 additional int32s */
+        buff = alloca(size + 14);
+        buff[0] = TAG_GET_NAME;
+        strcpy(&buff[1], name);
+        /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
+        result = _message_send( MSG_TAG_GET, buff, size + 2);
+        if(result) {
+            dax_error("Can't send MSG_TAG_GET message");
+            return result;
+        }
+        size += 14; /* This makes room for the type, count and handle */
+        
+        result = _message_recv(MSG_TAG_GET, buff, &size, 1);
+        if(result) {
+            dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
+            return ERR_MSG_RECV;
+        }
+        tag->handle = stom_dint( *((int *)&buff[0]) );
+        tag->type = stom_udint(*((u_int32_t *)&buff[4]));
+        tag->count = stom_udint(*((u_int32_t *)&buff[8]));
+        buff[size - 1] = '\0'; /* Just to make sure */
+        strcpy(tag->name, &buff[12]);
+        cache_tag_add(tag);
     }
-    
-    result = _dax_get_tag(tagname, &tag_test);
-    if(result) {
-        return result;
-    }
-    
-    /* This will happen if there are no subscripts to the tag */
-    if(index < 0 && bit < 0) {
-        memcpy(tag, &tag_test, sizeof(dax_tag));
-        return 0;
-    }
-    /* Check that the given subscripts still fall within the tags. */
-    size = TYPESIZE(tag_test.type) * tag_test.count;
-    
-    if( (index >=0 && index >= tag_test.count) || 
-       (bit >= size || (index * TYPESIZE(tag_test.type) + bit >= size)) ||
-       (index >= 0 && bit >= TYPESIZE(tag_test.type))) {
-           return ERR_TAG_BAD;
-    }
-    /* if we make it this far all is good and we can calculate the type,
-       size and handle of the tag */
-    tag->name[0] = '\0'; /* We don't return the name */
-    if(index < 0 && bit < 0) {
-        index = 0;        bit = 0;
-        tag->type = tag_test.type;
-        tag->count = tag_test.count;
-    } else if(index < 0 && bit >=0) {
-        index = 0;
-        tag->type = DAX_BOOL;
-        tag->count = 1;
-    } else if(index >=0 && bit < 0) {
-        bit = 0;
-        tag->type = tag_test.type;
-        tag->count = 1;
-    } else  {
-        tag->type = DAX_BOOL;
-        tag->count = 1;
-    }
-    tag->index = index;
-    //tag->bit = bit;
-    // handle will remain the same now
-    //--tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
     return 0;
 }
 
@@ -350,7 +295,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
     int result, size;
     char buff[DAX_TAGNAME_SIZE + 13];
     
-    if(check_tag_cache(handle, tag)) {
+    if(check_cache_handle(handle, tag)) {
         buff[0] = TAG_GET_HANDLE;
         *((handle_t *)&buff[1]) = handle;
         result = _message_send(MSG_TAG_GET, buff, sizeof(handle_t) + 1);

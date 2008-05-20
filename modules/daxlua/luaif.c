@@ -75,7 +75,7 @@ _dax_tag_add(lua_State *L)
 /* This function figures out what type of data the tag is and translates
 *buff appropriately and pushes the value onto the lua stack */
 static inline void
-dax_pushdata(lua_State *L, unsigned int type, void *buff)
+_dax_pushdata(lua_State *L, unsigned int type, void *buff)
 {
     switch (type) {
         /* Each number has to be cast to the right datatype then dereferenced
@@ -122,8 +122,7 @@ _dax_read(lua_State *L)
 {
     char *name;
     dax_tag tag;
-    int size, n;
-    size_t buff_idx, buff_bit;
+    int size, n, result;
     void *buff;
     
     name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
@@ -131,32 +130,34 @@ _dax_read(lua_State *L)
     if( name == NULL) {
         luaL_error(L, "No tagname passed");
     }
-    if(dax_tag_byname(name, &tag) ) {
-        luaL_error(L, "Unable to retrieve tag - %s", name);
+    if( (result = dax_tag_byname(name, &tag)) ) {
+        luaL_error(L, "Unable to retrieve tag - %s, error %d", name, result);
     }
- /* We have to treat Booleans differently */
+    printf("Attempting to get %s, type = %d, count = %d\n", tag.name, tag.type, tag.count);
+    if(tag.type == DAX_BOOL) {
+        size = tag.count / 8 +1;
+    } else {
+        size = tag.count * TYPESIZE(tag.type) / 8;
+    }
+    buff = alloca(size);
+    if(buff == NULL) {
+        luaL_error(L, "Unable to allocate buffer size = %d", size);
+    }
+    result = dax_read_tag(tag.handle, 0, buff, tag.count, tag.type);
+    if(result) {
+        luaL_error(L, "Unable to read tag - %s", tag.name);
+    }
+    
+/* We have to treat Booleans differently */
     if(tag.type == DAX_BOOL) {
         /* Check to see if it's an array */
         if(tag.count > 1 ) {
-            size = tag.count / 8 + 1;
-            buff = alloca(size);
-            if(buff == NULL) {
-                luaL_error(L, "Unable to allocate buffer size = %d", size);
-            }
-            dax_tag_read_bits(tag.handle, buff, tag.count);
-            buff_idx = buff_bit = 0;
             lua_createtable(L, tag.count, 0);
             for(n = 0; n < tag.count ; n++) {
-                if(((u_int8_t *)buff)[buff_idx] & (1 << buff_bit)) { /* If *buff bit is set */
+                if(((u_int8_t *)buff)[n/8] & (1 << n%8)) { /* If *buff bit is set */
                     lua_pushboolean(L, 1);
                 } else {  /* If the bit in the buffer is not set */
                     lua_pushboolean(L, 0);
-                }
-                lua_rawseti(L, -2, n + 1);
-                buff_bit++;
-                if(buff_bit == 8) {
-                    buff_bit = 0;
-                    buff_idx++;
                 }
             }
         } else {
@@ -164,14 +165,6 @@ _dax_read(lua_State *L)
         }
  /* Not a boolean */
     } else {
-        size = tag.count * TYPESIZE(tag.type) / 8;
-        buff = alloca(size);
-        if(buff == NULL) {
-            luaL_error(L, "Unable to allocate buffer size = %d", size);
-        }
-        dax_read(tag.handle, 0, buff, size);
-        //--DEBUG: printf("tag.count = %d, tag.type = %s\n", tag.count, dax_type_to_string(tag.type));
-        
         /* Push the data up to the lua interpreter stack */
         if(tag.count > 1) { /* We need to return a table */
             /* TODO: Since this is all Array stuff we can use 
@@ -179,11 +172,11 @@ _dax_read(lua_State *L)
             lua_newtable(L);
             for(n = 0; n < tag.count ; n++) {
                 lua_pushnumber(L, n + 1); /* Lua likes 1 indexed arrays ?? uahuhauuahhu */
-                dax_pushdata(L, tag.type, buff + (TYPESIZE(tag.type) / 8) * n);
+                _dax_pushdata(L, tag.type, buff + (TYPESIZE(tag.type) / 8) * n);
                 lua_settable(L, -3);
             }
         } else { /* It's a single value */
-            dax_pushdata(L, tag.type, buff);
+            _dax_pushdata(L, tag.type, buff);
         }
     }
     return 1; /* return number of retvals */
@@ -191,7 +184,7 @@ _dax_read(lua_State *L)
 
 
 static inline void
-lua_to_dax(lua_State *L, unsigned int type, void *buff, void *mask, int index)
+_lua_to_dax(lua_State *L, unsigned int type, void *buff, void *mask, int index)
 {
     lua_Integer x;
     
@@ -306,7 +299,7 @@ _dax_write(lua_State *L)
                     ((u_int8_t *)mask)[index] |= (1 << (x % 8));
                 } else {
                     //Handle the non-boolean
-                    lua_to_dax(L, tag.type, buff, mask, n);
+                    _lua_to_dax(L, tag.type, buff, mask, n);
                 }
             } else {
                 lua_pop(L, 1); /* Better pop that nil off the stack */
@@ -318,7 +311,7 @@ _dax_write(lua_State *L)
         if(tag.type == DAX_BOOL) {
             dax_tag_write_bit(tag.handle, lua_toboolean(L, -1));
         } else {
-            lua_to_dax(L, tag.type, buff, mask, 0);
+            _lua_to_dax(L, tag.type, buff, mask, 0);
             dax_write(tag.handle, 0, buff, size);
         }
     }
