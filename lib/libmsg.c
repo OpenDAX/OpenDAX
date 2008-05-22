@@ -257,6 +257,8 @@ dax_tag_byname(char *name, dax_tag *tag)
     int result, size;
     char *buff;
         
+    if(name == NULL) return ERR_ARG; /* Do I really need this?? */
+    
     if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
     
     if(check_cache_name(name, tag)) {

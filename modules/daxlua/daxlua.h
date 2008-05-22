@@ -38,7 +38,7 @@ typedef struct Script_t {
     long lastscan;
     int executions;
     int tagcount;
-    dax_tag *tags;
+    char **tags;
 } script_t;
 
 /* options.c - Configuration functions */
@@ -47,13 +47,13 @@ char *get_init(void);
 int get_scriptcount(void);
 script_t *get_script(int index);
 
-//--char *get_main(void);
-//--int get_rate(void);
 int get_verbosity(void);
 
 /* luaif.c - Lua Interface functions */
 int daxlua_init(void);
 int setup_interpreter(lua_State *L);
+int fetch_tag(lua_State *L, char *tagname);
+int send_tag(lua_State *L, char *tagname);
 
 
 #endif /* !__DAXLUA_H */

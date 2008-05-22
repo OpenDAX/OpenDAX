@@ -115,25 +115,19 @@ _dax_pushdata(lua_State *L, unsigned int type, void *buff)
     }
 }
 
-/* Gets the value of the tag.  Accepts one argument, the tagname or handle
-and returns the value requested or raises an error on failure */
-static int
-_dax_read(lua_State *L)
+/* This function finds the tag given by *tagname, get's the data from
+   the server and puts the result on the top of the Lua stack. */
+int
+fetch_tag(lua_State *L, char *tagname)
 {
-    char *name;
     dax_tag tag;
     int size, n, result;
     void *buff;
+
+    if( (result = dax_tag_byname(tagname, &tag)) ) {
+        luaL_error(L, "Unable to retrieve tag - %s, error %d", tagname, result);
+    }
     
-    name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
-    /* Make sure that name is not NULL and we get the tagname */
-    if( name == NULL) {
-        luaL_error(L, "No tagname passed");
-    }
-    if( (result = dax_tag_byname(name, &tag)) ) {
-        luaL_error(L, "Unable to retrieve tag - %s, error %d", name, result);
-    }
-    printf("Attempting to get %s, type = %d, count = %d\n", tag.name, tag.type, tag.count);
     if(tag.type == DAX_BOOL) {
         size = tag.count / 8 +1;
     } else {
@@ -148,7 +142,7 @@ _dax_read(lua_State *L)
         luaL_error(L, "Unable to read tag - %s", tag.name);
     }
     
-/* We have to treat Booleans differently */
+    /* We have to treat Booleans differently */
     if(tag.type == DAX_BOOL) {
         /* Check to see if it's an array */
         if(tag.count > 1 ) {
@@ -159,26 +153,43 @@ _dax_read(lua_State *L)
                 } else {  /* If the bit in the buffer is not set */
                     lua_pushboolean(L, 0);
                 }
+                lua_rawseti(L, -2, n + 1);
             }
         } else {
-            lua_pushboolean(L, dax_tag_read_bit(tag.handle));
+            lua_pushboolean(L, ((char *)buff)[0]);
         }
- /* Not a boolean */
+        /* Not a boolean */
     } else {
         /* Push the data up to the lua interpreter stack */
         if(tag.count > 1) { /* We need to return a table */
-            /* TODO: Since this is all Array stuff we can use 
-                     lua_createtable() and the lua_raw*() functions */
-            lua_newtable(L);
+            lua_createtable(L, tag.count, 0);
             for(n = 0; n < tag.count ; n++) {
-                lua_pushnumber(L, n + 1); /* Lua likes 1 indexed arrays ?? uahuhauuahhu */
                 _dax_pushdata(L, tag.type, buff + (TYPESIZE(tag.type) / 8) * n);
-                lua_settable(L, -3);
+                lua_rawseti(L, -2, n + 1); /* Lua likes 1 indexed arrays */
             }
         } else { /* It's a single value */
             _dax_pushdata(L, tag.type, buff);
         }
     }
+    
+    return 0;
+}
+
+/* Gets the value(s) of the tag.  Accepts one argument, the tagname
+and returns the value requested or raises an error on failure */
+static int
+_dax_read(lua_State *L)
+{
+    char *name;
+    
+    name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
+    /* Make sure that name is not NULL and we get the tagname */
+    if( name == NULL) {
+        luaL_error(L, "No tagname passed");
+    }
+
+    fetch_tag(L, name);
+    
     return 1; /* return number of retvals */
 }
 
@@ -192,52 +203,119 @@ _lua_to_dax(lua_State *L, unsigned int type, void *buff, void *mask, int index)
         case DAX_BYTE:
         case DAX_SINT:
             x = lua_tointeger(L, -1) % 256;
-            ((u_int8_t *)buff)[index] = x;
-            ((u_int8_t *)mask)[index] = 0xFF;
+            ((dax_sint_t *)buff)[index] = x;
+            if(mask) ((dax_sint_t *)mask)[index] = 0xFF;
             break;
         case DAX_WORD:
         case DAX_UINT:
-            x = lua_tointeger(L, -1) % (2^16);
-            ((u_int16_t *)buff)[index] = x;
-            ((u_int16_t *)mask)[index] = 0xFFFF;
+            x = lua_tointeger(L, -1);
+            ((dax_uint_t *)buff)[index] = x;
+            if(mask) ((dax_uint_t *)mask)[index] = 0xFFFF;
             break;
         case DAX_INT:
             x = lua_tointeger(L, -1);
-            ((int16_t *)buff)[index] = x;
-            ((u_int16_t *)mask)[index] = 0xFFFF;
+            ((dax_int_t *)buff)[index] = x;
+            if(mask) ((dax_int_t *)mask)[index] = 0xFFFF;
             break;
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
             x = lua_tointeger(L, -1);
-            ((u_int32_t *)buff)[index] = x;
-            ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_udint_t *)buff)[index] = x;
+            if(mask) ((dax_udint_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_DINT:
             x = lua_tointeger(L, -1);
-            ((int32_t *)buff)[index] = x;
-            ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_dint_t *)buff)[index] = x;
+            if(mask) ((dax_dint_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_REAL:
-            ((float *)buff)[index] = (float)lua_tonumber(L, -1);
-            ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_real_t *)buff)[index] = (dax_real_t)lua_tonumber(L, -1);
+            if(mask) ((dax_real_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_LWORD:
         case DAX_ULINT:
             x = lua_tointeger(L, -1);
-            ((u_int64_t *)buff)[index] = x;
-            ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            ((dax_ulint_t *)buff)[index] = x;
+            if(mask) ((dax_ulint_t *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LINT:
             x = lua_tointeger(L, -1);
-            ((int64_t *)buff)[index] = x;
-            ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            ((dax_lint_t *)buff)[index] = x;
+            if(mask) ((dax_lint_t *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LREAL:
-            ((double *)buff)[index] = lua_tonumber(L, -1);
-            ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            ((dax_lreal_t *)buff)[index] = lua_tonumber(L, -1);
+            if(mask) ((dax_lreal_t *)mask)[index] = DAX_64_ONES;
             break;
      }
+}
+
+/* This function reads the variable off the top of the Lua stack
+   and sends it to the opendax tag given by *tagname */
+int
+send_tag(lua_State *L, char *tagname)
+{
+    dax_tag tag;
+    int size, n;
+    void *buff, *mask;
+    
+    if( dax_tag_byname(tagname, &tag) ) {
+        luaL_error(L, "Unable to retrieve tag - %s", tagname);
+    }
+    if( tag.type == DAX_BOOL ) {
+        size = tag.count / 8 + 1;
+    } else {
+        size = tag.count * TYPESIZE(tag.type) / 8;
+    }
+    /* Allocate a buffer and a mask */
+    buff = alloca(size);
+    bzero(buff, size);
+    mask = alloca(size);
+    bzero(mask, size);
+    if(buff == NULL || mask == NULL) {
+        luaL_error(L, "Unable to allocate buffer to write tag %s", tagname);
+    }
+    
+    if(tag.count > 1) { /* The tag is an array */
+        /* Check that the second parameter is a table */
+        if( ! lua_istable(L, 2) ) { 
+            luaL_error(L, "Array needed to set - %s", tagname);
+        }
+        /* We're just searching for indexes in the table.  Anything
+         other than numerical indexes in the table don't count */
+        for(n = 0; n < tag.count; n++) {
+            lua_rawgeti(L, 2, n+1);
+            if(lua_isnil(L, -1)) {
+                lua_pop(L, 1); /* Better pop that nil off the stack */
+            } else { /* Ok we have something let's deal with it */
+                if(tag.type == DAX_BOOL) {
+                    /* Handle the boolean */
+                    //--x = (n + tag.handle) % 8;
+                    //--index = ((tag.handle % 8) + n) / 8;
+                    if(lua_toboolean(L, -1)) {
+                        ((u_int8_t *)buff)[n/8] |= (1 << (n % 8));
+                    } else {  /* If the bit in the buffer is not set */
+                        ((u_int8_t *)buff)[n/8] &= ~(1 << (n % 8));
+                    }
+                    ((u_int8_t *)mask)[n/8] |= (1 << (n % 8));
+                } else {
+                    //Handle the non-boolean
+                    _lua_to_dax(L, tag.type, buff, mask, n);
+                }
+            }
+        }
+        /* Write the data to DAX */
+        dax_mask_tag(tag.handle, 0, buff, mask, tag.count, tag.type);
+    } else { /* Retrieved tag is a single point */
+        if(tag.type == DAX_BOOL) {
+            ((char *)buff)[0] = lua_toboolean(L, -1);
+        } else {
+            _lua_to_dax(L, tag.type, buff, mask, 0);
+        }
+        dax_write_tag(tag.handle, 0, buff, tag.count, tag.type);
+    }
+    return 0;
 }
 
 /* Sets a given tag to the given value.  Two arguments...
@@ -249,72 +327,16 @@ static int
 _dax_write(lua_State *L)
 {
     char *name;
-    dax_tag tag;
-    int size, n, x, index;
-    void *buff, *mask;
-    
+        
     name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
     /* Make sure that name is not NULL and we get the tagname */
-    if( name && dax_tag_byname(name, &tag) ) {
-        luaL_error(L, "Unable to retrieve tag - %s", name);
-    }
-    
-    if( tag.type == DAX_BOOL ) {
-        //if( tag.handle % 8 == 0) {
-            size = tag.count / 8 + 1;
-        //} else {
-        //    size = tag.count / 8 + 2;
-        //}
+    if(name) {
+        send_tag(L, name);
     } else {
-        size = tag.count * TYPESIZE(tag.type) / 8;
-    }
-    /* Allocate a buffer and a mask */
-    buff = alloca(size);
-    bzero(buff, size);
-    mask = alloca(size);
-    bzero(mask, size);
-    if(buff == NULL || mask == NULL) {
-        luaL_error(L, "Unable to allocate buffer to write tag %s", name);
+        luaL_error(L, "No Name Given to Write");
+        return -1;
     }
     
-    if(tag.count > 1) { /* The tag is an array */
-        /* Check that the second parameter is a table */
-        if( ! lua_istable(L, 2) ) { 
-            luaL_error(L, "Array needed to set - %s", name);
-        }
-        /* We're just searching for indexes in the table.  Anything
-           other than numerical indexes in the table don't count */
-        for(n = 0; n < tag.count ; n++) {
-            lua_rawgeti(L, 2, n+1);
-            if(lua_isnil(L, -1) == 0) {
-                if(tag.type == DAX_BOOL) {
-                    /* Handle the boolean */
-                    x = (n + tag.handle) % 8;
-                    index = ((tag.handle % 8) + n) / 8;
-                    if(lua_toboolean(L, -1)) {
-                        ((u_int8_t *)buff)[index] |= (1 << (x % 8));
-                    } else {  /* If the bit in the buffer is not set */
-                        ((u_int8_t *)buff)[index] &= ~(1 << (x % 8));
-                    }
-                    ((u_int8_t *)mask)[index] |= (1 << (x % 8));
-                } else {
-                    //Handle the non-boolean
-                    _lua_to_dax(L, tag.type, buff, mask, n);
-                }
-            } else {
-                lua_pop(L, 1); /* Better pop that nil off the stack */
-            }
-        }
-        /* Write the data to DAX */
-        dax_mask(tag.handle, 0, buff, mask, size);
-    } else { /* Retrieved tag is a single point */
-        if(tag.type == DAX_BOOL) {
-            dax_tag_write_bit(tag.handle, lua_toboolean(L, -1));
-        } else {
-            _lua_to_dax(L, tag.type, buff, mask, 0);
-            dax_write(tag.handle, 0, buff, size);
-        }
-    }
     return 0; /* return number of retvals */
 }
 

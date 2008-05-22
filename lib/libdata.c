@@ -21,7 +21,7 @@
 
 #include <libdax.h>
 #ifdef HAVE_STRINGS_H
- #include <strings.h>
+# include <strings.h>
 #endif
 #include <dax/libcommon.h>
 

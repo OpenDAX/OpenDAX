@@ -168,9 +168,6 @@ initialize_tagbase(void)
     }
     
     xlog(LOG_MINOR, "Database created with size = %d", __dbsize);
-    /* Set all the memory to zero */
-    //--memset(__taglist, 0x00, sizeof(_dax_tag) * DAX_TAGLIST_SIZE);
-    //--memset(__db, 0x00, sizeof(u_int32_t) * DAX_DATABASE_SIZE);
     
     /* Create the _status tag at handle zero */
     if(tag_add("_status", DAX_DWORD, STATUS_SIZE)) {
@@ -253,6 +250,7 @@ tag_add(char *name, unsigned int type, unsigned int count)
             newdata = realloc(__db[n].data, size);
             if(newdata) {
                 __db[n].data = newdata;
+                /* TODO: Zero the new part of the allocation */
                 __db[n].count = count;
                 return n;
             } else {
@@ -284,10 +282,6 @@ tag_add(char *name, unsigned int type, unsigned int count)
     }
     /* Only if everything works will we increment the count */
     __tagcount++;
-    /* TODO: replace this with a real time build of the status tag when it's requested */    
-    //tag_write_bytes(STAT_TAG_CNT, &__tagcount, sizeof(u_int32_t));
-    
-    //xlog(LOG_MINOR, "tag_add() - Tag %s added at handle 0x%X", name, n);
     return n;
 }
 

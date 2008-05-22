@@ -176,22 +176,20 @@ _add_script(lua_State *L)
         /* Find how many objects are in the table.*/
         tagcount = lua_objlen(L, -1);
         /* Allocate the tag array */
-        scripts[si].tags = malloc(sizeof(dax_tag) * tagcount);
-        
+        scripts[si].tags = malloc(sizeof(char *) * tagcount);
+        /* TODO: What to do if this fails? */
         for(n = 1; n <= tagcount; n++) {
             lua_rawgeti(L, -1, n);
             string = lua_tostring(L, -1);
             if(string) {
-                strncpy(scripts[si].tags[n-1].name, string, DAX_TAGNAME_SIZE);
+                /* TODO: What do do if this fails?? */
+                scripts[si].tags[n-1] = strdup(string);
+                printf("adding %s to the tag list\n", scripts[si].tags[n-1]);
             }
-            /* The tags may not exist at this point so we'll indicate that we don't know
-               about the tags by setting everything to zero */
-            scripts[si].tags[n-1].handle = 0;
-            scripts[si].tags[n-1].type = 0;
-            scripts[si].tags[n-1].count = 0;
             
             lua_pop(L, 1);
         }
+        scripts[si].tagcount = tagcount;
     }
     return 0;
 }
@@ -232,23 +230,15 @@ configure(int argc, char *argv[])
     
     lua_getglobal(L, "verbosity");
     
-    //--mainscript = strdup(lua_tostring(L, -3));
-    //--rate = lround(lua_tonumber(L, -2));
     if(verbosity == 0) { /* Make sure we didn't get anything on the commandline */
         verbosity = lround(lua_tonumber(L, -1));
         dax_set_verbosity(verbosity);
     }
     
- /* bounds check rate */
-    //if(rate < 10 || rate > 100000) {
-    //    dax_error("Rate is out of bounds.  Setting to 1000.");
-    //    rate = 1000;
-    //}
     dax_debug(2, "Initialization Script set to %s",initscript);
-    //dax_debug(2, "Main Script set to %s", mainscript);
-    //dax_debug(2, "Rate set to %d", rate);
     dax_debug(2, "Verbosity set to %d", verbosity);
- /* Clean up and get out */
+
+    /* Clean up and get out */
     lua_close(L);
     
     return 0;

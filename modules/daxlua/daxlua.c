@@ -56,6 +56,36 @@ lua_init(void)
     return 0;
 }
 
+static inline int
+register_globals(lua_State *L, script_t *s)
+{
+    int n;
+    
+    for(n = 0; n < s->tagcount; n++) {
+        if(fetch_tag(L, s->tags[n])) {
+            return -1;
+        } else {
+            lua_setglobal(L, s->tags[n]);
+        }
+    }
+    return 0;    
+}
+
+static inline int
+send_globals(lua_State*L, script_t *s)
+{
+    int n;
+    
+    for(n = 0; n < s->tagcount; n++) {
+        lua_getglobal(L, s->tags[n]);
+        
+        if(send_tag(L, s->tags[n])) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 /* Sets up and runs the given script in a new thread. */
 int
 lua_script_thread(script_t *s)
@@ -83,14 +113,20 @@ lua_script_thread(script_t *s)
             /* retrieve the funciton and put it on the stack */
             lua_rawgeti(L, LUA_REGISTRYINDEX, func_ref);
             
-            /* TODO: Get all the global tags and set the globals for the script */
-            
-            /* Run the script that is on the top of the stack */
-            if( lua_pcall(L, 0, 0, 0) ) {
-                dax_error("Error Running Script - %s", lua_tostring(L, -1));
-                //return 1;
+            /* Get the configured tags and set the globals for the script */
+            if(register_globals(L, s)) {
+                dax_error("Unable to find all the global tags\n");
+            } else {
+                /* Run the script that is on the top of the stack */
+                if( lua_pcall(L, 0, 0, 0) ) {
+                    dax_error("Error Running Script - %s", lua_tostring(L, -1));
+                    //return 1;
+                }
+                /* Write the configured global tags out to the server */
+                /* TODO: Should we do something if this fails, if register globals
+                   works then this should too */
+                send_globals(L, s);
             }
-            
             
             /* This calculates the length of time that it took to run the script
              and then subtracts that time from the rate and calls usleep to hold
