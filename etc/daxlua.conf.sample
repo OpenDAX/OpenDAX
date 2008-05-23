@@ -17,14 +17,14 @@ s = {}
 s.name = "script1"
 s.enable = true
 s.filename = root.."script1.lua"
-s.rate = 5000
+s.rate = 1000
 
-s.tags = { "luadint", "luaint", "luabool" }
+s.tags = { "luadint", "luaint", "luabool", "luarate" }
 
 add_script(s)
 
 s.name = "script2"
 s.filename = root.."script2.lua"
 s.rate = 2200
---add_script(s)
+add_script(s)
 

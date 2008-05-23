@@ -22,16 +22,14 @@
 #include <daxlua.h>
 #include <common.h>
 #include <signal.h>
-//#include <dax/func.h>
 #include <string.h>
 #include <sys/time.h>
 #include <pthread.h>
 
 static int quitsig = 0;
+extern pthread_mutex_t daxmutex;
 
 void quit_signal(int sig);
-
-
 
 /* Sets up and runs the init script.  The init script runs once
    at module start */
@@ -56,37 +54,75 @@ lua_init(void)
     return 0;
 }
 
+/* Looks into the list of tags in the script and reads those tags
+   from the server.  Then makes these tags global Lua variables
+   to the script */
 static inline int
 register_globals(lua_State *L, script_t *s)
 {
     int n;
     
+    pthread_mutex_lock(&daxmutex);
     for(n = 0; n < s->tagcount; n++) {
         if(fetch_tag(L, s->tags[n])) {
+            pthread_mutex_unlock(&daxmutex);
             return -1;
         } else {
             lua_setglobal(L, s->tags[n]);
         }
     }
+    pthread_mutex_unlock(&daxmutex);
+    
+    /* Now we set the daxlua system values as global variables */
+    lua_pushstring(L, s->name);
+    lua_setglobal(L, "_name");
+    
+    /* This may be of liimited usefulness */
+    lua_pushstring(L, s->filename);
+    lua_setglobal(L, "_filename");
+    
+    lua_pushinteger(L, (lua_Integer)s->lastscan);
+    lua_setglobal(L, "_lastscan");
+    
+    lua_pushinteger(L, (lua_Integer)s->rate);
+    lua_setglobal(L, "_rate");
+    
+    lua_pushinteger(L, (lua_Integer)s->executions);
+    lua_setglobal(L, "_executions");
+    
     return 0;    
 }
 
+/* Looks into the list of tags in the script and reads these global
+   variables from the script and then writes the values out to the
+   server */
+/* TODO: It would save some bandwidth if we only wrote tags that have
+   changed since we called register_globals() <- configuration?? */
 static inline int
 send_globals(lua_State*L, script_t *s)
 {
     int n;
     
+    pthread_mutex_lock(&daxmutex);
     for(n = 0; n < s->tagcount; n++) {
         lua_getglobal(L, s->tags[n]);
         
         if(send_tag(L, s->tags[n])) {
+            pthread_mutex_unlock(&daxmutex);
             return -1;
         }
+        lua_pop(L, 1);
     }
+    pthread_mutex_unlock(&daxmutex);
+    
+    lua_getglobal(L, "_rate");
+    s->rate = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+    
     return 0;
 }
 
-/* Sets up and runs the given script in a new thread. */
+/* This is the actual script thread function */
 int
 lua_script_thread(script_t *s)
 {
@@ -120,12 +156,12 @@ lua_script_thread(script_t *s)
                 /* Run the script that is on the top of the stack */
                 if( lua_pcall(L, 0, 0, 0) ) {
                     dax_error("Error Running Script - %s", lua_tostring(L, -1));
-                    //return 1;
                 }
                 /* Write the configured global tags out to the server */
                 /* TODO: Should we do something if this fails, if register globals
                    works then this should too */
                 send_globals(L, s);
+                s->executions++;
             }
             
             /* This calculates the length of time that it took to run the script
@@ -135,7 +171,7 @@ lua_script_thread(script_t *s)
             s->lastscan = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
             /* If it takes longer than the scanrate then just go again instead of sleeping */
             if(s->lastscan < s->rate)
-                usleep((s->rate - s->lastscan)*1000);
+                usleep((s->rate - s->lastscan) * 1000);
         } else {
             usleep(s->rate * 1000);
         }
@@ -149,6 +185,7 @@ lua_script_thread(script_t *s)
 }
 
 
+/* This function attempts to start the thread given by s */
 static int
 _start_thread(script_t *s)
 {    
@@ -216,7 +253,7 @@ int main(int argc, char *argv[]) {
         dax_fatal("Init Script \'%s\' failed to run properly", get_init());
     }
     
-    /* Here we go */
+    /* Start all the script threads */
     start_all_threads();
     
     while(1) {

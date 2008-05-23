@@ -36,10 +36,12 @@ typedef struct Script_t {
     char *filename;
     long rate;
     long lastscan;
-    int executions;
+    long executions;
     int tagcount;
     char **tags;
 } script_t;
+
+pthread_mutex_t daxmutex;
 
 /* options.c - Configuration functions */
 int configure(int argc, char *argv[]);
