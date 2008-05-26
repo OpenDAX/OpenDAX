@@ -39,6 +39,8 @@ typedef struct Script_t {
     long executions;
     int tagcount;
     char **tags;
+    int staticcount;
+    char **statics;
 } script_t;
 
 pthread_mutex_t daxmutex;

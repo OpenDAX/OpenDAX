@@ -531,9 +531,11 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
             break;
         case 5:
             //--temp = dt_getbit(cmd->handle, cmd->index);
+            temp = 0;
             result = dt_getbits(cmd->handle, cmd->index, &temp, 1);
+            printf("...getbits returned 0x%X for index %d\n", temp, cmd->index);
             /* TODO: Error Check result */
-            if(cmd->method == MB_CONTINUOUS||(temp != cmd->lastcrc) || !cmd->firstrun ) {
+            if(cmd->method == MB_CONTINUOUS || (temp != cmd->lastcrc) || !cmd->firstrun ) {
                 COPYWORD(&buff[2], &cmd->m_register);
                 if(temp) buff[4] = 0xff;
                 else     buff[4] = 0x00;

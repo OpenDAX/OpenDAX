@@ -32,6 +32,7 @@ static void parsecommandline(int argc, char *argv[]);
 static int verbosity = 0;
 static char *command = NULL;
 static char *filename = NULL;
+static int quitsignal = 0;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -69,6 +70,11 @@ int main(int argc,char *argv[]) {
  /* At this point we are in interactive mode.  We call the readline
     function repeatedly and then send the input to runcmd */
     while(1) {
+        if(quitsignal) {
+            dax_debug(LOG_MAJOR, "Quitting due to signal %d", quitsignal);
+            getout(quitsignal);
+        }
+        
         instr = rl_gets("dax>");
     
         if( instr == NULL ) {
@@ -256,8 +262,8 @@ rl_gets(const char *prompt)
 void
 quit_signal(int sig)
 {
-    dax_fatal("Quitting due to signal %d", sig);
-    getout(-1);
+    quitsignal = sig;
+    //getout(-1);
 }
 
 static void

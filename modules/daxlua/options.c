@@ -139,7 +139,11 @@ _add_script(lua_State *L)
     }
     
     lua_getfield(L, 1, "enable");
-    scripts[si].enable = lua_toboolean(L, -1);
+    if( lua_isnil(L, -1)) {
+        scripts[si].enable = 1;
+    } else {
+        scripts[si].enable = lua_toboolean(L, -1);
+    }
     lua_pop(L, 1);
     
     lua_getfield(L, 1, "name");
@@ -169,27 +173,29 @@ _add_script(lua_State *L)
     lua_pop(L, 1);
     
     lua_getfield(L, 1, "tags");
-    if( ! lua_istable(L, -1) ) {
-        /* TODO: I guess we could just get the value as a string */
-        dax_log("tags should be specified as an array");
-    } else {
-        /* Find how many objects are in the table.*/
-        tagcount = lua_objlen(L, -1);
-        /* Allocate the tag array */
-        scripts[si].tags = malloc(sizeof(char *) * tagcount);
-        /* TODO: What to do if this fails? */
-        for(n = 1; n <= tagcount; n++) {
-            lua_rawgeti(L, -1, n);
-            string = lua_tostring(L, -1);
-            if(string) {
-                /* TODO: What do do if this fails?? */
-                scripts[si].tags[n-1] = strdup(string);
-                printf("adding %s to the tag list\n", scripts[si].tags[n-1]);
+    if( ! lua_isnil(L, -1)) {
+        if( ! lua_istable(L, -1) ) {
+            /* TODO: I guess we could just get the value as a string */
+            dax_log("tags should be specified as an array");
+        } else {
+            /* Find how many objects are in the table.*/
+            tagcount = lua_objlen(L, -1);
+            /* Allocate the tag array */
+            scripts[si].tags = malloc(sizeof(char *) * tagcount);
+            /* TODO: What to do if this fails? */
+            for(n = 1; n <= tagcount; n++) {
+                lua_rawgeti(L, -1, n);
+                string = lua_tostring(L, -1);
+                if(string) {
+                    /* TODO: What do do if this fails?? */
+                    scripts[si].tags[n-1] = strdup(string);
+                    //--printf("adding %s to the tag list\n", scripts[si].tags[n-1]);
+                }
+                
+                lua_pop(L, 1);
             }
-            
-            lua_pop(L, 1);
+            scripts[si].tagcount = tagcount;
         }
-        scripts[si].tagcount = tagcount;
     }
     return 0;
 }

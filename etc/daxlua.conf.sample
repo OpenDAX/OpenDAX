@@ -19,7 +19,7 @@ s.enable = true
 s.filename = root.."script1.lua"
 s.rate = 1000
 
-s.tags = { "luadint", "luaint", "luabool", "luarate" }
+--s.tags = { "luadint", "luaint", "luabool", "luarate" }
 
 add_script(s)
 
