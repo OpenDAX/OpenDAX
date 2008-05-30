@@ -27,8 +27,21 @@
 #include <dax/libcommon.h>
 #include <opendax.h>
 
-int msg_setup_queue(void);
-void msg_destroy_queue(void);
+/* message.c functions */
+int msg_setup(void);
+void msg_destroy(void);
 int msg_receive(void);
+void msg_add_fd(int);
+void msg_del_fd(int);
+int msg_dispatcher(int, unsigned char *);
+
+
+/* buffer.c functions */
+int buff_initialize(void);
+int buff_read(int fd);
+void buff_wipe(void);
+void buff_free(int);
+void buff_freeall(void);
+
 
 #endif /* !__MESSAGE_H */

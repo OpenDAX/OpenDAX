@@ -1,12 +1,30 @@
 --This is the configuration file for the OpenDAX Lua interpreter module
 --It is basically a Lua script itself
 
-root="/Users/phil/opendax/modules/daxlua/"
+root="/Users/phil/svn/opendax/branches/0.2/modules/daxlua/"
 
 --init is the script that is run once when the program launches
-init=root.."init.lua"
+init = root.."init.lua"
+
+verbosity = 10 --needs to change to the new way
 
 --main is the script run after init exits and runs every 'rate' mSec
-main=root.."test.lua"
-rate=2000
+--main=root.."test.lua"
+--rate=2000
+
+s = {}
+
+s.name = "script1"
+s.enable = true
+s.filename = root.."script1.lua"
+s.rate = 1000
+
+--s.tags = { "luadint", "luaint", "luabool", "luarate" }
+
+add_script(s)
+
+s.name = "script2"
+s.filename = root.."script2.lua"
+s.rate = 2200
+add_script(s)
 

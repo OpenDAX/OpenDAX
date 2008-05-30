@@ -11,18 +11,27 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License 
+ *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
-
- * Lua script interpreter interface header file
+ 
+ * This file contains libdax configuration functions
  */
 
-#ifndef __LUAIF_H
-#define __LUAIF_H
-
-int setup_interpreter(lua_State *L);
+#include <libdax.h>
+#include <dax/libcommon.h>
 
 
-#endif 
+/* TODO: Make this file really do something */
+char *
+opt_get_socketname(void)
+{
+   return "/tmp/opendax";
+}
+
+int
+opt_get_cache_limit(void)
+{
+    return TAG_CACHE_LIMIT;
+}

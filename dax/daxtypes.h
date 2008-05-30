@@ -15,8 +15,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
- * This header contains the private type definitions 
- * for the opendax core and library
+ * This header contains the private type definitions for the opendax server.
+ * For definitions common to the server and the library see libcommon.h
  */
 
 #ifndef __DAXTYPES_H
@@ -27,11 +27,9 @@
 #define MFLAG_OPENPIPES     0x02
 #define MFLAG_REGISTER      0x04
 
-//typedef unsigned int mod_handle_t;
 
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dax_Module {
-    //mod_handle_t handle;
     char *name;
     pid_t pid;          /* the modules process id */
     long int mid;       /* the modules id (currently the same as the pid) */
@@ -44,9 +42,12 @@ typedef struct dax_Module {
     int pipe_in;        /* Redirected to the modules stdin */
     int pipe_out;       /* Redirected to the modules stdout */
     int pipe_err;       /* Redirected to the modules stderr */
+    int fd;             /* The socket file descriptor for this module */
+    char unpack;        /* Whether socket data needs special packaging */
     time_t starttime;
     struct dax_Module *next,*prev;
 } dax_module;
 
+    
 
 #endif /* !__DAXTYPES_H */

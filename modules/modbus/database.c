@@ -17,7 +17,6 @@
  */
 
 #include <common.h>
-#include <opendax.h>
 #include <database.h>
 #include <pthread.h>
 
@@ -27,7 +26,9 @@ static pthread_mutex_t datamutex;
 static handle_t dt_handle;
 
 /* Allocate and Initialize the datatable */
-int dt_init(unsigned int size, char *tagname) {
+int
+dt_init(unsigned int size, char *tagname)
+{
     dt_handle = dax_tag_add(tagname, DAX_UINT, size);
     if(dt_handle < 0) {
         return dt_handle;
@@ -39,51 +40,94 @@ int dt_init(unsigned int size, char *tagname) {
     return(0);
 }
 
-int dt_destroy(void) {
+int
+dt_destroy(void)
+{
     pthread_mutex_destroy(&datamutex);
     return 0;
 }
 
-u_int16_t dt_getword(unsigned int address) {
-    u_int16_t temp;
-    pthread_mutex_lock(&datamutex);
-    dax_tag_read(dt_handle + (address * 16), &temp, 2);
-    pthread_mutex_unlock(&datamutex);
-    return(temp);
-}
-
-int dt_setword(unsigned int address, u_int16_t buff) {
-    if(address < tablesize) {
-        pthread_mutex_lock(&datamutex);
-        dax_tag_write(dt_handle + (address * 16), &buff, 2);
-        pthread_mutex_unlock(&datamutex);
-        return 0;
-    }
-    return -1;
-}
-
-/* TODO: Need to add multiple word versions of the above two functions. */
-
-char dt_getbit(unsigned int address) {
-    pthread_mutex_lock(&datamutex);
-    if(dax_tag_read_bit(dt_handle + address)) { /* If bit is set */
-        pthread_mutex_unlock(&datamutex);
-        return 1;
-    } else {
-        pthread_mutex_unlock(&datamutex);
-        return 0;
-    }
-    return -1; /* we can't get here */
-}
-
-/* This function sets bits in buff.  Address and length are both given in
-   number of bits. */
-int dt_setbits(unsigned int address, u_int8_t *buff, u_int16_t length) {
+int
+dt_add_tag(char *name, int index, int function, int length)
+{
     int result;
-    pthread_mutex_lock(&datamutex);
     
-    result = dax_tag_write_bits(dt_handle + address, buff, length);
-    
-    pthread_mutex_unlock(&datamutex);
+    switch(function) {
+        case 1:
+        case 2:
+        case 15:
+            result = dax_tag_add(name, DAX_BOOL, index + length);
+            return result;
+        case 5:
+            result = dax_tag_add(name, DAX_BOOL, index + 1);
+            return result;
+        case 3:
+        case 4:
+        case 16:
+            result = dax_tag_add(name, DAX_UINT, index + length);
+            return result;
+        case 6:
+            result = dax_tag_add(name, DAX_UINT, index + 1);
+            return result;
+        default:
+            return -1;
+    }
+}
+
+
+int
+dt_getwords(handle_t handle, int index, void *data, int length)
+{
+    int result;
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_read_tag(handle, index, data, length, DAX_UINT);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
+    return result;
+}
+
+int
+dt_setwords(handle_t handle, int index, void *data, int length)
+{
+    int result;
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_write_tag(handle, index, data, length, DAX_UINT);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
+    return result;
+}
+
+
+int
+dt_getbits(handle_t handle, int index, void *data, int length)
+{
+    int result;
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_read_tag(handle, index, data, length, DAX_BOOL);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
+    return result;
+}
+
+int
+dt_setbits(handle_t handle, int index, void *data, int length)
+{
+    int result;
+    if(handle) {
+        pthread_mutex_lock(&datamutex);
+        result = dax_write_tag(handle, index, data, length, DAX_BOOL);
+        pthread_mutex_unlock(&datamutex);
+    } else {
+        result = ERR_ARG;
+    }
     return result;
 }

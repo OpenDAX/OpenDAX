@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
  * This header contains all of the type definitions that are common between the
- * opendax core and the library.  It's mostly messaging definitions.
+ * opendax server and the library.  It's mostly messaging definitions.
  */
 
 #ifndef __LIBCOMMON_H
@@ -36,54 +36,69 @@
 #endif
 
 /* For now we'll use this as the key for all the SysV IPC stuff */
-#define DAX_IPC_KEY 0x707070
+//--#define DAX_IPC_KEY 0x707070
 
 /* Message functions */
-#define MSG_MOD_REG    0x0001 /* Register the module with the core */
-#define MSG_TAG_ADD    0x0002 /* Add a tag */
-#define MSG_TAG_DEL    0x0003 /* Delete a tag from the database */
-#define MSG_TAG_GET    0x0004 /* Get the handle, type, size etc for the tag */
-#define MSG_TAG_LIST   0x0005 /* Retrieve a list of all the tagnames */
-#define MSG_TAG_READ   0x0006 /* Read the value of a tag */
-#define MSG_TAG_WRITE  0x0007 /* Write the value to a tag */
-#define MSG_TAG_MWRITE 0x0008 /* Masked Write */
-#define MSG_MOD_GET    0x0009 /* Get the module handle by name */
-#define MSG_EVNT_ADD   0x000A /* Add an event to the taglist */
-#define MSG_EVNT_DEL   0x000B /* Delete an event */
-#define MSG_EVNT_GET   0x000C /* Get an event definition */
+#define MSG_MOD_REG    0x0000 /* Register the module with the server */
+#define MSG_TAG_ADD    0x0001 /* Add a tag */
+#define MSG_TAG_DEL    0x0002 /* Delete a tag from the database */
+#define MSG_TAG_GET    0x0003 /* Get the handle, type, size etc for the tag */
+#define MSG_TAG_LIST   0x0004 /* Retrieve a list of all the tagnames */
+#define MSG_TAG_READ   0x0005 /* Read the value of a tag */
+#define MSG_TAG_WRITE  0x0006 /* Write the value to a tag */
+#define MSG_TAG_MWRITE 0x0007 /* Masked Write */
+#define MSG_MOD_GET    0x0008 /* Get the module handle by name */
+#define MSG_EVNT_ADD   0x0009 /* Add an event to the taglist */
+#define MSG_EVNT_DEL   0x000A /* Delete an event */
+#define MSG_EVNT_GET   0x000B /* Get an event definition */
 /* More to come */
 
-#ifndef MSG_RESPONSE
-#  define MSG_RESPONSE   0x100000000LL /* Flag for defining a response message */
-#endif
+#define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
+#define MSG_ERROR      0x2000000LL /* Flag for defining an error message */
 
-/* Maximum size allowed for a single message in the message queue */
-/* TODO: I don't think this is working right.  Where is MSGMAX defined?
- This sould be something for Autoconf to do.  Also some systems
- may be able to read this at run time.  Perhaps a runtime check
- can be done? */
-#ifdef MSGMAX
-#  define DAX_MSGMAX MSGMAX
-#else
-#  define DAX_MSGMAX 2048
+/* Subcommands for the MSG_TAG_GET command */
+#define TAG_GET_NAME   0x01 /* Retrieve the tag by name */
+#define TAG_GET_HANDLE 0x02 /* Retrieve the tag by it's handle */
+
+/* These are the values that the registration system uses to 
+   determine whether or not the module will have to reformat
+   the data because of different machine architectures. */
+/* TODO: I need to spend some time on these so that I know that
+   they will actually be good tests. Integers are okay but I may
+   want to put some thought into the floats.  Got to make sure
+   that none of the bytes are the same or they can be mixed up and
+   still work?? */
+#define REG_TEST_INT    0xBCDE
+#define REG_TEST_DINT   0x56789ABC
+#define REG_TEST_LINT   0x123456789ABCDEF0LL
+#define REG_TEST_REAL   3.14159265
+#define REG_TEST_LREAL  -58765463.8766677
+
+/* Maximum size allowed for a single message */
+#ifndef DAX_MSGMAX
+#  define DAX_MSGMAX 4096
 #endif
 
 /* This defines the size of the message minus the actual data */
-#define MSG_HDR_SIZE (sizeof(int) + sizeof(pid_t) + sizeof(size_t))
+#define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent in the queue */
 typedef struct {
-    long int module; /* Destination module */
-    int command;     /* Which function to call */
-    pid_t pid;       /* PID of the module that sent the message */
-    size_t size;     /* size of the data sent */
+    /* Message Header Stuff.  Changes here should be reflected in the 
+       MSG_HDR_SIZE definition above */
+    u_int32_t size;     /* size of the data sent */
+    u_int32_t command;  /* Which function to call */
+    /* Main data payload */
     char data[MSG_DATA_SIZE];
+    /* The following stuff isn't in the socket message */
+    int fd;             /* We'll use the fd to identify the module*/
 } dax_message;
 
 /* This datatype can be copied into the data[] area of the main dax_message when
  the first part of the message is a tag hangle. */
+
 typedef struct {
     handle_t handle;
     char data[MSG_TAG_DATA_SIZE];
@@ -93,5 +108,6 @@ typedef struct {
     handle_t handle;
     size_t size;
 } dax_event_message;
+
 
 #endif /* ! __LIBCOMMON_H */

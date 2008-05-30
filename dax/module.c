@@ -36,11 +36,10 @@ static dax_module *_current_mod = NULL;
 static int _module_count = 0;
 static int _register_timeout = 1000;
 
-static char **_arglist_tok(char *,char *);
-//static dax_module *_get_module(mod_handle_t);
+static char **_arglist_tok(char *, char *);
 static dax_module *_get_module_pid(pid_t);
 static dax_module *_get_module_name(char *);
-static int _cleanup_module(pid_t,int);
+static int _cleanup_module(pid_t, int);
 
 /* This array is the dead module list.
    TODO: This should be improved to allow it to grow when needed.
@@ -62,11 +61,9 @@ static dead_module _dmq[DMQ_SIZE];
    for the opendcs main process.)  If an existing module with the same
    name is found the handle of that module will be returned instead.
 */
-dax_module * module_add(char *name, char *path, char *arglist, int startup, unsigned int flags) {
-    /* The handle is incremented before first use.  The first added module
-       will be handle 2 so that the core process can always be one */
-    //--static mod_handle_t handle=1;
-
+dax_module *
+module_add(char *name, char *path, char *arglist, int startup, unsigned int flags)
+{
     dax_module *new, *try;
     xlog(10,"Adding module %s",name);
     
@@ -74,12 +71,15 @@ dax_module * module_add(char *name, char *path, char *arglist, int startup, unsi
         return try;
         //--return try->handle; /* Name already used */
     /* TODO: Handle the errors for the following somehow */
-    new = (dax_module *)xmalloc(sizeof(dax_module));
+    new = xmalloc(sizeof(dax_module));
     if(new) {
-        //--new->handle = ++handle;
         new->flags = flags;
         if(startup > 0) new->startup = startup;
         else startup = 0;
+        
+        new->pipe_in = -1;
+        new->pipe_out = -1;
+        new->pipe_err = -1;
         
         /* Add the module path to the struct */
         if(path) {
@@ -205,7 +205,7 @@ void module_start_all(void) {
     /* Figure out where we need to stop */
     last = _current_mod->prev;
     
-    x = get_maxstartup();
+    x = opt_maxstartup();
     
     for(i = 1; i <= x; i++) {
         for(j = 0; j < _module_count; j++) {
@@ -232,7 +232,7 @@ inline static int _childpipes(int *);
 /* This function is used to start a module */
 pid_t module_start(dax_module *mod) {
     pid_t child_pid;
-    int result=0;
+    int result = 0;
     int pipes[6];
  
     if(mod) {
@@ -335,7 +335,7 @@ int module_stop(dax_module *mod) {
 /* The dax core will not send messages to modules that are not register.  Also
    modules that are not started by the core need a way to announce themselves.
    name can be passed as NULL for modules that were started from DAX */
-void module_register(char *name ,pid_t pid) {
+dax_module *module_register(char *name ,pid_t pid, int fd) {
     dax_module *mod;
     char *newname;
     size_t size;
@@ -343,6 +343,8 @@ void module_register(char *name ,pid_t pid) {
     /* First see if we already have a module of the given PID
        This should happen if DAX started the module */
     mod = _get_module_pid(pid);
+    /* TODO: We need to check that the fd doesn't already exist or we'll
+       have some communication trouble */
     if(!mod) {
         /* Do we already have a module of this name */
         mod = _get_module_name(name);
@@ -361,16 +363,20 @@ void module_register(char *name ,pid_t pid) {
     if(mod) {
         mod->pid = pid;
         mod->mid = pid;
+        mod->fd = fd;
         mod->state |= MSTATE_RUNNING;
         mod->state |= MSTATE_REGISTERED;
     } else {
         xerror("Major problem registering module - %s : %d", name, pid);
+        return NULL;
     }
+    return mod;
 }
 
-void module_unregister(pid_t pid) {
+void module_unregister(int fd) {
     dax_module *mod;
-    mod = _get_module_pid(pid);
+    //mod = _get_module_pid(pid);
+    mod = module_find_fd(fd);
     if(mod) {
         mod->state &= (~MSTATE_REGISTERED);
     }
@@ -382,9 +388,24 @@ void module_unregister(pid_t pid) {
    PID as the identifier for that module in the messaging
    system.  I might have to have differnet ID's for
    different threads. */
-dax_module *module_get_pid(pid_t pid) {
+dax_module *module_find_pid(pid_t pid) {
     return _get_module_pid(pid);
 }
+
+dax_module *module_find_fd(int fd) {
+    int n;
+    
+    /* In case we ain't go no list */
+    if(_current_mod == NULL) return NULL;
+    
+    for(n = 0; n < _module_count; n++) {
+        if(_current_mod->fd == fd) return _current_mod;
+        _current_mod = _current_mod->next;
+    }
+    
+    return NULL;
+}
+
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called
@@ -399,7 +420,7 @@ void module_scan(void) {
             _dmq[n].pid = 0;
         }
     }
-    
+    /* TODO: do a waitpid(-1, NULL, WNOHANG); to clean up any zombies */
     /* TODO: Restart modules if necessary */
 }
 
@@ -412,11 +433,12 @@ static int _cleanup_module(pid_t pid, int status) {
     the PID that we passed but we should check because there may not 
     be a module with our PID */
     if(mod) {
-        xlog(2, "Cleaning up Module %d\n", pid);
+        xlog(LOG_MINOR, "Cleaning up Module %d", pid);
         /* Close the stdio pipe fd's */
-        close(mod->pipe_in);
-        close(mod->pipe_out);
-        close(mod->pipe_err);
+        /* TODO: really should fix these */
+        //close(mod->pipe_in);
+        //close(mod->pipe_out);
+        //close(mod->pipe_err);
         mod->pid = 0;
         mod->exit_status = status;
         mod->state = MSTATE_WAITING;
@@ -437,32 +459,12 @@ void module_dmq_add(pid_t pid,int status) {
     while(_dmq[n].pid != 0 && n < DMQ_SIZE) {
         n++;
     }
-    xlog(10,"Adding Dead Module pid=%d index=%d",pid,n);
+    //xlog(10,"Adding Dead Module pid=%d index=%d",pid,n);
     _dmq[n].pid = pid;
     _dmq[n].status = status;
 }
 
 
-
-/* static function to get a module pointer from a handle */
-#ifdef OIUYOIUYOWIUERYTOIUWYEROIUYURTIUEYR
-static dax_module *_get_module(mod_handle_t handle) {
-    dax_module *last;
-    /* In case we ain't go no list */
-    if(_current_mod == NULL) return NULL;
-    /* Figure out where we need to stop */
-    last = _current_mod->prev;
-    if(last->handle == handle) return last;
-
-    while(_current_mod->handle != handle) {
-        _current_mod = _current_mod->next;
-        if(_current_mod == last) {
-            return NULL;
-        }
-    }
-    return _current_mod;
-}
-#endif
 
 /* Lookup and return the pointer to the module with pid */
 static dax_module *_get_module_pid(pid_t pid) {

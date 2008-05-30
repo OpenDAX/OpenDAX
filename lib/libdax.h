@@ -26,9 +26,58 @@
 #include <common.h>
 #include <opendax.h>
 
-//--int _message_send(long int module,int command,void *payload, size_t size);
-//--int _message_recv(int command, void *payload, size_t *size);
+#ifndef TAG_CACHE_LIMIT
+#  define TAG_CACHE_LIMIT 8
+#endif
 
+/* Data Conversion Functions */
+#define REF_INT_SWAP 0x0001
+#define REF_FLT_SWAP 0x0002
 
+/* 16 Bit conversion functions */
+#define mtos_word mtos_uint
+#define stom_word stom_uint
+
+dax_int_t mtos_int(dax_int_t);
+dax_uint_t mtos_uint(dax_uint_t);
+
+dax_int_t stom_int(dax_int_t);
+dax_uint_t stom_uint(dax_uint_t);
+
+/* 32 Bit conversion functions */
+#define mtos_word mtos_uint
+#define stom_word stom_uint
+#define mtos_time mtos_uint
+#define stom_time stom_uint
+
+dax_dint_t mtos_dint(dax_dint_t);
+dax_udint_t mtos_udint(dax_udint_t);
+dax_real_t mtos_real(dax_real_t);
+
+dax_dint_t stom_dint(dax_dint_t);
+dax_udint_t stom_udint(dax_udint_t);
+dax_real_t stom_real(dax_real_t);
+
+/* 64 bit Conversions */
+#define mtos_lword mtos_ulint
+#define stom_lword stom_ulint
+
+dax_lint_t mtos_lint(dax_lint_t);
+dax_ulint_t mtos_ulint(dax_ulint_t);
+dax_lreal_t mtos_lreal(dax_lreal_t);
+
+dax_lint_t stom_lint(dax_lint_t);
+dax_ulint_t stom_ulint(dax_ulint_t);
+dax_lreal_t stom_lreal(dax_lreal_t);
+
+/* These functions handle the tag cache */
+int init_tag_cache(void);
+int check_cache_handle(handle_t, dax_tag *);
+int check_cache_name(char *, dax_tag *);
+int cache_tag_add(dax_tag *);
+
+/* Configuration Option Functions */
+int opt_get_cache_limit(void);
+char *opt_get_socketname(void);
 
 #endif /* !__LIBDAX_H */

@@ -16,37 +16,38 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * This file contains libdax functions that need to send messages to the queue
+ * This file contains libdax functions that need to send messages to the server
  */
  
 #include <libdax.h>
 #include <dax/libcommon.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <string.h>
+#include <math.h>
 
 
-static int __msqid;
-/* This is the module id.  It is the PID of the program
-   at the time of registration.  The process or thread that
-   registers should stay running or we can have a problem. */
-static pid_t __modid;
+static int _sfd;   /* Server's File Descriptor */
+static unsigned int _reformat; /* Flags to show how to reformat the incoming data */
 
-static int _message_send(long int module, int command, void *payload, size_t size) {
-    dax_message outmsg;
+static int
+_message_send(int command, void *payload, size_t size)
+{
     int result;
-    outmsg.module = module;
-    outmsg.command = command;
-    outmsg.pid = __modid;
-    outmsg.size = size;
-    memcpy(outmsg.data, payload, size);
-    result = msgsnd(__msqid, (struct msgbuff *)(&outmsg), MSG_HDR_SIZE + size, 0);
-    /* TODO: need to handle the case where the system call returns because of a signal.
-        This msgsnd will block if the queue is full and a signal will bail us out.
-        This may be good this may not but it'll need to be handled here somehow.
-        also need to handle errors returned here*/
-    if(result) {
-        dax_error("msgsnd() returned %d", result);
+    char buff[DAX_MSGMAX];
+    
+    /* We always send the size and command in network order */
+    ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
+    ((u_int32_t *)buff)[1] = htonl(command);
+    memcpy(&buff[MSG_HDR_SIZE], payload, size);
+    //--printf("M - Message send, size = %d\n", ntohl(((u_int32_t *)buff)[0]));
+    /* TODO: We need to set some kind of timeout here.  This could block
+       forever if something goes wrong.  It may be a signal or something too. */
+    result = write(_sfd, buff, size + MSG_HDR_SIZE);
+    
+    if(result < 0) {
+    /* TODO: Should we handle the case when this returns due to a signal */
+        dax_error("_message_send: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
     return 0;
@@ -55,333 +56,384 @@ static int _message_send(long int module, int command, void *payload, size_t siz
 /* This function waits for a message with the given command to come in. If
    a message of another command comes in it will send that message out to
    an asynchronous command handler.  This is due to a race condition that could
-   happen if someone puts a message in the queue after we send a request but
+   happen if the server puts a message in the queue after we send a request but
    before we retrieve the result. */
-/* TODO: I suppose that it's possible for a module to hang here.  Perhaps opendax
-   can send a wake up message every now and then so this function can timeout */
-/* TODO: This function may only be called for response messages so it could be
-   simplified. */
-static int _message_recv(int command, void *payload, size_t *size, int response) {
-    dax_message inmsg;
-    int result, done;
-    long msgtype;
+static int
+_message_recv(int command, void *payload, int *size, int response)
+{
+    char buff[DAX_MSGMAX];
+    int index, done, msg_size, result;
+    done = index = msg_size = 0;
     
-    msgtype = (long)__modid;
-    if(response) {
-        msgtype += MSG_RESPONSE;
-    }
-    done = 0;
-    while(!done) {
-        //DAX_DEBUG2("Looking for message type = %ld", msgtype);
-        result = msgrcv(__msqid,(struct msgbuff *)(&inmsg), DAX_MSGMAX, msgtype, 0);
-        if(result < 0) { /* TODO: Probably need some sane cleanup here */
-            dax_debug(1, "_message_recv() returned with - %s", strerror(errno));
+    while( index < msg_size || index < MSG_HDR_SIZE) {
+        result = read(_sfd, &buff[index], DAX_MSGMAX);
+        /*****TESTING STUFF******/
+        //printf("M-read returned %d\n", result);
+        //for(done = 0; done < result; done ++) {
+        //    printf("0x%02X[%c] " , (unsigned char)buff[done], (unsigned char)buff[done]);
+        //} printf("\n");
+        
+        if(result < 0) {
+            dax_debug(LOG_COMM, "_message_recv read failed: %s", strerror(errno));
             return ERR_MSG_RECV;
+        } else if(result == 0) {
+            printf("TODO: I don't know what to do with read returning 0\n");
+            return -1;
+        } else {
+            index += result;
         }
         
-        if(inmsg.command == command) {
-            done = 1;
-            *size = (size_t)(result - MSG_HDR_SIZE);
-            memcpy(payload, inmsg.data, *size);
-            if( inmsg.size == 0 ) { /* If size is zero then it's an error response */
-                /* return the error code found in the data portion */
-                return *((int *)inmsg.data);
+        if(index >= MSG_HDR_SIZE) {
+            msg_size = ntohl(*(u_int32_t *)buff);
+            if(msg_size > DAX_MSGMAX) {
+                dax_debug(LOG_COMM, "_message_recv message size is too big");
+                return ERR_MSG_BAD;
             }
-        } else {
-            dax_error( "Asynchronous message received\n");
-            /* TODO: Should never receive an asynchronous message here */
         }
-        /* TODO: Also need to handle cases when signals or errors happen here */
+    }
+    /* This gets the command out of the buffer */
+    result = ntohl(*((u_int32_t *)&buff[4]));
+    
+    /* Test if the error flag is set and then return the error code */
+    if(result == (command | MSG_ERROR)) {
+        return stom_dint((*(int32_t *)&buff[8]));
+    } else if(result == (command | (response ? MSG_RESPONSE : 0))) {
+        if(size) {
+            if((msg_size - MSG_HDR_SIZE) > *size) {
+                printf("Why do we think it's too big. msg_size = %d, *size = %d\n", msg_size, *size);
+                return ERR_2BIG;
+            } else {
+                memcpy(payload, &buff[MSG_HDR_SIZE], msg_size - MSG_HDR_SIZE);
+                *size = msg_size - MSG_HDR_SIZE; /* size is value result */
+            }
+        }
+    } else { /* This is the command we wanted */
+        printf("TODO: Whoa we got the wrong command\n");
     }
     return 0;
 }
 
-/* TODO: We need some kind of asynchronous message handler.  It should not
-block if there are no messages for us in the queue.  Now when does it need
-to be called?  It might depend on the module. */
+/* Send regsitration message to the server.  This message sends
+   the name that we want to be, it sends the test data so the 
+   server can decide if we need to pack our data.  The returned
+   message should show whether we need to pack our data and the
+   name that the server decided to give us.  The server can change
+   our name if it's a duplicate. */
+int
+dax_mod_register(char *name)
+{
+    int fd, len;
+    char buff[DAX_MSGMAX];
+    struct sockaddr_un addr;
 
-/* Connects to the message queue and sends a registration to the core */
-static int mod_reg(char *name) {
-    size_t size;
-    int result;
+    dax_debug(LOG_COMM, "Sending registration for name - %s", name);
     
-    __msqid = msgget(DAX_IPC_KEY, 0660);
-    if(__msqid < 0) {
-        return ERR_NO_QUEUE;
-    }
-    if(name) {
-        if(strlen(name) > 254) {
-            return ERR_2BIG;
-        }
-        size = strlen(name) + 1;
+    /* TODO: Probably move the connection stuff to another function */
+    /* create a UNIX domain stream socket */
+    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        return(-1);
+    /* TODO: Gotta set a timeout for this stuff. */
+    /* fill socket address structure with our address */
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, opt_get_socketname(), sizeof(addr.sun_path));
+    
+    len = offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
+    if (connect(fd, (struct sockaddr *)&addr, len) < 0) {
+        dax_error("Unable to connect to socket - %s", strerror(errno));
+        return ERR_NO_SOCKET;
     } else {
-        size = 0;
+        _sfd = fd;
+        dax_debug(LOG_COMM, "Connected to Server fd = %d", fd);
     }
-    /* TODO: this call will block if queue is full.  Should also check
-             for exit status that would be caused by signals EINTR.  Now do
-             we return on EINTR or do we wait in a loop here?  Probably should
-             arrange to have an alarm signal sent to us after a few seconds so
-             this will have some kind of timeout. */
-    result = _message_send(1, MSG_MOD_REG, name, size);
-    if(result) { 
-        return ERR_MSG_SEND;
-    }
-    return 0;
-}
-
-int dax_mod_register(char *name) {
-    dax_debug(10, "Sending registration for name - %s", name);
-    /* Our message id will be the pid at this point.  We will
-       use this from now on. */
-    __modid = getpid();
-    return mod_reg(name);
-}
-
-int dax_mod_unregister(void) {
-    dax_debug(10, "Sending un-registration");
-    return mod_reg(NULL);
-}
-
-/* Sends a message to dax to add a tag.  The payload is basically the
-   tagname without the handle. */
-handle_t dax_tag_add(char *name, unsigned int type, unsigned int count) {
-    dax_tag tag;
-    size_t size;
-    int result;
     
-    if(count == 0) return ERR_ARG;
-    if(name) {
-        if(strlen(name) > DAX_TAGNAME_SIZE) {
-            return ERR_2BIG;
-        }
-        size=sizeof(dax_tag)-sizeof(handle_t);
-        /* TODO Need to do some more error checking here */
-        strcpy(tag.name,name);
-        tag.type=type;
-        tag.count=count;
+    init_tag_cache();
+
+/* TODO: Boundary check that a name that is longer than data size will
+   be handled correctly. */
+/* This is how much room the packing test data takes up in the message.
+   It should be adjusted anytime the 'name' must move down in the message */
+#define REG_HDR_SIZE 8
+    /* Whatever is left of the message size can be used for the module name */
+    len = strlen(name) + 1;
+    if(len > (MSG_DATA_SIZE - REG_HDR_SIZE)) {
+        len = MSG_DATA_SIZE - REG_HDR_SIZE;
+        name[len] = '\0';
+    }
+    
+    *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
+    strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
+    
+    /* For registration we pack the data no matter what */
+    /* TODO: check for errors here */
+    _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len);
+    len = DAX_MSGMAX;
+    _message_recv(MSG_MOD_REG, buff, &len, 1);
+    /* Here we check to see if the data that we got in the registration message is in the same
+       format as we use here on the client module. This should be offloaded to a separate
+       function that can determine what needs to be done to the incoming and outgoing data to
+       get it to match with the server */
+    if( (*((u_int16_t *)&buff[0]) != REG_TEST_INT) ||     
+        (*((u_int32_t *)&buff[2]) != REG_TEST_DINT) || 
+        (*((u_int64_t *)&buff[6]) != REG_TEST_LINT)) {   
+        /* TODO: right now this is just to show error.  We need to determine if we can
+           get the right data from the server by some means. */
+        _reformat = REF_INT_SWAP;
     } else {
-        return ERR_TAG_BAD;
+        _reformat = 0;
     }
-    result = _message_send(1, MSG_TAG_ADD, &(tag.name),size);
-    if(result) { 
-        return ERR_MSG_SEND;
+    /* There has got to be a better way to compare that we are getting good floating point numbers */
+    if( fabs(*((float *)&buff[14]) - REG_TEST_REAL) / REG_TEST_REAL   > 0.0000001 || 
+        fabs(*((double *)&buff[18]) - REG_TEST_LREAL) / REG_TEST_REAL > 0.0000001) {   
+        _reformat |= REF_FLT_SWAP;
     }
-    /*  We're putting a lot of faith in the sending function here.  That
-        might be okay in this instance */
-    result= _message_recv(MSG_TAG_ADD, &(tag.handle), &size, 1);
-    return tag.handle;
+    /* TODO: Need to store my name somewhere ??? */
+    return _reformat;
 }
 
-
-/* Get the tag by name. */
-/* TODO: Resolve array and bit references in the tagname */
-int dax_get_tag(char *name, dax_tag *tag) {
-    int result;
-    size_t size;
-    
-    /* TODO: Check the tag cache here */
-    /* TODO: Some of these may need to be debug messages so they won't print */
-    /* It seems like we should bounds check *name but _message-send will clip it! */
-    result = _message_send(1, MSG_TAG_GET, name, DAX_TAGNAME_SIZE);
-    if(result) {
-        dax_error("Can't send MSG_TAG_GET message");
-        return result;
-    }
-    result = _message_recv(MSG_TAG_GET, (void *)tag, &size, 1);
-    if(result) {
-        dax_error("Problem receiving message MSG_TAG_GET");
+int
+dax_mod_unregister(void)
+{
+    int len, result;
+    result = _message_send(MSG_MOD_REG, NULL, 0);
+    if(! result ) {
+        len = 0;
+        result = _message_recv(MSG_MOD_REG, NULL, &len, 1);
     }
     return result;
 }
 
-/* This function takes the name argument and figures out the text part and puts
-   that in 'tagname' then it sees if there is an index in [] or if there is
-   a '.' for a bit index.  It puts those in the pointers that are passed */
-static inline int parsetag(char *name, char *tagname, int *index, int *bit) {
-    int n = 0;
-    int i = 0;
-    int tagend = 0;
-    char test[10];
-    *index = -1;
-    *bit = -1;
-
-    while(name[n] != '\0') {
-        if(name[n] == '[') {
-            tagend = n++;
-            /* figure the tagindex here */
-            while(name[n] != ']') {
-                if(name[n] == '\0') return -1; /* Gotta get to a ']' before the end */
-                test[i++] = name[n++];
-                if(i == 9) return -1; /* Number is too long */
-            }
-            test[i] = '\0';
-            *index = (int)strtol(test, NULL, 10);
-            n++;
-        } else if(name[n] == '.') {
-            if(*index < 0) {
-                tagend = n;
-            }
-            n++;
-            *bit = (int)strtol(&name[n], NULL, 10);
-            break;
-        } else {
-            n++;
+/* Sends a message to dax to add a tag.  The payload is basically the
+   tagname without the handle. */
+handle_t
+dax_tag_add(char *name, unsigned int type, unsigned int count)
+{
+    int size, result;
+    dax_tag tag;
+    char buff[DAX_TAGNAME_SIZE + 8 + 1];
+    
+    if(count == 0) return ERR_ARG;
+    if(name) {
+        if((size = strlen(name)) > DAX_TAGNAME_SIZE) {
+            return ERR_2BIG;
         }
-    }
-    if(tagend) { /********BUFFER OVERFLOW POTENTIAL***************/
-        strncpy(tagname, name, tagend);
-        tagname[tagend] = '\0';
+        /* Add the 8 bytes for type and count to one byte for NULL */
+        size += 9;
+        /* TODO Need to do some more error checking here */
+        *((u_int32_t *)&buff[0]) = mtos_udint(type);
+        *((u_int32_t *)&buff[4]) = mtos_udint(count);
+        
+        strcpy(&buff[8], name);
     } else {
-        strcpy(tagname, name);
+        return ERR_TAG_BAD;
     }
-    return 0;
+    
+    result = _message_send( MSG_TAG_ADD, buff, size);
+    if(result) { 
+        return ERR_MSG_SEND;
+    }
+    
+    size = 4; /* we just need the handle */
+    result = _message_recv(MSG_TAG_ADD, buff, &size, 1);
+    if(result == 0) {
+        strcpy(tag.name, name);
+        tag.handle = *(int32_t *)buff;
+        tag.type = type;
+        tag.count = count;
+        cache_tag_add(&tag);
+        return *(int32_t *)buff;
+    } else {
+        return result;
+    }
 }
+
 
 /* These tag name getting routines will have to be rewritten when we get
 the custom data types going.  Returns zero on success. */
-int dax_tag_byname(char *name, dax_tag *tag) {
-    dax_tag tag_test;
-    char tagname[DAX_TAGNAME_SIZE + 1];
-    int index, bit, result, size;
+/* TODO: Need to clean up this function.  There is stuff I don't think I want in here */ 
+int
+dax_tag_byname(char *name, dax_tag *tag)
+{
+    int result, size;
+    char *buff;
+        
+    if(name == NULL) return ERR_ARG; /* Do I really need this?? */
     
-    if(parsetag(name, tagname, &index, &bit)) {
-        return ERR_TAG_BAD;
-    }
-    /*********** TESTING ONLY **************/
-    //--dax_debug(1,"parsetag returned tagname=\'%s\' index=%d bit=%d", tagname, index, bit);
+    if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
     
-    result = dax_get_tag(tagname, &tag_test);
-    if(result) {
-        return result;
+    if(check_cache_name(name, tag)) {
+        /* We make buff big enough for the outgoing message and the incoming
+           response message which would have 3 additional int32s */
+        buff = alloca(size + 14);
+        buff[0] = TAG_GET_NAME;
+        strcpy(&buff[1], name);
+        /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
+        result = _message_send( MSG_TAG_GET, buff, size + 2);
+        if(result) {
+            dax_error("Can't send MSG_TAG_GET message");
+            return result;
+        }
+        size += 14; /* This makes room for the type, count and handle */
+        
+        result = _message_recv(MSG_TAG_GET, buff, &size, 1);
+        if(result) {
+            dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
+            return ERR_MSG_RECV;
+        }
+        tag->handle = stom_dint( *((int *)&buff[0]) );
+        tag->type = stom_udint(*((u_int32_t *)&buff[4]));
+        tag->count = stom_udint(*((u_int32_t *)&buff[8]));
+        buff[size - 1] = '\0'; /* Just to make sure */
+        strcpy(tag->name, &buff[12]);
+        cache_tag_add(tag);
     }
-    
-    /* This will happen if there are no subscripts to the tag */
-    if(index < 0 && bit < 0) {
-        memcpy(tag, &tag_test, sizeof(dax_tag));
-        return 0;
-    }
-    /* Check that the given subscripts still fall within the tags. */
-    size = TYPESIZE(tag_test.type) * tag_test.count;
-    
-    if( (index >=0 && index >= tag_test.count) || 
-       (bit >= size || (index * TYPESIZE(tag_test.type) + bit >= size)) ||
-       (index >= 0 && bit >= TYPESIZE(tag_test.type))) {
-           return ERR_TAG_BAD;
-    }
-    /* if we make it this far all is good and we can calculate the type,
-       size and handle of the tag */
-    tag->name[0] = '\0'; /* We don't return the name */
-    if(index < 0 && bit < 0) {
-        index = 0; /* Make these zeros so we can do math on them */
-        bit = 0;
-        tag->type = tag_test.type;
-        tag->count = tag_test.count;
-    } else if(index < 0 && bit >=0) {
-        index = 0;
-        tag->type = DAX_BOOL;
-        tag->count = 1;
-    } else if(index >=0 && bit < 0) {
-        bit = 0;
-        tag->type = tag_test.type;
-        tag->count = 1;
-    } else  {
-        tag->type = DAX_BOOL;
-        tag->count = 1;
-    }
-    tag->handle = tag_test.handle + (index * TYPESIZE(tag_test.type) + bit);
     return 0;
 }
 
-/* Retrieves the tag by index.  */
-int dax_tag_byindex(int index, dax_tag *tag) {
-    int result;
-    size_t size;
-    result = _message_send(1, MSG_TAG_GET, &index, sizeof(int));
-    if(result) {
-        dax_error("Can't send MSG_TAG_GET message");
-        return result;
+/* Retrieves the tag by handle.  */
+int
+dax_tag_byhandle(handle_t handle, dax_tag *tag)
+{
+    int result, size;
+    char buff[DAX_TAGNAME_SIZE + 13];
+    
+    if(check_cache_handle(handle, tag)) {
+        buff[0] = TAG_GET_HANDLE;
+        *((handle_t *)&buff[1]) = handle;
+        result = _message_send(MSG_TAG_GET, buff, sizeof(handle_t) + 1);
+        if(result) {
+            dax_error("Can't send MSG_TAG_GET message");
+            return result;
+        }
+        /* Maximum size of buffer, the 13 is the NULL plus three integers */
+        size = DAX_TAGNAME_SIZE + 13;
+        result = _message_recv(MSG_TAG_GET, buff, &size, 1);
+        if(result) {
+            //dax_error("Unable to retrieve tag for handle %d", handle);
+            return result;
+        }
+        tag->handle = stom_dint(*((int32_t *)&buff[0]));
+        tag->type = stom_dint(*((int32_t *)&buff[4]));
+        tag->count = stom_dint(*((int32_t *)&buff[8]));
+        buff[DAX_TAGNAME_SIZE + 12] = '\0'; /* Just to be safe */
+        strcpy(tag->name, &buff[12]);
+        /* Add the tag to the tag cache */
+        cache_tag_add(tag);
     }
-    result = _message_recv(MSG_TAG_GET, (void *)tag, &size, 1);
-    if(result == ERR_ARG) return ERR_ARG;
     return 0;
 }
-
+ 
 /* The following three functions are the core of the data handling
-   system in Dax.  They are the raw reading and writing functions.
-   Each takes a handle, a buffer pointer, and a size in bytes.  */
-
-/* TODO: This function should return some kind of error */
-int dax_tag_read(handle_t handle, void *data, size_t size) {
-    size_t n,count,m_size,sendsize,tmp;
+ * system in Dax.  They are the raw reading and writing functions.
+ * handle is the handle of the tag as returned by the dax_tag_add()
+ * function, offset is the byte offset into the data area of the tag
+ * data is a pointer to a data area where the data will be written
+ * and size is the number of bytes to read. If data isn't allocated
+ * then bad things will happen.  The data will come out of here exactly
+ * like it appears in the server.  It is up to the module to convert
+ * the data to the modules number format. */
+int
+dax_read(handle_t handle, int offset, void *data, size_t size)
+{
+    int n, count, m_size, sendsize;
     int result = 0;
-    struct Payload {
-        handle_t handle;
-        size_t size;
-    } payload;
+    int buff[3];
+    
     /* This calculates the amount of data that we can send with a single message
         It subtracts a handle_t from the data size for use as the tag handle.*/
     m_size = MSG_DATA_SIZE;
-    count=((size-1) / m_size) +1;
-    for(n=0; n < count; n++) {
+    count = ((size - 1) / m_size) + 1;
+    for(n = 0; n < count; n++) {
         if(n == (count - 1)) { /* Last Packet */
             sendsize = size % m_size; /* What's left over */
         } else {
             sendsize = m_size;
         }
-        payload.handle = handle + (m_size * 8 * n);
-        payload.size = sendsize;
-        result = _message_send(1, MSG_TAG_READ, (void *)&payload, sizeof(struct Payload));
-        result = _message_recv(MSG_TAG_READ, &((u_int8_t *)data)[m_size * n], &tmp, 1);
+        buff[0] = mtos_dint(handle);
+        buff[1] = mtos_dint(offset + n * m_size);
+        buff[2] = mtos_dint(sendsize);
+        
+        result = _message_send(MSG_TAG_READ, (void *)buff, sizeof(buff));
+        if(result) {
+            return result;
+        }
+        result = _message_recv(MSG_TAG_READ, &((char *)data)[m_size * n], &sendsize, 1);
+        
+        if(result) {
+            return result;
+        }
     }
-    return result;
+    return 0;
 }
 
-/* This is a type neutral way to just write bytes to the data table */
-/* TODO: Do we return error on this one or not??? Maybe with some flags?? */
-void dax_tag_write(handle_t handle, void *data, size_t size) {
-    size_t n,count,m_size,sendsize;
-    dax_tag_message msg;
+/* This is a type neutral way to just write bytes to the data table.
+ * It is assumed that the data is already in the servers number format.
+ * size is the total number of bytes to send, the offset is the byte
+ * offset into the data area of the tag.
+ */
+int
+dax_write(handle_t handle, int offset, void *data, size_t size)
+{
+    size_t n, count, m_size, sendsize;
+    int result;
+    char buff[MSG_DATA_SIZE];
     
     /* This calculates the amount of data that we can send with a single message
-       It subtracts a handle_t from the data size for use as the tag handle.*/
-    m_size = MSG_DATA_SIZE-sizeof(handle_t);
-    count=((size-1)/m_size)+1;
-    for(n=0;n<count;n++) {
-        if(n == (count-1)) { /* Last Packet */
+       It subtracts a handle_t from the data size for use as the tag handle and
+       an int, because we'll send the handle and the offset.*/
+    m_size = MSG_DATA_SIZE - sizeof(handle_t) - sizeof(int);
+    /* count is the number of messages that we will have to send to transport this data. */
+    count = ( (size - 1) / m_size ) + 1;
+    for(n = 0; n < count; n++) {
+        if(n == (count - 1)) { /* Last Packet */
             sendsize = size % m_size; /* What's left over */
         } else {
             sendsize = m_size;
         }
-        /* Write the data to the message structure */
-        msg.handle = handle + (m_size * 8 * n);
-        memcpy(msg.data,data+(m_size * n),sendsize);
+        /* Write the data to the message buffer */
+        *((handle_t *)&buff[0]) = mtos_dint(handle);
+        *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
+        memcpy(&buff[8], data + (m_size * n), sendsize);
         
-        _message_send(1,MSG_TAG_WRITE,(void *)&msg,sendsize+sizeof(handle_t));
+        result = _message_send(MSG_TAG_WRITE, buff, sendsize + sizeof(handle_t) + sizeof(int));
+        if(result) return result;
+        result = _message_recv(MSG_TAG_WRITE, buff, 0, 1);
+        if(result) return result;
     }
+    return 0;
 }
 
-/* TODO: is there an error condition that we need to deal with here?? */
-void dax_tag_mask_write(handle_t handle, void *data, void *mask, size_t size) {
-    size_t n,count,m_size,sendsize;
-    dax_tag_message msg;
+/* Same as the dax_write() function except that only bits that are in *mask
+ * will be changed. */
+int
+dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size)
+{
+    size_t n, count, m_size, sendsize;
+    char buff[MSG_DATA_SIZE];
+    int result;
     
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle.*/
-    /* TODO: Verify that all this works if m_size is odd */
-	m_size = (MSG_DATA_SIZE-sizeof(handle_t)) / 2;
-    count=((size-1)/m_size)+1;
-    for(n=0;n<count;n++) {
-        if(n == (count-1)) { /* Last Packet */
+	m_size = (MSG_DATA_SIZE - sizeof(handle_t) - sizeof(int)) / 2;
+    count=((size - 1) / m_size) + 1;
+    for(n = 0; n < count; n++) {
+        if(n == (count - 1)) { /* Last Packet */
 		    sendsize = (size % m_size); /* What's left over */
         } else {
             sendsize = m_size;
         }
-		/* Write the data to the message structure */
-        msg.handle = handle + (m_size * 8 * n);
-        memcpy(msg.data, data+(m_size * n), sendsize);
-        memcpy(msg.data + sendsize, mask+(m_size * n), sendsize);
-        _message_send(1,MSG_TAG_MWRITE,(void *)&msg,(sendsize * 2)+sizeof(handle_t));
+        /* Write the data to the message buffer */
+        *((handle_t *)&buff[0]) = mtos_dint(handle);
+        *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
+        memcpy(&buff[8], data + (m_size * n), sendsize);
+        memcpy(&buff[8 + sendsize], mask + (m_size * n), sendsize);
+        
+        result = _message_send(MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(handle_t) + sizeof(int));
+        if(result) return result;
+        result = _message_recv(MSG_TAG_MWRITE, buff, 0, 1);
+        if(result) return result;
     }
+    return 0;
 }
 
 /* Adds an event for the given tag.  The count is how many of those
@@ -391,7 +443,7 @@ int dax_event_add(char *tagname, int count) {
     dax_tag tag;
     dax_event_message msg;
     int result, test;
-    size_t size;
+    int size;
     
     result = dax_tag_byname(tagname, &tag);
     if(result) {
@@ -405,7 +457,7 @@ int dax_event_add(char *tagname, int count) {
         msg.size = TYPESIZE(tag.type) / 8 * tag.count;
     }
     
-    if(_message_send(1, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
+    if(_message_send( MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
         return ERR_MSG_SEND;
     } else {
         test = _message_recv(MSG_EVNT_ADD, &result, &size, 1);

@@ -16,14 +16,17 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#include <opendax.h>
 
 #ifndef __FUNC_H
 #define __FUNC_H
 
+/* Wrappers for system calls */
+ssize_t xwrite(int , const void *, size_t);
+
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
  * something createive with them later. */
-
 
 void *xmalloc(size_t);
 void *xrealloc(void *, size_t);
@@ -34,11 +37,10 @@ void *xcalloc(size_t, size_t);
    goes to STDOUT and STDERR */
 //#define DAX_LOGGER
 
-void xfatal(const char *,...);
-void xerror(const char *,...);
-void xnotice(const char *,...);
-void setverbosity(int);
-void xlog(int,const char *,...);
+void xfatal(const char *, ...);
+void xerror(const char *, ...);
+void set_log_topic(u_int32_t);
+void xlog(u_int32_t ,const char *, ...);
 
 /* Portability functions */
 

@@ -28,14 +28,18 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-extern struct Config config;
+//--extern struct Config config;
+
+static int quitflag = 0;
 
 static void messagethread(void);
 void child_signal(int);
 void quit_signal(int);
 void catch_signal(int);
 
-int main(int argc, const char *argv[]) {
+int
+main(int argc, const char *argv[])
+{
     struct sigaction sa;
     pthread_t message_thread;
 	int result;
@@ -49,30 +53,16 @@ int main(int argc, const char *argv[]) {
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-    sa.sa_handler = &catch_signal;
-    sigaction(SIGHUP, &sa, NULL);
+    //sa.sa_handler = &catch_signal;
+    //sigaction(SIGHUP, &sa, NULL);
 
-    /* TODO: This is the program architecture in a nutshell...
-        check_already_running();
-            if we are then do what the options say or possibly 
-            re-run the configuration.
-	 *? read_configuration();
-      * daemonize();
-        setverbosity();
-      * create_message_queue();
-	  * initialize_tagbase();
-	  * start_message_thread();
-        setup_slave / redundant sockets();
-      * start_modules();
-	  * start_main_loop();
-    */
-    
-    setverbosity(10); /*TODO: Needs to be configuration */
+    set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
+    set_log_topic(-1); /*TODO: Needs to be configuration */
     
     /* Read configuration from defaults, file and command line */
-    dax_configure(argc, argv);
+    opt_configure(argc, argv);
     /* Go to the background */
-    if(get_daemonize()) {
+    if(opt_daemonize()) {
         if(daemonize("OpenDAX")) {
             xerror("Unable to go to the background");
         }
@@ -81,14 +71,12 @@ int main(int argc, const char *argv[]) {
     sa.sa_handler = &child_signal;
     sigaction (SIGCHLD, &sa, NULL);
     
-    //--setverbosity(config.verbosity);
-    
-    result = msg_setup_queue();    /* This creates and sets up the message queue */
-    xerror("msg_setup_queue() returned %d", result);
+    result = msg_setup();    /* This creates and sets up the message sockets */
+    if(result) xerror("msg_setup() returned %d", result);
 	initialize_tagbase(); /* initiallize the tagname list and database */
     
 	/* Start the message handling thread */
-    if(pthread_create(&message_thread,NULL,(void *)&messagethread,NULL)) {
+    if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
         xfatal("Unable to create message thread");
     }
         
@@ -99,47 +87,64 @@ int main(int argc, const char *argv[]) {
     /* END TESTING STUFF */
     
     while(1) { /* Main loop */
+        /* TODO: This might could be some kind of condition
+           variable or signal thing instead of just the sleep(). */
         module_scan();
         sleep(1);
+        /* If the quit flag is set then we clean up and get out */
+        if(quitflag) {
+            /* TODO: Need to kill the message_thread */
+            /* TODO: Should stop all running modules */
+            kill(0, SIGTERM); /* ...this'll do for now */
+            /* TODO: Should verify that all the children are dead.  If not
+             then send a SIGKILL signal */
+            msg_destroy(); /* Destroy the message queue */
+            exit(-1);
+        }
     }
 }
 
+/* TODO: Does this really need to be a separate thread. */
 /* This is the main message handling thread.  It should never return. */
-static void messagethread(void) {
-    /*TODO: So far this function just blocks to receive messages.  It should
-    handle cases where the message reception was interrupted by signals and
-    alarms.  Occasionally it should check the message queue for orphaned
-    messages that may have been left by some misbehaving modules.  This
-    algorithm should increase in frequency when it finds lost messages and
-    decrease in frequency when it doesn't.*/
+static void
+messagethread(void)
+{
     while(1) {
         /* TODO: How far up should errors be passed */
-        msg_receive();
+        if(msg_receive()) {
+            sleep(1);
+        }
     }
 }
 
-/* This handles the shutting down of a module */
-void child_signal(int sig) {
+/* Clean up any child modules that have shut down */
+void
+child_signal(int sig)
+{
     int status;
     pid_t pid;
 
-    pid = wait(&status);
-    xlog(1,"Caught Child Dying %d\n",pid);
-    module_dmq_add(pid,status);
+    do {
+        pid = waitpid(-1, &status, WNOHANG);
+        if(pid > 0) { 
+            module_dmq_add(pid, status);
+        }
+    } while(pid > 0);
 }
 
-/* this handles shutting down of the core */
-void quit_signal(int sig) {
-    xlog(0,"Quitting due to signal %d", sig);
-    /* TODO: Should stop all running modules */
-    kill(0, SIGTERM); /* ...this'll do for now */
-    /* TODO: Should verify that all the children are dead.  If not
-       then send a SIGKILL signal (don't block in here though) */
-    msg_destroy_queue(); /* Destroy the message queue */
-    exit(-1);
+/* this handles shutting down of the server */
+/* TODO: There's the easy way out and then there is the hard way out.
+ * I need to figure out which is which and then act appropriately.
+ */
+void
+quit_signal(int sig)
+{
+    xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
+    quitflag = 1;
 }
 
-void catch_signal(int sig) {
-    xlog(0, "Received signal %d", sig);
-    
+void
+catch_signal(int sig)
+{
+    xlog(0, "Received signal %d", sig);    
 }

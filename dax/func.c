@@ -30,8 +30,38 @@
 #include <signal.h>
 #include <func.h>
 
-static int _verbosity = 0;
+static u_int32_t _logflags = 0;
 static int _background = 0;
+
+/* Wrapper functions - Mostly system calls that need special handling */
+
+/* Wrapper for write.  This will block and retry until all the bytes
+   have been written or an error other than EINTR is returned */
+ssize_t xwrite(int fd, const void *buff, size_t nbyte) {
+    const void *sbuff;
+    size_t left;
+    ssize_t result;
+    
+    sbuff = buff;
+    left = nbyte;
+    
+    while(left > 0) {
+        result = write(fd, sbuff, left);
+        if(result <= 0) {
+            /* If we get interrupted by a signal... */
+            if(result < 0 && errno == EINTR) {
+                /*... then go again */
+                result = 0;
+            } else {
+                /* return error */
+                return -1;
+            }
+        }
+        left -= result;
+        sbuff += result;
+    }
+    return nbyte;
+}
 
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
@@ -61,7 +91,7 @@ void *xcalloc(size_t count, size_t size) {
 /* TODO: These should get changed to deal with logging
    and properly exiting the program.  For now just print to
    stderr and then send a \n" */
-void xfatal(const char *format,...) {
+void xfatal(const char *format, ...) {
     va_list val;
     va_start(val, format);
 #ifdef DAX_LOGGER
@@ -74,7 +104,7 @@ void xfatal(const char *format,...) {
     kill(getpid(), SIGQUIT);
 }
 
-void xerror(const char *format,...) {
+void xerror(const char *format, ...) {
     va_list val;
     va_start(val, format);
 #ifdef DAX_LOGGER
@@ -86,32 +116,15 @@ void xerror(const char *format,...) {
     va_end(val);
 }
 
-void xnotice(const char *format,...) {
-    va_list val;
-    va_start(val,format);
-#ifdef DAX_LOGGER
-    vsyslog(LOG_NOTICE,format,val);
-#else
-    vfprintf(stderr,format,val);
-    fprintf(stderr,"\n");
-#endif
-    va_end(val);
-}
-
-void setverbosity(int verbosity) {
-    if(verbosity < 0)
-        _verbosity = 0;
-    else if(verbosity > 10)
-        _verbosity = 10;
-    else 
-        _verbosity = verbosity;
-    xlog(0, "Set Verbosity to %d", _verbosity);
+void set_log_topic(u_int32_t topic) {
+    _logflags = topic;
+    xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
 
 /* Sends the string to the logger verbosity is greater than __verbosity */
-void xlog(int verbosity, const char *format,...) {
+void xlog(u_int32_t flags, const char *format, ...) {
     va_list val;
-    if(verbosity <= _verbosity) {
+    if(flags & _logflags) {
         va_start(val, format);
 #ifdef DAX_LOGGER
         vsyslog(LOG_NOTICE, format, val);
@@ -143,7 +156,7 @@ static void writepidfile(char *progname) {
     snprintf(filename, 40, "%s/%s", PID_FILE_PATH, progname);
     pidfd=open(filename, O_RDWR | O_CREAT | O_TRUNC,S_IRUSR | S_IWUSR);
     if(!pidfd) 
-        xnotice("Unable to open PID file - %s",filename);
+        xerror("Unable to open PID file - %s",filename);
     else {
         sprintf(pid, "%d", getpid());
         write(pidfd, pid, strlen(pid)); /*writes to the PID file*/

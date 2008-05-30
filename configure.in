@@ -3,7 +3,7 @@ AC_INIT(dax/opendax.c)
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(config.h)
 
-VERSION="0.1"
+VERSION="0.2"
 PACKAGE=opendax
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)

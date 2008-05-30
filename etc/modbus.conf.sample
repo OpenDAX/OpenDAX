@@ -52,7 +52,8 @@ if portid then
   c.fcode = 4
   c.register = 0
   c.length = 8
-  c.address = 0
+  c.tagname = "modbus_inputs"
+  c.index = 0
   c.interval = 1
 
   add_command(portid, c)
@@ -60,7 +61,7 @@ if portid then
   c.node = 2
   c.fcode = 4
   c.length = 4
-  c.address = 8
+  c.index = 8
 
   add_command(portid, c)
         
@@ -69,7 +70,8 @@ if portid then
   c.fcode = 3
   c.register = 0
   c.length = 10
-  c.address = 20
+  c.tagname = "modbus_config"
+  c.index = 0
   c.interval = 5
 
   add_command(portid, c)
@@ -130,6 +132,7 @@ if portid then
   c.fcode = 4
   c.register = 100
   c.length = 4
+
   c.address = 0
   c.interval = 1
 

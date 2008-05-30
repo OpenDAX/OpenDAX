@@ -14,41 +14,14 @@ functions that they perform.
 With that in mind OpenDAX uses separate processes for modules.  Almost all
 of the tasks of the system are handled by these modules.  They interact with
 each other through a service that runs on each machine in the system.  Each
-module communicates with this core service through one of two libraries.
-
-The first library is an I/O module library.  This module has limited 
-capabilty to communicate with the core.  It is licensed under the 
-Lesser Gnu Public License (LGPL).  This will allow hardware vendors to 
-build proprietary modules that communicate with the OpenDAX core.  
-This will probably be a controversial aspect of this program but if 
-OpenDAX is to ever have any hope of being mainstream it will need to 
-have the abiltiy to communicate with all of the different types and
-brands of hardware that have become industry standard.  Besides we
-aren't trying to build any hardware so this communication is absolutely
-necessary for the usefulness of the project.
-
-The nature of OpenDAX would allow any company to build a proprietary driver
-for their hardware anyway since each module is implemented as a separate 
-process.  It'd be possible for these hardware vendors to build the 
-modules without linking to any of our libraries.  Since it's that linking
-that forces 'derived works' to abide by the GPL they would be exempt. 
-So we are just making it easier for them to do so by supplying a 
-library that can be linked to the proprietary modules without requiring 
-source code distribution.
-
-The other library would have full access to the OpenDAX system and it would
-be licensed under the GPL.  All types of modules could use this library
-and have a simple interface into all the features of the OpenDAX system.
-These modules would be considered 'derived works' and would have to distribute
-their source code.
+module communicates with this server through the libdax library.
 
 The OpenDAX system is intended to provide many different mechanisms for 
 modules to communiate with one another.  The details haven't quite been
 worked out yet but there are a few requirements that we think must be a 
 part of the system.
 
-The system should be network transparent.  It has not been decided whether 
-this feature will be implemented in the core system or in a module.
+The system should be network transparent at the module level.
 
 The system should be able to handle all manner of datatypes, including 
 arrays and custom designed datatypes.  The data map should be dynamic, able
@@ -57,7 +30,7 @@ to grow and shrink as the program runs.
 Modules should also be dynamic, able to be loaded and unloaded at runtime 
 with no requirement for any central configuration.  It should be possible
 for programs that don't even know they are modules to be used as such. 
-The central service could open pipes to a program's stdin, stdout and 
+The server could open pipes to a program's stdin, stdout and 
 stderr file descriptors so that they can be manipulated by the DAX.  This 
 will probably have limited usefulness but it's conceivable that some
 programs could find a place.  One idea that comes to mind would be running
@@ -80,18 +53,18 @@ losing network nodes and remain in control.  This is probably going to be
 more difficult than any other requirement.  Frankly I don't really know how to
 even begin thinking about this requirement.  It seems that some kind of 
 syncronization between logic modules and failover of I/O modules would be
-needed.  This may be more of a module design issue than a central core issue
+needed.  This may be more of a module design issue than a server issue
 but it must be considered throughout the design process, so that we don't
 paint ourselves into a corner.
 
-Once the core system is built and the libraries are functional then all
+Once the server is built and the libraries are functional then all
 of the work will take place in the modules.  There would be modules for I/O.
 This I/O could be some kind of hardwired I/O, networked I/O using Modbus or
 ControlNet.  Even the PC serial or parallel port could be used as I/O.
 
 There would have to be some kind of logic modules.  These could be as simple
-as a small Ruby script (assuming we have some Ruby bindings for the library)
-or something as elaborate as a full featured ladder logic interpreter.
+as a small Lua script  or something as elaborate as a full featured ladder
+logic interpreter.
 
 Other modules would include Alarming, Logging, Trending and some kind of HMI.
 The HMI modules could be web based, X11 based or even simple text based

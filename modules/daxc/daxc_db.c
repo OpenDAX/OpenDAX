@@ -136,7 +136,7 @@ int db_read(void) {
     handle = handle / 8 * 8;
     
     /* Read the data */
-    dax_tag_read(handle, buff, count);
+    dax_read(handle, 0, buff, count);
     
     /* Display the data */
     /* TODO: Use the dsize format to display here */

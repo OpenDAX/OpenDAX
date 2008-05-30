@@ -24,9 +24,10 @@
 #include <string.h>
 
 /* TAG commands */
-int tag_list(void);
-int tag_set(void);
-int tag_get(void);
+int tag_add(char **tokens);
+int tag_list(char **tokens);
+int tag_read(char **tokens);
+int tag_write(char **tokens, int tcount);
 
 /* DB commands (DataBase) */
 int db_read_bit(void);
