@@ -125,18 +125,22 @@ _get_new_script(void)
 static int
 _add_script(lua_State *L)
 {
-    int tagcount, n, si;
-    const char *string;
+    int si;
+    char *string;
     
     if(! lua_istable(L, 1) ) {
         luaL_error(L, "Table needed to add script");
     }
     
     si = _get_new_script();
+    
     if(si < 0) {
         /* Just bail for now */
         return 0;
     }
+    /* Initialize the script structure */
+    scripts[si].globals = NULL;
+    scripts[si].firstrun = 1;
     
     lua_getfield(L, 1, "enable");
     if( lua_isnil(L, -1)) {
@@ -147,16 +151,22 @@ _add_script(lua_State *L)
     lua_pop(L, 1);
     
     lua_getfield(L, 1, "name");
-    string = lua_tostring(L, -1);
+    string = (char *)lua_tostring(L, -1);
     if(string) {
+        /* check for duplicate name */
+        if(get_script_name(string)) {
+            scriptcount--; /* This effectively deletes the script */
+            luaL_error(L, "duplicate script name %s", string);
+        }
         scripts[si].name = strdup(string);
     } else {
+        luaL_error(L, "name is required for a script");
         scripts[si].name = NULL;
     }
     lua_pop(L, 1);
     
     lua_getfield(L, 1, "filename");
-    string = lua_tostring(L, -1);
+    string = (char *)lua_tostring(L, -1);
     if(string) {
         scripts[si].filename = strdup(string);
     } else {
@@ -172,31 +182,6 @@ _add_script(lua_State *L)
     }
     lua_pop(L, 1);
     
-    lua_getfield(L, 1, "tags");
-    if( ! lua_isnil(L, -1)) {
-        if( ! lua_istable(L, -1) ) {
-            /* TODO: I guess we could just get the value as a string */
-            dax_log("tags should be specified as an array");
-        } else {
-            /* Find how many objects are in the table.*/
-            tagcount = lua_objlen(L, -1);
-            /* Allocate the tag array */
-            scripts[si].tags = malloc(sizeof(char *) * tagcount);
-            /* TODO: What to do if this fails? */
-            for(n = 1; n <= tagcount; n++) {
-                lua_rawgeti(L, -1, n);
-                string = lua_tostring(L, -1);
-                if(string) {
-                    /* TODO: What do do if this fails?? */
-                    scripts[si].tags[n-1] = strdup(string);
-                    //--printf("adding %s to the tag list\n", scripts[si].tags[n-1]);
-                }
-                
-                lua_pop(L, 1);
-            }
-            scripts[si].tagcount = tagcount;
-        }
-    }
     return 0;
 }
 
@@ -273,10 +258,15 @@ get_script(int index)
     }
 }
 
-//char *get_main(void) {
-    //return mainscript;
-//}
-
-//int get_rate(void) {
-    //return rate;
-//}
+script_t *
+get_script_name(char *name)
+{
+    int n;
+    
+    for(n = 0; n < scriptcount; n++) {
+        if( scripts[n].name && name && ! strcmp(scripts[n].name, name)) {
+            return &scripts[n];
+        }
+    }
+    return NULL;
+}

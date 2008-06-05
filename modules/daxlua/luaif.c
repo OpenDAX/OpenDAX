@@ -344,8 +344,90 @@ _dax_write(lua_State *L)
     return 0; /* return number of retvals */
 }
 
+static int
+_add_global(char *script, char *varname, unsigned char mode)
+{
+    global_t *glo;
+    script_t *scr;
+    
+    scr = get_script_name(script);
+    if(scr == NULL) return -1;
+    
+    glo = malloc(sizeof(global_t));
+    if(glo) {
+        glo->name = strdup( varname );
+        glo->mode = mode;
+        glo->ref = LUA_NOREF;
+        glo->next = scr->globals;
+        scr->globals = glo;
+    } else {
+        return -1;
+    }
+    return 0;
+}
+
+/* Adds a tag to the *globals list for registration
+   Three arguments.  First is name of the script
+   second is the name of the tag and the third is
+   is the read/write mode ("R", "W" or "RW") */
+static int
+_register_tag(lua_State *L)
+{
+    char *script, *varname, *modestring;
+    unsigned char mode = 0;
+    int n;
+    
+    script = (char *)lua_tostring(L, 1);
+    if(script == NULL) {
+        luaL_error(L, "Script name argument not supplied");
+    }
+    varname = (char *)lua_tostring(L, 2);
+    if(varname == NULL) {
+        luaL_error(L, "Variable name argument not supplied");
+    }
+    modestring = (char *)lua_tostring(L, 3);
+    if(modestring == NULL) {
+        luaL_error(L, "Mode string arguemtn not supplied");
+    }
+    for(n = 0; modestring[n] != '\0'; n++) {
+        if(modestring[n] == 'r' || modestring[n] == 'R') {
+            mode |= MODE_READ;
+        } else if(modestring[n] == 'w' || modestring[n] == 'W') {
+            mode |= MODE_WRITE;
+        } else {
+            luaL_error(L, "Invalid mode string");
+        }
+    }
+    if(_add_global(script, varname, mode) < 0) {
+        luaL_error(L, "Problem adding tag to global registry");
+    }
+    return 0;
+}
+
+/* Adds a static definition to the *globals list.
+   Takes two arguments, script name, static name */
+static int
+_register_static(lua_State *L)
+{
+    char *script, *varname;
+    
+    script = (char *)lua_tostring(L, 1);
+    if(script == NULL) {
+        luaL_error(L, "Script name argument not supplied");
+    }
+    varname = (char *)lua_tostring(L, 2);
+    if(varname == NULL) {
+        luaL_error(L, "Variable name argument not supplied");
+    }
+    if(_add_global(script, varname, MODE_STATIC) < 0) {
+        luaL_error(L, "Problem adding variable to global registry");
+    }
+    return 0;    
+}
+    
+
+
 /* TODO: Stuff to add.
- * give the scripts a way to get their last scan
  * give the scripts a way to enable and disable each other
  */
 
@@ -363,6 +445,11 @@ setup_interpreter(lua_State *L)
     lua_pushcfunction(L, _dax_write);
     lua_setglobal(L, "dax_write");
     
+    lua_pushcfunction(L, _register_tag);
+    lua_setglobal(L, "register_tag");
+    
+    lua_pushcfunction(L, _register_static);
+    lua_setglobal(L, "register_static");
     
     /* register the libraries that we need*/
     luaopen_base(L);

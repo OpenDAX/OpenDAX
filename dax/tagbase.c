@@ -48,9 +48,6 @@ static _dax_tag_index *__index;
 static long int __tagcount = 0;
 static long int __dbsize = 0;
 
-//u_int32_t *__db; /* Primary Point Database */
-//static long int __databasesize = 0;
-
 static int __next_event_id = 0;
 
 /* Private function definitions */

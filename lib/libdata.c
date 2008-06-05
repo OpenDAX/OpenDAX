@@ -484,6 +484,7 @@ dax_mask_tag(handle_t handle, int index, void *data, void *mask, int count, unsi
     return result;
 }
 
+#ifdef DELETE_BIT_STUFF_IEYTHQGJHRIUEHWLGIURHEWQL
 
 /* TODO: I need to do something with all these bit manipulation functions */
 /* returns zero if the bit is clear, 1 if it's set */
@@ -665,3 +666,5 @@ int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size
     /* TODO: Need to do some real error checking here and return a good number */
     return size;
 }
+
+#endif

@@ -177,15 +177,15 @@ int dax_mask_tag(handle_t handle, int index, void *data, void *mask, int count, 
 
 
 /* reads a single bit */
-char dax_tag_read_bit(handle_t handle);
+//char dax_tag_read_bit(handle_t handle);
 /* writes a single bit */
-int dax_tag_write_bit(handle_t handle, u_int8_t data);
+//int dax_tag_write_bit(handle_t handle, u_int8_t data);
 /* simple multiple bit read */
-int dax_tag_read_bits(handle_t handle, void *data, size_t size);
+//int dax_tag_read_bits(handle_t handle, void *data, size_t size);
 /* simple multiple bit write */
-int dax_tag_write_bits(handle_t handle, void *data, size_t size);
+//int dax_tag_write_bits(handle_t handle, void *data, size_t size);
 /* multiple bit write with maks */
-int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size);
+//int dax_tag_mask_write_bits(handle_t handle, void *data, void *mask, size_t size);
 
 int dax_event_add(char *tag, int count);
 int dax_event_del(int id);

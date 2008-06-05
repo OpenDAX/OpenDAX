@@ -33,11 +33,11 @@
 int main(int argc,char *argv[]) {
     int tests_failed = 0;
     int n, result;
-    char buff[10];
+    //char buff[10];
     handle_t handle[10];
     //char tagname[DAX_TAGNAME_SIZE +1];
-    int dummy[20], test[20];
-    dax_tag test_tag;
+    int dummy[20]; // test[20];
+    //dax_tag test_tag;
     
     //openlog("test", LOG_NDELAY, LOG_DAEMON);
     dax_log("Starting module test");

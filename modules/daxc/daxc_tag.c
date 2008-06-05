@@ -37,8 +37,6 @@ show_tag(int n, dax_tag temp_tag)
 }
 
 
-
-
 /* Adds a tag to the dax tag database. */
 int
 tag_add(char **tokens)

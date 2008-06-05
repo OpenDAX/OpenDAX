@@ -34,7 +34,7 @@
 
 static dax_module *_current_mod = NULL;
 static int _module_count = 0;
-static int _register_timeout = 1000;
+//static int _register_timeout = 1000;
 
 static char **_arglist_tok(char *, char *);
 static dax_module *_get_module_pid(pid_t);

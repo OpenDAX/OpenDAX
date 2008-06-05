@@ -77,7 +77,7 @@ static int _db_read_getparams(handle_t *handle, size_t *count, char bitsorbytes)
     } else {
         *count = strtol(tok, NULL, 0);
     }
-    printf("Returning handle = 0x%lX, count = %d\n", *handle, *count);
+   
     return 0;
 }
 
@@ -97,9 +97,9 @@ int db_read_bit(void) {
     /* Read the data */
     if(count == 1) {
         /* TODO: Error check here */
-        ((u_int8_t *)buff)[0] = dax_tag_read_bit(handle);
+    //    ((u_int8_t *)buff)[0] = dax_tag_read_bit(handle);
     } else {
-        dax_tag_read_bits(handle, buff, count);
+    //    dax_tag_read_bits(handle, buff, count);
     }
     
     /* Display the data */
@@ -129,7 +129,6 @@ int db_read(void) {
         return 1;
     }
     
-    printf("Count = %d\n", count);
     /* Allocate the buffer on the stack */
     buff = alloca(count);
 

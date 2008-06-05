@@ -29,20 +29,38 @@
 #define NUM_SCRIPTS 8
 #define DEFAULT_RATE 1000
 
+/* These are the modes for the scripts globals. */
+#define MODE_READ   0x01
+#define MODE_WRITE  0x02
+#define MODE_STATIC 0X04
+
+/* This is the representation of a custom Lua global
+   if the mode is static then the tagname will be written
+   to the Lua registry otherwise it's either read, written
+   or both to the OpenDAX server as a tag. */
+typedef struct Global_t {
+    char *name;
+    unsigned char mode;
+    int ref;
+    struct Global_t *next;
+} global_t;
+
+/* Contains all the information to identify a script */
 typedef struct Script_t {
     char enable;
     pthread_t thread;
     char *name;
     char *filename;
+    unsigned char firstrun;
     long rate;
     long lastscan;
     long executions;
-    int tagcount;
-    char **tags;
-    int staticcount;
-    char **statics;
+    global_t *globals;
 } script_t;
 
+/* The DAX API functions are not thread safe this is the mutex
+   that we use to ensure that only one script can use the API
+   at a time */
 pthread_mutex_t daxmutex;
 
 /* options.c - Configuration functions */
@@ -50,6 +68,8 @@ int configure(int argc, char *argv[]);
 char *get_init(void);
 int get_scriptcount(void);
 script_t *get_script(int index);
+script_t *get_script_name(char *name);
+
 
 int get_verbosity(void);
 

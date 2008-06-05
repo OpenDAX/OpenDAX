@@ -60,17 +60,26 @@ lua_init(void)
 static inline int
 register_globals(lua_State *L, script_t *s)
 {
-    int n;
+    global_t *this;
+    
+    this = s->globals;
     
     pthread_mutex_lock(&daxmutex);
-    for(n = 0; n < s->tagcount; n++) {
-        if(fetch_tag(L, s->tags[n])) {
-            pthread_mutex_unlock(&daxmutex);
-            return -1;
-        } else {
-            lua_setglobal(L, s->tags[n]);
+    while(this != NULL) {
+        if(this->mode & MODE_READ) {
+            if(fetch_tag(L, this->name)) {
+                pthread_mutex_unlock(&daxmutex);
+                return -1;
+            } else {
+                lua_setglobal(L, this->name);
+            }
+        } else if(this->mode & MODE_STATIC && this->ref != LUA_NOREF) {
+            lua_rawgeti(L, LUA_REGISTRYINDEX, this->ref);
+            lua_setglobal(L, this->name);
         }
+        this = this->next;
     }
+    
     pthread_mutex_unlock(&daxmutex);
     
     /* Now we set the daxlua system values as global variables */
@@ -89,6 +98,9 @@ register_globals(lua_State *L, script_t *s)
     
     lua_pushinteger(L, (lua_Integer)s->executions);
     lua_setglobal(L, "_executions");
+
+    lua_pushboolean(L, s->firstrun);
+    lua_setglobal(L, "_firstrun");
     
     return 0;    
 }
@@ -101,18 +113,31 @@ register_globals(lua_State *L, script_t *s)
 static inline int
 send_globals(lua_State*L, script_t *s)
 {
-    int n;
+    global_t *this;
     
+    this = s->globals;
     pthread_mutex_lock(&daxmutex);
-    for(n = 0; n < s->tagcount; n++) {
-        lua_getglobal(L, s->tags[n]);
-        
-        if(send_tag(L, s->tags[n])) {
-            pthread_mutex_unlock(&daxmutex);
-            return -1;
+    
+    while(this != NULL) {
+        if(this->mode & MODE_WRITE) {
+            lua_getglobal(L, this->name);
+            
+            if(send_tag(L, this->name)) {
+                pthread_mutex_unlock(&daxmutex);
+                return -1;
+            }
+            lua_pop(L, 1);
+        } else if(this->mode & MODE_STATIC) {
+            lua_getglobal(L, this->name);
+            if(this->ref == LUA_NOREF) {
+                this->ref = luaL_ref(L, LUA_REGISTRYINDEX);
+            } else {
+                lua_rawseti(L, LUA_REGISTRYINDEX, this->ref);
+            }
         }
-        lua_pop(L, 1);
+        this = this->next;
     }
+    
     pthread_mutex_unlock(&daxmutex);
     
     lua_getglobal(L, "_rate");
@@ -162,6 +187,7 @@ lua_script_thread(script_t *s)
                    works then this should too */
                 send_globals(L, s);
                 s->executions++;
+                s->firstrun = 0;
             }
             
             /* This calculates the length of time that it took to run the script
@@ -222,7 +248,9 @@ start_all_threads(void)
 }
 
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[])
+{
     struct sigaction sa;
     
     /* Set up the signal handlers */
@@ -277,6 +305,8 @@ int main(int argc, char *argv[]) {
 
 
 /* this handles stopping the program */
-void quit_signal(int sig) {
+void
+quit_signal(int sig)
+{
     quitsig = sig;
 }
