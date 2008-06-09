@@ -398,7 +398,7 @@ openport(struct mb_port *m_port)
         options.c_cflag |= CS8;
       
         options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-        options.c_iflag &= ~(IXON | IXOFF | IXANY);
+        options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
         options.c_oflag &= ~OPOST;
         options.c_cc[VMIN] = 0;
         options.c_cc[VTIME] = 0; /* 1 sec */
