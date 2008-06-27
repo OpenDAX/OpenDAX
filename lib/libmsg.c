@@ -136,7 +136,7 @@ dax_mod_register(char *name)
     /* fill socket address structure with our address */
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, opt_get_socketname(), sizeof(addr.sun_path));
+    strncpy(addr.sun_path, dax_get_attr("socketname"), sizeof(addr.sun_path));
     
     len = offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
     if (connect(fd, (struct sockaddr *)&addr, len) < 0) {

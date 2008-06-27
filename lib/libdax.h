@@ -26,9 +26,9 @@
 #include <common.h>
 #include <opendax.h>
 
-#ifndef TAG_CACHE_LIMIT
-#  define TAG_CACHE_LIMIT 8
-#endif
+//#ifndef TAG_CACHE_LIMIT
+//#  define TAG_CACHE_LIMIT "8"
+//#endif
 
 /* Data Conversion Functions */
 #define REF_INT_SWAP 0x0001
@@ -75,9 +75,5 @@ int init_tag_cache(void);
 int check_cache_handle(handle_t, dax_tag *);
 int check_cache_name(char *, dax_tag *);
 int cache_tag_add(dax_tag *);
-
-/* Configuration Option Functions */
-int opt_get_cache_limit(void);
-char *opt_get_socketname(void);
 
 #endif /* !__LIBDAX_H */

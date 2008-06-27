@@ -142,6 +142,7 @@ send_globals(lua_State*L, script_t *s)
     
     lua_getglobal(L, "_rate");
     s->rate = lua_tointeger(L, -1);
+    if(s->rate < 0) s->rate = 1000;
     lua_pop(L, 1);
     
     return 0;

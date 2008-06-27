@@ -32,12 +32,18 @@
 
 int main(int argc,char *argv[]) {
     int tests_failed = 0;
-    int n, result;
+    int n, result, flags;
     //char buff[10];
     handle_t handle[10];
     //char tagname[DAX_TAGNAME_SIZE +1];
     int dummy[20]; // test[20];
     //dax_tag test_tag;
+    
+    dax_init_config("daxtest");
+    flags = CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF | CFG_ARG_REQUIRED;
+    result += dax_add_attribute("exitonfail","exitonfail", 'X', flags, "0");
+    dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    dax_free_config();
     
     //openlog("test", LOG_NDELAY, LOG_DAEMON);
     dax_log("Starting module test");

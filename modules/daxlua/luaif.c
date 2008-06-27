@@ -370,6 +370,9 @@ _add_global(char *script, char *varname, unsigned char mode)
    Three arguments.  First is name of the script
    second is the name of the tag and the third is
    is the read/write mode ("R", "W" or "RW") */
+/* TODO: should this be allowed in a normal script?  I guess
+   I don't want any limits but couldn't the scriptname be assumed
+   if run from a normal script or given if meant for another script? */
 static int
 _register_tag(lua_State *L)
 {
@@ -406,6 +409,9 @@ _register_tag(lua_State *L)
 
 /* Adds a static definition to the *globals list.
    Takes two arguments, script name, static name */
+/* TODO: should this be allowed in a normal script?  I guess
+ I don't want any limits but couldn't the scriptname be assumed
+ if run from a normal script or given if meant for another script? */
 static int
 _register_static(lua_State *L)
 {

@@ -16,8 +16,6 @@ Set up the module restarting in the scan_modules() function.
 
 Write the stop_module() function.
 
-Change configuration to Lua.
-
 Add this stuff to the configuration...
 
   Global
