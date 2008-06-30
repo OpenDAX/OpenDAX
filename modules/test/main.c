@@ -23,35 +23,50 @@
 #include <sys/msg.h>
 #include <opendax.h>
 #include <string.h>
-#include <tags.h>
+#include <daxtest.h>
 
 #define TEST 1000
 
-/* TODO: Rewrite this testing module to use a Lua script
-   to decide what gets tested and how */
-
 int main(int argc,char *argv[]) {
-    int tests_failed = 0;
+    //int tests_failed = 0;
     int n, result, flags;
+    char *script;
     //char buff[10];
     handle_t handle[10];
     //char tagname[DAX_TAGNAME_SIZE +1];
     int dummy[20]; // test[20];
     //dax_tag test_tag;
+    lua_State *L;
     
-    dax_init_config("daxtest");
-    flags = CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute("exitonfail","exitonfail", 'X', flags, "0");
-    dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
-    dax_free_config();
     
-    //openlog("test", LOG_NDELAY, LOG_DAEMON);
     dax_log("Starting module test");
-    dax_set_verbosity(1);
     dax_set_debug_topic(0xFFFF); /* This should get them all out there */
+        
+    dax_init_config("daxtest");
+    flags = CFG_CMDLINE | CFG_DAXCONF | CFG_ARG_REQUIRED;
+    result += dax_add_attribute("exitonfail","exitonfail", 'x', flags, "0");
+    result += dax_add_attribute("testscript","testscript", 't', flags, "daxtest.lua");
     
-    if(dax_mod_register("test"))
+    dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    
+    if(dax_mod_register("daxtest"))
         dax_fatal("Unable to register with the server");
+    
+    script = dax_get_attr("testscript");
+
+    /* Free the configuration memory once we are done with it */
+    dax_free_config();
+
+    L = lua_open();
+    /* This adds all of the Lua functions to the lua_State */
+    add_test_functions(L);
+    
+    /* load and run the configuration file */
+    if(luaL_loadfile(L, script)  || lua_pcall(L, 0, 0, 0)) {
+        dax_error("Problem executing configuration file - %s", lua_tostring(L, -1));
+        return ERR_GENERIC;
+    }
+    
     /*
     if(check_tag_addition()) {
         dax_log("Tagname addition test - FAILED");
@@ -215,8 +230,9 @@ int main(int argc,char *argv[]) {
      
     /* Verify the integrity of the tag database */
 #endif    
-    dax_debug(1, "OpenDAX Test Finished, %d tests failed", tests_failed);
-    sleep(5);
+    dax_debug(LOG_MAJOR, "OpenDAX Test Finished, %d tests run, %d tests failed",
+              tests_run(), tests_failed());
+    //sleep(5);
     dax_mod_unregister();
     
     return 0;

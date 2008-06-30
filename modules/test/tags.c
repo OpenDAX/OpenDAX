@@ -17,7 +17,7 @@
  *
  */
 
-#include <tags.h>
+#include <daxtest.h>
 
 /* Returns a random datatype to the caller */
 int get_random_type(void) {
@@ -57,7 +57,9 @@ int get_random_type(void) {
     }
 }
 
-void add_random_tags(int tagcount) {
+int
+add_random_tags(int tagcount, char *name)
+{
     static int index = 0;
     int n, count, data_type;
     handle_t result;
@@ -65,7 +67,7 @@ void add_random_tags(int tagcount) {
     
     srand(12); /* Random but not so random */
     for(n = 0; n < tagcount; n++) {
-        sprintf(tagname,"randtag%d",index++);
+        sprintf(tagname,"%s%d", name, index++);
         if(rand()%4 == 0) { /* One of four tags will be an array */
             count = rand() % 100 + 1;
         } else {
@@ -74,11 +76,13 @@ void add_random_tags(int tagcount) {
         data_type = get_random_type();
         result = dax_tag_add(tagname, data_type, count);
         if(result < 0) {
-            dax_debug(10, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
+            dax_debug(LOG_MINOR, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
+            return -1;
         } else {
-            dax_debug(10, "%s added at handle 0x%8X", tagname, result);
+            dax_debug(LOG_MINOR, "%s added at handle 0x%8X", tagname, result);
         }
     }
+    return 0;
 }
 
 /* This checks the integrity of the tag database.  It makes sure that
@@ -117,49 +121,34 @@ check_tagbase(void)
 }
 
 
-static int
-tagtopass(char *name)
+int
+tagtopass(const char *name)
 {
     handle_t handle;
     
-    handle = dax_tag_add(name, DAX_BOOL, 1);
+    handle = dax_tag_add((char *)name, DAX_BOOL, 1);
     if(handle < 0) {
-        dax_debug(1, "Test Failed - %s was not allowed", name);
-        return -1;
-    }
-    return 0;
-}
-
-static int
-tagtofail(char *name)
-{
-    handle_t handle;
-    
-    handle = dax_tag_add(name, DAX_BOOL, 1);
-    if(handle >= 0) {
-        dax_debug(1, "Test Failed - %s was allowed", name);
+        dax_debug(LOG_MINOR, "Test Failed - %s was not allowed", name);
         return -1;
     }
     return 0;
 }
 
 int
-check_tag_addition(void)
-{    
-    /* These tags should fail */
-    if(tagtofail("1Tag")) return -1;
-    if(tagtofail("-Tag")) return -1;
-    if(tagtofail("Tag-name")) return -1;
-    if(tagtofail("Tag&name")) return -1;
-    if(tagtofail("TagNameIsWayTooLong12345678912345")) return -1;
-    /* These tags should pass */
-    if(tagtopass("_Tag")) return -1;
-    if(tagtopass("Tag1")) return -1;
-    if(tagtopass("tAg_name")) return -1;
-    if(tagtopass("t1Ag_name")) return -1;
-    if(tagtopass("TagNameIsBarelyLongEnoughToFit12")) return -1;
+tagtofail(const char *name)
+{
+    handle_t handle;
+    
+    handle = dax_tag_add((char *)name, DAX_BOOL, 1);
+    if(handle >= 0) {
+        dax_debug(LOG_MINOR, "Test Failed - %s was allowed", name);
+        return -1;
+    }
     return 0;
 }
+
+/******************************
+ * TODO: Stuff below hasn't been added to Lua Yet
 
 /* This test runs the tagname retrival process through it's paces */
 /* TODO: add some kind of mechanism to make sure that we get the right index or bit offset */

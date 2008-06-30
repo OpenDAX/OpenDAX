@@ -130,11 +130,12 @@ typedef struct {
 /* These functions are for module configuration */
 int dax_init_config(char *name);
 /* is void* the right thing to do with the lua_State? */
-int dax_set_cfunction(int (*f)(void *L), char *name);
+int dax_set_luafunction(int (*f)(void *L), char *name);
 int dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *defvalue);
 int dax_configure(int argc, char **argv, int flags);
 char *dax_get_attr(char *name);
 int dax_set_attr(char *name, char *value);
+int dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value));
 int dax_free_config(void);
 
 void dax_set_verbosity(int); /* TODO: This should be deleted eventually */

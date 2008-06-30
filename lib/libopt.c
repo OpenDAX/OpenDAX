@@ -31,7 +31,7 @@ typedef struct OptAttr {
     char *defvalue;
     char *value;
     int flags;
-    int (*attr_callback)(char *name, char *value);
+    int (*callback)(char *name, char *value);
     struct OptAttr *next;
 } optattr;
     
@@ -78,7 +78,7 @@ dax_init_config(char *name)
 /* Allows the module developer to add their own function for
  * the Lua configuration file */
 int
-dax_set_cfunction(int (*f)(void *L), char *name)
+dax_set_luafunction(int (*f)(void *L), char *name)
 {
 	lua_pushcfunction(_L, (int (*)(lua_State *))f);
     lua_setglobal(_L, name);
@@ -136,7 +136,7 @@ dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *def
     		newattr->defvalue = NULL;
     	}
     	newattr->flags = flags;
-    	newattr->attr_callback = NULL;
+    	newattr->callback = NULL;
     	newattr->next = NULL;
     	newattr->value = NULL;
     }
@@ -158,7 +158,7 @@ dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value)) {
 	
 	while(this != NULL) {
 		if( ! strcmp(this->name, name) ){
-			this->attr_callback = attr_callback;
+			this->callback = attr_callback;
 			return 0;
 		}
 	}
@@ -234,8 +234,11 @@ _parse_commandline(int argc, char **argv) {
 			this = _attr_head;
 			while(this != NULL) {
 				if(this->shortopt == ch) {
+				    /* Set the value and call the callback function if there is one */
 					this->value = strdup(optarg);
-					/* TODO: Should call the callback too */
+					if(this->callback) {
+					    this->callback(this->name, optarg);
+					}
 					break;
 				}
 				this = this->next;
@@ -251,7 +254,7 @@ _parse_commandline(int argc, char **argv) {
 static int
 _get_lua_globals(lua_State *L, int type) {
     optattr *this;
-    char *s;
+    const char *s;
     
     this = _attr_head;
     
@@ -259,12 +262,26 @@ _get_lua_globals(lua_State *L, int type) {
         /* If the value has not already been set and we
          * are actually looking for the attribute in this
          * configuration file */
-        if((this->value == NULL) && (this->flags & type)) {
+        if((this->flags & type)) {
             lua_getglobal(L, this->name);
-            s = (char *)lua_tostring(L, -1);
+            if(lua_isboolean(L, -1)) {
+                if(lua_toboolean(L, -1)) {
+                    s = "true";
+                } else {
+                    s = "false";    
+                }
+            } else {
+                s = lua_tostring(L, -1);
+            }
             if(s) {
-                this->value = strdup(s);
-                /* TODO: Should call the callback too */
+                /* We only set the value if it has not already been set */
+                if(this->value == NULL) {
+                    this->value = strdup(s);
+                }
+                /* We always call the callback */
+                if(this->callback) {
+                    this->callback(this->name, (char *)s);
+                }
             }
             lua_pop(L, 1);
         }
