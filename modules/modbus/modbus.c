@@ -195,33 +195,6 @@ timediff(struct timeval oldtime,struct timeval newtime)
  *   Public functions   *
  ************************/
 
-/* Create the datatable and allocate the ports array */
-/* GONNA GO WITHOUT THESE FOR NOW***********
-
-int mb_init(unsigned int port_count, u_int16_t dt_size) {
-    int result,n;
-    
-    result=dt_init(dt_size);
-    if(result) return result;
-    
-    _ports=(struct mb_port *)malloc(sizeof(struct mb_port)*port_count);
-    if(_ports==NULL) return -1;
-    
-    for(n=0;n<port_count;n++) {
-        initport(&_ports[n]);
-    }
-    _port_count=port_count;
-    
-    
-    return 0;
-}*/
-
-/* Destroy the whole thing. Unimplemented at present*/
-/*
-void mb_destroy(void) {
-    return;
-}*/
-
 /* This allocates and initializes a port.  Returns the pointer to the port on 
    success or NULL on failure. */
 struct mb_port *

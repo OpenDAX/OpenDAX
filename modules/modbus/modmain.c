@@ -39,7 +39,7 @@ void outdata(struct mb_port *,u_int8_t *,unsigned int);
 void indata(struct mb_port *,u_int8_t *,unsigned int);
 
 int main (int argc, const char * argv[]) {
-    int result, n, time;
+    int result, n;
     struct mb_port *mp;
     struct mb_cmd *mc;
     struct sigaction sa;
@@ -57,25 +57,13 @@ int main (int argc, const char * argv[]) {
     sigaction(SIGPIPE, &sa, NULL);
     
     
-    dax_debug(1, "Modbus Starting");
+    dax_debug(LOG_MAJOR, "Modbus Starting");
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
-    result = modbus_configure(argc,argv);
+    result = modbus_configure(argc, argv);
     
     if( dax_mod_register("modbus") ) {
-        dax_fatal("Unable to find OpenDAX Message Queue.  OpenDAX probabby not running");
-    }
-    
-    /* Allocate and initialize the datatable */
-    time = 1; n = 0;
-    while(dt_init(config.tablesize, config.tagname)) {
-        dax_error("Unable to allocate the data table");
-        /* This stuff may not be relevant anymore */
-        sleep(time);
-        if(n++ > 5) {
-            time *= 2; n = 0;
-        }
-        if(time > 60) time = 60;
+        dax_fatal("Unable to connect to OpenDAX server!");
     }
     
     /* Set the input and output callbacks if we aren't going to the background */
@@ -131,7 +119,7 @@ recover from a USB serial port being pulled and then replaced or a device server
 void catchsignal(int sig) {
     if(sig == SIGHUP) {
         dax_log("Should be Reconfiguring Now");
-        //reconfigure();
+        //--reconfigure();
     } else if(sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
         dax_log("Exiting with signal %d", sig);
         getout(0);
@@ -144,7 +132,9 @@ void catchsignal(int sig) {
     }
 }
 
-void catchpipe(int sig) {
+void
+catchpipe(int sig)
+{
     int n;
     
     for(n = 0; n < config.portcount; n++) {
@@ -154,15 +144,16 @@ void catchpipe(int sig) {
     }
 }
 
-static void getout(int exitcode) {
+static void
+getout(int exitcode)
+{
     int n;
     dax_debug(1, "Modbus Module Exiting");
     dax_mod_unregister();
-    dt_destroy();
-    /* TODO: Need to figure out a way to unbind the socket */
+    //--dt_destroy();
     
     /* Delete the PID file */   
-    for(n=0; n<config.portcount; n++) {
+    for(n = 0; n < config.portcount; n++) {
     /* TODO: Should probably stop the running threads here and then close the ports */
         close(config.ports[n].fd);
     }
@@ -170,7 +161,9 @@ static void getout(int exitcode) {
 }
 
 /* Callback functions for printing the serial traffic */
-void outdata(struct mb_port *mp,u_int8_t *buff,unsigned int len) {
+void
+outdata(struct mb_port *mp,u_int8_t *buff,unsigned int len)
+{
    int n;
    for(n=0;n<len;n++) {
        printf("(%X)",buff[n]);
@@ -178,7 +171,9 @@ void outdata(struct mb_port *mp,u_int8_t *buff,unsigned int len) {
    printf("\n");
 }
 
-void indata(struct mb_port *mp,u_int8_t *buff,unsigned int len) {
+void
+indata(struct mb_port *mp,u_int8_t *buff,unsigned int len)
+{
    int n;
    for(n=0;n<len;n++) {
        printf("[%X]",buff[n]);

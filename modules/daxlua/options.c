@@ -25,72 +25,12 @@
 #include <math.h>
 
 
-
 /* TODO: Allow user to set whether an error in a script is fatal */
 
-static char *configfile;
 static char *initscript;
-static long verbosity;
 static script_t *scripts = NULL;
 static int scripts_size = 0;
 static int scriptcount = 0;
-
-static void initconfig(void) {
-    int length;
-    
-    if(!configfile) {
-        length = strlen(ETC_DIR) + strlen("/daxlua.conf") +1;
-        configfile = (char *)malloc(sizeof(char) * length);
-        if(configfile) 
-            sprintf(configfile,"%s%s",ETC_DIR,"/daxlua.conf");
-    }
-}
-
-
-/* This function parses the command line options and sets
-the proper members of the configuration structure */
-static void
-parsecommandline(int argc, char *argv[])
-{
-    char c;
-    
-    static struct option options[] = {
-    {"config", required_argument,0,'C'},
-    {"version", no_argument, 0, 'V'},
-    {"verbose", no_argument,0,'v'},
-    {0, 0, 0, 0}
-    };
-    
-    /* Get the command line arguments */ 
-    while ((c = getopt_long (argc, (char * const *)argv, "C:Vv", options, NULL)) != -1) {
-        switch (c) {
-            case 'C':
-                configfile = strdup(optarg);
-                break;
-            case 'V':
-                printf("daxlua Version %s\n",VERSION);
-                break;
-            case 'v':
-                verbosity++;
-                break;
-            case '?':
-                printf("Got the big ?\n");
-                break;
-            case -1:
-            case 0:
-                break;
-            default:
-                printf ("?? getopt returned character code 0%o ??\n", c);
-        } /* End Switch */
-    } /* End While */
-    if(verbosity) dax_set_verbosity(verbosity);
-}
-
-/* This function is called last and makes sure that we have some sane defaults
-   for all the configuration options */
-static void setdefaults(void) {
-    //--if(! rate) rate = 1000;
-}
 
 /* This function returns an index into the scripts[] array for
    the next unassigned script */
@@ -189,48 +129,22 @@ _add_script(lua_State *L)
 int
 configure(int argc, char *argv[])
 {
-    lua_State *L;
-    const char *string;
+    int flags, result = 0;
     
-    initconfig();
-    parsecommandline(argc,argv);
-    setdefaults();
-    
-    L = lua_open();
- /* We don't open any librarires because we don't really want any
-    function calls in the configuration file.  It's just for
-    setting a few globals. */    
-    lua_pushcfunction(L, _add_script);
-    lua_setglobal(L,"add_script");
-    
- /* load and run the configuration file */
-    if(luaL_loadfile(L, configfile)  || lua_pcall(L, 0, 0, 0)) {
-        dax_error("Problem executing configuration file %s", lua_tostring(L, -1));
-        return 1;
+    dax_init_config("daxlua");
+    flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
+    result += dax_add_attribute("initscript", "initscript", 'i', flags, "init.lua");
+    if(result) {
+        dax_fatal("Problem with the configuration");
     }
     
- /* tell lua to push these variables onto the stack */
-    lua_getglobal(L, "init");
-    string = lua_tostring(L, -1);
-    if(string != NULL) {
-        initscript = strdup(string);
-    } else {
-        initscript = NULL;
-    }
-    lua_pop(L, 1);
+    dax_set_luafunction((void *)_add_script, "add_script");
     
-    lua_getglobal(L, "verbosity");
-    
-    if(verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        verbosity = lround(lua_tonumber(L, -1));
-        dax_set_verbosity(verbosity);
-    }
-    
-    dax_debug(2, "Initialization Script set to %s",initscript);
-    dax_debug(2, "Verbosity set to %d", verbosity);
+    dax_configure(argc, (char **)argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
 
-    /* Clean up and get out */
-    lua_close(L);
+    initscript = strdup(dax_get_attr("initscript"));
+    
+    dax_free_config();
     
     return 0;
 }

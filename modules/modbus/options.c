@@ -34,60 +34,8 @@ static void printconfig(void);
 
 struct Config config;
 
-/* Inititialize the configuration to NULL or 0 for cleanliness */
-static void initconfig(void) {
-
-    config.pidfile = NULL;
-    config.tagname = NULL;
-    config.tablesize = 0;
-    config.verbosity = 0;
-    config.daemonize = 0;
-    config.ports = NULL;
-        
-    asprintf(&config.configfile, "%s/%s", ETC_DIR, "modbus.conf");
-}
-
-/* This function parses the command line options and sets
- the proper members of the configuration structure */
-static void parsecommandline(int argc, const char *argv[])  {
-    char c;
-    
-    static struct option options[] = {
-        {"config", required_argument, 0, 'C'},
-        {"version", no_argument, 0, 'V'},
-        {"verbose", no_argument, 0, 'v'},
-        {0, 0, 0, 0}
-    };
-    
-    /* Get the command line arguments */ 
-    while ((c = getopt_long (argc, (char * const *)argv, "C:VvD",options, NULL)) != -1) {
-        switch (c) {
-            case 'C':
-                config.configfile = strdup(optarg);
-                break;
-            case 'V':
-                printf("OpenDAX Modbus Module Version %s\n", VERSION);
-                break;
-            case 'v':
-                config.verbosity++;
-                break;
-            case 'D': 
-                config.daemonize = 1;
-                break;
-            case '?':
-                printf("Got the big ?\n");
-                break;
-            case -1:
-            case 0:
-                break;
-            default:
-                printf ("?? getopt returned character code 0%o ??\n", c);
-        } /* End Switch */
-    } /* End While */           
-}
-
 static inline int
-get_serial_config(lua_State *L, struct mb_port *p)
+_get_serial_config(lua_State *L, struct mb_port *p)
 {
     char *string;
     
@@ -146,7 +94,7 @@ get_serial_config(lua_State *L, struct mb_port *p)
 }
 
 static inline int
-get_network_config(lua_State *L, struct mb_port *p)
+_get_network_config(lua_State *L, struct mb_port *p)
 {
     char *string;
     
@@ -181,7 +129,7 @@ get_network_config(lua_State *L, struct mb_port *p)
 }
 
 static inline int
-get_slave_config(lua_State *L, struct mb_port *p)
+_get_slave_config(lua_State *L, struct mb_port *p)
 {
     dax_error("Slave functionality is not yet implemented");
     
@@ -271,9 +219,9 @@ _add_port(lua_State *L)
      is not checked to see if too much information is given only that
      enough information is given to do the job */
     if(p->devtype == SERIAL) {
-        get_serial_config(L, p);
+        _get_serial_config(L, p);
     } else if(p->devtype == NET) {
-        get_network_config(L, p);
+        _get_network_config(L, p);
     }
     /* What Modbus protocol are we going to talk on this port */
     lua_getfield(L, -1, "protocol");
@@ -303,7 +251,7 @@ _add_port(lua_State *L)
     }
     
     lua_pop(L, 2);
-    if(p->type == SLAVE) get_slave_config(L, p);
+    if(p->type == SLAVE) _get_slave_config(L, p);
     
     lua_getfield(L, -1, "delay");
     p->delay = (unsigned int)lua_tonumber(L, -1);
@@ -427,93 +375,27 @@ _add_command(lua_State *L)
     return 0;
 }
 
-static void
-initscript(lua_State *L)
-{
-    /* We don't open any librarires because we don't really want any
-     function calls in the configuration file.  It's just for
-     setting a few globals.*/
-    
-    /* TODO: Need to set up some globals for configuration.
-        Maybe I'll use strings instead. 
-        stuff like SLAVE, MASTER, RTU, ASCII, TCP, UDP, EVEN, ODD */
-    
-    lua_pushcfunction(L, _add_port);
-    lua_setglobal(L, "add_port");
-    lua_pushcfunction(L, _add_command);
-    lua_setglobal(L, "add_command");
-    
-}
-
-static int
-readconfigfile(void)
-{
-    lua_State *L;
-    char *string;
-    
-    L = lua_open();
-
-    initscript(L);
-    
-    /* load and run the configuration file */
-    if(luaL_loadfile(L, config.configfile)  || lua_pcall(L, 0, 0, 0)) {
-        dax_error("Problem executing configuration file - %s", lua_tostring(L, -1));
-        return 1;
-    }
-    
-    /* tell lua to push these variables onto the stack */
-    lua_getglobal(L, "tagname");
-    lua_getglobal(L, "verbosity");
-    lua_getglobal(L, "tablesize");
-       
-    if(config.tagname == NULL) {
-        if( (string = (char *)lua_tostring(L, 1)) ) {
-            config.tagname = strdup(string);
-        }
-    }
-    
-    if(config.verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        config.verbosity = (int)lua_tonumber(L, 3);
-        dax_set_verbosity(config.verbosity);
-    }
-    
-    if(config.tablesize == 0) { /* Make sure we didn't get anything on the commandline */
-        config.tablesize = (unsigned int)lua_tonumber(L, 3);
-    }
-    
-    /* Clean up and get out */
-    lua_close(L);
-    
-    return 0;
-}
-
-/* This function sets the defaults for the configuration if the
- commandline or the config file set them. */
-static void
-setdefaults(void)
-{
-    if(!config.tagname) {
-        config.tagname = strdup(DEFAULT_TAGNAME);
-    }
-    if(!config.tablesize)
-        config.tablesize = DEFAULT_TABLE_SIZE;
-}
-
-
 /* This function should be called from main() to configure the program.
    First the defaults are set then the configuration file is parsed then
    the command line is handled.  This gives the command line priority.  */
 int
 modbus_configure(int argc, const char *argv[])
 {
-    initconfig();
-    parsecommandline(argc, argv);
-    if(config.verbosity > 0) dax_set_verbosity(config.verbosity);
-    if(readconfigfile()) {
-        dax_error("Unable to read configuration running with defaults");
-    }
-    setdefaults();
-    if(config.verbosity >= 5) printconfig();
+    int flags, result = 0;
+    
+    dax_init_config("modbus");
+    flags = CFG_CMDLINE | CFG_DAXCONF | CFG_ARG_REQUIRED;
+    result += dax_add_attribute("tagname","tagname", 't', flags, "modbus");
+    
+    dax_set_luafunction((void *)_add_port, "add_port");
+    dax_set_luafunction((void *)_add_command, "add_command");
+    
+    dax_configure(argc, (char **)argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+
+    dax_free_config();
+    
+    printconfig();
+
     return 0;
 }
 

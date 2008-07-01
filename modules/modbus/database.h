@@ -22,13 +22,10 @@
 #include <sys/types.h>
 #include <opendax.h>
 
-int dt_init(unsigned int, char *);
-int dt_destroy(void);
 int dt_add_tag(char *name, int index, int function, int length);
 int dt_getwords(handle_t handle, int index, void *data, int length);
 int dt_setwords(handle_t handle, int index, void *data, int length);
 int dt_getbits(handle_t handle, int index, void *data, int length);
 int dt_setbits(handle_t handle, int index, void *data, int length);
-
 
 #endif

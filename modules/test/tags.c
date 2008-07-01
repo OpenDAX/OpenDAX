@@ -90,38 +90,6 @@ add_random_tags(int tagcount, char *name)
    overlap of tags */
 /* TODO: This function seems be less useful since we changed the tagbase format */
 int
-check_tagbase(void)
-{
-    int n = 0;
-    dax_tag last_tag, this_tag;
-    long int lastbit;
- 
-    if( dax_tag_byhandle(n++, &last_tag) ) {
-        dax_debug(10, "CheckTagBase() - Unable to get first tag");
-        return -1;
-    }
-    
-    while( !dax_tag_byhandle(n, &this_tag) ) {
-        /* Check the sort order */
-        if(this_tag.handle <= last_tag.handle) {
-            dax_debug(10, "CheckTagBase() - Tag array not properly sorted at index %d", n);
-            return -2;
-        }
-        printf("Tag being checked = %s\n", last_tag.name);
-        /* check for overlap - Don't use TYPESIZE() macro.  We're testing it too */
-        lastbit = last_tag.handle + ( 0x0001 << (last_tag.type & 0x0F)) * last_tag.count;
-        //if( lastbit > this_tag.handle) {
-        //    dax_debug(10, "CheckTagBase() - Overlap in tag array at index %d", n);
-        //    return -3;
-        //}
-        memcpy(&last_tag, &this_tag, sizeof(dax_tag)); /* copy old to new */
-        n++;
-    }
-    return 0;
-}
-
-
-int
 tagtopass(const char *name)
 {
     handle_t handle;
@@ -150,7 +118,7 @@ tagtofail(const char *name)
 /******************************
  * TODO: Stuff below hasn't been added to Lua Yet
 
-/* This test runs the tagname retrival process through it's paces */
+ * This test runs the tagname retrival process through it's paces */
 /* TODO: add some kind of mechanism to make sure that we get the right index or bit offset */
 static int
 getshouldpass(char *name, handle_t h, int index, int bit, unsigned int type, unsigned int count)
@@ -229,6 +197,38 @@ check_tag_retrieve(void)
 }
 
 /* Test's the different aspects of the tag events */
+int
+check_tagbase(void)
+{
+    int n = 0;
+    dax_tag last_tag, this_tag;
+    long int lastbit;
+ 
+    if( dax_tag_byhandle(n++, &last_tag) ) {
+        dax_debug(10, "CheckTagBase() - Unable to get first tag");
+        return -1;
+    }
+    
+    while( !dax_tag_byhandle(n, &this_tag) ) {
+        /* Check the sort order */
+        if(this_tag.handle <= last_tag.handle) {
+            dax_debug(10, "CheckTagBase() - Tag array not properly sorted at index %d", n);
+            return -2;
+        }
+        printf("Tag being checked = %s\n", last_tag.name);
+        /* check for overlap - Don't use TYPESIZE() macro.  We're testing it too */
+        lastbit = last_tag.handle + ( 0x0001 << (last_tag.type & 0x0F)) * last_tag.count;
+        //if( lastbit > this_tag.handle) {
+        //    dax_debug(10, "CheckTagBase() - Overlap in tag array at index %d", n);
+        //    return -3;
+        //}
+        memcpy(&last_tag, &this_tag, sizeof(dax_tag)); /* copy old to new */
+        n++;
+    }
+    return 0;
+}
+
+
 int
 check_tag_events(void)
 {

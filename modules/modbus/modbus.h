@@ -169,5 +169,4 @@ int mb_open_port(struct mb_port *);
 int mb_start_port(struct mb_port *);
 int mb_send_command(struct mb_port *, struct mb_cmd *);
 
-
 #endif

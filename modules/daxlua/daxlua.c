@@ -39,10 +39,10 @@ lua_init(void)
     lua_State *L;
     
     dax_debug(LOG_MAJOR, "Starting init script - %s", get_init());
- /* Create a lua interpreter object */
+    /* Create a lua interpreter object */
     L = luaL_newstate();
     setup_interpreter(L);    
- /* load and compile the file */
+    /* load and compile the file */
     if(luaL_loadfile(L, get_init()) || lua_pcall(L, 0, 0, 0) ) {
         dax_error("Error Running Init Script - %s", lua_tostring(L, -1));
         return 1;
@@ -58,7 +58,7 @@ lua_init(void)
    from the server.  Then makes these tags global Lua variables
    to the script */
 static inline int
-register_globals(lua_State *L, script_t *s)
+_register_globals(lua_State *L, script_t *s)
 {
     global_t *this;
     
@@ -111,7 +111,7 @@ register_globals(lua_State *L, script_t *s)
 /* TODO: It would save some bandwidth if we only wrote tags that have
    changed since we called register_globals() <- configuration?? */
 static inline int
-send_globals(lua_State*L, script_t *s)
+_send_globals(lua_State*L, script_t *s)
 {
     global_t *this;
     
@@ -176,7 +176,7 @@ lua_script_thread(script_t *s)
             lua_rawgeti(L, LUA_REGISTRYINDEX, func_ref);
             
             /* Get the configured tags and set the globals for the script */
-            if(register_globals(L, s)) {
+            if(_register_globals(L, s)) {
                 dax_error("Unable to find all the global tags\n");
             } else {
                 /* Run the script that is on the top of the stack */
@@ -186,7 +186,7 @@ lua_script_thread(script_t *s)
                 /* Write the configured global tags out to the server */
                 /* TODO: Should we do something if this fails, if register globals
                    works then this should too */
-                send_globals(L, s);
+                _send_globals(L, s);
                 s->executions++;
                 s->firstrun = 0;
             }

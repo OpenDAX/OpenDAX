@@ -10,8 +10,6 @@ Complete the function code list
     16
     23
 
-
-
 Finish the serial port configuration
 
 Modbus RTU Slave
@@ -20,8 +18,9 @@ Modbus ASCII Master / Slave
 
 Modbus TCP Client / Server
 
-Probably convert to a Lua configuration file.  This would be really
-powerful.
+Configuration options for the outdata and indata functions.
+
+Try to get rid of the extern Config, configuration structure.
 
 TEST TEST TEST - Probably should get my hands on some radios and I eventually need
 to get some hardware handshaking kinda stuff going.
