@@ -56,9 +56,9 @@
 #define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
 #define MSG_ERROR      0x2000000LL /* Flag for defining an error message */
 
-/* Subcommands for the MSG_TAG_GET command */
-#define TAG_GET_NAME   0x01 /* Retrieve the tag by name */
-#define TAG_GET_HANDLE 0x02 /* Retrieve the tag by it's handle */
+/* These are flags for the registration command */
+#define REGISTER_SYNC  0x01 /* Used to identify the synchronous socket during registration */
+#define REGISTER_EVENT 0x02 /* Identifies the asynchronous event socket during registration */
 
 /* These are the values that the registration system uses to 
    determine whether or not the module will have to reformat
@@ -73,6 +73,10 @@
 #define REG_TEST_LINT   0x123456789ABCDEF0LL
 #define REG_TEST_REAL   3.14159265
 #define REG_TEST_LREAL  -58765463.8766677
+
+/* Subcommands for the MSG_TAG_GET command */
+#define TAG_GET_NAME    0x01 /* Retrieve the tag by name */
+#define TAG_GET_HANDLE  0x02 /* Retrieve the tag by it's handle */
 
 /* Maximum size allowed for a single message */
 #ifndef DAX_MSGMAX

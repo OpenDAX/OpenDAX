@@ -22,6 +22,8 @@
 #ifndef __DAXTYPES_H
 #define __DAXTYPES_H
 
+#include <sys/types.h>
+
 /* Module Flags */
 #define MFLAG_RESTART       0x01
 #define MFLAG_OPENPIPES     0x02
@@ -32,7 +34,7 @@
 typedef struct dax_Module {
     char *name;
     pid_t pid;          /* the modules process id */
-    long int mid;       /* the modules id (currently the same as the pid) */
+    u_int64_t mid;       /* the modules id (currently the same as the pid) */
     int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
     char **arglist;     /* exec() ready array of arguments */
@@ -43,6 +45,7 @@ typedef struct dax_Module {
     int pipe_out;       /* Redirected to the modules stdout */
     int pipe_err;       /* Redirected to the modules stderr */
     int fd;             /* The socket file descriptor for this module */
+    int efd;            /* The notification file descriptor */
     char unpack;        /* Whether socket data needs special packaging */
     time_t starttime;
     struct dax_Module *next,*prev;

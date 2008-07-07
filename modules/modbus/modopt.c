@@ -26,7 +26,7 @@
 #include <termios.h>
 
 #include <common.h>
-#include <options.h>
+#include <modopt.h>
 #include <modbus.h>
 #include <opendax.h>
 

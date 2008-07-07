@@ -26,6 +26,7 @@
 #include <options.h>
 
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <sys/un.h>
 #include <string.h>
 
@@ -38,9 +39,10 @@
 #endif
 
 /* These are the listening sockets for the local UNIX domain
-   socket and the remote TCP socekt. */
-static int _localfd;
-static int _remotefd;
+ *  socket and the remote TCP socekt. */
+static fd_set _listenfdset;
+/* This is the set of all the sockets, both listening and conencted
+ * it is used in the select() call in msg_receive() */
 static fd_set _fdset;
 static int _maxfd;
 
@@ -49,7 +51,7 @@ static int _maxfd;
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
 /* Macro to check whether or not the command 'x' is valid */
-#define CHECK_COMMAND(x) (((x) < 0 || (x) > 11) ? 1 : 0)
+#define CHECK_COMMAND(x) (((x) < 0 || (x) > (NUM_COMMANDS-1)) ? 1 : 0)
 
 int msg_mod_register(dax_message *msg);
 int msg_tag_add(dax_message *msg);
@@ -78,7 +80,10 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
     if(response == RESPONSE)   ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
     else if(response == ERROR) ((u_int32_t *)buff)[1] = htonl(command | MSG_ERROR);
     else                       ((u_int32_t *)buff)[1] = htonl(command);         
-    /* TODO: Bounds check this */
+    /* Bounds check so we don't seg fault */
+    if(size > (DAX_MSGMAX - MSG_HDR_SIZE)) {
+        return ERR_2BIG;
+    }
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
     result = xwrite(fd, buff, size + MSG_HDR_SIZE);
     if(result < 0) {
@@ -88,15 +93,15 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
     return 0;    
 }
 
-/* Sets up the local UNIX domain socket for listening.
-   _localfd is the listening socket. */
-int
+/* Sets up the local UNIX domain socket for listening. */
+static int
 msg_setup_local_socket(void)
 {
     struct sockaddr_un addr;
+    int fd;
     
-    _localfd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if(_localfd < 0) {
+    fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if(fd < 0) {
         xfatal("Unable to create local socket - %s", strerror(errno));
     }
     
@@ -104,26 +109,56 @@ msg_setup_local_socket(void)
     strncpy(addr.sun_path, opt_socketname(), sizeof(addr.sun_path));
     addr.sun_family = AF_LOCAL;
     unlink(addr.sun_path); /* Delete the socket if it exists on the filesystem */
-    if(bind(_localfd, (const struct sockaddr *)&addr, sizeof(addr))) {
+    if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
         xfatal("Unable to bind to local socket: %s", addr.sun_path);
     }
     
-    if(listen(_localfd, 5) < 0) {
+    if(listen(fd, 5) < 0) {
         xfatal("Unable to listen for some reason");
     }
-    msg_add_fd(_localfd);
+    FD_SET(fd, &_listenfdset);
+    msg_add_fd(fd);
     
-    xlog(LOG_COMM, "Created local socket - %d", _localfd);
+    xlog(LOG_COMM, "Listening on local socket - %d", fd);
     return 0;
 }
 
-/* Sets up the remote TCP socket for listening.
-   _remotefd is the listening socket. */
-/* TODO: write this function */
-int
-msg_setup_remote_socket(void)
+/* Sets up the remote TCP socket for listening. The arguments
+ * are the ipaddress and the port to listen on.  They should be
+ * in host order (will be converted within this function) */
+static int
+msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
 {
-    return 0;
+    struct sockaddr_in addr;
+    int fd;
+    
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(fd < 0) {
+        xfatal("Unable to create local socket - %s", strerror(errno));
+    }
+    
+    bzero(&addr, sizeof(addr));
+    
+    /* TODO: Change this to the configuration stuff */
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(ipport);
+    addr.sin_addr.s_addr = htonl(ipaddress);
+    
+    if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
+        xfatal("Unable to bind remote socket - %s", strerror(errno));
+    }
+    
+    if(listen(fd, 5) < 0) {
+        xfatal("Unable to listen on remote socket - %s", strerror(errno));
+    }
+    /* set the _remotefd set here.  This gives us a simpler way to
+     * determine if the fd that we get from the select() call in
+     * msg_receive() is a listening socket or not */
+    FD_SET(fd, &_listenfdset);
+    msg_add_fd(fd);
+    
+    xlog(LOG_COMM, "Listening on remote socket - %d", fd);
+    return 0;    
 }
 
 /* Creates and sets up the local message socket for the program.
@@ -135,9 +170,13 @@ msg_setup(void)
 {
     _maxfd = 0;
     FD_ZERO(&_fdset);
+    FD_ZERO(&_listenfdset);
     
+    /* TODO: These should be called based on configuration options
+     * for now we'll just listen on the local domain socket and bind
+     * to all interfaces on the default port. */
     msg_setup_local_socket();
-    msg_setup_remote_socket();
+    msg_setup_remote_socket(INADDR_ANY, DEFAULT_PORT);
     
     buff_initialize(); /* This initializes the communications buffers */
     
@@ -198,7 +237,7 @@ msg_del_fd(int fd)
 }
 
 /* This function blocks waiting for a message to be received.  Once a message
-   is retrieved from the system the proper handling function is called */
+ * is retrieved from the system the proper handling function is called */
 int
 msg_receive(void)
 {
@@ -225,14 +264,13 @@ msg_receive(void)
     } else {
         for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &tmpset)) {
-                if(n == _localfd) { /* This is the local listening socket */
-                    xlog(LOG_COMM, "Accepted socket on fd %d", n);
-                    /* TODO: Should accept be in a while loop and non blocking?? */
-                    fd = accept(_localfd, (struct sockaddr *)&addr, &len);
+                if(FD_ISSET(n, &_listenfdset)) { /* This is a listening socket */
+                    fd = accept(n, (struct sockaddr *)&addr, &len);
                     if(fd < 0) {
                         /* TODO: Need to handle these errors */
                         xerror("Error Accepting socket: %s", strerror(errno));
                     } else {
+                        xlog(LOG_COMM, "Accepted socket on fd %d", n);
                         msg_add_fd(fd);
                     }
                 } else {
@@ -252,23 +290,24 @@ msg_receive(void)
 }
 
 /* This handles each message.  It extracts out the dax_message structure
-   and then calls the proper message handling function.  This message will
-   unmarshal the header but it is up to the individual wrapper function to
-   unmarshal the data portion of the message if need be. */
+ * and then calls the proper message handling function.  This message will
+ * unmarshal the header but it is up to the individual wrapper function to
+ * unmarshal the data portion of the message if need be. */
 int
 msg_dispatcher(int fd, unsigned char *buff)
 {
     dax_message message;
     
     /* The first four bytes are the size and the size is always
-       sent in network order */
+     * sent in network order */
     message.size = ntohl(*(u_int32_t *)buff) - MSG_HDR_SIZE;
     /* The next four bytes are the DAX command also sent in network
-       byte order. */
+     * byte order. */
     message.command = ntohl(*(u_int32_t *)&buff[4]);
     //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
     
-    /* TODO: The module will lock up if we do this */
+    /* TODO: The module will lock up if we do this.  Need to
+     * put timeouts on the module socket handling code. */
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     message.fd = fd;    
     memcpy(message.data, &buff[8], message.size);
@@ -277,33 +316,61 @@ msg_dispatcher(int fd, unsigned char *buff)
     return (*cmd_arr[message.command])(&message);
 }
 
+/* The rest of the functions in this file are wrappers for other functions
+ * in the server.  These each correspond to a messagre command.  They are
+ * called from the cmd_arr with the command number used as the index.
+ */
 
-/* Each of these functions are matched to a message command.  These are called
-   from and array of function pointers so there should be one for each command
-   defined. */
+/* This message is the module registration/unregistration function.  This
+ * tells the server which module is on which socket fd and the modules name.
+ * When this message is called with a zero size it's an unregister
+ * message.  Otherwise the first four bytes are the PID of the calling module
+ * and then the rest is the module name. */
 int
 msg_mod_register(dax_message *msg)
 {
-    pid_t pid; /* Now how do I figure this out??? */
+    pid_t pid;
+    int flags, result;
     char buff[DAX_MSGMAX];
     dax_module *mod;
     
     if(msg->size > 0) {
-        xlog(4, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
+        xlog(LOG_MSG, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
         pid = ntohl(*((u_int32_t *)&msg->data[0]));
+        flags = ntohl(*((u_int32_t *)&msg->data[4]));
         
-        mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
-        
-        /* This puts the test data into the buffer for sending. */
-        *((u_int16_t *)&buff[0]) = REG_TEST_INT;    /* 16 bit test data */
-        *((u_int32_t *)&buff[2]) = REG_TEST_DINT;   /* 32 bit integer test data */
-        *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
-        *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
-        *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
-        strncpy(&buff[26], mod->name, DAX_MSGMAX - 26 - 1);
+        /* Is this the initial registration of the synchronous socket */
+        if(flags & REGISTER_SYNC) {
+            /* TODO: Need to check for errors there */
+            mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
+            if(!mod) {
+                result = ERR_NOTFOUND;
+                _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
+                return result;
+            } else {
+                /* This puts the test data into the buffer for sending. */
+                *((u_int16_t *)&buff[0]) = REG_TEST_INT;    /* 16 bit test data */
+                *((u_int32_t *)&buff[2]) = REG_TEST_DINT;   /* 32 bit integer test data */
+                *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
+                *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
+                *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
+                strncpy(&buff[26], mod->name, DAX_MSGMAX - 26 - 1);
 
-        _message_send(msg->fd, MSG_MOD_REG, buff, 26 + strlen(mod->name) + 1, 1);
-        
+                _message_send(msg->fd, MSG_MOD_REG, buff, 26 + strlen(mod->name) + 1, RESPONSE);
+            }
+        /* Is this the asynchronous event socket registration */
+        } else if(flags & REGISTER_EVENT) {
+            mod = event_register(pid, msg->fd);
+            result = ERR_NOTFOUND;
+            if(!mod) {
+                _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
+            } else {
+                _message_send(msg->fd, MSG_MOD_REG, NULL, 0, RESPONSE);    
+            }
+        } else { /* If the flags are bad send error */
+            result = ERR_MSG_BAD;
+            _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
+        }
     } else {
         xlog(4, "Unregistering Module fd = %d", msg->fd);
         module_unregister(msg->fd);
@@ -312,6 +379,9 @@ msg_mod_register(dax_message *msg)
     return 0;
 }
 
+/* Message wrapper function for adding a tag.  The first four bytes are
+ * the type of tag, the next four bytes are the count and the remainder
+ * of the message is the tag name */
 int
 msg_tag_add(dax_message *msg)
 {
@@ -387,8 +457,8 @@ msg_tag_list(dax_message *msg)
 }
 
 /* The first part of the payload of the message is the handle
-   of the tag that we want to read and the next part is the size
-   of the buffer that we want to read */
+ * of the tag that we want to read and the next part is the size
+ * of the buffer that we want to read */
 int
 msg_tag_read(dax_message *msg)
 {

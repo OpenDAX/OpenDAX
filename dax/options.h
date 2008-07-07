@@ -26,13 +26,13 @@
 #include <common.h>
 #include <dax/daxtypes.h>
 
-/* TODO: I think this should be deleted */
-#ifndef MAX_LINE_LENGTH
-#  define MAX_LINE_LENGTH 100
-#endif
 
 #ifndef DEFAULT_PID
 #  define DEFAULT_PID "/var/run/opendax.pid"
+#endif
+
+#ifndef DEFAULT_PORT
+# define DEFAULT_PORT 7777
 #endif
 
 /* This is the default minimum number of communcation buffers that
@@ -48,7 +48,6 @@ int opt_daemonize(void);    /* Whether or not to go to the background */
 char *opt_statustag(void);
 char *opt_pidfile(void);
 int opt_maxstartup(void);
-char *opt_socketdir(void);
 char *opt_socketname(void);
 /* Minimum number of communication buffers to allocate */
 int opt_min_buffers(void);  

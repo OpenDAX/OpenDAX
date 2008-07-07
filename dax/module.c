@@ -23,6 +23,8 @@
 
 #include <time.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 /* TODO:
     Function to scan modules to determine which need restarting
@@ -37,7 +39,7 @@ static int _module_count = 0;
 //static int _register_timeout = 1000;
 
 static char **_arglist_tok(char *, char *);
-static dax_module *_get_module_pid(pid_t);
+static dax_module *_get_module_mid(u_int64_t mid);
 static dax_module *_get_module_name(char *);
 static int _cleanup_module(pid_t, int);
 
@@ -230,7 +232,9 @@ inline static int _getpipes(int *);
 inline static int _childpipes(int *);
 
 /* This function is used to start a module */
-pid_t module_start(dax_module *mod) {
+pid_t
+module_start(dax_module *mod)
+{
     pid_t child_pid;
     int result = 0;
     int pipes[6];
@@ -329,20 +333,48 @@ inline static int _childpipes(int *pipes) {
 
 
 /* TODO: Program stop_module */
-int module_stop(dax_module *mod) {
+int
+module_stop(dax_module *mod)
+{
     return 0;
 }
-/* The dax core will not send messages to modules that are not register.  Also
-   modules that are not started by the core need a way to announce themselves.
-   name can be passed as NULL for modules that were started from DAX */
-dax_module *module_register(char *name ,pid_t pid, int fd) {
+/* The dax server will not send messages to modules that are not registered.
+ * Also modules that are not started by the core need a way to announce
+ * themselves. name can be NULL for modules that were started from DAX */
+dax_module *
+module_register(char *name, pid_t pid, int fd)
+{
     dax_module *mod;
     char *newname;
     size_t size;
+    int result;
+    u_int64_t mid;
+    socklen_t sock_len;
+    struct sockaddr_storage addr;
+    struct sockaddr_in *addr_in;
     
-    /* First see if we already have a module of the given PID
+    sock_len = sizeof(addr);
+    result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
+    if(result < 0) {
+        xerror("module_register %s", strerror(errno));
+    } else {
+        if(addr.ss_family == AF_LOCAL) {
+            mid = 0;
+        } else if(addr.ss_family == AF_INET) {
+            /* Get the modules IP address */
+            addr_in = (struct sockaddr_in *)&addr;
+            mid = addr_in->sin_addr.s_addr;
+        } else {
+            xerror("Unable to identify socket type in module_register()\n");
+        }
+    }
+    
+    /* The module ID is the module IP address and pid in one 64 bit number */
+    mid = (mid << 32) + pid;
+    
+    /* First see if we already have a module of the given ID
        This should happen if DAX started the module */
-    mod = _get_module_pid(pid);
+    mod = _get_module_mid(mid);
     /* TODO: We need to check that the fd doesn't already exist or we'll
        have some communication trouble */
     if(!mod) {
@@ -362,7 +394,7 @@ dax_module *module_register(char *name ,pid_t pid, int fd) {
     }
     if(mod) {
         mod->pid = pid;
-        mod->mid = pid;
+        mod->mid = mid;
         mod->fd = fd;
         mod->state |= MSTATE_RUNNING;
         mod->state |= MSTATE_REGISTERED;
@@ -373,9 +405,55 @@ dax_module *module_register(char *name ,pid_t pid, int fd) {
     return mod;
 }
 
-void module_unregister(int fd) {
+/* This finds the module given by pid and sets the modules
+ * event notification socket file descriptor in the module
+ * list. */
+dax_module *
+event_register(pid_t pid, int fd)
+{
     dax_module *mod;
-    //mod = _get_module_pid(pid);
+    int result;
+    u_int64_t mid;
+    socklen_t sock_len;
+    struct sockaddr_storage addr;
+    struct sockaddr_in *addr_in;
+    
+    sock_len = sizeof(addr);
+    result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
+    if(result < 0) {
+        xerror("module_register %s", strerror(errno));
+    } else {
+        if(addr.ss_family == AF_LOCAL) {
+            mid = 0;
+        } else if(addr.ss_family == AF_INET) {
+            /* Get the modules IP address */
+            addr_in = (struct sockaddr_in *)&addr;
+            mid = addr_in->sin_addr.s_addr;
+        } else {
+            xerror("Unable to identify socket type in module_register()\n");
+        }
+    }
+    
+    /* The module ID is the module IP address and pid in one 64 bit number */
+    mid = (mid << 32) + pid;
+    
+    mod = _get_module_mid(mid);
+    /* TODO: We need to check that the fd doesn't already exist or we'll
+       have some communication trouble */
+    if(!mod) {
+        return NULL;
+    } else {
+        mod->efd = fd;
+    }
+    return mod;
+}
+
+
+void
+module_unregister(int fd)
+{
+    dax_module *mod;
+    
     mod = module_find_fd(fd);
     if(mod) {
         mod->state &= (~MSTATE_REGISTERED);
@@ -388,11 +466,15 @@ void module_unregister(int fd) {
    PID as the identifier for that module in the messaging
    system.  I might have to have differnet ID's for
    different threads. */
-dax_module *module_find_pid(pid_t pid) {
-    return _get_module_pid(pid);
+dax_module *
+module_find_pid(pid_t pid)
+{
+    return _get_module_mid(pid);
 }
 
-dax_module *module_find_fd(int fd) {
+dax_module *
+module_find_fd(int fd)
+{
     int n;
     
     /* In case we ain't go no list */
@@ -411,7 +493,9 @@ dax_module *module_find_fd(int fd) {
    to be cleaned up or restarted.  This function should never be called
    from the start_module process or the child signal handler to avoid a
    race condition. */
-void module_scan(void) {
+void
+module_scan(void)
+{
     int n;
     /* Check the dead module queue for pid's that need cleaning */
     for(n=0; n < DMQ_SIZE; n++) {
@@ -426,9 +510,11 @@ void module_scan(void) {
 
 /* This function is called from the scan_modules function and is used 
    to find and cleanup the module after it has died.  */
-static int _cleanup_module(pid_t pid, int status) {
+static int
+_cleanup_module(pid_t pid, int status)
+{
     dax_module *mod;
-    mod = _get_module_pid(pid);
+    mod = _get_module_mid(pid);
     /* at this point _current_mod should be pointing to a module with
     the PID that we passed but we should check because there may not 
     be a module with our PID */
@@ -440,6 +526,7 @@ static int _cleanup_module(pid_t pid, int status) {
         //close(mod->pipe_out);
         //close(mod->pipe_err);
         mod->pid = 0;
+        mod->mid = 0;
         mod->exit_status = status;
         mod->state = MSTATE_WAITING;
         return 0;
@@ -454,7 +541,9 @@ static int _cleanup_module(pid_t pid, int status) {
    is overflowed then it'll just overwrite the last one.
    TODO: If more than DMQ_SIZE modules dies all at once this will cause
          problems.  Should be fixed. */
-void module_dmq_add(pid_t pid,int status) {
+void
+module_dmq_add(pid_t pid,int status)
+{
     int n = 0;
     while(_dmq[n].pid != 0 && n < DMQ_SIZE) {
         n++;
@@ -467,14 +556,16 @@ void module_dmq_add(pid_t pid,int status) {
 
 
 /* Lookup and return the pointer to the module with pid */
-static dax_module *_get_module_pid(pid_t pid) {
+static dax_module *
+_get_module_mid(u_int64_t mid)
+{
     int n;
     
     /* In case we ain't go no list */
     if(_current_mod == NULL) return NULL;
     
     for(n = 0; n < _module_count; n++) {
-        if(_current_mod->pid == pid) return _current_mod;
+        if(_current_mod->mid == mid) return _current_mod;
         _current_mod = _current_mod->next;
     }
     
@@ -483,7 +574,9 @@ static dax_module *_get_module_pid(pid_t pid) {
 
 
 /* Retrieves a pointer to module given name */
-static dax_module *_get_module_name(char *name) {
+static dax_module *
+_get_module_name(char *name)
+{
     int n;
     
     /* In case we ain't go no list */

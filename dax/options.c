@@ -31,9 +31,8 @@
 static char *_pidfile;
 static char *_configfile;
 static char *_statustag;
-/* TODO: The socket path needs to be configuration */
-static char _socketdir[] = "/tmp";
-static char _socketname[] = "/tmp/opendax";
+static char *_socketname;
+static unsigned int _serverport;
 static int _verbosity;
 static int _daemonize;
 static int _maxstartup;
@@ -56,41 +55,63 @@ static void initconfig(void) {
     _pidfile = NULL;
     _maxstartup = 0;
     _min_buffers = 0;
+    _socketname = NULL;
+    _serverport = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
    to the configuration parameters to this point */
-static void setdefaults(void) {
+static void
+setdefaults(void)
+{
     if(_daemonize < 0) _daemonize = 1;
     if(!_statustag) _statustag = strdup("_status");
     if(!_pidfile) _pidfile = strdup(DEFAULT_PID);
     if(!_min_buffers) _min_buffers = DEFAULT_MIN_BUFFERS;
+    if(!_socketname) _socketname = strdup("/tmp/opendax");
+    if(!_serverport) _serverport = DEFAULT_PORT;
 }
 
 /* This function parses the command line options and sets
    the proper members of the configuration structure */
-static void parsecommandline(int argc, const char *argv[])  {
+static void
+parsecommandline(int argc, const char *argv[])
+{
     char c;
 
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
+        {"deamonize", no_argument, 0, 'D'},
+        {"socketname", required_argument, 0, 'S'},
+        {"serverport", required_argument, 0, 'P'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
     };
       
 /* Get the command line arguments */ 
-    while ((c = getopt_long (argc, (char * const *)argv, "C:VvD",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:S:VvD",options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
 	        break;
+        case 'S':
+            _socketname = strdup(optarg);
+            break;
+//        case 'I':
+//            if(! inet_aton(optarg, &_serverip)) {
+//                xerror("Unknown IP address %s", optarg);
+//            }
+//            break;
+        case 'P':
+            _serverport = strtol(optarg, NULL, 0);
+            break;
         case 'V':
 		    printf("%s Version %s\n", PACKAGE, VERSION);
 	        break;
-	    case 'v':
-            _verbosity++;
-	        break;
+//	    case 'v':
+//            _verbosity++;
+//	        break;
         case 'D': 
             _daemonize = 1;
 	        break;
@@ -109,7 +130,9 @@ static void parsecommandline(int argc, const char *argv[])  {
 /* This is the wrapper for the add module function in the Lua configuration file */
 /* The arguments are a table that consist of all the configuration
    parameters of a module.  See the opendax.conf for examples */
-static int _add_module(lua_State *L) {
+static int
+_add_module(lua_State *L)
+{
     char *name, *path, *arglist;
     unsigned int flags = 0;
     int startup;
@@ -154,7 +177,9 @@ static int _add_module(lua_State *L) {
     return 0;
 }
 
-static int readconfigfile(void)  {
+static int
+readconfigfile(void)
+{
     lua_State *L;
     char *string;
     
@@ -176,35 +201,39 @@ static int readconfigfile(void)  {
     
     /* tell lua to push these variables onto the stack */
     lua_getglobal(L, "daemonize");
-    lua_getglobal(L, "statustag");
-    lua_getglobal(L, "pidfile");
-    lua_getglobal(L, "verbosity");
-    lua_getglobal(L, "min_buffers");
-    
     if(_daemonize < 0) { /* negative if not already set */
-        _daemonize = lua_toboolean(L, 1);
+        _daemonize = lua_toboolean(L, -1);
     }
+    lua_pop(L, 1);
+    
+    lua_getglobal(L, "statustag");
     /* Do I really need to do this???? */
     if(_statustag == NULL) {
-        if( (string = (char *)lua_tostring(L, 2)) ) {
+        if( (string = (char *)lua_tostring(L, -1)) ) {
             _statustag = strdup(string);
         }
     }
-
+    lua_pop(L, 1);
+    
+    lua_getglobal(L, "pidfile");
     if(_pidfile == NULL) {
-        if( (string = (char *)lua_tostring(L, 3)) ) {
+        if( (string = (char *)lua_tostring(L, -1)) ) {
             _pidfile = strdup(string);
         }
     }
+    lua_pop(L, 1);
+    
+    lua_getglobal(L, "min_buffers");
+    if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
+        _min_buffers = (int)lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
+    
     /* TODO: This needs to be changed to handle the new topic handlers */
     if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        _verbosity = (int)lua_tonumber(L, 4);
+        //_verbosity = (int)lua_tonumber(L, 4);
         //set_log_topic(_verbosity);
-        set_log_topic(0xFFFFFFFF);
-        
-    }
-    if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
-        _min_buffers = (int)lua_tonumber(L, 5);
+        set_log_topic(0xFFFFFFFF);    
     }
     
     /* Clean up and get out */
@@ -215,11 +244,12 @@ static int readconfigfile(void)  {
 
 
 /* This function should be called from main() to configure the program.
-   After the configurations have been initialized the command line is
-   parsed.  Then the configuration file is read and after that if any
-   parameter has not been set the defaults are used. */
-int opt_configure(int argc, const char *argv[]) {
-    
+ * After the configurations have been initialized the command line is
+ * parsed.  Then the configuration file is read and after that if any
+ * parameter has not been set the defaults are used. */
+int
+opt_configure(int argc, const char *argv[])
+{    
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
@@ -227,38 +257,45 @@ int opt_configure(int argc, const char *argv[]) {
     }
     setdefaults();
     
-    xlog(LOG_CONFIG, "Daemonize set to %d", _daemonize);
-    xlog(LOG_CONFIG, "Status Tagname is set to %s", _statustag);
-    xlog(LOG_CONFIG, "PID File Name set to %s", _pidfile);
-    //xlog(LOG_CONFIG, "Verbosity set to %d", _verbosity);
+//    xlog(LOG_CONFIG, "Daemonize set to %d", _daemonize);
+//    xlog(LOG_CONFIG, "Status Tagname is set to %s", _statustag);
+//    xlog(LOG_CONFIG, "PID File Name set to %s", _pidfile);
     
     return 0;
 }
  
-int opt_daemonize(void) {
+int
+opt_daemonize(void)
+{
     return _daemonize;
 }
 
-char *opt_statustag(void) {
+char *
+opt_statustag(void)
+{
     return _statustag;
 }
 
-char *opt_pidfile(void) {
+char *
+opt_pidfile(void)
+{
     return _pidfile;
 }
 
-int opt_maxstartup(void) {
+int
+opt_maxstartup(void)
+{
     return _maxstartup;
 }
 
-char *opt_socketdir(void) {
-    return _socketdir;
-}
-
-char *opt_socketname(void) {
+char *
+opt_socketname(void)
+{
     return _socketname;
 }
 
-int opt_min_buffers(void) {
+int
+opt_min_buffers(void)
+{
     return _min_buffers;
 }

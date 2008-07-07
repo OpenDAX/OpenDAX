@@ -59,7 +59,9 @@ typedef struct dax_BuffNode {
 static dax_buffnode *_buffer;
 
 /* Allocate and initialize a buffer node */
-static dax_buffnode *new_buffnode(void) {
+static dax_buffnode *
+new_buffnode(void)
+{
     dax_buffnode *node;
     
     node = malloc(sizeof(dax_buffnode));
@@ -72,7 +74,9 @@ static dax_buffnode *new_buffnode(void) {
 }
 
 /* Create the initial linked list of buffer nodes */
-int buff_initialize(void) {
+int
+buff_initialize(void)
+{
     int n, count;
     dax_buffnode *node, *last;
     
@@ -95,7 +99,9 @@ int buff_initialize(void) {
 
 /* Return the index of the buffer node that is either presently
    assigned to the fd or if there isn't one a free one */
-static dax_buffnode *find_buff_slot(int fd) {
+static dax_buffnode *
+find_buff_slot(int fd)
+{
     dax_buffnode *node, *firstfree, *result;
     
     node = _buffer;
@@ -109,7 +115,7 @@ static dax_buffnode *find_buff_slot(int fd) {
         node = node->next;
     }
     /* couldn't find one that matched the fd so
-       if we have one that was free return it */
+     * if we have one that was free return it */
     if(firstfree != NULL) {
         result = firstfree;
     } else {
@@ -125,7 +131,9 @@ static dax_buffnode *find_buff_slot(int fd) {
     return result;
 }
 
-int buff_read(int fd) {
+int
+buff_read(int fd)
+{
     dax_buffnode *node;
     size_t result;
     u_int32_t size;
@@ -166,7 +174,10 @@ int buff_read(int fd) {
 /* TODO: Check boundary conditions where min_buffers = 0 or 1.  Shouldn't
    be able to equal 0 but try to break it. */
 
-void buff_free(int fd) {
+/* This frees the message buffer associated with 'fd' */
+void
+buff_free(int fd)
+{
     dax_buffnode *node;
     node = _buffer;
     
@@ -181,9 +192,11 @@ void buff_free(int fd) {
 }
 
 /* This function essentially marks all of the buffers as free.  If there are
-   more than min_buffers it'll free() the last one.  Kindof a poor boy
-   garbage collection. */
-void buff_freeall(void) {
+ * more than min_buffers it'll free() the last one.  Kindof a poor boy
+ * garbage collection. */
+void
+buff_freeall(void)
+{
     int n;
     dax_buffnode *node, *last;
     

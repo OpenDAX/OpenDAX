@@ -57,10 +57,12 @@ dax_init_config(char *name)
 	result += dax_add_attribute("socketname","socketname", 'S', flags, "/tmp/opendax");
 	result += dax_add_attribute("serverip", "serverip", 'I', flags, "127.0.0.1");
 	result += dax_add_attribute("serverport", "serverport", 'P', flags, "7777");
-	result += dax_add_attribute("debugtopic", "topic", 'L', flags, "MAJOR");
+	result += dax_add_attribute("server", "server", 's', flags, "LOCAL");
+	result += dax_add_attribute("debugtopic", "topic", 'T', flags, "MAJOR");
 	result += dax_add_attribute("name", "name", 'N', flags, name);
 	result += dax_add_attribute("cachesize", "cachesize", 'z', flags, "8");
-
+	result += dax_add_attribute("msgtimeout", "msgtimeout", 'o', flags, "1000");
+	
 	flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
 	result += dax_add_attribute("config", "config", 'C', flags, NULL);
 	result += dax_add_attribute("confdir", "confdir", 'c', flags, ETC_DIR);
@@ -397,6 +399,15 @@ _print_config(void)
     }
 }
 
+static int
+_verify_config(void)
+{
+//    if(inet_pton(AF_INET, dax_get_attr("serverip"), NULL)) != 1) {
+//        dax_error("serverip not set properly.  Going with default.");
+//
+    return 0;
+}
+
 /* Executes the configuration routines */
 int
 dax_configure(int argc, char **argv, int flags)
@@ -419,7 +430,7 @@ dax_configure(int argc, char **argv, int flags)
         
     _set_defaults();
     _print_config();
-    return 0;
+    return _verify_config();
 }
 
 /* Returns the pointer to the requested attribute */
@@ -439,7 +450,8 @@ dax_get_attr(char *name) {
 
 /* Sets the given attribute to *value.  Frees the existing
  * attribute value if it has been set.  Not very efficient
- * but this is easier and it's only configuration */
+ * but this is easier and it's only configuration. If value
+ * is NULL the attribute will be set to its default. */
 int
 dax_set_attr(char *name, char *value)
 {
@@ -449,7 +461,11 @@ dax_set_attr(char *name, char *value)
     while(this != NULL) {
         if(!strcmp(this->name, name)) {
             if(this->value != NULL) free(this->value);
-            this->value = strdup(value);
+            if(value == NULL) {
+                this->value = strdup(this->defvalue);
+            } else {
+                this->value = strdup(value);
+            }
             return 0;
         }
         this = this->next;

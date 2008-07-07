@@ -23,11 +23,14 @@
 #include <dax/libcommon.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <math.h>
 
 
 static int _sfd;   /* Server's File Descriptor */
+static int _afd;   /* Asynchronous File Descriptor */
 static unsigned int _reformat; /* Flags to show how to reformat the incoming data */
 
 static int
@@ -107,68 +110,89 @@ _message_recv(int command, void *payload, int *size, int response)
                 *size = msg_size - MSG_HDR_SIZE; /* size is value result */
             }
         }
-    } else { /* This is the command we wanted */
+    } else { /* This is not the command we wanted */
         printf("TODO: Whoa we got the wrong command\n");
     }
     return 0;
 }
 
-/* Send regsitration message to the server.  This message sends
-   the name that we want to be, it sends the test data so the 
-   server can decide if we need to pack our data.  The returned
-   message should show whether we need to pack our data and the
-   name that the server decided to give us.  The server can change
-   our name if it's a duplicate. */
-int
-dax_mod_register(char *name)
+/* Connect to the server.  If the "server" attribute is local we
+ * connect via LOCAL domain socket called out in "socketname" else
+ * we connect to the server at IP address "serverip" on port "serverport".
+ * returns a positive file descriptor on sucess and a negative error
+ * code on failure. */
+static int
+_get_connection(void)
 {
     int fd, len;
-    char buff[DAX_MSGMAX];
-    struct sockaddr_un addr;
+    struct sockaddr_un addr_un;
+    struct sockaddr_in addr_in;
+    
+    if(! strcasecmp("local", dax_get_attr("server"))) {
+        //--printf("...... Connecting to local socket\n");
+        /* create a UNIX domain stream socket */
+        if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+            return ERR_NO_SOCKET;
+        /* TODO: Gotta set a timeout for this stuff. */
+        /* fill socket address structure with our address */
+        memset(&addr_un, 0, sizeof(addr_un));
+        addr_un.sun_family = AF_UNIX;
+        strncpy(addr_un.sun_path, dax_get_attr("socketname"), sizeof(addr_un.sun_path));
 
-    dax_debug(LOG_COMM, "Sending registration for name - %s", name);
-    
-    /* TODO: Probably move the connection stuff to another function */
-    /* create a UNIX domain stream socket */
-    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-        return(-1);
-    /* TODO: Gotta set a timeout for this stuff. */
-    /* fill socket address structure with our address */
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, dax_get_attr("socketname"), sizeof(addr.sun_path));
-    
-    len = offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
-    if (connect(fd, (struct sockaddr *)&addr, len) < 0) {
-        dax_error("Unable to connect to socket - %s", strerror(errno));
-        return ERR_NO_SOCKET;
-    } else {
-        _sfd = fd;
-        dax_debug(LOG_COMM, "Connected to Server fd = %d", fd);
+        len = offsetof(struct sockaddr_un, sun_path) + strlen(addr_un.sun_path);
+        if (connect(fd, (struct sockaddr *)&addr_un, len) < 0) {
+            dax_error("Unable to connect to socket - %s", strerror(errno));
+            return ERR_NO_SOCKET;
+        } else {
+            dax_debug(LOG_COMM, "Connected to Local Server fd = %d", fd);
+            return fd;
+        }
+    } else { /* We are supposed to connect over the network */
+        //--printf("...... Connecting over the network\n");
+        /* create an IPv4 TCP socket */
+        if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+            return ERR_NO_SOCKET;
+        memset(&addr_in, 0, sizeof(addr_in));
+        addr_in.sin_family = AF_INET;
+        addr_in.sin_port = htons(strtol(dax_get_attr("serverport"), NULL, 0));
+        inet_pton(AF_INET, dax_get_attr("serverip"), &addr_in.sin_addr);
+        
+        if (connect(fd, (struct sockaddr *)&addr_in, sizeof(addr_in)) < 0) {
+            dax_error("Unable to connect to socket - %s", strerror(errno));
+            return ERR_NO_SOCKET;
+        } else {
+            dax_debug(LOG_COMM, "Connected to Network Server fd = %d", fd);
+            return fd;
+        }
     }
-    
-    init_tag_cache();
+}
 
+#define REG_HDR_SIZE 8
+
+static int
+_mod_register(char *name)
+{
+    int result, len;
+    char buff[DAX_MSGMAX];
+    
 /* TODO: Boundary check that a name that is longer than data size will
    be handled correctly. */
-/* This is how much room the packing test data takes up in the message.
-   It should be adjusted anytime the 'name' must move down in the message */
-#define REG_HDR_SIZE 8
-    /* Whatever is left of the message size can be used for the module name */
     len = strlen(name) + 1;
     if(len > (MSG_DATA_SIZE - REG_HDR_SIZE)) {
         len = MSG_DATA_SIZE - REG_HDR_SIZE;
         name[len] = '\0';
     }
     
+    /* For registration we send the data in network order no matter what */
     *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
+    *((u_int32_t *)&buff[4]) = htonl(REGISTER_SYNC);  /* registration flags */
     strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
     
-    /* For registration we pack the data no matter what */
-    /* TODO: check for errors here */
-    _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len);
+    if((result = _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len)))
+        return result;
     len = DAX_MSGMAX;
-    _message_recv(MSG_MOD_REG, buff, &len, 1);
+    if((result = _message_recv(MSG_MOD_REG, buff, &len, 1)))
+        return result;
     /* Here we check to see if the data that we got in the registration message is in the same
        format as we use here on the client module. This should be offloaded to a separate
        function that can determine what needs to be done to the incoming and outgoing data to
@@ -188,7 +212,59 @@ dax_mod_register(char *name)
         _reformat |= REF_FLT_SWAP;
     }
     /* TODO: Need to store my name somewhere ??? */
+    /* TODO: returning _reformat is only good until we figure out how to reformat the
+     * messages. Then we should return 0.  Right now since there isn't any reformating
+     * of messages being done we consider it an error and return that so that the module
+     * won't try to communicate */
     return _reformat;
+}
+
+static int
+_event_register(void)
+{
+    int result, len;
+    char buff[DAX_MSGMAX];
+    
+    *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
+    *((u_int32_t *)&buff[4]) = htonl(REGISTER_EVENT); /* registration flags */
+    
+    /* For registration we pack the data no matter what */
+    if((result = _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE)))
+        return result;
+    len = DAX_MSGMAX;
+    result = _message_recv(MSG_MOD_REG, buff, &len, 1);
+    return result;
+}
+
+/* Setup the module data structures and send regsitration message
+ *  to the server.  This message sends the name that we want to 
+ * be, it sends the test data so the server can decide if we need
+ * to pack our data.  The returned message should show whether we
+ * need to pack our data and the name that the server decided to 
+ * give us.  The server can change our name if it's a duplicate. */
+int
+dax_mod_register(char *name)
+{
+    int fd, result;
+    
+    dax_debug(LOG_COMM, "Sending registration for name - %s", name);
+    
+    /* This is the connection that we used for all the functional
+     * request / response messages. */
+    fd = _get_connection();
+    if(fd > 0) _sfd = fd;
+    result = _mod_register(name);
+    if(result) return result;
+    
+    /* This will be the event connection.  This socket recieves
+     * asynchronous messages that are generated in the server */
+    fd = _get_connection();
+    if(fd > 0) _afd = fd;
+    result = _event_register(); 
+    if(result) return result;
+    init_tag_cache();
+    
+    return 0;
 }
 
 int
