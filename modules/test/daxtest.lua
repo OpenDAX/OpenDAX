@@ -2,7 +2,7 @@
 --the daxtest module, but the tests are selected and run from this Lua script
 
 --Test that a certain number of tags can be added.
-add_random_tags(1000, "Rand")
+--add_random_tags(1000, "Rand")
 
 
 --This checks that the tagnames that should fail do so and that tags

@@ -65,6 +65,7 @@
 #define LOG_COMM    0x00000008  /* Communcations Milestones */
 #define LOG_MSG     0x00000010  /* Messages */
 #define LOG_CONFIG  0x00000020  /* Configurations */
+#define LOG_MODULE  0x00000040  /* Module Milestones */
 #define LOG_OBSCURE 0x80000000  /* Used to increase the verbosity of the other topics */
 
 /* Macro to get the size of the datatype */
@@ -84,6 +85,7 @@
 #define ERR_MSG_BAD   -11 /* Bad Message Received */
 #define ERR_DUPL      -12 /* Duplicate */
 #define ERR_NO_INIT   -13 /* Not Initialized */
+#define ERR_TIMEOUT   -14 /* Timeout */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */

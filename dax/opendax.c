@@ -53,8 +53,10 @@ main(int argc, const char *argv[])
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-    //sa.sa_handler = &catch_signal;
-    //sigaction(SIGHUP, &sa, NULL);
+    
+    sa.sa_handler = &catch_signal;
+    sigaction(SIGHUP, &sa, NULL);
+    sigaction(SIGPIPE, &sa, NULL);
 
     set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
     set_log_topic(-1); /*TODO: Needs to be configuration */

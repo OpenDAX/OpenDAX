@@ -27,17 +27,14 @@ int runcmd(char *inst);
 char *rl_gets(const char *prompt);
 void quit_signal(int sig);
 static void getout(int exitstatus);
-static void parsecommandline(int argc, char *argv[]);
 
-static int verbosity = 0;
-static char *command = NULL;
-static char *filename = NULL;
-static int quitsignal = 0;
+static int _quitsignal = 0;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
     struct sigaction sa;
-    char *instr;
+    int flags, result;
+    char *instr, *command, *filename;
     
  /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
@@ -46,21 +43,29 @@ int main(int argc,char *argv[]) {
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
     
-
-    parsecommandline(argc, argv);
-
-    /* Set's the error level and assigns the message callbacks */
-    dax_set_verbosity(verbosity);
+    dax_init_config("daxc");
+    flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
+    result += dax_add_attribute("execute","execute", 'x', flags, NULL);
+    result += dax_add_attribute("file","file", 'f', flags, "daxtest.lua");
+    
+    dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+    
+    /* TODO: These have got to move to the configuration */
+    dax_set_debug_topic(-1);
         
  /* Check for OpenDAX and register the module */
     if( dax_mod_register("daxc") ) {
         dax_fatal("Unable to find OpenDAX");
+        getout(_quitsignal);
     }
+    
+    command = dax_get_attr("execute");
     
     if(command) {
         if(runcmd(command)) getout(1);
     }
     
+    filename = dax_get_attr("filename");
     if(filename) {
         printf("Gonna try to run file %s\n", filename);
     }
@@ -70,9 +75,9 @@ int main(int argc,char *argv[]) {
  /* At this point we are in interactive mode.  We call the readline
     function repeatedly and then send the input to runcmd */
     while(1) {
-        if(quitsignal) {
-            dax_debug(LOG_MAJOR, "Quitting due to signal %d", quitsignal);
-            getout(quitsignal);
+        if(_quitsignal) {
+            dax_debug(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            getout(_quitsignal);
         }
         
         instr = rl_gets("dax>");
@@ -88,54 +93,6 @@ int main(int argc,char *argv[]) {
     
  /* This is just to make the compiler happy */
     return(0);
-}
-
-/* TODO: Finish this function 
- -x for execute command
- -f for read commands from file
- -v verbosity
- -V print version and bail
- -h for help*/
-static void parsecommandline(int argc, char *argv[])  {
-    char c;
-    
-    static struct option options[] = {
-        {"execute", required_argument, NULL, 'x'},
-        {"file", required_argument, NULL, 'f'},
-        {"version", no_argument, NULL, 'V'},
-        {"help", no_argument, NULL, 'h'},
-        {0, 0, 0, 0}
-    };
-    
-    /* Get the command line arguments */ 
-    while ((c = getopt_long (argc, (char * const *)argv, "f:Vvhx:",options, NULL)) != -1) {
-        switch (c) {
-            case 'V':
-                printf("OpenDAX Command Line Client Module Version %s\n", VERSION);
-                getout(0);
-                break;
-            case 'v':
-                verbosity++;
-                break;
-            case 'x': 
-                command = strdup(optarg);
-                break;
-            case 'f': 
-                filename = strdup(optarg);
-                break;
-            case 'h': 
-                printf("Printing Help\n");
-                break;
-            case '?':
-                //--printf("Got the big ?\n");
-                break;
-            case -1:
-            case 0:
-                break;
-            default:
-                printf ("?? getopt returned character code 0%o ??\n", c);
-        } /* End Switch */
-    } /* End While */           
 }
 
 
@@ -262,7 +219,7 @@ rl_gets(const char *prompt)
 void
 quit_signal(int sig)
 {
-    quitsignal = sig;
+    _quitsignal = sig;
     //getout(-1);
 }
 

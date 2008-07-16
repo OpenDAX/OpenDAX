@@ -146,12 +146,14 @@ buff_read(int fd)
     /* We don't want to read too much now do we */
     size = DAX_MSGMAX - node->index;
     result = read(fd, &node->buffer[node->index], size);
+    //--Problem with xread() see func.c
+    //--result = xread(fd, &node->buffer[node->index], size);
     
     if(result < 0) {
-        /* TODO: Should we handle the case when this returns due to a signal */
         xerror("Unable to read data from socket %d", fd);
         return ERR_MSG_RECV;
     } if(result == 0) { /* EOF means the other guy is closed */
+        xlog(LOG_COMM | LOG_OBSCURE, "Received EOF on socket %d", fd);
         return ERR_NO_SOCKET;
     }
     

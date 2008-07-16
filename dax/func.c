@@ -37,7 +37,9 @@ static int _background = 0;
 
 /* Wrapper for write.  This will block and retry until all the bytes
    have been written or an error other than EINTR is returned */
-ssize_t xwrite(int fd, const void *buff, size_t nbyte) {
+ssize_t
+xwrite(int fd, const void *buff, size_t nbyte)
+{
     const void *sbuff;
     size_t left;
     ssize_t result;
@@ -67,13 +69,17 @@ ssize_t xwrite(int fd, const void *buff, size_t nbyte) {
  * standard memory management functions in case I decide to do
  * something createive with them later. */
 
-void *xmalloc(size_t num) {
+void *
+xmalloc(size_t num)
+{
     void *new = malloc(num);
     if(new) memset(new, 0, num);
     return new;
 }
 
-void *xrealloc(void *ptr, size_t num) {
+void *
+xrealloc(void *ptr, size_t num)
+{
     void *new;
     if(!ptr) {
         new = xmalloc(num);
@@ -83,7 +89,9 @@ void *xrealloc(void *ptr, size_t num) {
     return new;
 }
 
-void *xcalloc(size_t count, size_t size) {
+void *
+xcalloc(size_t count, size_t size)
+{
     return xmalloc(count * size);
 }
 
@@ -91,7 +99,9 @@ void *xcalloc(size_t count, size_t size) {
 /* TODO: These should get changed to deal with logging
    and properly exiting the program.  For now just print to
    stderr and then send a \n" */
-void xfatal(const char *format, ...) {
+void
+xfatal(const char *format, ...)
+{
     va_list val;
     va_start(val, format);
 #ifdef DAX_LOGGER
@@ -104,7 +114,9 @@ void xfatal(const char *format, ...) {
     kill(getpid(), SIGQUIT);
 }
 
-void xerror(const char *format, ...) {
+void
+xerror(const char *format, ...)
+{
     va_list val;
     va_start(val, format);
 #ifdef DAX_LOGGER
@@ -116,7 +128,9 @@ void xerror(const char *format, ...) {
     va_end(val);
 }
 
-void set_log_topic(u_int32_t topic) {
+void
+set_log_topic(u_int32_t topic)
+{
     _logflags = topic;
     xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
@@ -138,7 +152,9 @@ void xlog(u_int32_t flags, const char *format, ...) {
 
 /* allocates and copies a string.  This string would have to be
    deallocated with free() */
-char *xstrdup(char *src) {
+char *
+xstrdup(char *src)
+{
     char *dest;
     dest=(char *)xmalloc((strlen(src) * sizeof(char)) +1);
     if(dest) {
@@ -148,7 +164,9 @@ char *xstrdup(char *src) {
 }
 
 /* Writes the PID to the pidfile if one is configured */
-static void writepidfile(char *progname) {
+static void
+writepidfile(char *progname)
+{
     int pidfd=0;
     char pid[10];
     char filename[41]; /* Arbitrary limit alert!!! */
@@ -167,12 +185,14 @@ static void writepidfile(char *progname) {
 }
 
 /* This funciton daemonizes the program. */
-int daemonize(char *progname) {
+int
+daemonize(char *progname)
+{
     pid_t result;
     int n;
     char s[10];
    
-    xlog(1,"Sending process to background");
+    xlog(LOG_MAJOR, "Sending process to background");
     /* Call fork() and exit as the parent.  This returns control to the 
        command line and guarantees the program is not a process group
        leader. */

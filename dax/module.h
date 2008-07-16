@@ -35,16 +35,15 @@ typedef struct {
 
 /* Module List Handling Functions */
 dax_module *module_add(char *name, char *path, char *arglist, int startup, unsigned int flags);
-int module_del(dax_module *);
+int module_del(dax_module *mod);
 
 /* Module runtime functions */
 void module_start_all(void);
-pid_t module_start (dax_module *);
-int module_stop(dax_module *);
-dax_module *module_register(char *, pid_t, int);
-dax_module *event_register(pid_t, int);
-void module_unregister(pid_t);
-dax_module *module_find_pid(pid_t);
+pid_t module_start (dax_module *mod);
+int module_stop(dax_module *mod);
+dax_module *module_register(char *name, pid_t pid, int fd);
+dax_module *event_register(pid_t pid, int fd);
+void module_unregister(pid_t pid);
 dax_module *module_find_fd(int fd);
 
 

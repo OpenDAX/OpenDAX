@@ -30,6 +30,10 @@
 //#  define TAG_CACHE_LIMIT "8"
 //#endif
 
+#define MIN_TIMEOUT      500
+#define MAX_TIMEOUT      30000
+#define DEFAULT_TIMEOUT  "1000"
+
 /* Data Conversion Functions */
 #define REF_INT_SWAP 0x0001
 #define REF_FLT_SWAP 0x0002
@@ -75,5 +79,7 @@ int init_tag_cache(void);
 int check_cache_handle(handle_t, dax_tag *);
 int check_cache_name(char *, dax_tag *);
 int cache_tag_add(dax_tag *);
+
+int opt_get_msgtimeout(void);
 
 #endif /* !__LIBDAX_H */

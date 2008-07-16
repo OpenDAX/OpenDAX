@@ -22,7 +22,7 @@
 #define __FUNC_H
 
 /* Wrappers for system calls */
-ssize_t xwrite(int , const void *, size_t);
+ssize_t xwrite(int fd, const void *buff, size_t nbyte);
 
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do

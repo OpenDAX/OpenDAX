@@ -158,6 +158,7 @@ dax_fatal(const char *format, ...)
         _dax_error(format);
     } else {
         vfprintf(stderr, format, val);
+        fprintf(stderr, "\n");
     }
     va_end(val);
     kill(getpid(), SIGQUIT);

@@ -38,6 +38,7 @@ typedef struct OptAttr {
 static optattr *_attr_head = NULL;
 static lua_State *_L;
 static char *_modulename;
+static int _msgtimeout;
 
 /* Initialize the module configuration */
 int
@@ -61,7 +62,7 @@ dax_init_config(char *name)
 	result += dax_add_attribute("debugtopic", "topic", 'T', flags, "MAJOR");
 	result += dax_add_attribute("name", "name", 'N', flags, name);
 	result += dax_add_attribute("cachesize", "cachesize", 'z', flags, "8");
-	result += dax_add_attribute("msgtimeout", "msgtimeout", 'o', flags, "1000");
+	result += dax_add_attribute("msgtimeout", "msgtimeout", 'o', flags, DEFAULT_TIMEOUT);
 	
 	flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
 	result += dax_add_attribute("config", "config", 'C', flags, NULL);
@@ -303,11 +304,8 @@ _main_config_file(void) {
 	cdir = dax_get_attr("confdir");
 	length = strlen(cdir) + strlen("/opendax.conf") + 1;
 	cfile = alloca(sizeof(char) * length);
-	if(cfile)
-		sprintf(cfile, "%s/opendax.conf", cdir);
+	if(cfile) sprintf(cfile, "%s/opendax.conf", cdir);
 
-    printf("Then gonna try and load %s\n", cfile);
-    
     L = lua_open();
     /* We don't open any librarires because we don't really want any
      * function calls in the configuration file.  It's just for
@@ -342,8 +340,7 @@ _mod_config_file(void) {
         cdir = dax_get_attr("confdir");
 	    length = strlen(cdir) + strlen(_modulename) + strlen("/.conf") + 1;
         cfile = alloca(sizeof(char) * length);
-        if(cfile) 
-		    sprintf(cfile, "%s/%s.conf", cdir, _modulename);
+        if(cfile) sprintf(cfile, "%s/%s.conf", cdir, _modulename);
 	}
 	    
     /* load and run the configuration file */
@@ -402,6 +399,10 @@ _print_config(void)
 static int
 _verify_config(void)
 {
+    _msgtimeout = strtol(dax_get_attr("msgtimeout"), NULL, 0);
+    if(_msgtimeout < MIN_TIMEOUT || _msgtimeout > MAX_TIMEOUT) {
+        _msgtimeout = strtol(DEFAULT_TIMEOUT, NULL, 0);
+    }
 //    if(inet_pton(AF_INET, dax_get_attr("serverip"), NULL)) != 1) {
 //        dax_error("serverip not set properly.  Going with default.");
 //
@@ -479,4 +480,10 @@ dax_free_config(void)
 {
     /* TODO: Write dax_free_config */
     return 0;
+}
+
+int
+opt_get_msgtimeout(void)
+{
+    return _msgtimeout;
 }

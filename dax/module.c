@@ -36,12 +36,6 @@
 
 static dax_module *_current_mod = NULL;
 static int _module_count = 0;
-//static int _register_timeout = 1000;
-
-static char **_arglist_tok(char *, char *);
-static dax_module *_get_module_mid(u_int64_t mid);
-static dax_module *_get_module_name(char *);
-static int _cleanup_module(pid_t, int);
 
 /* This array is the dead module list.
    TODO: This should be improved to allow it to grow when needed.
@@ -53,26 +47,205 @@ static int _cleanup_module(pid_t, int);
 static dead_module _dmq[DMQ_SIZE];
 
 /* The module list is implemented as a circular double linked list.
-   There is no ordering of the list.  Handles are of type int and will
-   simply be incremented for each add.  Handles will not be reused for
-   modules that are deleted, the handle can overflow.  The current pointer
-   will not be moved as this will make the list more efficient if 
-   successive queries are made.
-   
-   Returns the new handle on success and 0 on failure.  (1 is reserved
-   for the opendcs main process.)  If an existing module with the same
-   name is found the handle of that module will be returned instead.
-*/
+ * There is no ordering of the list. The current pointer will stay
+ * pointing to the last find.  This will make the list more efficient
+ * if successive queries are made.
+ */
+
+/* Determine the host from the file descriptor of the socket.
+ * host is used to return the parameter back to the caller and
+ * the return value is there to indicate any error.  Returns
+ * zero on success.  *host is set to zero if the socket originated
+ * on the same host as the server, whether or not it was with a 
+ * TCP socket or a Local Domain socket. */
+static int
+_get_host(int fd, in_addr_t *host)
+{
+    int result;
+    socklen_t sock_len;
+    struct sockaddr_storage addr;
+    struct sockaddr_in *addr_in;
+    
+    sock_len = sizeof(addr);
+    result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
+    if(result < 0) {
+        xerror("_get_host %s", strerror(errno));
+    } else {
+        if(addr.ss_family == AF_LOCAL) {
+            *host = 0;
+            return 0;
+        } else if(addr.ss_family == AF_INET) {
+            /* Get the modules IP address */
+            addr_in = (struct sockaddr_in *)&addr;
+            *host = addr_in->sin_addr.s_addr;
+            /* Now see if it is the same as ours */
+            result = getsockname(fd, (struct sockaddr *)&addr, &sock_len);
+            if(result < 0) {
+                xerror("_get_host %s", strerror(errno));
+            } else {
+                addr_in = (struct sockaddr_in *)&addr;
+                if(addr_in->sin_addr.s_addr == *host) {
+                    *host = 0;
+                }
+            }
+            return 0;
+        } else {
+            xerror("Unable to identify socket type in module_register()\n");
+        }
+    }
+    return ERR_NOTFOUND;
+}
+
+static dax_module *
+_get_module_pid(pid_t pid)
+{
+    int n;
+    
+    /* In case we ain't got no list */
+    if(_current_mod == NULL) return NULL;
+    
+    for(n = 0; n < _module_count; n++) {
+        if(_current_mod->pid == pid) {
+            return _current_mod;
+        }
+        _current_mod = _current_mod->next;
+    }
+    
+    return NULL;
+}
+
+static dax_module *
+_get_module_hostpid(in_addr_t host, pid_t pid)
+{
+    dax_module *last;
+    
+    if(_current_mod == NULL) return NULL;
+    last = _current_mod;
+    do {
+        if(_current_mod->host == host && _current_mod->pid == pid) {
+            return _current_mod;
+        }
+        _current_mod = _current_mod->next;
+    } while(_current_mod != last);
+    return NULL;
+}
+
+/* Return a pointer to the module with a matching file descriptor (fd)
+ * returns NULL if not found */
+static dax_module *
+_get_module_fd(int fd)
+{
+    dax_module *last;
+    
+    if(_current_mod == NULL) return NULL;
+    last = _current_mod;
+    do {
+        if(_current_mod->fd == fd) {
+            return _current_mod;
+        }
+        _current_mod = _current_mod->next;
+    } while(_current_mod != last);
+    return NULL;
+}
+
+/* Return a pointer to the module with a matching event file
+ * descriptor (efd).  Returns NULL if not found */
+static dax_module *
+_get_module_efd(int efd)
+{
+    dax_module *last;
+    
+    if(_current_mod == NULL) return NULL;
+    last = _current_mod;
+    do {
+        if(_current_mod->efd == efd) {
+            return _current_mod;
+        }
+        _current_mod = _current_mod->next;
+    } while(_current_mod != last);
+    return NULL;
+}
+
+/* returns a module with the given name, NULL if not found */
+static dax_module *
+_get_module_name(char *name)
+{
+    int n;
+    
+    /* In case we ain't go no list */
+    if(_current_mod == NULL) return NULL;
+    
+    for(n = 0; n < _module_count; n++) {
+        if(!strcmp(_current_mod->name, name)) return _current_mod;
+        _current_mod = _current_mod->next;
+    }
+    
+    return NULL;
+}
+
+/* Convert a string like "-d -x -y" to a NULL terminated array of
+ * strings suitable as an arg list for the arg_list of an exec??()
+ * function. */
+static char **
+_arglist_tok(char *path, char *str)
+{
+    char *temp, *token, *save;
+    char **arr;
+    int count = 1;
+    int index = 1;
+    save=temp=NULL;
+    
+    if(str!=NULL) {
+        /* We need a non const char string for strtok */
+        temp = strdup(str);
+    }
+    /* First we count the number of tokens */
+    if(temp) {
+        token = strtok_r(temp," ",&save);
+        while(token) {
+            count++;
+            token = strtok_r(NULL," ",&save);
+        }
+    }
+    /* Allocate the array, 1 extra for the NULL */
+    if(path || temp) {
+        arr = xmalloc((count + 1) * sizeof(char*));
+        if(arr == NULL) return NULL; /* OOOPS No Memory left */
+    } else { /* No path supplied either */
+        return NULL;
+    }
+    
+    arr[0] = strdup(path); /* Put the path into the first argument */
+    
+    /* Now we re-parse the string to add the tokens to the array
+       First we have to copy str to temp again.  No sense in using
+       strdup() this time since the string is the same and the memory
+       has already been allocated */
+    if(temp) {
+        strcpy(temp, str);
+        token = strtok_r(temp, " ", &save);
+        while(token) {
+            /* allocate and get a copy of the token and save it into the array */
+            arr[index++] = strdup(token); /* TODO: ERROR CHECK THIS */
+            token = strtok_r(NULL, " ", &save);
+        }
+        arr[index] = NULL;
+        
+        free(temp);
+    }
+    return arr;
+}
+
+
 dax_module *
 module_add(char *name, char *path, char *arglist, int startup, unsigned int flags)
 {
     dax_module *new, *try;
-    xlog(10,"Adding module %s",name);
+    xlog(LOG_MAJOR,"Adding module %s",name);
     
     if((try = _get_module_name(name))) 
         return try;
-        //--return try->handle; /* Name already used */
-    /* TODO: Handle the errors for the following somehow */
+    
     new = xmalloc(sizeof(dax_module));
     if(new) {
         new->flags = flags;
@@ -82,6 +255,9 @@ module_add(char *name, char *path, char *arglist, int startup, unsigned int flag
         new->pipe_in = -1;
         new->pipe_out = -1;
         new->pipe_err = -1;
+        new->fd = 0;
+        new->efd = 0;
+        new->pid = 0;
         
         /* Add the module path to the struct */
         if(path) {
@@ -104,71 +280,17 @@ module_add(char *name, char *path, char *arglist, int startup, unsigned int flag
         _current_mod = new;
         _module_count++;
         return new;
-        //return handle;
     } else {
         return NULL;
     }
 }
 
-/* Convert a string like "-d -x -y" to a NULL terminated array of
-   strings suitable as an arg list for the arg_list of an exec??()
-   function. */
-static char **_arglist_tok(char *path,char *str) {
-    char *temp,*token,*save;
-    char **arr;
-    int count = 1;
-    int index = 1;
-    save=temp=NULL;
-    
-    if(str!=NULL) {
-        /* We need a non const char string for strtok */
-        temp = strdup(str);
-    }
-    /* First we count the number of tokens */
-    if(temp) {
-        token = strtok_r(temp," ",&save);
-        while(token) {
-            count++;
-            token = strtok_r(NULL," ",&save);
-        }
-    }
-    /* Allocate the array, 1 extra for the NULL */
-    if(path || temp) {
-        arr = (char**)xmalloc((count+1)*sizeof(char*));
-        if(arr==NULL) return NULL; /* OOOPS No Memory left */
-    } else { /* No path supplied either */
-        return NULL;
-    }
-    
-    arr[0]=strdup(path); /* Put the path into the first argument */
-    
-    /* Now we re-parse the string to add the tokens to the array
-       First we have to copy str to temp again.  No sense in using
-       strdup() this time since the string is the same and the memory
-       has already been allocated */
-    if(temp) {
-        strcpy(temp, str);
-        token = strtok_r(temp, " ", &save);
-        while(token) {
-            /* allocate and get a copy of the token and save it into the array */
-            arr[index++] = strdup(token); /* TODO: ERROR CHECK THIS */
-            token = strtok_r(NULL, " ", &save);
-        }
-        arr[index] = NULL;
-        /* dont forget this */
-        free(temp);
-    }
-    return arr;
-}
-
-
-/* uses get_module to locate the module identified as 'handle' and removes
-   it from the list. */
-int module_del(dax_module *mod) {
-    //dax_module *mod;
+/* Deletes the module from the list and frees the memory */
+int
+module_del(dax_module *mod)
+{
     char **node;
 
-    //mod=_get_module(handle);
     if(mod) {
         if(mod->next == mod) { /* Last module */
             _current_mod = NULL;
@@ -196,10 +318,12 @@ int module_del(dax_module *mod) {
         free(mod);
         return 0;
     }
-    return -1;
+    return ERR_ARG;
 }
 
-void module_start_all(void) {
+void
+module_start_all(void)
+{
     dax_module *last;
     int i, j, x;
     /* In case we ain't go no list */
@@ -249,7 +373,7 @@ module_start(dax_module *mod)
         child_pid = fork();
         if(child_pid > 0) { /* This is the parent */
             mod->pid = child_pid;
-            xlog(1,"Starting Module - %s - %d",mod->path,child_pid);
+            xlog(1, "Starting Module - %s - %d",mod->path,child_pid);
             mod->starttime = time(NULL);
 
             if(result) { /* do we have any pipes set */
@@ -292,7 +416,9 @@ module_start(dax_module *mod)
    pipes[4]=stderr read fd
    pipes[5]=stderr write fd
 */
-inline static int _getpipes(int *pipes) {
+inline static int 
+_getpipes(int *pipes)
+{
 
     if(pipe(&pipes[0])) {
         xerror("Unable to create pipe - %s",strerror(errno));
@@ -316,9 +442,11 @@ inline static int _getpipes(int *pipes) {
 }
 
 /* This function handles the dup()ing and closing of
-   the stdin/stdout/stderr file descriptors in the child */
+ * the stdin/stdout/stderr file descriptors in the child */
 /* TODO: check for errors and return appropriately. */
-inline static int _childpipes(int *pipes) {
+inline static int
+_childpipes(int *pipes)
+{
     close(pipes[1]);
     close(pipes[2]);
     close(pipes[4]);
@@ -338,63 +466,59 @@ module_stop(dax_module *mod)
 {
     return 0;
 }
+
+/* TODO: GOTTA RETHINK MODULE REGISTRATION!! THIS DON'T WORK!!*/
 /* The dax server will not send messages to modules that are not registered.
  * Also modules that are not started by the core need a way to announce
  * themselves. name can be NULL for modules that were started from DAX */
 dax_module *
 module_register(char *name, pid_t pid, int fd)
 {
-    dax_module *mod;
-    char *newname;
-    size_t size;
+    dax_module *mod, *test;
+    //char *newname;
+    //size_t size;
     int result;
-    u_int64_t mid;
-    socklen_t sock_len;
-    struct sockaddr_storage addr;
-    struct sockaddr_in *addr_in;
+    in_addr_t host;
     
-    sock_len = sizeof(addr);
-    result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
-    if(result < 0) {
-        xerror("module_register %s", strerror(errno));
-    } else {
-        if(addr.ss_family == AF_LOCAL) {
-            mid = 0;
-        } else if(addr.ss_family == AF_INET) {
-            /* Get the modules IP address */
-            addr_in = (struct sockaddr_in *)&addr;
-            mid = addr_in->sin_addr.s_addr;
-        } else {
-            xerror("Unable to identify socket type in module_register()\n");
-        }
+    /* A module with the given file descriptor already exists */
+    if(_get_module_fd(fd)) {
+        return NULL;
     }
     
-    /* The module ID is the module IP address and pid in one 64 bit number */
-    mid = (mid << 32) + pid;
+    result = _get_host(fd, &host);
+    if(result) return NULL;
     
-    /* First see if we already have a module of the given ID
-       This should happen if DAX started the module */
-    mod = _get_module_mid(mid);
-    /* TODO: We need to check that the fd doesn't already exist or we'll
-       have some communication trouble */
-    if(!mod) {
+    /* First see if we already have a module of the given PID & host
+     * This should happen if DAX started the module */
+    mod = _get_module_hostpid(host, pid);
+    
+    /* Check to see if this fd is in use */
+    test = _get_module_fd(fd);
+    if(test && test != mod) {
+        printf("...WHOA THAT AIN'T RIGHT! WHAT HAPPENED TO %d?\n", fd);
+        module_unregister(test->fd);
+        test->fd = 0;
+        test->efd = 0;
+    }
+    
+    /* If the module doesn't already exist */
+    if(mod == NULL) {
         /* Do we already have a module of this name */
-        mod = _get_module_name(name);
-        if(mod && mod->state & MSTATE_REGISTERED) {
+        //--mod = _get_module_name(name);
+        //--if(mod && mod->state & MSTATE_REGISTERED) {
             /* We already have one of these running */
             /* Get a new string big enough for adding the PID */
-            size = strlen(name) + 7;
-            newname = (char *)alloca(size);
-            snprintf(newname, size, "%s%d", name, pid);
-            mod = module_add(newname, NULL, NULL, 0, 0);
-        } else  {
-            /* Never seen this guy before so we'll add it */
+            //--size = strlen(name) + 7;
+            //--newname = (char *)alloca(size);
+            //--snprintf(newname, size, "%s%d", name, pid);
             mod = module_add(name, NULL, NULL, 0, 0);
-        }
+        //} else  {
+            /* Never seen this guy before so we'll add it */
+        //    mod = module_add(name, NULL, NULL, 0, 0);
+        //}
     }
     if(mod) {
         mod->pid = pid;
-        mod->mid = mid;
         mod->fd = fd;
         mod->state |= MSTATE_RUNNING;
         mod->state |= MSTATE_REGISTERED;
@@ -402,6 +526,7 @@ module_register(char *name, pid_t pid, int fd)
         xerror("Major problem registering module - %s : %d", name, pid);
         return NULL;
     }
+    print_modules();
     return mod;
 }
 
@@ -413,31 +538,18 @@ event_register(pid_t pid, int fd)
 {
     dax_module *mod;
     int result;
-    u_int64_t mid;
-    socklen_t sock_len;
-    struct sockaddr_storage addr;
-    struct sockaddr_in *addr_in;
+    in_addr_t host;
     
-    sock_len = sizeof(addr);
-    result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
-    if(result < 0) {
-        xerror("module_register %s", strerror(errno));
-    } else {
-        if(addr.ss_family == AF_LOCAL) {
-            mid = 0;
-        } else if(addr.ss_family == AF_INET) {
-            /* Get the modules IP address */
-            addr_in = (struct sockaddr_in *)&addr;
-            mid = addr_in->sin_addr.s_addr;
-        } else {
-            xerror("Unable to identify socket type in module_register()\n");
-        }
+    /* A module with the given file descriptor already exists */
+    if(_get_module_efd(fd)) {
+        return NULL;
     }
     
-    /* The module ID is the module IP address and pid in one 64 bit number */
-    mid = (mid << 32) + pid;
+    result = _get_host(fd, &host);
+    if(result) return NULL;
     
-    mod = _get_module_mid(mid);
+    mod = _get_module_hostpid(host, pid);
+    
     /* TODO: We need to check that the fd doesn't already exist or we'll
        have some communication trouble */
     if(!mod) {
@@ -445,6 +557,7 @@ event_register(pid_t pid, int fd)
     } else {
         mod->efd = fd;
     }
+    print_modules();
     return mod;
 }
 
@@ -457,20 +570,16 @@ module_unregister(int fd)
     mod = module_find_fd(fd);
     if(mod) {
         mod->state &= (~MSTATE_REGISTERED);
+        mod->fd = 0;
+        mod->efd = 0;
+        /* If we didn't start it then delete it */
+        if( !(mod->state & MSTATE_CHILD) ) {
+            module_del(mod);
+        }
     }
+    print_modules();
 }
 
-/* Returns a pointer to the module with pid.
-   It's just a wrapper for the static function, because
-   I'm still not convinced that I want to use the modules
-   PID as the identifier for that module in the messaging
-   system.  I might have to have differnet ID's for
-   different threads. */
-dax_module *
-module_find_pid(pid_t pid)
-{
-    return _get_module_mid(pid);
-}
 
 dax_module *
 module_find_fd(int fd)
@@ -488,6 +597,36 @@ module_find_fd(int fd)
     return NULL;
 }
 
+/* This function is called from the scan_modules function and is used 
+ * to find and cleanup the module after it has died.  */
+static int
+_cleanup_module(pid_t pid, int status)
+{
+    dax_module *mod;
+    
+    /* Should only be called for local modules so we can assume the
+     * upper 32 bits are zero and just use the pid for the mid */
+    mod = _get_module_pid(pid);
+    /* at this point _current_mod should be pointing to a module with
+     * the PID that we passed but we should check because there may not 
+     * be a module with our PID */
+    if(mod) {
+        xlog(LOG_MINOR, "Cleaning up Module %d", pid);
+        /* Close the stdio pipe fd's */
+        /* TODO: really should fix these */
+        //close(mod->pipe_in);
+        //close(mod->pipe_out);
+        //close(mod->pipe_err);
+        mod->pid = 0;
+        mod->exit_status = status;
+        mod->state = MSTATE_WAITING;
+        return 0;
+    } else {
+        xerror("Module %d not found \n", pid);
+        return ERR_NOTFOUND;
+    }
+}
+
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called
@@ -498,7 +637,7 @@ module_scan(void)
 {
     int n;
     /* Check the dead module queue for pid's that need cleaning */
-    for(n=0; n < DMQ_SIZE; n++) {
+    for(n = 0; n < DMQ_SIZE; n++) {
         if(_dmq[n].pid != 0) {
             _cleanup_module(_dmq[n].pid, _dmq[n].status);
             _dmq[n].pid = 0;
@@ -507,35 +646,6 @@ module_scan(void)
     /* TODO: do a waitpid(-1, NULL, WNOHANG); to clean up any zombies */
     /* TODO: Restart modules if necessary */
 }
-
-/* This function is called from the scan_modules function and is used 
-   to find and cleanup the module after it has died.  */
-static int
-_cleanup_module(pid_t pid, int status)
-{
-    dax_module *mod;
-    mod = _get_module_mid(pid);
-    /* at this point _current_mod should be pointing to a module with
-    the PID that we passed but we should check because there may not 
-    be a module with our PID */
-    if(mod) {
-        xlog(LOG_MINOR, "Cleaning up Module %d", pid);
-        /* Close the stdio pipe fd's */
-        /* TODO: really should fix these */
-        //close(mod->pipe_in);
-        //close(mod->pipe_out);
-        //close(mod->pipe_err);
-        mod->pid = 0;
-        mod->mid = 0;
-        mod->exit_status = status;
-        mod->state = MSTATE_WAITING;
-        return 0;
-    } else {
-        xerror("Module %d not found \n", pid);
-        return -1;
-    }
-}
-
 
 /* Adds the dead module to the first blank spot in the list.  If the list
    is overflowed then it'll just overwrite the last one.
@@ -556,57 +666,21 @@ module_dmq_add(pid_t pid,int status)
 
 
 /* Lookup and return the pointer to the module with pid */
-static dax_module *
-_get_module_mid(u_int64_t mid)
-{
-    int n;
-    
-    /* In case we ain't go no list */
-    if(_current_mod == NULL) return NULL;
-    
-    for(n = 0; n < _module_count; n++) {
-        if(_current_mod->mid == mid) return _current_mod;
-        _current_mod = _current_mod->next;
-    }
-    
-    return NULL;
-}
-
-
 /* Retrieves a pointer to module given name */
-static dax_module *
-_get_module_name(char *name)
+//#ifdef DEBUG
+void
+print_modules(void)
 {
-    int n;
-    
-    /* In case we ain't go no list */
-    if(_current_mod == NULL) return NULL;
-    
-    for(n = 0; n < _module_count; n++) {
-        if(!strcmp(_current_mod->name, name)) return _current_mod;
-        _current_mod = _current_mod->next;
-    }
-    
-    return NULL;
-}
-
-#ifdef DEBUG
-void print_modules(void) {
     dax_module *last;
-    int n;
+  
     /* In case we ain't got no list */
     if(_current_mod == NULL) return;
     /* Figure out where we need to stop */
-    last = _current_mod->prev;
+    last = _current_mod;
     
-    for(n = 0; n < _module_count; n++) {
-    //while(1) {
-        printf("Module - %s - %d\n", _current_mod->name, _current_mod->pid);
+    do {
+        printf("Module - %s - %u\n", _current_mod->name, _current_mod->pid);
         _current_mod = _current_mod->next;
-        //if(_current_mod == last) {
-        //    return;
-        //}
-    }
-    return;
+    } while (_current_mod != last);
 }
-#endif
+//#endif

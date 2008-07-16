@@ -77,11 +77,16 @@ _message_recv(int command, void *payload, int *size, int response)
         //} printf("\n");
         
         if(result < 0) {
-            dax_debug(LOG_COMM, "_message_recv read failed: %s", strerror(errno));
-            return ERR_MSG_RECV;
+            if(errno == EWOULDBLOCK) {
+                dax_debug(LOG_COMM, "_message_recv Timed out");
+                return ERR_TIMEOUT;
+            } else {
+                dax_debug(LOG_COMM, "_message_recv failed: %s", strerror(errno));
+                return ERR_MSG_RECV;
+            }
         } else if(result == 0) {
             printf("TODO: I don't know what to do with read returning 0\n");
-            return -1;
+            return ERR_GENERIC;
         } else {
             index += result;
         }
@@ -127,13 +132,15 @@ _get_connection(void)
     int fd, len;
     struct sockaddr_un addr_un;
     struct sockaddr_in addr_in;
+    struct timeval tv;
     
-    if(! strcasecmp("local", dax_get_attr("server"))) {
-        //--printf("...... Connecting to local socket\n");
+    if( ! strcasecmp("local", dax_get_attr("server") )) {
+        //printf("...... Connecting to local socket - %s\n", dax_get_attr("socketname"));
         /* create a UNIX domain stream socket */
-        if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+            dax_error("Unable to create local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
-        /* TODO: Gotta set a timeout for this stuff. */
+        }
         /* fill socket address structure with our address */
         memset(&addr_un, 0, sizeof(addr_un));
         addr_un.sun_family = AF_UNIX;
@@ -141,30 +148,39 @@ _get_connection(void)
 
         len = offsetof(struct sockaddr_un, sun_path) + strlen(addr_un.sun_path);
         if (connect(fd, (struct sockaddr *)&addr_un, len) < 0) {
-            dax_error("Unable to connect to socket - %s", strerror(errno));
+            dax_error("Unable to connect to local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
             dax_debug(LOG_COMM, "Connected to Local Server fd = %d", fd);
-            return fd;
         }
     } else { /* We are supposed to connect over the network */
-        //--printf("...... Connecting over the network\n");
+        //printf("...... Connecting over the network\n");
         /* create an IPv4 TCP socket */
-        if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            dax_error("Unable to create remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
+        }
         memset(&addr_in, 0, sizeof(addr_in));
         addr_in.sin_family = AF_INET;
         addr_in.sin_port = htons(strtol(dax_get_attr("serverport"), NULL, 0));
         inet_pton(AF_INET, dax_get_attr("serverip"), &addr_in.sin_addr);
         
         if (connect(fd, (struct sockaddr *)&addr_in, sizeof(addr_in)) < 0) {
-            dax_error("Unable to connect to socket - %s", strerror(errno));
+            dax_error("Unable to connect to remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
             dax_debug(LOG_COMM, "Connected to Network Server fd = %d", fd);
-            return fd;
         }
     }
+    tv.tv_sec = opt_get_msgtimeout() / 1000;
+    tv.tv_usec = (opt_get_msgtimeout() % 1000) * 1000;
+    
+    len = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    if(len) {
+        dax_error("Problem setting socket timeout - s", strerror(errno));
+    }
+    return fd;
+     
 }
 
 #define REG_HDR_SIZE 8
@@ -222,26 +238,30 @@ _mod_register(char *name)
 static int
 _event_register(void)
 {
-    int result, len;
+    int result, len, tmpfd;
     char buff[DAX_MSGMAX];
     
     *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
     *((u_int32_t *)&buff[4]) = htonl(REGISTER_EVENT); /* registration flags */
     
+    /* This is to trick the _message_send into sending on the new connection
+     * instead of the existing one. */
+    tmpfd = _sfd;
+    _sfd = _afd;
     /* For registration we pack the data no matter what */
-    if((result = _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE)))
+    if((result = _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE))) {
+        _sfd = tmpfd;
         return result;
+    }
     len = DAX_MSGMAX;
     result = _message_recv(MSG_MOD_REG, buff, &len, 1);
+    _sfd = tmpfd;
     return result;
 }
 
-/* Setup the module data structures and send regsitration message
- *  to the server.  This message sends the name that we want to 
- * be, it sends the test data so the server can decide if we need
- * to pack our data.  The returned message should show whether we
- * need to pack our data and the name that the server decided to 
- * give us.  The server can change our name if it's a duplicate. */
+/* Setup the module data structures and send registration message
+ * to the server.  *name is the name that we want to give our 
+ * module */
 int
 dax_mod_register(char *name)
 {
@@ -252,14 +272,23 @@ dax_mod_register(char *name)
     /* This is the connection that we used for all the functional
      * request / response messages. */
     fd = _get_connection();
-    if(fd > 0) _sfd = fd;
+    if(fd > 0) {
+        _sfd = fd;
+    } else {
+        return fd;
+    }
+    
     result = _mod_register(name);
     if(result) return result;
     
     /* This will be the event connection.  This socket recieves
      * asynchronous messages that are generated in the server */
     fd = _get_connection();
-    if(fd > 0) _afd = fd;
+    if(fd > 0) {
+        _afd = fd;
+    } else {
+        return fd;
+    }
     result = _event_register(); 
     if(result) return result;
     init_tag_cache();
@@ -271,10 +300,18 @@ int
 dax_mod_unregister(void)
 {
     int len, result;
-    result = _message_send(MSG_MOD_REG, NULL, 0);
-    if(! result ) {
-        len = 0;
-        result = _message_recv(MSG_MOD_REG, NULL, &len, 1);
+    
+    
+    if(_sfd) {
+        result = _message_send(MSG_MOD_REG, NULL, 0);
+        if(! result ) {
+            len = 0;
+            result = _message_recv(MSG_MOD_REG, NULL, &len, 1);
+        }
+        close(_sfd);
+        _sfd = 0;
+        close(_afd);
+        _afd = 0;
     }
     return result;
 }

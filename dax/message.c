@@ -255,10 +255,13 @@ msg_receive(void)
     result = select(_maxfd + 1, &tmpset, NULL, NULL, &tm);
     
     if(result < 0) {
-        /* TODO: Deal with these errors */
-        xerror("msg_receive select error: %s", strerror(errno));
-        return ERR_MSG_RECV;
-    } else if(result == 0) {
+        /* Ignore interruption by signal */
+        if(errno != EINTR) {
+            /* TODO: Deal with these errors */
+            xerror("msg_receive select error: %s", strerror(errno));
+            return ERR_MSG_RECV;
+        }
+    } else if(result == 0) { /* Timeout */
         buff_freeall(); /* this erases all of the _buffer nodes */
         return 0;
     } else {
@@ -335,12 +338,12 @@ msg_mod_register(dax_message *msg)
     dax_module *mod;
     
     if(msg->size > 0) {
-        xlog(LOG_MSG, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
         pid = ntohl(*((u_int32_t *)&msg->data[0]));
         flags = ntohl(*((u_int32_t *)&msg->data[4]));
         
         /* Is this the initial registration of the synchronous socket */
         if(flags & REGISTER_SYNC) {
+            xlog(LOG_MSG, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
             /* TODO: Need to check for errors there */
             mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
             if(!mod) {
@@ -360,6 +363,7 @@ msg_mod_register(dax_message *msg)
             }
         /* Is this the asynchronous event socket registration */
         } else if(flags & REGISTER_EVENT) {
+            xlog(LOG_MSG, "Event Socket Registration for Module %s fd = %d", &msg->data[8], msg->fd);
             mod = event_register(pid, msg->fd);
             result = ERR_NOTFOUND;
             if(!mod) {
