@@ -41,18 +41,27 @@
  * located anywhere in the database.  8 and 16 bit numbers will be at even
  * 8 or 16 bit offsets and 32 and 64 bit numbers will always start at zero.
  * This may create some fragmentation but it'll make the logic simpler.
+ *
+ * EDIT: !! Actually none of the above is true at the moment.  The tag database is
+ * an array that describes each tag individually.  The tags data is also contained
+ * within that structure.
+ * 
  */
 
 static _dax_tag_db *_db;
 static _dax_tag_index *_index;
 static long int _tagcount = 0;
 static long int _dbsize = 0;
+static datatype *_datatypes;
+static unsigned int _datatype_index; /* Next datatype index */
+static unsigned int _datatype_size;
 
 //static int _next_event_id = 0;
 
 /* Private function definitions */
 
 /* checks whether type is a valid datatype */
+/* TODO: Should this return 0 on success instead of 1? */
 static int
 _checktype(unsigned int type)
 {
@@ -93,19 +102,19 @@ _validate_name(char *name)
 {
     int n;
     if(strlen(name) > DAX_TAGNAME_SIZE) {
-        return -1;
+        return ERR_2BIG;
     }
     /* First character has to be a letter or '_' */
     if( !isalpha(name[0]) && name[0] != '_' ) {
-        return -1;
+        return ERR_ARG;
     }
     /* The rest of the name can be letters, numbers or '_' */
     for(n = 1; n < strlen(name) ;n++) {
         if( !isalpha(name[n]) && (name[n] != '_') &&  !isdigit(name[n]) ) {
-            return -1;
+            return ERR_ARG;
         }
     }
-    return 0; /* Return good for now */
+    return 0;
 }
 
 /* This function searches the _index array to find the tag with
@@ -153,6 +162,9 @@ _database_grow(void)
 void
 initialize_tagbase(void)
 {
+    int result, index;
+    char *str;
+    
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!_db) {
         xfatal("Unable to allocate the database");
@@ -170,6 +182,36 @@ initialize_tagbase(void)
     if(tag_add("_status", DAX_DWORD, STATUS_SIZE)) {
         xfatal("_status not created properly");
     }
+    
+    /* Allocate the datatype array and set the initial counters */
+    _datatypes = xmalloc(sizeof(datatype) * DAX_DATATYPE_SIZE);
+    if(!_datatypes) {
+        xfatal("Unable to allocate array for datatypes");
+    }
+    _datatype_index = 0;
+    _datatype_size = DAX_DATATYPE_SIZE;
+    
+    result = cdt_create("Status");
+    index = cdt_create("TimeStruct");
+    
+    result = cdt_add_member(index,"TimeStamp", DAX_TIME, 1);
+    result = cdt_add_member(index,"Year", DAX_INT, 1);
+    result = cdt_add_member(index,"Month", DAX_INT, 1);
+    result = cdt_add_member(index,"Day", DAX_INT, 1);
+    result = cdt_add_member(index,"Hour", DAX_INT, 1);
+    result = cdt_add_member(index,"Minute", DAX_INT, 1);
+    result = cdt_add_member(index,"Second", DAX_INT, 1);
+    result = cdt_add_member(index,"uSecond", DAX_DINT, 1);
+    
+    //result = cdt_add_member(0, "StartTime", index, 1);
+    
+    printf("Serialize Result = %d\n", serialize_datatype(0, &str));
+    printf("%s\n", str);
+    free(str);
+    printf("Serialize Result = %d\n", serialize_datatype(index, &str));
+    printf("%s\n", str);
+    free(str);
+    
     /* Write the current size of the database to the _status tag */
     //tag_write_bytes(STAT_DB_SIZE, &__databasesize, sizeof(u_int32_t));
 }
@@ -296,7 +338,9 @@ tag_del(char *name)
 
 /* Finds a tag based on it's name.  Basically just a wrapper for get_by_name().
  Returns a pointer to the tag given by 'name' NULL if not found */
-int tag_get_name(char *name, dax_tag *tag) {
+int 
+tag_get_name(char *name, dax_tag *tag)
+{
     int i; //, handle;
     
     i = _get_by_name(name);
@@ -314,9 +358,11 @@ int tag_get_name(char *name, dax_tag *tag) {
 }
 
 /* Finds a tag based on it's index in the array.  Returns a pointer to 
- the tag give by index, NULL if index is out of range.  Incex should
- not be assumed to remain constant throughout the programs lifetiem. */
-int tag_get_index(int index, dax_tag *tag) {
+ the tag give by index, NULL if index is out of range.  Index should
+ not be assumed to remain constant throughout the programs lifetime. */
+int
+tag_get_index(int index, dax_tag *tag)
+{
     if(index < 0 || index >= _tagcount) {
         return ERR_ARG;
     } else {
@@ -369,7 +415,9 @@ tag_write(handle_t handle, int offset, void *data, size_t size)
 }
 
 /* Writes the data to the tagbase but only if the corresponding mask bit is set */
-int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size) {
+int
+tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size)
+{
     char *db, *newdata, *newmask;
     int n;
 
@@ -392,6 +440,225 @@ int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t s
     return 0;
 }
 
+int
+cdt_create(char *name)
+{
+    int retval;
+    
+    if( (retval = _validate_name(name)) ) return retval;
+    
+    /* Check for duplicates */
+    if( cdt_get_type(name) != 0 ) {
+        /* TODO: Add an error log here */
+        //printf("OOPS Found Datatype %d - %s\n", cdt_get_type(name), cdt_get_name(cdt_get_type(name)));
+        return ERR_DUPL;
+    }
+    
+    /* Do we have space in the array */
+    if(_datatype_index == _datatype_size) {
+        /* Allocate more space for the array */
+        datatype *new_datatype;
+    
+        new_datatype = xrealloc(_datatypes, (_datatype_size + DAX_DATATYPE_SIZE) * sizeof(datatype));
+        
+        if( new_datatype != NULL) {
+            _datatypes = new_datatype;
+            _datatype_size += DAX_DATATYPE_SIZE;
+        } else {          
+            return ERR_ALLOC;
+        }
+    }
+    
+    /* Add the datatype */
+    _datatypes[_datatype_index].name = strdup(name);
+    if(_datatypes[_datatype_index].name == NULL) {
+        return ERR_ALLOC;
+    }
+    _datatypes[_datatype_index].members = NULL;
+    _datatypes[_datatype_index].refcount = 0;
+    _datatype_index++;
+    
+    return _datatype_index - 1;
+}
+
+/* Returns the type of the datatype with given name
+ * If the datatype isn't found it returns 0 */
+unsigned int
+cdt_get_type(char *name)
+{
+    int n;
+    
+    if(!strcasecmp(name, "BOOL"))  return DAX_BOOL;
+    if(!strcasecmp(name, "BYTE"))  return DAX_BYTE;
+    if(!strcasecmp(name, "SINT"))  return DAX_SINT;
+    if(!strcasecmp(name, "WORD"))  return DAX_WORD;
+    if(!strcasecmp(name, "INT"))   return DAX_INT;
+    if(!strcasecmp(name, "UINT"))  return DAX_UINT;
+    if(!strcasecmp(name, "DWORD")) return DAX_DWORD;
+    if(!strcasecmp(name, "DINT"))  return DAX_DINT;
+    if(!strcasecmp(name, "UDINT")) return DAX_UDINT;
+    if(!strcasecmp(name, "TIME"))  return DAX_TIME;
+    if(!strcasecmp(name, "REAL"))  return DAX_REAL;
+    if(!strcasecmp(name, "LWORD")) return DAX_LWORD;
+    if(!strcasecmp(name, "LINT"))  return DAX_LINT;
+    if(!strcasecmp(name, "ULINT")) return DAX_ULINT;
+    if(!strcasecmp(name, "LREAL")) return DAX_LREAL;
+    
+    for(n = 0; n < _datatype_index; n++) {
+        if(!strcasecmp(name, _datatypes[n].name)) {
+            return CDT_TO_TYPE(n);
+        }
+    }
+    return 0;
+}
+
+/* Returns a pointer to the name of the datatype given
+ * by 'type'.  Returns NULL on failure */
+char *
+cdt_get_name(unsigned int type)
+{
+    if(IS_CUSTOM(type)) {
+        return _datatypes[CDT_TO_INDEX(type)].name;
+    } else {  
+        switch (type) {
+            case DAX_BOOL:
+                return "BOOL";
+            case DAX_BYTE:
+                return "BYTE";
+            case DAX_SINT:
+                return "SINT";
+            case DAX_WORD:
+                return "WORD";
+            case DAX_INT:
+                return "INT";
+            case DAX_UINT:
+                return "UINT";
+            case DAX_DWORD:
+                return "DWORD";
+            case DAX_DINT:
+                return "DINT";
+            case DAX_UDINT:
+                return "UDINT";
+            case DAX_TIME:
+                return "TIME";
+            case DAX_REAL:
+                return "REAL";
+            case DAX_LWORD:
+                return "LWORD";
+            case DAX_LINT:
+                return "LINT";
+            case DAX_ULINT:
+                return "ULINT";
+            case DAX_LREAL:
+                return "LREAL";
+            default:
+                return NULL;
+        }
+    }
+}
+
+int
+cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count)
+{
+    int retval;
+    cdt_member *this, *new;
+    
+    /* Check bounds of cdt_index */
+    if(cdt_index < 0 || cdt_index >= _datatype_index) return ERR_ARG;
+    
+    /* Check that the name is okay */
+    if( (retval = _validate_name(name)) ) return retval;
+    
+    /* Check that the type is valid */
+    if( !_checktype(type)) return ERR_ARG;
+    
+    /* Check for duplicates */
+    this = _datatypes[cdt_index].members;
+    while(this != NULL) {
+        if( !strcasecmp(name, this->name) ) return ERR_DUPL;
+        this = this->next;
+    }
+    /* Allocate the new member */
+    new = xmalloc(sizeof(cdt_member));
+    if(new == NULL) return ERR_ALLOC;
+    /* Assign everything to the new datatype member */
+    new->name = strdup(name);
+    if(new->name == NULL) {
+        free(new);
+        return ERR_ALLOC;
+    }
+    new->type = type;
+    new->count = count;
+    new->next = NULL;
+    
+    /* Find the end of the linked list and put it there */
+    if(_datatypes[cdt_index].members == NULL) {
+        _datatypes[cdt_index].members = new;
+    } else {
+        this = _datatypes[cdt_index].members;
+    
+        while(this->next != NULL) {
+            this = this->next;
+        }
+        
+        this->next = new;
+    }
+    return 0;
+}
+
+/* This function builds a string that is a serialization of
+ * the datatype and all of it's members.  The pointer passed
+ * as str will be set to the string.  This pointer will have
+ * to be freed by the calling program.  Returns the size
+ * of the string. <0 on error */
+/* CRITICAL: This is a critical function.  It must run in
+ * the same thread as any function that manipulates the cdt 
+ * array, or it will have to be protected by a Mutex */
+int
+serialize_datatype(int cdt_index, char **str)
+{
+    int size;
+    char test[DAX_TAGNAME_SIZE + 1];
+    cdt_member *this;
+    
+    if(cdt_index < 0 || cdt_index >= _datatype_index) return ERR_ARG;
+    
+    /* The first thing we do is figure out how big it
+     * will all be. */
+    size = strlen(_datatypes[cdt_index].name);
+    this = _datatypes[cdt_index].members;
+    
+    while(this != NULL) {
+        size += strlen(this->name);
+        size += strlen(cdt_get_name(this->type));
+        snprintf(test, DAX_TAGNAME_SIZE + 1, "%ld", this->count);
+        size += strlen(test);
+        size += 3; /* This is for the ':' and the two commas */
+        this = this->next;
+    }
+    size += 1; /* For Trailing NULL */
+    
+    *str = xmalloc(size);
+    if(*str == NULL) return ERR_ALLOC;
+    *str[0] = '\0'; /* Make the string zero length */
+    
+    /* Now build the string */
+    strlcat(*str, _datatypes[cdt_index].name, size);
+    this = _datatypes[cdt_index].members;
+    
+    while(this != NULL) {
+        strlcat(*str, ":", size);
+        strlcat(*str, this->name, size);
+        strlcat(*str, ",", size);
+        strlcat(*str, cdt_get_name(this->type), size);
+        strlcat(*str, ",", size);
+        snprintf(test, DAX_TAGNAME_SIZE + 1, "%ld", this->count);
+        strlcat(*str, test, size);
+        
+        this = this->next;
+    }
+    return 0;
+}
 
 
 #ifdef DELETE_ALL_THIS_STUFF_ERIUEBVIUWEIUGASDJBFVIERW

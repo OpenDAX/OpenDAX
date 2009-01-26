@@ -279,7 +279,7 @@ msg_receive(void)
                 } else {
                     result = buff_read(n);
                     if(result == ERR_NO_SOCKET) { /* This is the end of file */
-                        /* TODO: Deal with the module if I need too */
+                        /* TODO: unregister module?? */
                         xlog(LOG_COMM, "Connection Closed for fd %d", n);
                         msg_del_fd(n);
                     } else if(result < 0) {
@@ -309,8 +309,6 @@ msg_dispatcher(int fd, unsigned char *buff)
     message.command = ntohl(*(u_int32_t *)&buff[4]);
     //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
     
-    /* TODO: The module will lock up if we do this.  Need to
-     * put timeouts on the module socket handling code. */
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     message.fd = fd;    
     memcpy(message.data, &buff[8], message.size);
@@ -412,7 +410,7 @@ msg_tag_add(dax_message *msg)
 int
 msg_tag_del(dax_message *msg)
 {
-    xlog(LOG_MINOR | LOG_OBSCURE, "Tag Delete Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Delete Message from %d", msg->fd);
     return 0;
 }
 
@@ -456,7 +454,7 @@ msg_tag_get(dax_message *msg)
 int
 msg_tag_list(dax_message *msg)
 {
-    xlog(10,"Tag List Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag List Message from %d", msg->fd);
     return 0;
 }
 
@@ -544,7 +542,7 @@ msg_tag_mask_write(dax_message *msg)
 int
 msg_mod_get(dax_message *msg)
 {
-    xlog(10,"Get Module Handle Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_OBSCURE, "Get Module Handle Message from %d", msg->fd);
     return 0;
 }
 
@@ -556,7 +554,7 @@ msg_evnt_add(dax_message *msg)
     dax_module *module;
     int event_id = -1;
     
-    xlog(10, "Add Event Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_OBSCURE, "Add Event Message from %d", msg->fd);
     memcpy(&event, msg->data, sizeof(dax_event_message));
     
     module = module_find_fd(msg->fd);

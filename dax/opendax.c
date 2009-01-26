@@ -28,8 +28,6 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-//--extern struct Config config;
-
 static int quitflag = 0;
 
 static void messagethread(void);
@@ -44,9 +42,7 @@ main(int argc, const char *argv[])
     pthread_t message_thread;
 	int result;
     
-    //openlog("OpenDAX",LOG_NDELAY,LOG_DAEMON);
-    xlog(0,"OpenDAX started");
-
+    
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -58,7 +54,10 @@ main(int argc, const char *argv[])
     sigaction(SIGHUP, &sa, NULL);
     sigaction(SIGPIPE, &sa, NULL);
 
-    set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
+    sa.sa_handler = &child_signal;
+    sigaction (SIGCHLD, &sa, NULL);
+    
+    //set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
     set_log_topic(-1); /*TODO: Needs to be configuration */
     
     /* Read configuration from defaults, file and command line */
@@ -70,12 +69,9 @@ main(int argc, const char *argv[])
         }
     }
     
-    sa.sa_handler = &child_signal;
-    sigaction (SIGCHLD, &sa, NULL);
-    
     result = msg_setup();    /* This creates and sets up the message sockets */
     if(result) xerror("msg_setup() returned %d", result);
-	initialize_tagbase(); /* initiallize the tagname list and database */
+	initialize_tagbase(); /* initiallize the tagname database */
     
 	/* Start the message handling thread */
     if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
@@ -87,6 +83,8 @@ main(int argc, const char *argv[])
     /* DO TESTING STUFF HERE */
 
     /* END TESTING STUFF */
+    
+    xlog(LOG_MAJOR, "OpenDAX started");
     
     while(1) { /* Main loop */
         /* TODO: This might could be some kind of condition
@@ -106,13 +104,11 @@ main(int argc, const char *argv[])
     }
 }
 
-/* TODO: Does this really need to be a separate thread. */
 /* This is the main message handling thread.  It should never return. */
 static void
 messagethread(void)
 {
     while(1) {
-        /* TODO: How far up should errors be passed */
         if(msg_receive()) {
             sleep(1);
         }
@@ -145,8 +141,9 @@ quit_signal(int sig)
     quitflag = 1;
 }
 
+/* TODO: May need to so something with signals like SIGPIPE etc */
 void
 catch_signal(int sig)
 {
-    xlog(0, "Received signal %d", sig);    
+    xlog(LOG_MINOR, "Received signal %d", sig);    
 }

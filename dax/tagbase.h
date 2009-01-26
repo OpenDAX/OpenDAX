@@ -49,6 +49,9 @@
  #define DAX_DATABASE_INC 1024
 #endif
 
+#ifndef DAX_DATATYPE_SIZE
+# define DAX_DATATYPE_SIZE 10
+#endif
 
 /* Define Handles for _status register points */
 #define STATUS_SIZE   4
@@ -61,6 +64,12 @@ struct mod_list {
     dax_module *module;
     struct mod_list *next;
 };
+
+/* Some Macros for manipulating CDT types */
+#define IS_CUSTOM(TYPE) (TYPE & DAX_CUSTOM)
+#define CDT_TO_INDEX(TYPE) (TYPE & ~DAX_CUSTOM)
+#define CDT_TO_TYPE(INDEX) (INDEX | DAX_CUSTOM)
+
 
 typedef struct dax_event_t {
     int id;
@@ -87,6 +96,7 @@ typedef struct {
     int handle;
 } _dax_tag_index;
 
+/* Tag Database Handling Functions */
 void initialize_tagbase(void);
 handle_t tag_add(char *name, unsigned int type, unsigned int count);
 int tag_del(char *name);
@@ -96,6 +106,13 @@ int tag_get_index(int, dax_tag *);
 int tag_read(handle_t handle, int offset, void *data, size_t size);
 int tag_write(handle_t handle, int offset, void *data, size_t size);
 int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size);
+
+/* Custom DataType functions */
+int cdt_create(char *name);
+unsigned int cdt_get_type(char *name);
+char *cdt_get_name(unsigned int type);
+int cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count);
+int serialize_datatype(int cdt_index, char **str);
 
 /*
 handle_t tag_get_handle(char *name);

@@ -23,20 +23,7 @@
 #define __LIBCOMMON_H
 
 #include <opendax.h>
-
-/* Defines the maximum length of a tagname */
-/* NOTE: This is duplicated in opendax.h so it should
-         be changed in both places. */
-/* TODO: This is probably a bad thing.  It should be constant
-         here and then the library should recieve the size
-         when it registers and then allocate each tag as
-         they are needed. */
-#ifndef DAX_TAGNAME_SIZE
- #define DAX_TAGNAME_SIZE 32
-#endif
-
-/* For now we'll use this as the key for all the SysV IPC stuff */
-//--#define DAX_IPC_KEY 0x707070
+#include <sys/types.h>
 
 /* Message functions */
 #define MSG_MOD_REG    0x0000 /* Register the module with the server */
@@ -112,6 +99,26 @@ typedef struct {
     handle_t handle;
     size_t size;
 } dax_event_message;
+
+/* These are the custom datatype definitions. */
+
+/* This is the custom datatype member definition.  The 
+ * members are represented as a linked list */
+typedef struct CDT_Member {
+    char *name;
+    unsigned int type;
+    size_t count;
+    struct CDT_Member *next;
+} cdt_member;
+
+/* This is the structure that represents the container for each
+ * datatype. */
+typedef struct {
+    char *name;
+    unsigned int refcount; /* Number of tags of this type */
+    cdt_member *members;
+} datatype;
+
 
 
 #endif /* ! __LIBCOMMON_H */
