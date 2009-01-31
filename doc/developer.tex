@@ -1,0 +1,54 @@
+\documentclass[letterpaper,10pt]{report}
+
+\usepackage[latin1]{inputenc}
+\usepackage[english]{babel}
+\usepackage{fontenc}
+\usepackage{graphicx}
+
+\title{OpenDAX Module Developer's Manual}
+\date{July 15, 2008}
+\author{Phil Birkelbach}
+
+
+\begin{document}
+\begin{titlepage}
+\maketitle
+
+\begin{flushleft}
+Copyright \textcopyright 2008 - Phil Birkelbach\linebreak
+All Rights Reserved
+\end{flushleft}
+
+\end{titlepage}
+\chapter*{Introduction}
+OpenDAX is an open source, modular, data acquisition and control system. It is licensed under the GPL (GNU General Public License) and therefore is completely free to use and modify.
+
+This document is to help a new developer learn how to develop modules for OpenDAX as well as function as a reference document for experienced module developers.
+
+Modules are the heart and soul of any OpenDAX application.  They handle all of communication to the outside world, the logic and any storage or logging functions that are implemented.  What do we mean by OpenDAX application.  Well, it would be the OpenDAX system as a whole.  It could be something as simple as home automation system that has an Insteon\textregistered module to control the lights and a human interface module with a couple of graphics showing the floorplan of the house.  An OpenDAX application could be something as complex as a multi-plant control system that was in control of thousands of end devices and included a several hundred window HMI, historical logging, event logging and remote control.  It could be anything in between and may even be something that we haven't thought of yet.  That is the beauty of having most of the functionality in modules, it leaves the application developer free to be creative in how the system is built.
+
+\section*{OpenDAX Basics}
+Before we get started, it would be good to discuss how OpenDAX works.
+
+\section*{Build Environment}
+
+
+\chapter*{Module Configuration}
+\section*{Setting Attributes}
+\section*{Setting Callbacks}
+\section*{Writing Lua Functions}
+\section*{Running the Configuration}
+
+\chapter*{Module Registration}
+
+\chapter*{Dealing with Tags}
+
+\chapter*{Handling Events}
+
+\chapter*{Messaging to Other Modules}
+
+\chapter*{Shell Modules}
+Shell Modules are called that because they are processes that are normally started from the command line shell.  These modules could be anything from an mp3 player to a database client.  They could be just about any program that can be started fromthe shell prompt.  They obviously don't have any "normal" OpenDAX functionality.  OpenDAX allows thier use by letting other modules gain access to the shell modules STDIN, STDOUT and STDERR file descriptors.  Text can be sent from other modules to these shell modules and controlled as though that text was being typed on the command line.  This allows OpenDAX to easily add functionality found in other programs and perhaps not reinvent too many wheels.
+
+
+\end{document}

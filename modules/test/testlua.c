@@ -108,7 +108,8 @@ _check_tagnames(lua_State *L)
 
 /* Adds the functions to the Lua State */
 void
-add_test_functions(lua_State *L) {
+add_test_functions(lua_State *L)
+{
     lua_pushcfunction(L, _add_random_tags);
     lua_setglobal(L, "add_random_tags");
 

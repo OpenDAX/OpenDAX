@@ -42,7 +42,6 @@ main(int argc, const char *argv[])
     pthread_t message_thread;
 	int result;
     
-    
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;

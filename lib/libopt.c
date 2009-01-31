@@ -23,6 +23,7 @@
 #include <dax/libcommon.h>
 #include <string.h>
 #include <getopt.h>
+#include <ctype.h>
 
 typedef struct OptAttr {
     char *name;
@@ -63,7 +64,8 @@ dax_init_config(char *name)
 	result += dax_add_attribute("name", "name", 'N', flags, name);
 	result += dax_add_attribute("cachesize", "cachesize", 'z', flags, "8");
 	result += dax_add_attribute("msgtimeout", "msgtimeout", 'o', flags, DEFAULT_TIMEOUT);
-	
+	result += dax_add_attribute("dummy", NULL, 'G', flags, "dumb-dumb");
+
 	flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
 	result += dax_add_attribute("config", "config", 'C', flags, NULL);
 	result += dax_add_attribute("confdir", "confdir", 'c', flags, ETC_DIR);
@@ -88,8 +90,28 @@ dax_set_luafunction(int (*f)(void *L), char *name)
     return 0;
 }
 
+/* Determine whether or not the attribute name is okay */
+static int
+_validate_name(char *name)
+{
+    int n;
+    
+    if(name != NULL) {
+        /* First character has to be a letter or '_' */
+        if( !isalpha(name[0]) && name[0] != '_' ) {
+            return ERR_ARG;
+        }
+        /* The rest of the name can be letters, numbers or '_' */
+        for(n = 1; n < strlen(name) ;n++) {
+            if( !isalpha(name[n]) && (name[n] != '_') &&  !isdigit(name[n]) ) {
+                return ERR_ARG;
+            }
+        }
+    }
+    return 0;
+}
+
 /* Check the attributes symbols, returns 0 on success or an error code */
-	
 static int
 _check_attr(char *name, char *longopt, char shortopt)
 {
@@ -97,16 +119,23 @@ _check_attr(char *name, char *longopt, char shortopt)
 	
 	this = _attr_head;
     
+	if(_validate_name(name) || _validate_name(longopt)) {
+	    return ERR_ARG;
+	}
+	
 	/* This loop checks that none of the symbols have already been used. */
     while(this != NULL) {
-    	if(!strcmp(this->name, name) ||
-    	   !strcmp(this->longopt, longopt) ||
-    		this->shortopt == shortopt) {
-    			return ERR_DUPL;
-    	}
+        if(!strcmp(this->name, name)) {
+            return ERR_DUPL;
+        }
+        if( (longopt != NULL) && (this->longopt != NULL) && (!strcmp(this->longopt, longopt))) {
+            return ERR_DUPL;
+        }
+        if(this->shortopt == shortopt) {
+            return ERR_DUPL;
+        }
     	this = this->next;
     }
-    /* TODO: Check for illegal characters */
     return 0;
 }
 
@@ -151,7 +180,7 @@ dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *def
 }
 
 /* This assigns the callback function that will be called by the 
- * configuration when the attribute given by 'shortopt' is found
+ * configuration when the attribute given by 'name' is found
  * in the command line argument or in the configuration file. */
 int
 dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value)) {
@@ -168,12 +197,29 @@ dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value)) {
 	return ERR_NOTFOUND;
 }
 
+/* TODO: Add callback for before and after the module conf script is called */
+/* TODO: Add a callback for each entry and exit point in the configuration.  I
+ * should probably do this with a single callback and some flags?  */
+
+/* This function sets the value and calls the callback function. */
+static int
+_set_attr(optattr *attr, char *value) {
+    /* Set the value and call the callback function if there is one */
+    if(attr->flags & CFG_NO_VALUE) {
+        attr->value = strdup(value);
+    }
+    if(attr->callback) {
+        attr->callback(attr->name, value);
+    }
+    return 0;
+}
+
 /* Compare the attribute list to the command line arguments
  * and sets the values appropriately */
 static inline int
 _parse_commandline(int argc, char **argv) {
 	int attr_count = 0, o_count = 0;
-	int attr_index = 0, o_index = 0, ch;
+	int attr_index = 0, o_index = 0, ch, index;
 	char *shortopts;
 	struct option *options;
 	optattr *this;
@@ -231,21 +277,25 @@ _parse_commandline(int argc, char **argv) {
 	}
 	ch = 0;
 	while(ch != -1) {
-		ch = getopt_long(argc, (char * const *)argv, shortopts, options, NULL);
-		if(ch >=0) {
-			/* TODO: Probably offload this to another function */
+		ch = getopt_long(argc, (char * const *)argv, shortopts, options, &index);
+		if(ch > 0) {
 			this = _attr_head;
 			while(this != NULL) {
 				if(this->shortopt == ch) {
-				    /* Set the value and call the callback function if there is one */
-					this->value = strdup(optarg);
-					if(this->callback) {
-					    this->callback(this->name, optarg);
-					}
+				    _set_attr(this, optarg);
 					break;
 				}
 				this = this->next;
 			}
+		} else if(ch == 0) {
+		    this = _attr_head;
+            while(this != NULL) {
+                if(!strcasecmp(this->longopt, options[index].name)) {
+                    _set_attr(this, optarg);
+                    break;
+                }
+                this = this->next;
+            }
 		}
 	}
 	return 0;
@@ -279,11 +329,7 @@ _get_lua_globals(lua_State *L, int type) {
             if(s) {
                 /* We only set the value if it has not already been set */
                 if(this->value == NULL) {
-                    this->value = strdup(s);
-                }
-                /* We always call the callback */
-                if(this->callback) {
-                    this->callback(this->name, (char *)s);
+                    _set_attr(this, (char *)s);
                 }
             }
             lua_pop(L, 1);
@@ -363,7 +409,6 @@ _set_defaults(void)
 		
     this = _attr_head;
 
-    /* This loop checks that none of the symbols have already been used. */
     while(this != NULL) {
         if(this->value == NULL) {
             if(this->defvalue != NULL) {
@@ -396,6 +441,10 @@ _print_config(void)
     }
 }
 
+/* This verifies that the configuratio that we have is valid and won't
+ * get us in too much trouble.  It should also store any information that
+ * the libary would need so that the user can free the configuration at
+ * any time. */
 static int
 _verify_config(void)
 {

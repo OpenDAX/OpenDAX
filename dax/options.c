@@ -64,7 +64,7 @@ static void initconfig(void) {
 static void
 setdefaults(void)
 {
-    if(_daemonize < 0) _daemonize = 1;
+    if(_daemonize < 0) _daemonize = DEFAULT_DAEMONIZE;
     if(!_statustag) _statustag = strdup("_status");
     if(!_pidfile) _pidfile = strdup(DEFAULT_PID);
     if(!_min_buffers) _min_buffers = DEFAULT_MIN_BUFFERS;

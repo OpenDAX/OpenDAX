@@ -112,6 +112,7 @@ int cdt_create(char *name);
 unsigned int cdt_get_type(char *name);
 char *cdt_get_name(unsigned int type);
 int cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count);
+int cdt_get_size(int cdt_index);
 int serialize_datatype(int cdt_index, char **str);
 
 /*

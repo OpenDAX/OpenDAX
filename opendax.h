@@ -86,6 +86,7 @@
 #define ERR_DUPL      -12 /* Duplicate */
 #define ERR_NO_INIT   -13 /* Not Initialized */
 #define ERR_TIMEOUT   -14 /* Timeout */
+#define ERR_ILLEGAL   -15 /* Illegal Setting */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */
@@ -94,6 +95,7 @@
 #define CFG_CMDLINE			0x04 /* Command line */
 #define CFG_DAXCONF			0x08 /* opendax.conf file */
 #define CFG_MODCONF		    0x10 /* [module].conf file */
+#define CFG_NO_VALUE        0x20 /* Don't store a value, only call callback */
 
 
 /* Defines the maximum length of a tagname */

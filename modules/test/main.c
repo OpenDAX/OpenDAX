@@ -27,7 +27,14 @@
 
 #define TEST 1000
 
-int main(int argc,char *argv[]) {
+/* TODO: Tests that need to be added....
+ * Check that duplicate tags fail
+ * Check datatype functions
+ */
+
+int
+main(int argc,char *argv[])
+{
     //int tests_failed = 0;
     int n, result, flags;
     char *script;

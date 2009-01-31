@@ -93,8 +93,8 @@ _cache_hit(tag_cnode *this, dax_tag *tag)
     tag->count = this->count;
     
     /* Bubble up:
-     after is set to the node that we swap with
-     before is set to the node that will be before
+     'after' is set to the node that we swap with
+     'before' is set to the node that will be before
      us after the swap.  The special case is when our
      node will become the first one, then we move the head. */
     if(this != _cache_head) { /* Do nothing if we are already at the top */
@@ -116,6 +116,9 @@ _cache_hit(tag_cnode *this, dax_tag *tag)
     //--print_cache();
 }
 
+/* Used to check if a tag with the given handle is in the 
+ * cache.  Returns a pointer to the tag if found and
+ * returns ERR_NOTFOUND otherwise */
 int
 check_cache_handle(handle_t handle, dax_tag *tag)
 {
@@ -142,7 +145,9 @@ check_cache_handle(handle_t handle, dax_tag *tag)
     return 0;
 }
 
-
+/* Used to check if a tag with the given name is in the cache
+ * If it is found then a pointer to the tag is returned and
+ * ERR_NOTFOUND otherwise */
 int
 check_cache_name(char *name, dax_tag *tag)
 {
@@ -169,6 +174,7 @@ check_cache_name(char *name, dax_tag *tag)
     return 0;
 }
 
+/* Adds a tag to the cache */
 int
 cache_tag_add(dax_tag *tag)
 {

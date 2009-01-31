@@ -26,6 +26,11 @@
 #include <common.h>
 #include <dax/daxtypes.h>
 
+/* If set to zero the program will run in the foreground
+ * by default.  Otherwise it will go to the background */
+#ifndef DEFAULT_DAEMONIZE
+#  define DEFAULT_DAEMONIZE 0
+#endif
 
 #ifndef DEFAULT_PID
 #  define DEFAULT_PID "/var/run/opendax.pid"
