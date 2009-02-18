@@ -38,6 +38,9 @@
 #define MSG_EVNT_ADD   0x0009 /* Add an event to the taglist */
 #define MSG_EVNT_DEL   0x000A /* Delete an event */
 #define MSG_EVNT_GET   0x000B /* Get an event definition */
+#define MSG_CDT_CREATE 0x000C /* Create a Custom Datatype */
+#define MSG_CDT_ADD    0x000D /* Add a memeber to a Custom Datatype */
+#define MSG_CDT_GET    0x000E /* Get the definition of a Custom Datatype */
 /* More to come */
 
 #define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
@@ -65,6 +68,11 @@
 #define TAG_GET_NAME    0x01 /* Retrieve the tag by name */
 #define TAG_GET_HANDLE  0x02 /* Retrieve the tag by it's handle */
 
+/* Subcommands for the MSG_CDT_GET command */
+#define CDT_GET_NAME    0x01 /* Retrieve the type by name */
+#define CDT_GET_HANDLE  0x02 /* Retrieve the type by it's handle */
+
+
 /* Maximum size allowed for a single message */
 #ifndef DAX_MSGMAX
 #  define DAX_MSGMAX 4096
@@ -75,7 +83,7 @@
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
 
-/* This is a full sized message.  It's the largest message allowed to be sent in the queue */
+/* This is a full sized message.  It's the largest message allowed to be sent */
 typedef struct {
     /* Message Header Stuff.  Changes here should be reflected in the 
        MSG_HDR_SIZE definition above */

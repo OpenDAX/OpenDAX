@@ -110,6 +110,14 @@ main(int argc,char *argv[])
         printf("WriteDINTTest[%d] = %d\n", n, dummy[n]);
     }
     
+    result = dax_cdt_create("test", NULL);
+    printf("dax_cdt_create() returned %d\n", result);
+    if(!result) {
+        result = dax_cdt_add(result, "TestINT", DAX_INT, 1);
+    }
+    printf("dax_cdt_add() returned %d\n", result);
+    
+    
     
     //handle[1] = dax_tag_add("WriteBOOLTest", DAX_BOOL, 32);
     //buff[0] = 0x51; buff[1] = 0xAB;
@@ -129,45 +137,11 @@ main(int argc,char *argv[])
         }
     }*/
        
-    /* TODO: Change this to do something interesting.
-    handle[0] = dax_tag_add("WriteTest", DAX_INT, 10);
-    if( handle < 0 ) {
-        dax_log("AH SHUCKS!!!\n");
-    } else {
-        dummy[0] = 0x1234;
-        dax_write(handle[0], 2, dummy, 2);
-        dummy[0] = 0;
-        dax_read(handle[0], 2, dummy, 2);
-        printf("Okay we read back 0x%X\n", dummy[0]);
-        
-        dummy[0] = 0xAA5A;
-        test[0] = 0xF0F0;
-        dax_mask(handle[0], 2, dummy, test, 2);
-        dummy[0] = 0;
-        dax_read(handle[0], 2, dummy, 2);
-        printf("Okay we read back 0x%X\n", dummy[0]);
-        
-        handle[1] = dax_tag_add("CacheTest1", DAX_INT, 1);
-        handle[2] = dax_tag_add("CacheTest2", DAX_DINT, 2);
-        handle[3] = dax_tag_add("CacheTest3", DAX_UINT, 3);
-        handle[4] = dax_tag_add("CacheTest4", DAX_LINT, 4);
-        
-        for(n = 1; n<=4; n++) {
-            dax_tag_byhandle(handle[n], &test_tag);
-            //dax_tag_byhandle(handle[n], &test_tag);
-            printf("Tag handle 0x%X, type 0x%X, count %d\n", test_tag.handle, test_tag.type, test_tag.count);
-        }
-        for(n = 4; n>=1; n--) {
-            dax_tag_byhandle(handle[n], &test_tag);
-            printf("Tag handle 0x%X, type 0x%X, count %d\n", test_tag.handle, test_tag.type, test_tag.count);
-        }
-    }
-    */
+    
     /* TODO: Check the corner conditions of the tag reading and writing.
      * Offset, size vs. tag size etc. */
     
     
-    //add_random_tags(100);
     /* TEST TO DO
         Tag Read / Write Test
     */

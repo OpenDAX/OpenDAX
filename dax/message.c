@@ -47,7 +47,7 @@ static fd_set _fdset;
 static int _maxfd;
 
 /* This array holds the functions for each message command */
-#define NUM_COMMANDS 12
+#define NUM_COMMANDS 15
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
 /* Macro to check whether or not the command 'x' is valid */
@@ -65,6 +65,9 @@ int msg_mod_get(dax_message *msg);
 int msg_evnt_add(dax_message *msg);
 int msg_evnt_del(dax_message *msg);
 int msg_evnt_get(dax_message *msg);
+int msg_cdt_create(dax_message *msg);
+int msg_cdt_add(dax_message *msg);
+int msg_cdt_get(dax_message *msg);
 
 
 /* Generic message sending function.  If size is zero then it is assumed that an error
@@ -95,7 +98,7 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
 
 /* Sets up the local UNIX domain socket for listening. */
 static int
-msg_setup_local_socket(void)
+_msg_setup_local_socket(void)
 {
     struct sockaddr_un addr;
     int fd;
@@ -127,7 +130,7 @@ msg_setup_local_socket(void)
  * are the ipaddress and the port to listen on.  They should be
  * in host order (will be converted within this function) */
 static int
-msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
+_msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
 {
     struct sockaddr_in addr;
     int fd;
@@ -175,8 +178,8 @@ msg_setup(void)
     /* TODO: These should be called based on configuration options
      * for now we'll just listen on the local domain socket and bind
      * to all interfaces on the default port. */
-    msg_setup_local_socket();
-    msg_setup_remote_socket(INADDR_ANY, DEFAULT_PORT);
+    _msg_setup_local_socket();
+    _msg_setup_remote_socket(INADDR_ANY, DEFAULT_PORT);
     
     buff_initialize(); /* This initializes the communications buffers */
     
@@ -195,6 +198,9 @@ msg_setup(void)
     cmd_arr[MSG_EVNT_ADD]   = &msg_evnt_add;
     cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
     cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
+    cmd_arr[MSG_CDT_CREATE] = &msg_cdt_create;
+    cmd_arr[MSG_CDT_ADD]    = &msg_cdt_add;
+    cmd_arr[MSG_CDT_GET]    = &msg_cdt_get;
     
     return 0;
 }
@@ -310,7 +316,7 @@ msg_dispatcher(int fd, unsigned char *buff)
     //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
     
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
-    message.fd = fd;    
+    message.fd = fd;
     memcpy(message.data, &buff[8], message.size);
     buff_free(fd);
     /* Now call the function to deal with it */
@@ -415,8 +421,7 @@ msg_tag_del(dax_message *msg)
 }
 
 
-/* TODO: Need to handle cases where the name isn't found and where the 
-   index requested isn't within bounds */
+
 int
 msg_tag_get(dax_message *msg)
 {
@@ -429,8 +434,8 @@ msg_tag_get(dax_message *msg)
         result = tag_get_index(index, &tag); /* get the tag */
         xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for handle 0x%X", msg->fd, index);
     } else { /* A name was passed */
-        ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Just to avoid trouble */
-        /* TODO: This is just a waste.  It should be redone */
+        ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Add a NULL to avoid trouble */
+        /* Get the tag by it's name */
         result = tag_get_name((char *)&msg->data[1], &tag);
         xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
     }
@@ -578,6 +583,55 @@ msg_evnt_del(dax_message *msg)
 
 int
 msg_evnt_get(dax_message *msg)
+{
+    return 0;
+}
+
+
+int
+msg_cdt_create(dax_message *msg)
+{
+    int result;
+    unsigned int type;
+    
+    type = cdt_create(msg->data, &result);
+    xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message with name '%s'", msg->data);
+    
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_CDT_CREATE, &result, 0, RESPONSE);    
+    } else {
+        _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(unsigned int), RESPONSE);
+    }
+    return 0;
+}
+
+int
+msg_cdt_add(dax_message *msg)
+{
+    int result;
+    int32_t index;
+    u_int32_t type;
+    u_int32_t count;
+    
+    index = *((int32_t *)&msg->data[0]);
+    type = *((u_int32_t *)&msg->data[4]);
+    count = *((u_int32_t *)&msg->data[8]);
+    
+    result = cdt_add_member(index, &msg->data[12], type, count);
+    
+    xlog(LOG_MSG | LOG_OBSCURE, "CDT Add Member to '%s' Message for '%s' from module %d, type 0x%X, count %d", 
+         cdt_get_name(CDT_TO_TYPE(index)), &msg->data[12], msg->fd, type, count);
+    
+    if(result >= 0) {
+        _message_send(msg->fd, MSG_CDT_ADD, &result, sizeof(int), RESPONSE);
+    } else {
+        _message_send(msg->fd, MSG_CDT_ADD, &result, sizeof(int), ERROR);
+    }
+    return 0;
+}
+
+int
+msg_cdt_get(dax_message *msg)
 {
     return 0;
 }

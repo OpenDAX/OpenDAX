@@ -108,11 +108,11 @@ int tag_write(handle_t handle, int offset, void *data, size_t size);
 int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size);
 
 /* Custom DataType functions */
-int cdt_create(char *name);
+unsigned int cdt_create(char *name, int *error);
 unsigned int cdt_get_type(char *name);
 char *cdt_get_name(unsigned int type);
 int cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count);
-int cdt_get_size(int cdt_index);
+int type_size(unsigned int type);
 int serialize_datatype(int cdt_index, char **str);
 
 /*

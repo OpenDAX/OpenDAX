@@ -438,13 +438,13 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
  
 /* The following three functions are the core of the data handling
  * system in Dax.  They are the raw reading and writing functions.
- * handle is the handle of the tag as returned by the dax_tag_add()
- * function, offset is the byte offset into the data area of the tag
- * data is a pointer to a data area where the data will be written
- * and size is the number of bytes to read. If data isn't allocated
+ * 'handle' is the handle of the tag as returned by the dax_tag_add()
+ * function, 'offset' is the byte offset into the data area of the tag
+ * 'data' is a pointer to a data area where the data will be written
+ * and 'size' is the number of bytes to read. If data isn't allocated
  * then bad things will happen.  The data will come out of here exactly
  * like it appears in the server.  It is up to the module to convert
- * the data to the modules number format. */
+ * the data to the module's number format. */
 int
 dax_read(handle_t handle, int offset, void *data, size_t size)
 {
@@ -552,7 +552,9 @@ dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size)
 /* Adds an event for the given tag.  The count is how many of those
    tags the event should effect. */
 /* TODO: The count is not actually implemented yet. */
-int dax_event_add(char *tagname, int count) {
+int
+dax_event_add(char *tagname, int count)
+{
     dax_tag tag;
     dax_event_message msg;
     int result, test;
@@ -579,10 +581,76 @@ int dax_event_add(char *tagname, int count) {
     return result;
 }
 
-int dax_event_del(int id) {
+int
+dax_event_del(int id)
+{
     return 0;
 }
 
-int dax_event_get(int id) {
+int
+dax_event_get(int id)
+{
     return 0;
 }
+
+/* Creates an empty Custom Datatype with 'name' if
+ * 'error' is non NULL then results are put there. */
+unsigned int
+dax_cdt_create(char *name, int *error)
+{
+    int result, test, size;
+    
+    size = strlen(name);
+    if(size > DAX_TAGNAME_SIZE) return ERR_2BIG;
+    
+    if(_message_send( MSG_CDT_CREATE, name, size + 1)) {
+        if(error) *error = ERR_MSG_SEND;
+        return 0;
+    } else {
+        test = _message_recv(MSG_CDT_CREATE, &result, &size, 1);
+        if(test) {
+            if(error) *error = test;
+            return 0;
+        }
+    }
+    if(error) *error = 0;
+    return result;
+}
+
+/* Adds a member to the Custom Datatype, 'index' is the index
+ * of the datatype that was returned when created.  'name' is the
+ * name of the member, 'type' is the datatype of the new member.
+ * 'count' is the array size of the member. */
+int
+dax_cdt_add(unsigned int cdt_type, char *name, unsigned int mem_type, unsigned int count)
+{
+    int size, result;
+    char buff[DAX_TAGNAME_SIZE + 8 + 1];
+    
+    if(count == 0) return ERR_ARG;
+    if(name) {
+        if((size = strlen(name)) > DAX_TAGNAME_SIZE) {
+            return ERR_2BIG;
+        }
+        /* Add the 12 bytes for arguments and one byte for NULL */
+        size += 13;
+        /* TODO Need to do some more error checking here */
+        *((u_int32_t *)&buff[0]) = mtos_dint(cdt_type);
+        *((u_int32_t *)&buff[4]) = mtos_udint(mem_type);
+        *((u_int32_t *)&buff[8]) = mtos_udint(count);
+        
+        strcpy(&buff[12], name);
+    } else {
+        return ERR_TAG_BAD;
+    }
+    
+    result = _message_send( MSG_CDT_ADD, buff, size);
+    if(result) { 
+        return ERR_MSG_SEND;
+    }
+    
+    size = 4; /* we just need the result */
+    result = _message_recv(MSG_CDT_ADD, buff, &size, 1);
+    return result;
+}
+

@@ -87,6 +87,7 @@
 #define ERR_NO_INIT   -13 /* Not Initialized */
 #define ERR_TIMEOUT   -14 /* Timeout */
 #define ERR_ILLEGAL   -15 /* Illegal Setting */
+#define ERR_INUSE     -16 /* Object is in use */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */
@@ -221,5 +222,11 @@ int dax_mask_tag(handle_t handle, int index, void *data, void *mask, int count, 
 int dax_event_add(char *tag, int count);
 int dax_event_del(int id);
 int dax_event_get(int id);
+
+/* Custom Datatype Functions */
+unsigned int dax_cdt_create(char *name, int *error);
+int dax_cdt_add(unsigned int cdt_type, char *name, unsigned int mem_type, unsigned int count);
+//int dax_cdt_get(unsigned int type);
+
 
 #endif /* !__OPENDAX_H */
