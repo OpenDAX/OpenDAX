@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
 
- * This file contains libdax functions that need to send messages to the server
+ * This file contains the libdax functions that send messages to the server
  */
  
 #include <libdax.h>
@@ -33,6 +33,9 @@ static int _sfd;   /* Server's File Descriptor */
 static int _afd;   /* Asynchronous File Descriptor */
 static unsigned int _reformat; /* Flags to show how to reformat the incoming data */
 
+/* These are the generic message functions.  They simply send the message of
+ * the type given by command, attach the payload.  The payloads size should be
+ * given in bytes */
 static int
 _message_send(int command, void *payload, size_t size)
 {
@@ -299,7 +302,7 @@ dax_mod_register(char *name)
 int
 dax_mod_unregister(void)
 {
-    int len, result;
+    int len, result = -1;
     
     
     if(_sfd) {
@@ -318,8 +321,8 @@ dax_mod_unregister(void)
 
 /* Sends a message to dax to add a tag.  The payload is basically the
    tagname without the handle. */
-handle_t
-dax_tag_add(char *name, unsigned int type, unsigned int count)
+tag_idx_t
+dax_tag_add(char *name, type_t type, unsigned int count)
 {
     int size, result;
     dax_tag tag;
@@ -350,7 +353,7 @@ dax_tag_add(char *name, unsigned int type, unsigned int count)
     result = _message_recv(MSG_TAG_ADD, buff, &size, 1);
     if(result == 0) {
         strcpy(tag.name, name);
-        tag.handle = *(int32_t *)buff;
+        tag.idx = *(int32_t *)buff;
         tag.type = type;
         tag.count = count;
         cache_tag_add(&tag);
@@ -393,7 +396,7 @@ dax_tag_byname(char *name, dax_tag *tag)
             dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
             return ERR_MSG_RECV;
         }
-        tag->handle = stom_dint( *((int *)&buff[0]) );
+        tag->idx = stom_dint( *((int *)&buff[0]) );
         tag->type = stom_udint(*((u_int32_t *)&buff[4]));
         tag->count = stom_udint(*((u_int32_t *)&buff[8]));
         buff[size - 1] = '\0'; /* Just to make sure */
@@ -405,15 +408,15 @@ dax_tag_byname(char *name, dax_tag *tag)
 
 /* Retrieves the tag by handle.  */
 int
-dax_tag_byhandle(handle_t handle, dax_tag *tag)
+dax_tag_byindex(tag_idx_t handle, dax_tag *tag)
 {
     int result, size;
     char buff[DAX_TAGNAME_SIZE + 13];
     
-    if(check_cache_handle(handle, tag)) {
-        buff[0] = TAG_GET_HANDLE;
-        *((handle_t *)&buff[1]) = handle;
-        result = _message_send(MSG_TAG_GET, buff, sizeof(handle_t) + 1);
+    if(check_cache_index(handle, tag)) {
+        buff[0] = TAG_GET_INDEX;
+        *((tag_idx_t *)&buff[1]) = handle;
+        result = _message_send(MSG_TAG_GET, buff, sizeof(tag_idx_t) + 1);
         if(result) {
             dax_error("Can't send MSG_TAG_GET message");
             return result;
@@ -425,7 +428,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
             //dax_error("Unable to retrieve tag for handle %d", handle);
             return result;
         }
-        tag->handle = stom_dint(*((int32_t *)&buff[0]));
+        tag->idx = stom_dint(*((int32_t *)&buff[0]));
         tag->type = stom_dint(*((int32_t *)&buff[4]));
         tag->count = stom_dint(*((int32_t *)&buff[8]));
         buff[DAX_TAGNAME_SIZE + 12] = '\0'; /* Just to be safe */
@@ -446,7 +449,7 @@ dax_tag_byhandle(handle_t handle, dax_tag *tag)
  * like it appears in the server.  It is up to the module to convert
  * the data to the module's number format. */
 int
-dax_read(handle_t handle, int offset, void *data, size_t size)
+dax_read(tag_idx_t idx, int offset, void *data, size_t size)
 {
     int n, count, m_size, sendsize;
     int result = 0;
@@ -462,7 +465,7 @@ dax_read(handle_t handle, int offset, void *data, size_t size)
         } else {
             sendsize = m_size;
         }
-        buff[0] = mtos_dint(handle);
+        buff[0] = mtos_dint(idx);
         buff[1] = mtos_dint(offset + n * m_size);
         buff[2] = mtos_dint(sendsize);
         
@@ -485,7 +488,7 @@ dax_read(handle_t handle, int offset, void *data, size_t size)
  * offset into the data area of the tag.
  */
 int
-dax_write(handle_t handle, int offset, void *data, size_t size)
+dax_write(tag_idx_t idx, int offset, void *data, size_t size)
 {
     size_t n, count, m_size, sendsize;
     int result;
@@ -494,7 +497,7 @@ dax_write(handle_t handle, int offset, void *data, size_t size)
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle and
        an int, because we'll send the handle and the offset.*/
-    m_size = MSG_DATA_SIZE - sizeof(handle_t) - sizeof(int);
+    m_size = MSG_DATA_SIZE - sizeof(tag_idx_t) - sizeof(int);
     /* count is the number of messages that we will have to send to transport this data. */
     count = ( (size - 1) / m_size ) + 1;
     for(n = 0; n < count; n++) {
@@ -504,11 +507,11 @@ dax_write(handle_t handle, int offset, void *data, size_t size)
             sendsize = m_size;
         }
         /* Write the data to the message buffer */
-        *((handle_t *)&buff[0]) = mtos_dint(handle);
+        *((tag_idx_t *)&buff[0]) = mtos_dint(idx);
         *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
         memcpy(&buff[8], data + (m_size * n), sendsize);
         
-        result = _message_send(MSG_TAG_WRITE, buff, sendsize + sizeof(handle_t) + sizeof(int));
+        result = _message_send(MSG_TAG_WRITE, buff, sendsize + sizeof(tag_idx_t) + sizeof(int));
         if(result) return result;
         result = _message_recv(MSG_TAG_WRITE, buff, 0, 1);
         if(result) return result;
@@ -519,7 +522,7 @@ dax_write(handle_t handle, int offset, void *data, size_t size)
 /* Same as the dax_write() function except that only bits that are in *mask
  * will be changed. */
 int
-dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size)
+dax_mask(tag_idx_t idx, int offset, void *data, void *mask, size_t size)
 {
     size_t n, count, m_size, sendsize;
     char buff[MSG_DATA_SIZE];
@@ -527,7 +530,7 @@ dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size)
     
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle.*/
-	m_size = (MSG_DATA_SIZE - sizeof(handle_t) - sizeof(int)) / 2;
+	m_size = (MSG_DATA_SIZE - sizeof(tag_idx_t) - sizeof(int)) / 2;
     count=((size - 1) / m_size) + 1;
     for(n = 0; n < count; n++) {
         if(n == (count - 1)) { /* Last Packet */
@@ -536,12 +539,12 @@ dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size)
             sendsize = m_size;
         }
         /* Write the data to the message buffer */
-        *((handle_t *)&buff[0]) = mtos_dint(handle);
+        *((tag_idx_t *)&buff[0]) = mtos_dint(idx);
         *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
         memcpy(&buff[8], data + (m_size * n), sendsize);
         memcpy(&buff[8 + sendsize], mask + (m_size * n), sendsize);
         
-        result = _message_send(MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(handle_t) + sizeof(int));
+        result = _message_send(MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(tag_idx_t) + sizeof(int));
         if(result) return result;
         result = _message_recv(MSG_TAG_MWRITE, buff, 0, 1);
         if(result) return result;
@@ -555,6 +558,7 @@ dax_mask(handle_t handle, int offset, void *data, void *mask, size_t size)
 int
 dax_event_add(char *tagname, int count)
 {
+    /*
     dax_tag tag;
     dax_event_message msg;
     int result, test;
@@ -565,7 +569,7 @@ dax_event_add(char *tagname, int count)
         return result;
     }
     
-    msg.handle = tag.handle;
+    msg.idx = tag.idx;
     if(tag.type == DAX_BOOL) {
         msg.size = tag.count;
     } else {
@@ -579,6 +583,8 @@ dax_event_add(char *tagname, int count)
         if(test) return test;
     }       
     return result;
+    */
+    return 0;
 }
 
 int
@@ -594,8 +600,12 @@ dax_event_get(int id)
 }
 
 /* Creates an empty Custom Datatype with 'name' if
- * 'error' is non NULL then results are put there. */
-unsigned int
+ * 'error' is non NULL then results are put there. 
+ * Returns zero on error and the datatype id if
+ * successfull.
+ * 
+ * The Payload is nothing more than the name.  */
+type_t
 dax_cdt_create(char *name, int *error)
 {
     int result, test, size;
@@ -622,7 +632,7 @@ dax_cdt_create(char *name, int *error)
  * name of the member, 'type' is the datatype of the new member.
  * 'count' is the array size of the member. */
 int
-dax_cdt_add(unsigned int cdt_type, char *name, unsigned int mem_type, unsigned int count)
+dax_cdt_add(type_t cdt_type, char *name, type_t mem_type, unsigned int count)
 {
     int size, result;
     char buff[DAX_TAGNAME_SIZE + 8 + 1];
@@ -635,7 +645,7 @@ dax_cdt_add(unsigned int cdt_type, char *name, unsigned int mem_type, unsigned i
         /* Add the 12 bytes for arguments and one byte for NULL */
         size += 13;
         /* TODO Need to do some more error checking here */
-        *((u_int32_t *)&buff[0]) = mtos_dint(cdt_type);
+        *((u_int32_t *)&buff[0]) = mtos_udint(cdt_type);
         *((u_int32_t *)&buff[4]) = mtos_udint(mem_type);
         *((u_int32_t *)&buff[8]) = mtos_udint(count);
         
@@ -654,3 +664,47 @@ dax_cdt_add(unsigned int cdt_type, char *name, unsigned int mem_type, unsigned i
     return result;
 }
 
+/* This function retrieves the serialized string definition
+ * from the server and puts the definition into list of
+ * datatypes so that the rest of the library can access them.
+ * Either type or name should be passed.  If name is passed
+ * we will retrieve the cdt from the server by name and by
+ * the type if NULL is passed for name.
+ * 
+ * If this function returns true then it can be assumed that
+ * the type is in the cache and can then be retrieved there.
+ */
+int
+dax_cdt_get(type_t cdt_type, char *name)
+{
+    int result, size;
+    char buff[MSG_DATA_SIZE];
+    type_t type;
+    
+    size = sizeof(type_t);
+    if(name != NULL) {
+        buff[0] = CDT_GET_NAME;
+        size = strlen(name);
+        memcpy(&(buff[1]), name, size); /* Pass the cdt name in this subcommand */
+        size++; /* Add one for the sub command */
+    } else {
+        buff[0] = CDT_GET_TYPE;  /* Put the subcommand in the first byte */
+        *((u_int32_t *)&buff[1]) = mtos_udint(cdt_type); /* type in the next four */
+        size = 5;
+    }
+    
+    result = _message_send(MSG_CDT_GET, buff, size);
+    
+    if(result) { 
+        return ERR_MSG_SEND;
+    }
+    
+    size = MSG_DATA_SIZE;
+    result = _message_recv(MSG_CDT_GET, buff, &size, 1);
+    if(result == 0) {
+        type = stom_udint(*((type_t *)buff));
+        //--printf("0x%X : %s\n", type, &(buff[4]));
+        result = add_cdt_to_cache(type, &(buff[4]));
+    }
+    return result;
+}

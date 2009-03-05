@@ -43,7 +43,7 @@ static int dsize = 8;
 
 /* This is just an internal function for the db_read* functions to retrieve the
    starting handle and the count (in bits) of the request */
-static int _db_read_getparams(handle_t *handle, size_t *count, char bitsorbytes) {
+static int _db_read_getparams(tag_idx_t *handle, size_t *count, char bitsorbytes) {
     dax_tag tag;
     char tag_given = 0;
     char *tok;
@@ -62,7 +62,7 @@ static int _db_read_getparams(handle_t *handle, size_t *count, char bitsorbytes)
         }
         
         tag_given = 1;
-        *handle = tag.handle;
+        *handle = tag.idx;
     }
     /* Get the count next.  If not count then  the count will be either the size
      of the tag if the tag was given.  If not then we just make it one byte. */
@@ -83,7 +83,7 @@ static int _db_read_getparams(handle_t *handle, size_t *count, char bitsorbytes)
 
 /* Abstracts the db_read_bits() and db_read_bit() dax library function calls */
 int db_read_bit(void) {
-    handle_t handle;
+    tag_idx_t handle;
     void *buff;
     size_t count, n;
     
@@ -121,7 +121,7 @@ int db_read_bit(void) {
 
 /* Abstracts the db_read_bytes() dax library function call */
 int db_read(void) {
-    handle_t handle;
+    tag_idx_t handle;
     void *buff;
     size_t count, n;
 

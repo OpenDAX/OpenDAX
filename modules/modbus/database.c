@@ -23,7 +23,7 @@
 //static u_int16_t *datatable;
 static unsigned int tablesize;
 static pthread_mutex_t datamutex;
-static handle_t dt_handle;
+static tag_idx_t dt_handle;
 
 /* Allocate and Initialize the datatable */
 int
@@ -76,7 +76,7 @@ dt_add_tag(char *name, int index, int function, int length)
 
 
 int
-dt_getwords(handle_t handle, int index, void *data, int length)
+dt_getwords(tag_idx_t handle, int index, void *data, int length)
 {
     int result;
     if(handle) {
@@ -90,7 +90,7 @@ dt_getwords(handle_t handle, int index, void *data, int length)
 }
 
 int
-dt_setwords(handle_t handle, int index, void *data, int length)
+dt_setwords(tag_idx_t handle, int index, void *data, int length)
 {
     int result;
     if(handle) {
@@ -105,7 +105,7 @@ dt_setwords(handle_t handle, int index, void *data, int length)
 
 
 int
-dt_getbits(handle_t handle, int index, void *data, int length)
+dt_getbits(tag_idx_t handle, int index, void *data, int length)
 {
     int result;
     if(handle) {
@@ -119,7 +119,7 @@ dt_getbits(handle_t handle, int index, void *data, int length)
 }
 
 int
-dt_setbits(handle_t handle, int index, void *data, int length)
+dt_setbits(tag_idx_t handle, int index, void *data, int length)
 {
     int result;
     if(handle) {

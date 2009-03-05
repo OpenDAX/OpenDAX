@@ -76,10 +76,28 @@ dax_lreal_t stom_lreal(dax_lreal_t);
 
 /* These functions handle the tag cache */
 int init_tag_cache(void);
-int check_cache_handle(handle_t, dax_tag *);
+int check_cache_index(tag_idx_t, dax_tag *);
 int check_cache_name(char *, dax_tag *);
 int cache_tag_add(dax_tag *);
 
 int opt_get_msgtimeout(void);
+
+/* This is the custom datatype member definition.  The 
+ * members are represented as a linked list */
+typedef struct CDT_Member {
+    char *name;
+    unsigned int type;
+    size_t count;
+    struct CDT_Member *next;
+} cdt_member;
+
+/* This is the structure that represents the container for each
+ * datatype. */
+typedef struct {
+    char *name;
+    cdt_member *members;
+} datatype;
+
+int add_cdt_to_cache(type_t type, char *typedesc);
 
 #endif /* !__LIBDAX_H */

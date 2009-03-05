@@ -74,11 +74,11 @@ int main (int argc, const char * argv[]) {
         
         mc = config.ports[n].commands;
         while(mc != NULL) {
-            mc->handle = dt_add_tag(mc->tagname, mc->index, mc->function, mc->length);
+            mc->idx = dt_add_tag(mc->tagname, mc->index, mc->function, mc->length);
             /* TODO: for now if we can't add the tag we'll keep the handle at zero.  The database
              * routines won't read or write if the handle is zero.  We should do more */
-            if(mc->handle < 0) {
-                mc->handle = 0;
+            if(mc->idx < 0) {
+                mc->idx = 0;
             }
             mc = mc->next; /* get next command from the linked list */
         }

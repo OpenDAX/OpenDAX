@@ -16,7 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
  * This header contains all of the type definitions that are common between the
- * opendax server and the library.  It's mostly messaging definitions.
+ * opendax server and the library.  For definitions that are private to the server
+ * see daxtypes.h.  For definitions that are private to the library see libdax.h.
  */
 
 #ifndef __LIBCOMMON_H
@@ -66,12 +67,16 @@
 
 /* Subcommands for the MSG_TAG_GET command */
 #define TAG_GET_NAME    0x01 /* Retrieve the tag by name */
-#define TAG_GET_HANDLE  0x02 /* Retrieve the tag by it's handle */
+#define TAG_GET_INDEX   0x02 /* Retrieve the tag by it's index */
 
 /* Subcommands for the MSG_CDT_GET command */
 #define CDT_GET_NAME    0x01 /* Retrieve the type by name */
-#define CDT_GET_HANDLE  0x02 /* Retrieve the type by it's handle */
+#define CDT_GET_TYPE    0x02 /* Retrieve the type by it's type */
 
+/* Some Macros for manipulating CDT types */
+#define IS_CUSTOM(TYPE) (TYPE & DAX_CUSTOM)
+#define CDT_TO_INDEX(TYPE) (TYPE & ~DAX_CUSTOM)
+#define CDT_TO_TYPE(INDEX) (INDEX | DAX_CUSTOM)
 
 /* Maximum size allowed for a single message */
 #ifndef DAX_MSGMAX
@@ -81,7 +86,7 @@
 /* This defines the size of the message minus the actual data */
 #define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
-#define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(handle_t))
+#define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(tag_idx_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent */
 typedef struct {
@@ -94,39 +99,5 @@ typedef struct {
     /* The following stuff isn't in the socket message */
     int fd;             /* We'll use the fd to identify the module*/
 } dax_message;
-
-/* This datatype can be copied into the data[] area of the main dax_message when
- the first part of the message is a tag hangle. */
-
-typedef struct {
-    handle_t handle;
-    char data[MSG_TAG_DATA_SIZE];
-} dax_tag_message;
-
-typedef struct {
-    handle_t handle;
-    size_t size;
-} dax_event_message;
-
-/* These are the custom datatype definitions. */
-
-/* This is the custom datatype member definition.  The 
- * members are represented as a linked list */
-typedef struct CDT_Member {
-    char *name;
-    unsigned int type;
-    size_t count;
-    struct CDT_Member *next;
-} cdt_member;
-
-/* This is the structure that represents the container for each
- * datatype. */
-typedef struct {
-    char *name;
-    unsigned int refcount; /* Number of tags of this type */
-    cdt_member *members;
-} datatype;
-
-
 
 #endif /* ! __LIBCOMMON_H */

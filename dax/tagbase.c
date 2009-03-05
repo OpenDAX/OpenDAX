@@ -61,45 +61,51 @@ static unsigned int _datatype_size;
 /* Private function definitions */
 
 /* checks whether type is a valid datatype */
-/* TODO: Should this return 0 on success instead of 1? */
 static int
-_checktype(unsigned int type)
+_checktype(type_t type)
 {
+    int index;
+    
     if(type & DAX_BOOL)
-        return 1;
+        return 0;
     if(type & DAX_BYTE)
-        return 1;
+        return 0;
     if(type & DAX_SINT)
-        return 1;
+        return 0;
     if(type & DAX_WORD)
-        return 1;
+        return 0;
     if(type & DAX_INT)
-        return 1;
+        return 0;
     if(type & DAX_UINT)
-        return 1;
+        return 0;
     if(type & DAX_DWORD)
-        return 1;
+        return 0;
     if(type & DAX_DINT)
-        return 1;
+        return 0;
     if(type & DAX_UDINT)
-        return 1;
+        return 0;
     if(type & DAX_TIME)
-        return 1;
+        return 0;
     if(type & DAX_REAL)
-        return 1;
+        return 0;
     if(type & DAX_LWORD)
-        return 1;
+        return 0;
     if(type & DAX_LINT)
-        return 1;
+        return 0;
     if(type & DAX_ULINT)
-        return 1;
+        return 0;
     if(type & DAX_LREAL)
-        return 1;
+        return 0;
     /* NOTE: This will only work as long as we don't allow CDT's to be deleted */
-    if(CDT_TO_INDEX(type) >= 0 && CDT_TO_INDEX(type) < _datatype_index) {
-        return 1;
+    index = CDT_TO_INDEX(type);
+    if( index >= 0 && index < _datatype_index) {
+        if( _datatypes[index].flags & CDT_FLAGS_FINAL ) {
+            return 0;
+        } else {
+            return ERR_INUSE;
+        }
     }
-    return 0;
+    return ERR_NOTFOUND;
 }
 
 /* Determine the size of the tag in bytes.  It'll
@@ -107,12 +113,12 @@ _checktype(unsigned int type)
  This will also return 0 when the tag has been deleted
  which is designated by zero type and zero count */
 static inline size_t
-_get_tag_size(handle_t h)
+_get_tag_size(tag_idx_t idx)
 {
-    if(_db[h].type == DAX_BOOL)
-        return _db[h].count / 8 + 1;
+    if(_db[idx].type == DAX_BOOL)
+        return _db[idx].count / 8 + 1;
     else
-        return type_size(_db[h].type)  * _db[h].count;
+        return type_size(_db[idx].type)  * _db[idx].count;
 }
 
 /* Determine whether or not the tag name is okay */
@@ -145,7 +151,7 @@ _get_by_name(char *name)
     int i;
     for(i = 0; i < _tagcount; i++) {
         if(!strcmp(name, _index[i].name))
-            return _index[i].handle;
+            return _index[i].tag_idx;
     }
     return ERR_NOTFOUND;
 }
@@ -154,13 +160,13 @@ _get_by_name(char *name)
  * custom data type.  It assumes that the type is valid, if
  * the type is not valid, bad things will happen */
 static inline void
-_cdt_inc_refcount(unsigned int type) {
+_cdt_inc_refcount(type_t type) {
     _datatypes[CDT_TO_INDEX(type)].refcount++;
 }
 
 /* This funtion decrements the reference counter */
 static inline void
-_cdt_dec_refcount(unsigned int type) {
+_cdt_dec_refcount(type_t type) {
     if(_datatypes[CDT_TO_INDEX(type)].refcount != 0) {
         _datatypes[CDT_TO_INDEX(type)].refcount--;
     }
@@ -218,7 +224,7 @@ _add_index(char *name, int index)
         }
     }
     /* Assign pointer to database node in the index */
-    _index[n].handle = index;
+    _index[n].tag_idx = index;
     /* The name pointer in the __index and the __db point to the same string */
     _index[n].name = temp;
     _db[index].name = temp;
@@ -230,11 +236,9 @@ _add_index(char *name, int index)
 void
 initialize_tagbase(void)
 {
-    //int result;
-    unsigned int type;
-    //char *str;
-    //int cdt1,cdt2,cdt3;
-
+    type_t type;
+    int result;
+    
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!_db) {
         xfatal("Unable to allocate the database");
@@ -250,8 +254,8 @@ initialize_tagbase(void)
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
 
     /* Create the _status tag at handle zero */
-    if(tag_add("_status", DAX_DWORD, STATUS_SIZE)) {
-        xfatal("_status not created properly");
+    if( (result = tag_add("_status", DAX_DWORD, STATUS_SIZE)) ) {
+        xfatal("_status not created properly: Error %d", result);
     }
 
     /* Allocate the datatype array and set the initial counters */
@@ -295,16 +299,18 @@ initialize_tagbase(void)
 
 
 /* This adds a tag to the database. */
-handle_t
-tag_add(char *name, unsigned int type, unsigned int count)
+tag_idx_t
+tag_add(char *name, type_t type, unsigned int count)
 {
     int n;
     void *newdata;
     unsigned int size;
+    int result;
+    
     if(count == 0)
         return ERR_ARG;
 
-    //--printf("tag_add() called with name = %s, type = %d, count = %d\n", name, type, count);
+    printf("tag_add() called with name = %s, type = %d, count = %d\n", name, type, count);
     if(_tagcount >= _dbsize) {
         if(_database_grow()) {
             xerror("Failure to increae database size");
@@ -313,10 +319,10 @@ tag_add(char *name, unsigned int type, unsigned int count)
             xlog(LOG_MINOR, "Database increased to %d items", _dbsize);
         }
     }
-
-    if(!_checktype(type)) {
+    result = _checktype(type);
+    if( result ) {
         xerror("Unknown datatype %x", type);
-        return ERR_ARG; /* is the datatype valid */
+        return result; /* is the datatype valid */
     }
     if(_validate_name(name)) {
         xerror("%s is not a valid tag name", name);
@@ -403,7 +409,7 @@ tag_get_name(char *name, dax_tag *tag)
     } else {
         //handle = __index[i].handle;
         //handle = i; //__index[i].handle;
-        tag->handle = i;
+        tag->idx = i;
         tag->type = _db[i].type;
         tag->count = _db[i].count;
         strcpy(tag->name, _db[i].name);
@@ -420,7 +426,7 @@ tag_get_index(int index, dax_tag *tag)
     if(index < 0 || index >= _tagcount) {
         return ERR_ARG;
     } else {
-        tag->handle = index;
+        tag->idx = index;
         tag->type = _db[index].type;
         tag->count = _db[index].count;
         strcpy(tag->name, _db[index].name);
@@ -436,55 +442,55 @@ tag_get_index(int index, dax_tag *tag)
  * return 0 on success and some negative number on failure.
  */
 int
-tag_read(handle_t handle, int offset, void *data, size_t size)
+tag_read(tag_idx_t idx, int offset, void *data, size_t size)
 {
     /* Bounds check handle */
-    if(handle < 0 || handle >= _tagcount) {
+    if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
     }
     /* Bounds check size */
-    if( (offset + size) > _get_tag_size(handle)) {
+    if( (offset + size) > _get_tag_size(idx)) {
         return ERR_2BIG;
     }
     /* Copy the data into the right place. */
-    memcpy(data, &(_db[handle].data[offset]), size);
+    memcpy(data, &(_db[idx].data[offset]), size);
     return 0;
 }
 
 /* This function writes data to the _db just like the above function reads it */
 int
-tag_write(handle_t handle, int offset, void *data, size_t size)
+tag_write(tag_idx_t idx, int offset, void *data, size_t size)
 {
     /* Bounds check handle */
-    if(handle < 0 || handle >= _tagcount) {
+    if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
     }
     /* Bounds check size */
-    if( (offset + size) > _get_tag_size(handle)) {
+    if( (offset + size) > _get_tag_size(idx)) {
         return ERR_2BIG;
     }
     /* Copy the data into the right place. */
-    memcpy(&(_db[handle].data[offset]), data, size);
+    memcpy(&(_db[idx].data[offset]), data, size);
     return 0;
 }
 
 /* Writes the data to the tagbase but only if the corresponding mask bit is set */
 int
-tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size)
+tag_mask_write(tag_idx_t idx, int offset, void *data, void *mask, size_t size)
 {
     char *db, *newdata, *newmask;
     int n;
 
     /* Bounds check handle */
-    if(handle < 0 || handle >= _tagcount) {
+    if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
     }
     /* Bounds check size */
-    if( (offset + size) > _get_tag_size(handle)) {
+    if( (offset + size) > _get_tag_size(idx)) {
         return ERR_2BIG;
     }
     /* Just to make it easier */
-    db = &_db[handle].data[offset];
+    db = &_db[idx].data[offset];
     newdata = (char *)data;
     newmask = (char *)mask;
 
@@ -544,7 +550,7 @@ cdt_create(char *name, int *error)
 
 /* Returns the type of the datatype with given name
  * If the datatype isn't found it returns 0 */
-unsigned int
+type_t
 cdt_get_type(char *name)
 {
     int n;
@@ -591,10 +597,10 @@ cdt_get_type(char *name)
 /* Returns a pointer to the name of the datatype given
  * by 'type'.  Returns NULL on failure */
 char *
-cdt_get_name(unsigned int type)
+cdt_get_name(type_t type)
 {
     int index;
-
+    
     if(IS_CUSTOM(type)) {
         index = CDT_TO_INDEX(type);
         if(index >= 0 && index < _datatype_index) {
@@ -647,7 +653,8 @@ cdt_get_name(unsigned int type)
  * function assumes that only custom datatypes that really exist
  * will be passed.  If not then bad things will happen */
 static int
-_cdt_does_contain(unsigned int needle, unsigned int haystack) {
+_cdt_does_contain(unsigned int needle, unsigned int haystack)
+{
     cdt_member *this;
     int result;
     
@@ -668,26 +675,35 @@ _cdt_does_contain(unsigned int needle, unsigned int haystack) {
     return 0;
 }
 
+/* Adds a member to the datatype referenced by it's array index 'cdt_index'. 
+ * Returns 0 on success, nonzero error code on failure. */
 int
-cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count)
+cdt_add_member(int cdt_index, char *name, type_t type, unsigned int count)
 {
     int retval;
     cdt_member *this, *new;
-
+    
     /* Check bounds of cdt_index */
     if(cdt_index < 0 || cdt_index >= _datatype_index) {
         return ERR_ARG;
     }
-    
-    if(_datatypes[cdt_index].refcount > 0) 
+    /* Check that there aren't any references and that the FINAL flag is not set */
+    if(_datatypes[cdt_index].refcount > 0 || (_datatypes[cdt_index].flags & CDT_FLAGS_FINAL) ) {
+        xlog(LOG_MINOR, "CDT in Use");
         return ERR_INUSE;
-        /* Check that the name is okay */
-    if( (retval = _validate_name(name))) {
+    }
+    /* Check that the name is okay */
+    if( (retval = _validate_name(name)) ) {
         return retval;
     }
-
+    /* if type is 0 then set the FINAL flag and return success */
+    if( type == 0) {
+        xlog(LOG_MINOR, "Finalizing %s", _datatypes[cdt_index].name);
+        _datatypes[cdt_index].flags |= CDT_FLAGS_FINAL;
+        return 0;
+    }
     /* Check that the type is valid */
-    if( !_checktype(type)) {
+    if( _checktype(type) ) {
         return ERR_ARG;
     }
 
@@ -732,6 +748,7 @@ cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count)
         }
         this->next = new;
     }
+    
     return 0;
 }
 
@@ -744,16 +761,23 @@ cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count)
  * the same thread as any function that manipulates the cdt 
  * array, or it will have to be protected by a Mutex */
 int
-serialize_datatype(int cdt_index, char **str)
+serialize_datatype(type_t type, char **str)
 {
     int size;
     char test[DAX_TAGNAME_SIZE + 1];
     cdt_member *this;
+    int cdt_index;
+    
+    cdt_index = CDT_TO_INDEX(type);
 
     if(cdt_index < 0 || cdt_index >= _datatype_index) {
         return ERR_ARG;
     }
-
+    /* Check that the type has been finalized */
+    if( !(_datatypes[cdt_index].flags & CDT_FLAGS_FINAL)) {
+        *str = NULL;
+        return ERR_INUSE;
+    }
     /* The first thing we do is figure out how big it
      * will all be. */
     size = strlen(_datatypes[cdt_index].name);
@@ -768,7 +792,7 @@ serialize_datatype(int cdt_index, char **str)
         this = this->next;
     }
     size += 1; /* For Trailing NULL */
-
+    
     *str = xmalloc(size);
     if(*str == NULL)
         return ERR_ALLOC;
@@ -789,7 +813,7 @@ serialize_datatype(int cdt_index, char **str)
 
         this = this->next;
     }
-    return 0;
+    return size;
 }
 
 /* Figures out how large the datatype is and returns
@@ -801,7 +825,7 @@ type_size(unsigned int type)
     unsigned int pos = 0; /* Bit position within the data area */
     cdt_member *this;
 
-    if( ! _checktype(type) )
+    if( _checktype(type) )
         return ERR_ARG;
     
     if(IS_CUSTOM(type)) {

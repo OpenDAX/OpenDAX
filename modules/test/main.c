@@ -39,9 +39,10 @@ main(int argc,char *argv[])
     int n, result, flags;
     char *script;
     //char buff[10];
-    handle_t handle[10];
+    tag_idx_t handle[10];
     //char tagname[DAX_TAGNAME_SIZE +1];
     int dummy[20]; // test[20];
+    type_t type;
     //dax_tag test_tag;
     lua_State *L;
     
@@ -110,13 +111,24 @@ main(int argc,char *argv[])
         printf("WriteDINTTest[%d] = %d\n", n, dummy[n]);
     }
     
-    result = dax_cdt_create("test", NULL);
-    printf("dax_cdt_create() returned %d\n", result);
-    if(!result) {
-        result = dax_cdt_add(result, "TestINT", DAX_INT, 1);
+    type = dax_cdt_create("test", NULL);
+    printf("dax_cdt_create() returned 0x%X\n", type);
+    if(type) {
+        result = dax_cdt_add(type, "TestBOOL", DAX_BOOL, 4);
+        result = dax_cdt_add(type, "TestINT", DAX_INT, 1);
+        result = dax_cdt_add(type, "TestDINT", DAX_DINT, 8);
+        result = dax_cdt_add(type, "TestREAL", DAX_REAL, 1);
     }
-    printf("dax_cdt_add() returned %d\n", result);
     
+    result = dax_cdt_finalize(type);
+    if(result) printf("Finalize failed\n");
+    
+    printf("Get Type 'test' by name = 0x%X\n", dax_string_to_type("test"));
+    printf("Get Type 0x%X by type = %s\n",type, dax_type_to_string(type));
+    
+    //--result = dax_cdt_get(0, NULL);
+    //--result = dax_cdt_get(0, "test");
+    //--result = dax_cdt_get(type, NULL);
     
     
     //handle[1] = dax_tag_add("WriteBOOLTest", DAX_BOOL, 32);
@@ -160,10 +172,10 @@ main(int argc,char *argv[])
     dummy[3] = 0x4444;
     dummy[4] = 0x7777;
     
-    handle = dax_tag_add("BitTest", DAX_WORD, 10);
-    printf("Handle = %d\n",handle);
-    dax_tag_write_bits(handle + 1, &dummy, 77);
-    dax_tag_read_bits(handle + 1, &test, 77);
+    idx = dax_tag_add("BitTest", DAX_WORD, 10);
+    printf("Handle = %d\n",idx);
+    dax_tag_write_bits(idx + 1, &dummy, 77);
+    dax_tag_read_bits(idx + 1, &test, 77);
     for(n=0;n<5;n++) {
         printf("Before write 0x%X: After Read 0x%X\n",dummy[n], test[n]);
     }

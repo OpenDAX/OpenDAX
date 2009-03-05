@@ -48,9 +48,30 @@ typedef struct dax_Module {
     int fd;             /* The socket file descriptor for this module */
     int efd;            /* The notification file descriptor */
     time_t starttime;
-    struct dax_Module *next,*prev;
+    struct dax_Module *next, *prev;
 } dax_module;
 
-    
+/* These are the custom datatype definitions. */
+
+/* This is the custom datatype member definition.  The 
+ * members are represented as a linked list */
+typedef struct CDT_Member {
+    char *name;
+    unsigned int type;
+    size_t count;
+    struct CDT_Member *next;
+} cdt_member;
+
+/* This is the structure that represents the container for each
+ * datatype. */
+typedef struct {
+    char *name;
+    unsigned char flags;
+    unsigned int refcount; /* Number of tags of this type */
+    cdt_member *members;
+} datatype;
+
+
+
 
 #endif /* !__DAXTYPES_H */

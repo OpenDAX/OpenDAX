@@ -165,71 +165,11 @@ dax_fatal(const char *format, ...)
 }
 
 
-/* Returns a pointer to a string that is the name of the datatype */
-int
-dax_string_to_type(const char *type)
-{
-    if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
-    if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
-    if(!strcasecmp(type, "SINT"))  return DAX_SINT;
-    if(!strcasecmp(type, "WORD"))  return DAX_WORD;
-    if(!strcasecmp(type, "INT"))   return DAX_INT;
-    if(!strcasecmp(type, "UINT"))  return DAX_UINT;
-    if(!strcasecmp(type, "DWORD")) return DAX_DWORD;
-    if(!strcasecmp(type, "DINT"))  return DAX_DINT;
-    if(!strcasecmp(type, "UDINT")) return DAX_UDINT;
-    if(!strcasecmp(type, "TIME"))  return DAX_TIME;
-    if(!strcasecmp(type, "REAL"))  return DAX_REAL;
-    if(!strcasecmp(type, "LWORD")) return DAX_LWORD;
-    if(!strcasecmp(type, "LINT"))  return DAX_LINT;
-    if(!strcasecmp(type, "ULINT")) return DAX_ULINT;
-    if(!strcasecmp(type, "LREAL")) return DAX_LREAL;
-    return -1;
-}
-
-/* Returns a pointer to a string that is the name of the datatype */
-const char *
-dax_type_to_string(int type)
-{
-    switch (type) {
-        case DAX_BOOL:
-            return "BOOL";
-        case DAX_BYTE:
-            return "BYTE";
-        case DAX_SINT:
-            return "SINT";
-        case DAX_WORD:
-            return "WORD";
-        case DAX_INT:
-            return "INT";
-        case DAX_UINT:
-            return "UINT";
-        case DAX_DWORD:
-            return "DWORD";
-        case DAX_DINT:
-            return "DINT";
-        case DAX_UDINT:
-            return "UDINT";
-        case DAX_TIME:
-            return "TIME";
-        case DAX_REAL:
-            return "REAL";
-        case DAX_LWORD:
-            return "LWORD";
-        case DAX_LINT:
-            return "LINT";
-        case DAX_ULINT:
-            return "ULINT";
-        case DAX_LREAL:
-            return "LREAL";
-        default:
-            return NULL;
-    }
-}
 
 /* This function takes the name argument and figures out the text part and puts
  that in 'tagname' then it sees if there is an index in [] and puts that in *index.
  The calling function should make sure that *tagname is big enough */
+/* TODO: This will probably be removed */
 int
 dax_tag_parse(char *name, char *tagname, int *index)
 {

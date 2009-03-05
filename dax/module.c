@@ -26,7 +26,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-/* TODO:
+/* TODO: Module Scanning routine
     Function to scan modules to determine which need restarting
     and restart them.
     

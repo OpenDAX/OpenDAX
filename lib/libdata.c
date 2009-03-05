@@ -38,7 +38,7 @@
 
 /* This is the structure for our tag cache */
 typedef struct Tag_Cnode {
-    handle_t handle;
+    tag_idx_t idx;
     unsigned int type;
     unsigned int count;
     struct Tag_Cnode *next;
@@ -88,7 +88,7 @@ _cache_hit(tag_cnode *this, dax_tag *tag)
     
     /* Store the return values in tag */
     strcpy(tag->name, this->name);
-    tag->handle = this->handle;
+    tag->idx = this->idx;
     tag->type = this->type;
     tag->count = this->count;
     
@@ -120,7 +120,7 @@ _cache_hit(tag_cnode *this, dax_tag *tag)
  * cache.  Returns a pointer to the tag if found and
  * returns ERR_NOTFOUND otherwise */
 int
-check_cache_handle(handle_t handle, dax_tag *tag)
+check_cache_index(tag_idx_t idx, dax_tag *tag)
 {
     tag_cnode *this;
     
@@ -129,10 +129,10 @@ check_cache_handle(handle_t handle, dax_tag *tag)
     } else {
         return ERR_NOTFOUND;
     }
-    if(_cache_head->handle != handle) {
+    if(_cache_head->idx != idx) {
         this = this->next;
         
-        while(this != _cache_head && this->handle != handle) {
+        while(this != _cache_head && this->idx != idx) {
             this = this->next;
         }
         if(this == _cache_head) {
@@ -208,7 +208,7 @@ cache_tag_add(dax_tag *tag)
         new = _cache_head->prev;
     }
     strcpy(new->name, tag->name);
-    new->handle = tag->handle;
+    new->idx = tag->idx;
     new->type = tag->type;
     new->count = tag->count;
     //--print_cache();
@@ -216,11 +216,14 @@ cache_tag_add(dax_tag *tag)
     return 0;
 }
 
-
 /* Type specific reading and writing functions.  These should be the most common
  * methods to read and write tags to the sever.*/
+/* TODO: These may get replaced with versions that use the handle instead.  Perhaps I
+ * will create another set of functions that use the handle and let the module developers
+ * decide which they like.  These are pretty efficient for BASE types, but won't
+ * work with custom datatypes */
 int
-dax_read_tag(handle_t handle, int index, void *data, int count, unsigned int type)
+dax_read_tag(tag_idx_t idx, int index, void *data, int count, type_t type)
 {
     int bytes, result, offset, n, i;
     char *buff;
@@ -235,7 +238,7 @@ dax_read_tag(handle_t handle, int index, void *data, int count, unsigned int typ
     buff = alloca(bytes);
     bzero(buff, bytes);
     bzero(data, (count - 1) / 8 + 1);
-    result = dax_read(handle, offset, buff, bytes);
+    result = dax_read(idx, offset, buff, bytes);
     
     if(result) return result;
     
@@ -304,9 +307,8 @@ dax_read_tag(handle_t handle, int index, void *data, int count, unsigned int typ
     return 0;
 }
 
-
 int
-dax_write_tag(handle_t handle, int index, void *data, int count, unsigned int type)
+dax_write_tag(tag_idx_t idx, int index, void *data, int count, type_t type)
 {
     int bytes, result, offset, n, i;
     char *buff, *mask;
@@ -388,15 +390,15 @@ dax_write_tag(handle_t handle, int index, void *data, int count, unsigned int ty
             break;
     }
     if(type == DAX_BOOL) {
-        result = dax_mask(handle, offset, buff, mask, bytes);
+        result = dax_mask(idx, offset, buff, mask, bytes);
     } else {    
-        result = dax_write(handle, offset, buff, bytes);
+        result = dax_write(idx, offset, buff, bytes);
     }
     return result;
 }
 
 int
-dax_mask_tag(handle_t handle, int index, void *data, void *mask, int count, unsigned int type)
+dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, type_t type)
 {
     int bytes, result, offset, n, i;
     char *buff, *maskbuff;
@@ -486,7 +488,13 @@ dax_mask_tag(handle_t handle, int index, void *data, void *mask, int count, unsi
             return ERR_ARG;
             break;
     }
-    result = dax_mask(handle, offset, buff, maskbuff, bytes);
+    result = dax_mask(idx, offset, buff, maskbuff, bytes);
     return result;
 }
 
+
+int
+dax_get_handle(char *tag, int count, handle_t *handle)
+{
+    return 0;
+}

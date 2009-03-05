@@ -62,7 +62,7 @@ add_random_tags(int tagcount, char *name)
 {
     static int index = 0;
     int n, count, data_type;
-    handle_t result;
+    tag_idx_t result;
     char tagname[32];
     
     srand(12); /* Random but not so random */
@@ -92,7 +92,7 @@ add_random_tags(int tagcount, char *name)
 int
 tagtopass(const char *name)
 {
-    handle_t handle;
+    tag_idx_t handle;
     
     handle = dax_tag_add((char *)name, DAX_BOOL, 1);
     if(handle < 0) {
@@ -105,7 +105,7 @@ tagtopass(const char *name)
 int
 tagtofail(const char *name)
 {
-    handle_t handle;
+    tag_idx_t handle;
     
     handle = dax_tag_add((char *)name, DAX_BOOL, 1);
     if(handle >= 0) {
@@ -121,14 +121,14 @@ tagtofail(const char *name)
  * This test runs the tagname retrival process through it's paces */
 /* TODO: add some kind of mechanism to make sure that we get the right index or bit offset */
 static int
-getshouldpass(char *name, handle_t h, int index, int bit, unsigned int type, unsigned int count)
+getshouldpass(char *name, tag_idx_t h, int index, int bit, unsigned int type, unsigned int count)
 {
     dax_tag test_tag;
     dax_debug(2,"Testing tagname \"%s\" to find.", name);
     if(dax_tag_byname(name, &test_tag)) {
         dax_debug(1,"Test Failed - \"%s\" Should have been found", name);
         return -1;
-    } else if(test_tag.handle != h) {
+    } else if(test_tag.idx != h) {
         dax_debug(1,"Test Failed - Handle doesn't match for \"%s\"", name);
         return -1;
     } else if(test_tag.type != type) {
@@ -167,7 +167,7 @@ getshouldfail(char *name)
 int
 check_tag_retrieve(void)
 {
-    handle_t handle;
+    tag_idx_t handle;
     int fail = 0;
     handle = dax_tag_add("TestTag", DAX_INT, 10);
     
@@ -204,20 +204,20 @@ check_tagbase(void)
     dax_tag last_tag, this_tag;
     long int lastbit;
  
-    if( dax_tag_byhandle(n++, &last_tag) ) {
+    if( dax_tag_byindex(n++, &last_tag) ) {
         dax_debug(10, "CheckTagBase() - Unable to get first tag");
         return -1;
     }
     
-    while( !dax_tag_byhandle(n, &this_tag) ) {
+    while( !dax_tag_byindex(n, &this_tag) ) {
         /* Check the sort order */
-        if(this_tag.handle <= last_tag.handle) {
+        if(this_tag.idx <= last_tag.idx) {
             dax_debug(10, "CheckTagBase() - Tag array not properly sorted at index %d", n);
             return -2;
         }
         printf("Tag being checked = %s\n", last_tag.name);
         /* check for overlap - Don't use TYPESIZE() macro.  We're testing it too */
-        lastbit = last_tag.handle + ( 0x0001 << (last_tag.type & 0x0F)) * last_tag.count;
+        lastbit = last_tag.idx + ( 0x0001 << (last_tag.type & 0x0F)) * last_tag.count;
         //if( lastbit > this_tag.handle) {
         //    dax_debug(10, "CheckTagBase() - Overlap in tag array at index %d", n);
         //    return -3;
@@ -232,7 +232,7 @@ check_tagbase(void)
 int
 check_tag_events(void)
 {
-    handle_t handle;
+    tag_idx_t handle;
     int id;
     
     handle = dax_tag_add("EventTest", DAX_DINT, 10);

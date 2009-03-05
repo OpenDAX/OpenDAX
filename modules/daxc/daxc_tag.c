@@ -42,7 +42,7 @@ int
 tag_add(char **tokens)
 {
     int type, count;
-    handle_t handle;
+    tag_idx_t handle;
     const char usage[] = "Usage: add type count\n";
     
     /* Make sure that name is not NULL and we get the tagname */
@@ -125,7 +125,7 @@ tag_list(char **tokens)
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
                 for(n = start; n < (start + count); n++) {
-                    if(dax_tag_byhandle(n, &temp_tag)) {
+                    if(dax_tag_byindex(n, &temp_tag)) {
                         printf("No More Tags To List\n");
                         return 1;
                     } else {
@@ -135,7 +135,7 @@ tag_list(char **tokens)
             } else {
                 /* List the next 'start' amount of tags */
                 for(n = lastindex; n < (start + lastindex); n++) {
-                    if(dax_tag_byhandle(n, &temp_tag)) {
+                    if(dax_tag_byindex(n, &temp_tag)) {
                         printf("No More Tags To List\n");
                         lastindex = 0;
                         return 1;
@@ -149,7 +149,7 @@ tag_list(char **tokens)
     } else {
         /* List all tags */
         n = 0;
-        while( !dax_tag_byhandle(n, &temp_tag) ) {
+        while( !dax_tag_byindex(n, &temp_tag) ) {
             show_tag(n, temp_tag);
             n++;
         }
@@ -271,7 +271,7 @@ int
 tag_read(char **tokens)
 {
     char name[DAX_TAGNAME_SIZE+ 1];
-    handle_t handle;
+    tag_idx_t handle;
     int index = -1, result, points = 0, n;
     size_t size;
     dax_tag tag;
@@ -281,7 +281,7 @@ tag_read(char **tokens)
         /* If token is numeric then it's a handle that's being passed */
         if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
             handle = strtol(tokens[0], NULL, 0);
-            result = dax_tag_byhandle(handle, &tag);
+            result = dax_tag_byindex(handle, &tag);
             if(result) {
                 fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
                 return 1;
@@ -292,7 +292,7 @@ tag_read(char **tokens)
                 fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
                 return 1;
             } else {
-                handle = tag.handle;
+                handle = tag.idx;
             }
         }
         
@@ -371,7 +371,7 @@ int
 tag_write(char **tokens, int tcount)
 {
     char name[DAX_TAGNAME_SIZE+ 1 ];
-    handle_t handle;
+    tag_idx_t handle;
     int index = -1, result, points, next, n;
     size_t size;
     dax_tag tag;
@@ -381,7 +381,7 @@ tag_write(char **tokens, int tcount)
         /* If token is numeric then it's a handle that's being passed */
         if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
             handle = strtol(tokens[0], NULL, 0);
-            result = dax_tag_byhandle(handle, &tag);
+            result = dax_tag_byindex(handle, &tag);
             if(result) {
                 fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
                 return 1;
@@ -392,7 +392,7 @@ tag_write(char **tokens, int tcount)
                 fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
                 return 1;
             } else {
-                handle = tag.handle;
+                handle = tag.idx;
             }
         }
         /* If we have not found an index by this point then... */

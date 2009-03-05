@@ -91,7 +91,7 @@ initcmd(struct mb_cmd *c)
     c->m_register = 0;
     c->length = 0;
     //--c->address = 0;
-    c->handle = 0;
+    c->idx = 0;
     c->index = 0;
     c->interval = 0;
     
@@ -505,7 +505,7 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
         case 5:
             //--temp = dt_getbit(cmd->handle, cmd->index);
             temp = 0;
-            result = dt_getbits(cmd->handle, cmd->index, &temp, 1);
+            result = dt_getbits(cmd->idx, cmd->index, &temp, 1);
             //--printf("...getbits returned 0x%X for index %d\n", temp, cmd->index);
             /* TODO: Error Check result */
             if(cmd->method == MB_CONTINUOUS || (temp != cmd->lastcrc) || !cmd->firstrun ) {
@@ -523,7 +523,7 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
             break;
         case 6:
             //--temp = dt_getword(cmd->address);
-            result = dt_getwords(cmd->handle, cmd->index, &temp, 1);
+            result = dt_getwords(cmd->idx, cmd->index, &temp, 1);
             /* TODO: Error Check result */
             /* If the command is contiunous go, if conditional then 
              check the last checksum against the current datatable[] */
@@ -639,7 +639,7 @@ handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
     switch (cmd->function) {
         case 1:
             //--dt_setbits(cmd->address, &buff[3], cmd->length);
-            result = dt_setbits(cmd->handle, cmd->index, &buff[3], cmd->length);
+            result = dt_setbits(cmd->idx, cmd->index, &buff[3], cmd->length);
             break;
         case 3:
         case 4:
@@ -649,7 +649,7 @@ handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
             }
             //--if(dt_setword(cmd->address + n, temp)) return -1;
             /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
-            if(dt_setwords(cmd->handle, cmd->index, data, cmd->length)) return -1;
+            if(dt_setwords(cmd->idx, cmd->index, data, cmd->length)) return -1;
             break;
         case 5:
         case 6:

@@ -393,21 +393,21 @@ msg_mod_register(dax_message *msg)
 int
 msg_tag_add(dax_message *msg)
 {
-    handle_t handle;
+    tag_idx_t idx;
     u_int32_t type;
     u_int32_t count;
         
     type = *((u_int32_t *)&msg->data[0]);
     count = *((u_int32_t *)&msg->data[4]);
     
-    handle = tag_add(&msg->data[8], type, count);
+    idx = tag_add(&msg->data[8], type, count);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d, handle 0x%X", &msg->data[8], msg->fd, type, count, handle);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d, handle 0x%X", &msg->data[8], msg->fd, type, count, idx);
     
-    if(handle >= 0) {
-        _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), RESPONSE);
+    if(idx >= 0) {
+        _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_idx_t), RESPONSE);
     } else {
-        _message_send(msg->fd, MSG_TAG_ADD, &handle, sizeof(handle_t), ERROR);
+        _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_idx_t), ERROR);
     }
     return 0;
 }
@@ -429,8 +429,8 @@ msg_tag_get(dax_message *msg)
     dax_tag tag;
     char *buff;
     
-    if(msg->data[0] == TAG_GET_HANDLE) { /* Is it a string or index */
-        index = *((handle_t *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
+    if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
+        index = *((tag_idx_t *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
         result = tag_get_index(index, &tag); /* get the tag */
         xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for handle 0x%X", msg->fd, index);
     } else { /* A name was passed */
@@ -443,12 +443,12 @@ msg_tag_get(dax_message *msg)
     buff = alloca(size);
     if(buff == NULL) result = ERR_ALLOC;
     if(!result) {
-        *((u_int32_t *)&buff[0]) = tag.handle;
+        *((u_int32_t *)&buff[0]) = tag.idx;
         *((u_int32_t *)&buff[4]) = tag.type;
         *((u_int32_t *)&buff[8]) = tag.count;
         strcpy(&buff[12], tag.name);
         _message_send(msg->fd, MSG_TAG_GET, buff, size, RESPONSE);
-        xlog(LOG_MSG | LOG_OBSCURE, "Returning tag - '%s':0x%X to module %d",tag.name, tag.handle, msg->fd);
+        xlog(LOG_MSG | LOG_OBSCURE, "Returning tag - '%s':0x%X to module %d",tag.name, tag.idx, msg->fd);
     } else {
         _message_send(msg->fd, MSG_TAG_GET, &result, sizeof(result), ERROR);
         xlog(LOG_MSG, "Bad tag query for MSG_TAG_GET");
@@ -470,11 +470,11 @@ int
 msg_tag_read(dax_message *msg)
 {
     char data[MSG_DATA_SIZE];
-    handle_t handle;
+    tag_idx_t handle;
     int result, offset;
     size_t size;
     
-    handle = *((handle_t *)&msg->data[0]);
+    handle = *((tag_idx_t *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     size = *((size_t *)&msg->data[8]);
     
@@ -494,13 +494,13 @@ msg_tag_read(dax_message *msg)
 int
 msg_tag_write(dax_message *msg)
 {
-    handle_t handle;
+    tag_idx_t handle;
     int result, offset;
     void *data;
     size_t size;
     	
-    size = msg->size - sizeof(handle_t) - sizeof(int);
-    handle = *((handle_t *)&msg->data[0]);
+    size = msg->size - sizeof(tag_idx_t) - sizeof(int);
+    handle = *((tag_idx_t *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
 
@@ -520,13 +520,13 @@ msg_tag_write(dax_message *msg)
 int
 msg_tag_mask_write(dax_message *msg)
 {
-    handle_t handle;
+    tag_idx_t handle;
     int result, offset;
     void *data, *mask;
     size_t size;
     
-    size = (msg->size - sizeof(handle_t) - sizeof(int)) / 2;
-    handle = *((handle_t *)&msg->data[0]);
+    size = (msg->size - sizeof(tag_idx_t) - sizeof(int)) / 2;
+    handle = *((tag_idx_t *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
     mask = &msg->data[8 + size];
@@ -536,7 +536,7 @@ msg_tag_mask_write(dax_message *msg)
     result = tag_mask_write(handle, offset, data, mask, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);
-        xerror("Unable to write tag 0x%X with size %d: result %d",handle, size, result);
+        xerror("Unable to write tag 0x%X with size %d: result %d", handle, size, result);
     } else {
         _message_send(msg->fd, MSG_TAG_MWRITE, NULL, 0, RESPONSE);
     }    
@@ -555,6 +555,7 @@ msg_mod_get(dax_message *msg)
 int
 msg_evnt_add(dax_message *msg)
 {
+    /*
     dax_event_message event;
     dax_module *module;
     int event_id = -1;
@@ -566,9 +567,10 @@ msg_evnt_add(dax_message *msg)
     if( module != NULL ) {
         //event_id = event_add(event.handle, event.size, module);
     }
-        
+    */
+    int event_id = -1;
     if(event_id < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, 0, RESPONSE);    
+        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, 0, ERROR);    
     } else {
         _message_send(msg->fd, MSG_EVNT_ADD, &event_id, sizeof(int), RESPONSE);
     }
@@ -598,9 +600,9 @@ msg_cdt_create(dax_message *msg)
     xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message with name '%s'", msg->data);
     
     if(result < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_CDT_CREATE, &result, 0, RESPONSE);    
+        _message_send(msg->fd, MSG_CDT_CREATE, &result, 0, ERROR);    
     } else {
-        _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(unsigned int), RESPONSE);
+        _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(type_t), RESPONSE);
     }
     return 0;
 }
@@ -609,18 +611,18 @@ int
 msg_cdt_add(dax_message *msg)
 {
     int result;
-    int32_t index;
-    u_int32_t type;
+    type_t cdt_type;
+    type_t mem_type;
     u_int32_t count;
     
-    index = *((int32_t *)&msg->data[0]);
-    type = *((u_int32_t *)&msg->data[4]);
+    cdt_type = *((type_t *)&msg->data[0]);
+    mem_type = *((type_t *)&msg->data[4]);
     count = *((u_int32_t *)&msg->data[8]);
     
-    result = cdt_add_member(index, &msg->data[12], type, count);
-    
     xlog(LOG_MSG | LOG_OBSCURE, "CDT Add Member to '%s' Message for '%s' from module %d, type 0x%X, count %d", 
-         cdt_get_name(CDT_TO_TYPE(index)), &msg->data[12], msg->fd, type, count);
+         cdt_get_name(cdt_type), &msg->data[12], msg->fd, mem_type, count);
+    
+    result = cdt_add_member(CDT_TO_INDEX(cdt_type), &msg->data[12], mem_type, count);
     
     if(result >= 0) {
         _message_send(msg->fd, MSG_CDT_ADD, &result, sizeof(int), RESPONSE);
@@ -633,5 +635,50 @@ msg_cdt_add(dax_message *msg)
 int
 msg_cdt_get(dax_message *msg)
 {
+    int result, size;
+    unsigned char subcommand;
+    type_t cdt_type;
+    char type[DAX_TAGNAME_SIZE + 1];
+    char *str, *data;
+    
+    result = 0;  /* result will stay zero if we don't have any errors */
+    subcommand = msg->data[0];
+    if(subcommand == CDT_GET_TYPE) {
+        cdt_type = *((type_t *)&msg->data[1]);
+    } else {
+        strncpy(type, &msg->data[1], DAX_TAGNAME_SIZE);
+        type[DAX_TAGNAME_SIZE] = '\0';  /* Just to be sure */
+        cdt_type = cdt_get_type(type);
+        printf("msg_cdt_get: Name = %s : ", type);
+    }
+    printf("msg_cdt_get: Type = 0x%X\n", cdt_type);
+    
+    size = serialize_datatype(cdt_type, &str);
+    
+    xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type 0x%X Message from Module %d", cdt_type, msg->fd);
+    
+    /* TODO: !! We need to figure out how to deal with a string that is longer than one
+     * message can hold.  For now we are going to return error. */
+    /* TODO: There has to be a more efficient way to do this. */
+    if(size > (MSG_DATA_SIZE - 4)) {
+        result = ERR_2BIG;
+    } else if(size < 0) {
+        result = size;
+    } else {
+        data = alloca(size + 4);
+        if(data == NULL) {
+            result = ERR_ALLOC;
+        } else {
+            *((type_t *)data) = cdt_type;
+            memcpy(&(data[4]), str, size);
+        }
+    }
+    if(result) {
+        _message_send(msg->fd, MSG_CDT_GET, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_CDT_GET, data, size + 4, RESPONSE);
+    }
+    
+    if(str) free(str);
     return 0;
 }

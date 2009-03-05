@@ -54,26 +54,23 @@
 #endif
 
 /* Define Handles for _status register points */
+/* TODO: These should probably go away */
 #define STATUS_SIZE   4
 #define STAT_MSG_RCVD 0
 #define STAT_MSG_SENT 32
 #define STAT_DB_SIZE  64
 #define STAT_TAG_CNT 96
 
+#define CDT_FLAGS_FINAL 0x01
+
 struct mod_list {
     dax_module *module;
     struct mod_list *next;
 };
 
-/* Some Macros for manipulating CDT types */
-#define IS_CUSTOM(TYPE) (TYPE & DAX_CUSTOM)
-#define CDT_TO_INDEX(TYPE) (TYPE & ~DAX_CUSTOM)
-#define CDT_TO_TYPE(INDEX) (INDEX | DAX_CUSTOM)
-
-
 typedef struct dax_event_t {
     int id;
-    handle_t handle;
+    tag_idx_t idx;
     size_t size;
     u_int32_t checksum;
     struct mod_list *notify;
@@ -82,7 +79,7 @@ typedef struct dax_event_t {
 
 /* This is the internal structure for the tag array. */
 typedef struct {
-    unsigned int type;
+    type_t type;
     unsigned int count;
     char *name;
     _dax_event *events;
@@ -93,27 +90,27 @@ typedef struct {
     /* TODO: Name's size is no longer fixed, should it be?
              It still is in the library.  Let's leave it for now?? */
     char *name;
-    int handle;
+    int tag_idx;
 } _dax_tag_index;
 
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
-handle_t tag_add(char *name, unsigned int type, unsigned int count);
+tag_idx_t tag_add(char *name, type_t type, unsigned int count);
 int tag_del(char *name);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
 
-int tag_read(handle_t handle, int offset, void *data, size_t size);
-int tag_write(handle_t handle, int offset, void *data, size_t size);
-int tag_mask_write(handle_t handle, int offset, void *data, void *mask, size_t size);
+int tag_read(tag_idx_t handle, int offset, void *data, size_t size);
+int tag_write(tag_idx_t handle, int offset, void *data, size_t size);
+int tag_mask_write(tag_idx_t handle, int offset, void *data, void *mask, size_t size);
 
 /* Custom DataType functions */
 unsigned int cdt_create(char *name, int *error);
 unsigned int cdt_get_type(char *name);
 char *cdt_get_name(unsigned int type);
-int cdt_add_member(int cdt_index, char *name, unsigned int type, unsigned int count);
-int type_size(unsigned int type);
-int serialize_datatype(int cdt_index, char **str);
+int cdt_add_member(int cdt_index, char *name, type_t type, unsigned int count);
+int type_size(type_t type);
+int serialize_datatype(type_t type, char **str);
 
 /*
 handle_t tag_get_handle(char *name);
