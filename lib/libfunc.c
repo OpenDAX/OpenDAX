@@ -192,8 +192,7 @@ dax_tag_parse(char *name, char *tagname, int *index)
             *index = (int)strtol(test, NULL, 10);
             n++;
         }
-        n++;
-        
+        n++;        
     }
     if(tagend) {
         strncpy(tagname, name, tagend);

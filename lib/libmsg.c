@@ -368,7 +368,7 @@ dax_tag_add(char *name, type_t type, unsigned int count)
 the custom data types going.  Returns zero on success. */
 /* TODO: Need to clean up this function.  There is stuff I don't think I want in here */ 
 int
-dax_tag_byname(char *name, dax_tag *tag)
+dax_tag_byname(dax_tag *tag, char *name)
 {
     int result, size;
     char *buff;
@@ -408,7 +408,7 @@ dax_tag_byname(char *name, dax_tag *tag)
 
 /* Retrieves the tag by handle.  */
 int
-dax_tag_byindex(tag_idx_t handle, dax_tag *tag)
+dax_tag_byindex(dax_tag *tag, tag_idx_t handle)
 {
     int result, size;
     char buff[DAX_TAGNAME_SIZE + 13];

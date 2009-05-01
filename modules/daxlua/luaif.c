@@ -183,7 +183,7 @@ fetch_tag(lua_State *L, char *tagname)
     int size, n, result;
     void *buff;
 
-    if( (result = dax_tag_byname(tagname, &tag)) ) {
+    if( (result = dax_tag_byname(&tag, tagname)) ) {
         luaL_error(L, "Unable to retrieve tag - %s, error %d", tagname, result);
     }
     
@@ -263,7 +263,7 @@ send_tag(lua_State *L, char *tagname)
     int size, n;
     void *buff, *mask;
     
-    if( dax_tag_byname(tagname, &tag) ) {
+    if( dax_tag_byname(&tag, tagname) ) {
         luaL_error(L, "Unable to retrieve tag - %s", tagname);
     }
     if( tag.type == DAX_BOOL ) {

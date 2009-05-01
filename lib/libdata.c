@@ -492,9 +492,3 @@ dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, type_t
     return result;
 }
 
-
-int
-dax_get_handle(char *tag, int count, handle_t *handle)
-{
-    return 0;
-}

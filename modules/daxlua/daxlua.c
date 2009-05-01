@@ -286,6 +286,7 @@ main(int argc, char *argv[])
     start_all_threads();
     
     while(1) {
+        /* TODO: Probably should replace with a condition variable? */
         sleep(1);
         
         if(quitsig) {

@@ -32,18 +32,40 @@
  * Check datatype functions
  */
 
+static int
+_check_cdt_handles(void)
+{
+    int n, result;
+    handle_t h;
+    char *tags[9] = {
+            "CombinedTag",
+            "CombinedTag[2]",
+            "CombinedTag.Bit1",
+            "CombinedTag[2].Bit1",
+            "CombinedTag[2].Bit1[3]",
+            "CombinedTag[2].Test.TestBool",
+            "CombinedTag[2].Test[3].TestBool",
+            "CombinedTag.Test[3].TestBool[1]",
+            NULL
+            };
+    n = 0;
+    
+    while(tags[n] != NULL) {
+        result = dax_tag_handle(&h, tags[n], 1);
+        if(result) printf("dax_tag_handle() returned %d\n", result);
+        n++;
+    }
+    return 0;
+}
+
 int
 main(int argc,char *argv[])
 {
-    //int tests_failed = 0;
     int n, result, flags;
     char *script;
-    //char buff[10];
     tag_idx_t handle[10];
-    //char tagname[DAX_TAGNAME_SIZE +1];
-    int dummy[20]; // test[20];
+    int dummy[20];
     type_t type;
-    //dax_tag test_tag;
     lua_State *L;
     
     
@@ -75,14 +97,10 @@ main(int argc,char *argv[])
         return ERR_GENERIC;
     }
     
-    /*
-    if(check_tag_addition()) {
-        dax_log("Tagname addition test - FAILED");
-        tests_failed++;
-    } else {
-        dax_log("Tagname addition test - PASSED");
-    }
+    /* That will do it for the real LUA tests.  The following code is just
+     * temporary code for testing along with new development */
     
+/*    
     if(check_tag_retrieve()) {
         dax_log("Tagname retrieving test - FAILED");
         tests_failed++;
@@ -96,7 +114,7 @@ main(int argc,char *argv[])
     } else {
         dax_log("Tagbase verification test - PASSED");
     }
-     */
+     
     
     handle[0] = dax_tag_add("WriteDINTTest", DAX_DINT, 10);
     for(n = 0; n < 10; n++) {
@@ -112,19 +130,38 @@ main(int argc,char *argv[])
     }
     
     type = dax_cdt_create("test", NULL);
-    printf("dax_cdt_create() returned 0x%X\n", type);
+    printf("dax_cdt_create(test) returned 0x%X\n", type);
     if(type) {
         result = dax_cdt_add(type, "TestBOOL", DAX_BOOL, 4);
-        result = dax_cdt_add(type, "TestINT", DAX_INT, 1);
-        result = dax_cdt_add(type, "TestDINT", DAX_DINT, 8);
-        result = dax_cdt_add(type, "TestREAL", DAX_REAL, 1);
+        result = dax_cdt_add(type, "TestINT", DAX_INT, 2);
+        //result = dax_cdt_add(type, "TestDINT", DAX_DINT, 8);
+        //result = dax_cdt_add(type, "TestREAL", DAX_REAL, 1);
+        result = dax_cdt_finalize(type);
+        if(result) printf("Finalize failed\n");
     }
     
-    result = dax_cdt_finalize(type);
-    if(result) printf("Finalize failed\n");
+    dax_tag_add("TestTag", type, 1);
     
     printf("Get Type 'test' by name = 0x%X\n", dax_string_to_type("test"));
     printf("Get Type 0x%X by type = %s\n",type, dax_type_to_string(type));
+    
+    type = dax_cdt_create("combined", NULL);
+    printf("dax_cdt_create(combined) returned 0x%X\n", type);
+    if(type) {
+        result = dax_cdt_add(type, "Int1", DAX_BYTE, 4);
+        result = dax_cdt_add(type, "Bit1", DAX_BOOL, 5);
+        result = dax_cdt_add(type, "Test1", dax_string_to_type("test"), 1);
+        result = dax_cdt_add(type, "Dint1", DAX_DINT, 2);
+        result = dax_cdt_finalize(type);
+        if(result) printf("Finalize failed\n");
+    }
+    
+    //printf("Get Type 'combined' by name = 0x%X\n", dax_string_to_type("combined"));
+    printf("Get Type 0x%X by type = %s\n",type, dax_type_to_string(type));
+    
+    dax_tag_add("CombinedTag", type, 3);
+    
+    _check_cdt_handles();
     
     //--result = dax_cdt_get(0, NULL);
     //--result = dax_cdt_get(0, "test");

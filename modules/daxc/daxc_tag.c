@@ -112,7 +112,7 @@ tag_list(char **tokens)
         start = strtol(arg[0], &end_ptr, 0);
         /* If arg[0] is text then it's a tagname instead of an index */
         if(end_ptr == arg[0]) {
-            if( dax_tag_byname(arg[0], &temp_tag) ) {
+            if( dax_tag_byname(&temp_tag, arg[0]) ) {
                 printf("ERROR: Unknown Tagname %s\n", arg[0]);
                 return 1;
             } else {
@@ -125,7 +125,7 @@ tag_list(char **tokens)
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
                 for(n = start; n < (start + count); n++) {
-                    if(dax_tag_byindex(n, &temp_tag)) {
+                    if(dax_tag_byindex(&temp_tag, n)) {
                         printf("No More Tags To List\n");
                         return 1;
                     } else {
@@ -135,7 +135,7 @@ tag_list(char **tokens)
             } else {
                 /* List the next 'start' amount of tags */
                 for(n = lastindex; n < (start + lastindex); n++) {
-                    if(dax_tag_byindex(n, &temp_tag)) {
+                    if(dax_tag_byindex(&temp_tag, n)) {
                         printf("No More Tags To List\n");
                         lastindex = 0;
                         return 1;
@@ -149,7 +149,7 @@ tag_list(char **tokens)
     } else {
         /* List all tags */
         n = 0;
-        while( !dax_tag_byindex(n, &temp_tag) ) {
+        while( !dax_tag_byindex(&temp_tag, n) ) {
             show_tag(n, temp_tag);
             n++;
         }
@@ -281,14 +281,14 @@ tag_read(char **tokens)
         /* If token is numeric then it's a handle that's being passed */
         if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
             handle = strtol(tokens[0], NULL, 0);
-            result = dax_tag_byindex(handle, &tag);
+            result = dax_tag_byindex(&tag, handle);
             if(result) {
                 fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
                 return 1;
             }
             /* otherwise the token is a tagname */
         } else {
-            if(dax_tag_parse(tokens[0], name, &index) || dax_tag_byname(name, &tag)) {
+            if(dax_tag_parse(tokens[0], name, &index) || dax_tag_byname(&tag, name)) {
                 fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
                 return 1;
             } else {
@@ -381,14 +381,14 @@ tag_write(char **tokens, int tcount)
         /* If token is numeric then it's a handle that's being passed */
         if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
             handle = strtol(tokens[0], NULL, 0);
-            result = dax_tag_byindex(handle, &tag);
+            result = dax_tag_byindex(&tag, handle);
             if(result) {
                 fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
                 return 1;
             }
         /* otherwise the token is a tagname */
         } else {
-            if(dax_tag_parse(tokens[0], name, &index) || dax_tag_byname(name, &tag)) {
+            if(dax_tag_parse(tokens[0], name, &index) || dax_tag_byname(&tag, name)) {
                 fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
                 return 1;
             } else {

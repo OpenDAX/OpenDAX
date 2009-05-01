@@ -64,7 +64,6 @@ dax_init_config(char *name)
 	result += dax_add_attribute("name", "name", 'N', flags, name);
 	result += dax_add_attribute("cachesize", "cachesize", 'z', flags, "8");
 	result += dax_add_attribute("msgtimeout", "msgtimeout", 'o', flags, DEFAULT_TIMEOUT);
-	result += dax_add_attribute("dummy", NULL, 'G', flags, "dumb-dumb");
 
 	flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
 	result += dax_add_attribute("config", "config", 'C', flags, NULL);
@@ -204,10 +203,12 @@ dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value)) {
 /* This function sets the value and calls the callback function. */
 static int
 _set_attr(optattr *attr, char *value) {
+    printf("_set_attr() called to set %s to %s\n", attr->name, value);
     /* Set the value and call the callback function if there is one */
-    if(attr->flags & CFG_NO_VALUE) {
+    if( !(attr->flags & CFG_NO_VALUE) ) {
         attr->value = strdup(value);
     }
+    printf("%s was set to %s", attr->name, attr->value);
     if(attr->callback) {
         attr->callback(attr->name, value);
     }
@@ -240,6 +241,7 @@ _parse_commandline(int argc, char **argv) {
 		}
 		this = this->next;
 	}
+	/* Allocate the memory on the stack */
 	shortopts = alloca(sizeof(char) * (o_count + 1));
 	options = alloca(sizeof(struct option) * (attr_count + 1));
 	
@@ -248,7 +250,7 @@ _parse_commandline(int argc, char **argv) {
 	this = _attr_head;
 	while(this != NULL) {
 		/* If it's not supposed to be on the command line then
-		 * we have no user for it here */
+		 * we have no use for it here */
 		if(this->flags & CFG_CMDLINE) {
 			if(this->shortopt != '\0') {
 				shortopts[o_index++] = this->shortopt;
@@ -279,7 +281,7 @@ _parse_commandline(int argc, char **argv) {
 	while(ch != -1) {
 		ch = getopt_long(argc, (char * const *)argv, shortopts, options, &index);
 		if(ch > 0) {
-			this = _attr_head;
+		    this = _attr_head;
 			while(this != NULL) {
 				if(this->shortopt == ch) {
 				    _set_attr(this, optarg);
@@ -379,6 +381,7 @@ _mod_config_file(void) {
 	/* This gets the default configuration file name
 	 * We add 2 for the NULL character and the '/' */
 	cfile = dax_get_attr("config");
+	printf("dax_get_attr(\"config\" returned %s\n", cfile);
 	if(cfile == NULL) { 
 	    /* No configuration file in the attribute list then we'll
 	     * build the path from the default config directory and 

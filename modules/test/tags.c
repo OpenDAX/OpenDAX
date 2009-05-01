@@ -79,38 +79,94 @@ add_random_tags(int tagcount, char *name)
             dax_debug(LOG_MINOR, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
             return -1;
         } else {
-            dax_debug(LOG_MINOR, "%s added at handle 0x%8X", tagname, result);
+            dax_debug(LOG_MINOR, "%s added at index 0x%08X", tagname, result);
         }
     }
     return 0;
 }
 
-/* This checks the integrity of the tag database.  It makes sure that
-   the tags are properly sorted in the array and that there is no
-   overlap of tags */
-/* TODO: This function seems be less useful since we changed the tagbase format */
+/* This function expects that the passed tagname will be allowed to be added
+ * by the server.  Returns error otherwise and the test will fail */
 int
 tagtopass(const char *name)
 {
-    tag_idx_t handle;
+    tag_idx_t index;
     
-    handle = dax_tag_add((char *)name, DAX_BOOL, 1);
-    if(handle < 0) {
+    index = dax_tag_add((char *)name, DAX_BOOL, 1);
+    if(index < 0) {
         dax_debug(LOG_MINOR, "Test Failed - %s was not allowed", name);
         return -1;
     }
     return 0;
 }
 
+/* Same as above excpet that this tag is expected to fail. */
 int
 tagtofail(const char *name)
 {
-    tag_idx_t handle;
+    tag_idx_t index;
     
-    handle = dax_tag_add((char *)name, DAX_BOOL, 1);
-    if(handle >= 0) {
+    index = dax_tag_add((char *)name, DAX_BOOL, 1);
+    if(index >= 0) {
         dax_debug(LOG_MINOR, "Test Failed - %s was allowed", name);
         return -1;
+    }
+    return 0;
+}
+
+/* This test makes sure that the library handles adding members to 
+ * datatypes that are other datatypes and making sure that we can't
+ * create any circular references. */
+int
+cdt_recursion(void)
+{
+    int n, p, f, pass[10], fail[10];
+    type_t t[6];
+    
+    dax_debug(LOG_MINOR, "Starting Custom Datatype Recursion Test");
+    
+    t[0] = dax_cdt_create("RecursionCDT1", NULL);
+    t[1] = dax_cdt_create("RecursionCDT2", NULL);
+    t[2] = dax_cdt_create("RecursionCDT3", NULL);
+    t[3] = dax_cdt_create("RecursionCDT4", NULL);
+    t[4] = dax_cdt_create("RecursionCDT5", NULL);
+    t[5] = dax_cdt_create("RecursionCDT6", NULL);
+    
+    for(n = 0; n < 6; n++) {
+        if(t[n] == 0) {
+            dax_debug(LOG_MINOR, "Test Failed - Unable to create datatype for recursion");
+            return -1;
+        }
+    }
+    p = f = 0;
+    /* TODO: This prbably isn't every way to test this */
+    pass[p++] = dax_cdt_add(t[0], "T1", t[1], 1);
+    pass[p++] = dax_cdt_add(t[1], "T2", t[2], 1);
+    fail[f++] = dax_cdt_add(t[1], "T0", t[0], 1);
+    fail[f++] = dax_cdt_add(t[2], "T2", t[0], 1);
+    pass[p++] = dax_cdt_add(t[0], "T2", t[2], 1);
+    pass[p++] = dax_cdt_add(t[2], "T3", t[3], 1);
+    fail[f++] = dax_cdt_add(t[3], "T1", t[1], 1);
+    pass[p++] = dax_cdt_add(t[4], "T3", t[3], 1);
+    fail[f++] = dax_cdt_add(t[4], "T4", t[4], 1);
+    pass[p++] = dax_cdt_add(t[5], "T3", t[3], 1);
+    fail[f++] = dax_cdt_add(t[4], "T5", t[4], 1);
+    
+    
+    /* Check that everything that is supposed to pass did */
+    for(n = 0; n < p; n++) {
+        if(pass[n]) {
+            dax_debug(LOG_MINOR, "Test Failed - Should have been able to add member - Attempt %d", n+1);
+            return -1;    
+        }
+    }
+    
+    /* Check that everything that is supposed to fail did */
+    for(n = 0; n < f; n++) {
+        if(fail[n] == 0) {
+            dax_debug(LOG_MINOR, "Test Failed - Should not have been able to add member - Attempt %d", n+1);
+            return -1;    
+        }
     }
     return 0;
 }
@@ -120,96 +176,57 @@ tagtofail(const char *name)
 
  * This test runs the tagname retrival process through it's paces */
 /* TODO: add some kind of mechanism to make sure that we get the right index or bit offset */
-static int
-getshouldpass(char *name, tag_idx_t h, int index, int bit, unsigned int type, unsigned int count)
-{
-    dax_tag test_tag;
-    dax_debug(2,"Testing tagname \"%s\" to find.", name);
-    if(dax_tag_byname(name, &test_tag)) {
-        dax_debug(1,"Test Failed - \"%s\" Should have been found", name);
-        return -1;
-    } else if(test_tag.idx != h) {
-        dax_debug(1,"Test Failed - Handle doesn't match for \"%s\"", name);
-        return -1;
-    } else if(test_tag.type != type) {
-        dax_debug(1, "Test Failed - Returned type doesn't match for \"%s\"", name);
-        return -1;
-    } else if(test_tag.count != count) {
-        dax_debug(1, "Test Failed - Returned count doesn't match for \"%s\"", name);
-        return -1;
-    } else if(test_tag.index != index) {
-        dax_debug(1, "Test Failed - Returned index doesn't match for \"%s\"", name);
-        return -1;
-    //} else if(test_tag.bit != bit) {
-    //    dax_debug(1, "Test Failed - Returned bit offset doesn't match for \"%s\"", name);
-    //    return -1;
-    } else {
-        return 0;
-    }
-}
+//static int
+//getshouldpass(char *name, tag_idx_t h, int index, int bit, unsigned int type, unsigned int count)
+//{
+//    dax_tag test_tag;
+//    dax_debug(2,"Testing tagname \"%s\" to find.", name);
+//    if(dax_tag_byname(&test_tag, name)) {
+//        dax_debug(1,"Test Failed - \"%s\" Should have been found", name);
+//        return -1;
+//    } else if(test_tag.idx != h) {
+//        dax_debug(1,"Test Failed - Handle doesn't match for \"%s\"", name);
+//        return -1;
+//    } else if(test_tag.type != type) {
+//        dax_debug(1, "Test Failed - Returned type doesn't match for \"%s\"", name);
+//        return -1;
+//    } else if(test_tag.count != count) {
+//        dax_debug(1, "Test Failed - Returned count doesn't match for \"%s\"", name);
+//        return -1;
+//    } else {
+//        return 0;
+//    }
+//}
+//
+///* This test runs the tagname retrival process through it's paces */
+//static int
+//getshouldfail(char *name)
+//{
+//    dax_tag test_tag;
+//    dax_debug(2, "Testing tagname \"%s\" to not find.", name);
+//    if(! dax_tag_byname(&test_tag, name)) {
+//        dax_debug(1,"Test Failed - \"%s\" Should not have been found", name);
+//        return -1;
+//    } else {
+//        return 0;
+//    }
+//}
 
-/* This test runs the tagname retrival process through it's paces */
-static int
-getshouldfail(char *name)
-{
-    dax_tag test_tag;
-    dax_debug(2, "Testing tagname \"%s\" to not find.", name);
-    if(! dax_tag_byname(name, &test_tag)) {
-        dax_debug(1,"Test Failed - \"%s\" Should not have been found", name);
-        return -1;
-    } else {
-        return 0;
-    }
-}
 
-/* Tries all the different tagnames / subscript combinations and checks the
-   resulting handle and type for accuracy */
-int
-check_tag_retrieve(void)
-{
-    tag_idx_t handle;
-    int fail = 0;
-    handle = dax_tag_add("TestTag", DAX_INT, 10);
-    
-    if(handle < 0) {
-        dax_debug(1, "OOPs TestTag should have been allowed to be added");
-        return -1;
-    }
-
-    if(getshouldpass("TestTag", handle, 0, 0, DAX_INT, 10)) fail = -1;
-    if(getshouldpass("TestTag[0]", handle, 0, 0, DAX_INT, 1)) fail = -1;
-    if(getshouldpass("TestTag.0", handle, 0, 0, DAX_BOOL, 1)) fail = -1;
-    if(getshouldpass("TestTag.1", handle, 0, 1, DAX_BOOL, 1)) fail = -1;
-    if(getshouldpass("TestTag.15", handle, 0, 15, DAX_BOOL, 1)) fail = -1;
-    if(getshouldpass("TestTag[0].0", handle, 0, 0, DAX_BOOL, 1)) fail = -1;
-    if(getshouldpass("TestTag[1]", handle, 1, 0, DAX_INT, 1)) fail = -1;
-    if(getshouldpass("TestTag[9]", handle, 9, 0, DAX_INT, 1)) fail = -1;
-    if(getshouldfail("TestTag[10]")) fail = -1;
-    if(getshouldpass("TestTag.159", handle, 0, 159, DAX_BOOL, 1)) fail = -1;
-    if(getshouldfail("TestTag.160")) fail = -1;
-    if(getshouldpass("TestTag[9].15", handle, 9, 15, DAX_BOOL, 1)) fail = -1;
-    if(getshouldfail("TestTag[9].16")) fail = -1;
-    if(getshouldfail("TestTag[8].16")) fail = -1;
-    if(getshouldfail("TestTag[5].16")) fail = -1;
-
-    
-    return fail;
-}
-
-/* Test's the different aspects of the tag events */
+/* Test's the different aspects of the tag database */
 int
 check_tagbase(void)
 {
-    int n = 0;
+    tag_idx_t n = 0;
     dax_tag last_tag, this_tag;
     long int lastbit;
  
-    if( dax_tag_byindex(n++, &last_tag) ) {
+    if( dax_tag_byindex(&last_tag, n++) ) {
         dax_debug(10, "CheckTagBase() - Unable to get first tag");
         return -1;
     }
     
-    while( !dax_tag_byindex(n, &this_tag) ) {
+    while( !dax_tag_byindex(&this_tag, n) ) {
         /* Check the sort order */
         if(this_tag.idx <= last_tag.idx) {
             dax_debug(10, "CheckTagBase() - Tag array not properly sorted at index %d", n);
@@ -243,7 +260,7 @@ check_tag_events(void)
     id = dax_event_add("EventTest[2]", 1);
     if(id < 0) {
         if(id == ERR_MSG_SEND) {
-            dax_debug(1, "Unable to send messager to Add Event for EventTest[2]");
+            dax_debug(1, "Unable to send message to Add Event for EventTest[2]");
         } else if(id == ERR_MSG_RECV) {
             dax_debug(1, "No response to Add Event for EventTest[2]");
         } else {

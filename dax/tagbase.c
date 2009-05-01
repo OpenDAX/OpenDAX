@@ -816,50 +816,50 @@ serialize_datatype(type_t type, char **str)
     return size;
 }
 
-/* Figures out how large the datatype is and returns
- * that size in bytes.  This function is recursive */
-int
-type_size(unsigned int type)
-{
-    int size = 0;
-    unsigned int pos = 0; /* Bit position within the data area */
-    cdt_member *this;
-
-    if( _checktype(type) )
-        return ERR_ARG;
-    
-    if(IS_CUSTOM(type)) {
-        this = _datatypes[CDT_TO_INDEX(type)].members;
-        while (this != NULL) {
-            if(this->type == DAX_BOOL) {
-                pos += this->count; /* BOOLs are easy just add the number of bits */
-            } else {
-                /* Since it's not a bool we need to align to the next byte. 
-                 * To align it we set all the lower three bits to 1 and then
-                 * increment. */
-                if(pos % 8 != 0) { /* Do nothing if already aligned */
-                    pos |= 0x07;
-                    pos++;
-                }
-                if(IS_CUSTOM(this->type)) {
-                    pos += (type_size(this->type) * this->count) * 8;
-                } else {
-                    /* This gets the size in bits */
-                    pos += TYPESIZE(this->type) * this->count;
-                }
-            }
-            this = this->next;
-        }
-        if(pos) {
-            size = (pos - 1)/8 + 1;
-        } else {
-            size = 0;
-        }
-    } else { /* Not IS_CUSTOM() */
-        size = TYPESIZE(type) / 8; /* Size in bytes */
-    }
-    return size;
-}
+                    /* Figures out how large the datatype is and returns
+                     * that size in bytes.  This function is recursive */
+                    int
+                    type_size(unsigned int type)
+                    {
+                        int size = 0;
+                        unsigned int pos = 0; /* Bit position within the data area */
+                        cdt_member *this;
+                    
+                        if( _checktype(type) )
+                            return ERR_ARG;
+                        
+                        if(IS_CUSTOM(type)) {
+                            this = _datatypes[CDT_TO_INDEX(type)].members;
+                            while (this != NULL) {
+                                if(this->type == DAX_BOOL) {
+                                    pos += this->count; /* BOOLs are easy just add the number of bits */
+                                } else {
+                                    /* Since it's not a bool we need to align to the next byte. 
+                                     * To align it we set all the lower three bits to 1 and then
+                                     * increment. */
+                                    if(pos % 8 != 0) { /* Do nothing if already aligned */
+                                        pos |= 0x07;
+                                        pos++;
+                                    }
+                                    if(IS_CUSTOM(this->type)) {
+                                        pos += (type_size(this->type) * this->count) * 8;
+                                    } else {
+                                        /* This gets the size in bits */
+                                        pos += TYPESIZE(this->type) * this->count;
+                                    }
+                                }
+                                this = this->next;
+                            }
+                            if(pos) {
+                                size = (pos - 1)/8 + 1;
+                            } else {
+                                size = 0;
+                            }
+                        } else { /* Not IS_CUSTOM() */
+                            size = TYPESIZE(type) / 8; /* Size in bytes */
+                        }
+                        return size;
+                    }
 
 
 #ifdef DAX_DIAG

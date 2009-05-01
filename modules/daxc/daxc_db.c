@@ -56,7 +56,7 @@ static int _db_read_getparams(tag_idx_t *handle, size_t *count, char bitsorbytes
     if(isdigit(tok[0])) {
         *handle = strtol(tok, NULL, 0);
     } else {
-        if( dax_tag_byname(tok, &tag) ) {
+        if( dax_tag_byname(&tag, tok) ) {
             fprintf(stderr, "ERROR: Bad Tagname %s\n", tok);
             return 1;
         }

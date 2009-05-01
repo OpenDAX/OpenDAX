@@ -99,5 +99,6 @@ typedef struct {
 } datatype;
 
 int add_cdt_to_cache(type_t type, char *typedesc);
+int dax_cdt_get(type_t type, char *name);
 
 #endif /* !__LIBDAX_H */

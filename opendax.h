@@ -88,6 +88,7 @@
 #define ERR_TIMEOUT   -14 /* Timeout */
 #define ERR_ILLEGAL   -15 /* Illegal Setting */
 #define ERR_INUSE     -16 /* Object is in use */
+#define ERR_PARSE     -17 /* Parsing Error */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */
@@ -124,10 +125,12 @@ typedef int tag_idx_t;
 typedef unsigned int type_t;
 
 struct Handle {
-    tag_idx_t index;  /* The Index of the Tag */
-    int offset;       /* The offset where the data block starts */
-    size_t size;      /* The total size of the data block */
-    type_t type;      /* The type of the data block */
+    tag_idx_t index;   /* The Index of the Tag */
+    int byte;          /* The byte offset where the data block starts */
+    unsigned char bit; /* The bit offset */
+    int count;         /* The number of items represented by the handle */
+    size_t size;       /* The total size of the data block in bytes */
+    type_t type;       /* The datatype of the block */
 };
 
 typedef struct Handle handle_t;
@@ -138,7 +141,7 @@ typedef struct {
     tag_idx_t idx;      /* Unique tag index */
     type_t type;        /* Tags data type */
     unsigned int count; /* The number of items in the tag array */
-    int index;          /* Index if we are looking at a particular item */
+    //int index;          /* Index if we are looking at a particular item */
     char name[DAX_TAGNAME_SIZE + 1];
 } dax_tag;
 
@@ -185,15 +188,15 @@ int dax_mod_unregister(void);   /* Unregister the Module with the server */
 tag_idx_t dax_tag_add(char *name, type_t type, unsigned int count);
 
 /* Get tag by name, will decode members and subscripts */
-int dax_tag_byname(char *name, dax_tag *tag);
+int dax_tag_byname(dax_tag *tag, char *name);
 /* Get tag by index */
-int dax_tag_byindex(tag_idx_t index, dax_tag *tag);
+int dax_tag_byindex(dax_tag *tag, tag_idx_t index);
 
 /* The handle is a complete description of where in the tagbase the
  * data that we wish to retrieve is located.  This can be used in place
  * of a tagname string such as "Tag1.member1[5]".  Count is the number of
  * items, that we want. */
-int dax_get_handle(char *tag, int count, handle_t *handle);
+int dax_tag_handle(handle_t *h, char *str, int count);
 
 /* Get the datatype from a string */
 type_t dax_string_to_type(char *type);
@@ -244,8 +247,5 @@ int dax_event_get(int id);
 type_t dax_cdt_create(char *name, int *error);
 int dax_cdt_add(type_t cdt_type, char *name, type_t mem_type, unsigned int count);
 int dax_cdt_finalize(type_t type);
-//--This should really not be exposed to the modules
-int dax_cdt_get(type_t type, char *name);
-
 
 #endif /* !__OPENDAX_H */
