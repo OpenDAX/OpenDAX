@@ -16,6 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <modbus.h>
+#include <database.h>
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,9 +35,6 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <pthread.h>
-
-#include <modbus.h>
-#include <database.h>
 
 static int openport(struct mb_port *);
 static int openIPport(struct mb_port *);

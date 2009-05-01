@@ -22,7 +22,6 @@
 #include <libdax.h>
 #include <common.h>
 #include <stdarg.h>
-#include <strings.h>
 #include <signal.h>
 
 static int _verbosity = 0;

@@ -20,7 +20,6 @@
  */
 
 #include <daxlua.h>
-#include <strings.h>
 #include <pthread.h>
 
 extern pthread_mutex_t daxmutex;

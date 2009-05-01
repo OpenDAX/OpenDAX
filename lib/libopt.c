@@ -21,7 +21,6 @@
 
 #include <libdax.h>
 #include <dax/libcommon.h>
-#include <string.h>
 #include <getopt.h>
 #include <ctype.h>
 

@@ -25,7 +25,6 @@
 #include <tagbase.h>
 #include <func.h>
 
-#include <string.h>
 #include <getopt.h>
 
 static char *_pidfile;

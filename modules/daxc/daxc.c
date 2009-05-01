@@ -33,7 +33,7 @@ static int _quitsignal = 0;
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
     struct sigaction sa;
-    int flags, result;
+    int flags, result = 0;
     char *instr, *command, *filename;
     
  /* Set up the signal handlers */
@@ -100,7 +100,7 @@ int main(int argc,char *argv[]) {
 int
 runcmd(char *instr)
 {
-    int tcount = 0, n, result;
+    int tcount = 0, n, result = 0;
     char *last, *temp, *tok;
     char **tokens;
     

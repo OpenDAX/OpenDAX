@@ -60,7 +60,7 @@ static dax_buffnode *_buffer;
 
 /* Allocate and initialize a buffer node */
 static dax_buffnode *
-new_buffnode(void)
+_new_buffnode(void)
 {
     dax_buffnode *node;
     
@@ -81,9 +81,10 @@ buff_initialize(void)
     dax_buffnode *node, *last;
     
     count = opt_min_buffers();
+    last = NULL;
     
     for(n = 0; n < count; n++) {
-        node = new_buffnode();
+        node = _new_buffnode();
         if(node == NULL) {
             xfatal("Unable to allocate all of the communication buffers");
         }
@@ -119,7 +120,7 @@ find_buff_slot(int fd)
     if(firstfree != NULL) {
         result = firstfree;
     } else {
-        result = new_buffnode();
+        result = _new_buffnode();
         if(result != NULL) {
             node = _buffer;
             /* double linked list would eliminate this ??? */

@@ -20,9 +20,6 @@
  */
 
 #include <libdax.h>
-#ifdef HAVE_STRINGS_H
-# include <strings.h>
-#endif
 #include <dax/libcommon.h>
 
 /* Tag Cache Handling Code

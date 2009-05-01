@@ -24,7 +24,6 @@
 #include <func.h>
 #include <pthread.h>
 #include <syslog.h>
-#include <string.h>
 #include <signal.h>
 #include <sys/wait.h>
 

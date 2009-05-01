@@ -22,7 +22,6 @@
 #include <tagbase.h>
 #include <func.h>
 #include <ctype.h>
-#include <string.h>
 
 /* Notes:
  * The tagname symbol table list is implemented as a simple array that

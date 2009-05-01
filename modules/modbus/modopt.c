@@ -16,19 +16,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <syslog.h>
-#include <string.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <termios.h>
-
 #include <common.h>
 #include <modopt.h>
 #include <modbus.h>
 #include <opendax.h>
+
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <syslog.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <termios.h>
+
 
 static void printconfig(void);
 

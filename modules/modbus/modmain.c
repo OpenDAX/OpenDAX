@@ -19,7 +19,6 @@
 #include <common.h>
 #include <opendax.h>
 
-#include <string.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <fcntl.h>

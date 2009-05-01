@@ -19,7 +19,6 @@
 
 #include <common.h>
 #include <opendax.h>
-#include <string.h>
 
 #ifndef __DAXTEST_H
 #define __DAXTEST_H

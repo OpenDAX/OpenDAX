@@ -23,6 +23,7 @@
 #define __DAXTYPES_H
 
 #include <sys/types.h>
+#include <netinet/in.h>
 
 /* Module Flags */
 #define MFLAG_RESTART       0x01

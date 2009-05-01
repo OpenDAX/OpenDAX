@@ -33,6 +33,13 @@
 #ifdef HAVE_SYS_TYPES_H
  #include <sys/types.h>
 #endif
+#ifdef HAVE_STRING_H
+ #include <string.h>
+#endif
+#ifdef HAVE_STRINGS_H
+ #include <strings.h>
+#endif
+
 
 /* Global definitions. These can be overriden with a -D arguments
  * in the Makefile */

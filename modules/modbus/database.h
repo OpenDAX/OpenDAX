@@ -19,7 +19,7 @@
 #ifndef __DATABASE_H
 #define __DATABASE_H
 
-#include <sys/types.h>
+#include <common.h>
 #include <opendax.h>
 
 int dt_add_tag(char *name, int index, int function, int length);

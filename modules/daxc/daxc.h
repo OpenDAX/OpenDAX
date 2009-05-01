@@ -21,7 +21,6 @@
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
-#include <string.h>
 
 /* TAG commands */
 int tag_add(char **tokens);

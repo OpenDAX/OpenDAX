@@ -20,9 +20,7 @@
  */
 
 #include <daxlua.h>
-#include <common.h>
 #include <signal.h>
-#include <string.h>
 #include <sys/time.h>
 #include <pthread.h>
 

@@ -18,12 +18,9 @@
  *  Main source code file for the OpenDAX API regression test module
  */
 
-#include <common.h>
+#include <daxtest.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include <opendax.h>
-#include <string.h>
-#include <daxtest.h>
 
 #define TEST 1000
 

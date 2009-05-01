@@ -22,7 +22,6 @@
 #include <func.h>
 
 #include <time.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -526,7 +525,7 @@ module_register(char *name, pid_t pid, int fd)
         xerror("Major problem registering module - %s : %d", name, pid);
         return NULL;
     }
-    print_modules();
+    print_modules(void);
     return mod;
 }
 

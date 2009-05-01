@@ -20,7 +20,6 @@
  */
 
 #include <daxlua.h>
-#include <string.h>
 #include <getopt.h>
 #include <math.h>
 

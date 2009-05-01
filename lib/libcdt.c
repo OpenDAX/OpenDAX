@@ -21,7 +21,6 @@
 
 #include <libdax.h>
 #include <dax/libcommon.h>
-#include <string.h>
 
 /* The main datatype array for the module */
 static datatype *_datatypes;
