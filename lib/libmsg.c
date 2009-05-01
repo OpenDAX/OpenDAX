@@ -379,13 +379,15 @@ dax_tag_byname(dax_tag *tag, char *name)
     if(check_cache_name(name, tag)) {
         /* We make buff big enough for the outgoing message and the incoming
            response message which would have 3 additional int32s */
-        buff = alloca(size + 14);
+        buff = malloc(size + 14);
+        if(buff == NULL) return ERR_ALLOC;
         buff[0] = TAG_GET_NAME;
         strcpy(&buff[1], name);
         /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
         result = _message_send( MSG_TAG_GET, buff, size + 2);
         if(result) {
             dax_error("Can't send MSG_TAG_GET message");
+            free(buff);
             return result;
         }
         size += 14; /* This makes room for the type, count and handle */
@@ -393,6 +395,7 @@ dax_tag_byname(dax_tag *tag, char *name)
         result = _message_recv(MSG_TAG_GET, buff, &size, 1);
         if(result) {
             dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
+            free(buff);
             return ERR_MSG_RECV;
         }
         tag->idx = stom_dint( *((int *)&buff[0]) );
@@ -402,6 +405,7 @@ dax_tag_byname(dax_tag *tag, char *name)
         strcpy(tag->name, &buff[12]);
         cache_tag_add(tag);
     }
+    free(buff);
     return 0;
 }
 

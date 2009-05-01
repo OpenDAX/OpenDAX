@@ -241,8 +241,13 @@ _parse_commandline(int argc, char **argv) {
 		this = this->next;
 	}
 	/* Allocate the memory on the stack */
-	shortopts = alloca(sizeof(char) * (o_count + 1));
-	options = alloca(sizeof(struct option) * (attr_count + 1));
+	shortopts = malloc(sizeof(char) * (o_count + 1));
+	if(shortopts == NULL) return ERR_ALLOC;
+	options = malloc(sizeof(struct option) * (attr_count + 1));
+	if(options == NULL) {
+	    free(shortopts);
+	    return ERR_ALLOC;
+	}
 	
 	/* This loop assigns the option structure and strings
 	 * from the attribute list */
@@ -299,6 +304,8 @@ _parse_commandline(int argc, char **argv) {
             }
 		}
 	}
+	free(shortopts);
+	free(options);
 	return 0;
 }
 

@@ -420,14 +420,14 @@ msg_tag_del(dax_message *msg)
     return 0;
 }
 
-
+#define MSG_GET_TAG_HEADER 13
 
 int
 msg_tag_get(dax_message *msg)
 {
     int result, index, size;
     dax_tag tag;
-    char *buff;
+    char buff[DAX_TAGNAME_SIZE + MSG_GET_TAG_HEADER];
     
     if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
         index = *((tag_idx_t *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
@@ -439,9 +439,8 @@ msg_tag_get(dax_message *msg)
         result = tag_get_name((char *)&msg->data[1], &tag);
         xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
     }
-    size = strlen(tag.name) + 13;
-    buff = alloca(size);
-    if(buff == NULL) result = ERR_ALLOC;
+    size = strlen(tag.name) + MSG_GET_TAG_HEADER;
+
     if(!result) {
         *((u_int32_t *)&buff[0]) = tag.idx;
         *((u_int32_t *)&buff[4]) = tag.type;

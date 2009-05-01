@@ -235,6 +235,26 @@ _arglist_tok(char *path, char *str)
     return arr;
 }
 
+/* Lookup and return the pointer to the module with pid */
+/* Retrieves a pointer to module given name */
+//#ifdef DEBUG
+static void
+_print_modules(void)
+{
+    dax_module *last;
+  
+    /* In case we ain't got no list */
+    if(_current_mod == NULL) return;
+    /* Figure out where we need to stop */
+    last = _current_mod;
+    
+    do {
+        printf("Module - %s - %u\n", _current_mod->name, _current_mod->pid);
+        _current_mod = _current_mod->next;
+    } while (_current_mod != last);
+}
+//#endif
+
 
 dax_module *
 module_add(char *name, char *path, char *arglist, int startup, unsigned int flags)
@@ -525,7 +545,7 @@ module_register(char *name, pid_t pid, int fd)
         xerror("Major problem registering module - %s : %d", name, pid);
         return NULL;
     }
-    print_modules(void);
+    _print_modules();
     return mod;
 }
 
@@ -556,7 +576,7 @@ event_register(pid_t pid, int fd)
     } else {
         mod->efd = fd;
     }
-    print_modules();
+    _print_modules();
     return mod;
 }
 
@@ -576,7 +596,7 @@ module_unregister(int fd)
             module_del(mod);
         }
     }
-    print_modules();
+    _print_modules();
 }
 
 
@@ -664,22 +684,3 @@ module_dmq_add(pid_t pid,int status)
 
 
 
-/* Lookup and return the pointer to the module with pid */
-/* Retrieves a pointer to module given name */
-//#ifdef DEBUG
-void
-print_modules(void)
-{
-    dax_module *last;
-  
-    /* In case we ain't got no list */
-    if(_current_mod == NULL) return;
-    /* Figure out where we need to stop */
-    last = _current_mod;
-    
-    do {
-        printf("Module - %s - %u\n", _current_mod->name, _current_mod->pid);
-        _current_mod = _current_mod->next;
-    } while (_current_mod != last);
-}
-//#endif

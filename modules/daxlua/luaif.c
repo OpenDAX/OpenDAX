@@ -191,12 +191,13 @@ fetch_tag(lua_State *L, char *tagname)
     } else {
         size = tag.count * TYPESIZE(tag.type) / 8;
     }
-    buff = alloca(size);
+    buff = malloc(size);
     if(buff == NULL) {
         luaL_error(L, "Unable to allocate buffer size = %d", size);
     }
     result = dax_read_tag(tag.idx, 0, buff, tag.count, tag.type);
     if(result) {
+        free(buff);
         luaL_error(L, "Unable to read tag - %s", tag.name);
     }
     
@@ -230,6 +231,7 @@ fetch_tag(lua_State *L, char *tagname)
         }
     }
     
+    free(buff);
     return 0;
 }
 

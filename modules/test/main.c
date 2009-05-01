@@ -29,40 +29,40 @@
  * Check datatype functions
  */
 
-static int
-_check_cdt_handles(void)
-{
-    int n, result;
-    handle_t h;
-    char *tags[9] = {
-            "CombinedTag",
-            "CombinedTag[2]",
-            "CombinedTag.Bit1",
-            "CombinedTag[2].Bit1",
-            "CombinedTag[2].Bit1[3]",
-            "CombinedTag[2].Test.TestBool",
-            "CombinedTag[2].Test[3].TestBool",
-            "CombinedTag.Test[3].TestBool[1]",
-            NULL
-            };
-    n = 0;
-    
-    while(tags[n] != NULL) {
-        result = dax_tag_handle(&h, tags[n], 1);
-        if(result) printf("dax_tag_handle() returned %d\n", result);
-        n++;
-    }
-    return 0;
-}
+//static int
+//_check_cdt_handles(void)
+//{
+//    int n, result;
+//    handle_t h;
+//    char *tags[9] = {
+//            "CombinedTag",
+//            "CombinedTag[2]",
+//            "CombinedTag.Bit1",
+//            "CombinedTag[2].Bit1",
+//            "CombinedTag[2].Bit1[3]",
+//            "CombinedTag[2].Test.TestBool",
+//            "CombinedTag[2].Test[3].TestBool",
+//            "CombinedTag.Test[3].TestBool[1]",
+//            NULL
+//            };
+//    n = 0;
+//    
+//    while(tags[n] != NULL) {
+//        result = dax_tag_handle(&h, tags[n], 1);
+//        if(result) printf("dax_tag_handle() returned %d\n", result);
+//        n++;
+//    }
+//    return 0;
+//}
 
 int
 main(int argc,char *argv[])
 {
-    int n, result, flags;
+    int result=0, flags;
     char *script;
-    tag_idx_t handle[10];
-    int dummy[20];
-    type_t type;
+    //tag_idx_t handle[10];
+    //int dummy[20];
+    //type_t type;
     lua_State *L;
     
     
@@ -171,7 +171,7 @@ main(int argc,char *argv[])
     //dax_write_tag(handle[1], 2, buff, 1, DAX_BOOL);
     //dax_write_tag(handle[1], 4, buff, 1, DAX_BOOL);
     //dax_write_tag(handle[1], 8, buff, 1, DAX_BOOL);
-    /*
+    
     for(n = 0; n < 16; n++) {
         dax_read_tag(handle[1], n, buff, 1, DAX_BOOL);
         printf("WriteBOOLTest[%d] = ", n);

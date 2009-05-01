@@ -82,7 +82,9 @@ static int _db_read_getparams(tag_idx_t *handle, size_t *count, char bitsorbytes
 }
 
 /* Abstracts the db_read_bits() and db_read_bit() dax library function calls */
-int db_read_bit(void) {
+int
+db_read_bit(void)
+{
     tag_idx_t handle;
     void *buff;
     size_t count, n;
@@ -92,7 +94,8 @@ int db_read_bit(void) {
     }
     
     /* Allocate the buffer on the stack */
-    buff = alloca(count/8 +1);
+    buff = malloc(count/8 +1);
+    if(buff == NULL) return ERR_ALLOC;
     handle = handle / 8 * 8;
     /* Read the data */
     if(count == 1) {
@@ -116,6 +119,7 @@ int db_read_bit(void) {
         }
     }
     printf("\n");
+    free(buff);
     return 0;
 }
 

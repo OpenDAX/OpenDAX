@@ -110,9 +110,6 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define to 1 if you have the `strlcat' function. */
-#undef HAVE_STRLCAT
-
 /* Define to 1 if you have the `strpbrk' function. */
 #undef HAVE_STRPBRK
 
@@ -166,10 +163,6 @@
 
 /* Define to 1 if `vfork' works. */
 #undef HAVE_WORKING_VFORK
-
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
-#undef LT_OBJDIR
 
 /* Name of package */
 #undef PACKAGE
