@@ -22,7 +22,6 @@
 
 #include <common.h>
 #include <crc.h>
-#define _GNU_SOURCE
 
 #ifndef __CRC32_INIT
 static u_int32_t gCRC32Tbl[] = {    0x0000, 0xC0C1,

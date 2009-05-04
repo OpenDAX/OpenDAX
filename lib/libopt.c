@@ -351,14 +351,18 @@ _get_lua_globals(lua_State *L, int type) {
  * typically opendax.h and run it. */
 static inline int
 _main_config_file(void) {
-	int length;
+	int length, result = 0;
 	char *cfile, *cdir;
 	lua_State *L;
 	
 	cdir = dax_get_attr("confdir");
 	length = strlen(cdir) + strlen("/opendax.conf") + 1;
-	cfile = alloca(sizeof(char) * length);
-	if(cfile) sprintf(cfile, "%s/opendax.conf", cdir);
+	cfile = malloc(sizeof(char) * length);
+	if(cfile) {
+	    sprintf(cfile, "%s/opendax.conf", cdir);
+	} else {
+	    return ERR_ALLOC;
+	}
 
     L = lua_open();
     /* We don't open any librarires because we don't really want any
@@ -368,12 +372,13 @@ _main_config_file(void) {
     /* load and run the configuration file */
     if(luaL_loadfile(L, cfile)  || lua_pcall(L, 0, 0, 0)) {
         dax_error("Problem executing configuration file - %s", lua_tostring(L, -1));
-        return ERR_GENERIC;
+        result = ERR_GENERIC;
+    } else {
+        /* tell lua to push these variables onto the stack */
+        _get_lua_globals(L, CFG_DAXCONF);
     }
     
-    /* tell lua to push these variables onto the stack */
-    _get_lua_globals(L, CFG_DAXCONF);
-    
+    free(cfile);
     return 0;
 }
 
@@ -394,18 +399,23 @@ _mod_config_file(void) {
 	     * the module name that was passed to dax_init_config() */
         cdir = dax_get_attr("confdir");
 	    length = strlen(cdir) + strlen(_modulename) + strlen("/.conf") + 1;
-        cfile = alloca(sizeof(char) * length);
-        if(cfile) sprintf(cfile, "%s/%s.conf", cdir, _modulename);
+        cfile = malloc(sizeof(char) * length);
+        if(cfile) {
+            sprintf(cfile, "%s/%s.conf", cdir, _modulename);
+        } else {
+            return ERR_ALLOC;
+        }
 	}
 	    
     /* load and run the configuration file */
     if(luaL_loadfile(_L, cfile)  || lua_pcall(_L, 0, 0, 0)) {
         dax_error("Problem executing configuration file - %s", lua_tostring(_L, -1));
         return ERR_GENERIC;
+    } else {
+        _get_lua_globals(_L, CFG_MODCONF);
     }
     
-    _get_lua_globals(_L, CFG_MODCONF);
-    
+    free(cfile);
     return 0;
 }
 

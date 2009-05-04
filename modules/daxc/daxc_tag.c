@@ -428,10 +428,10 @@ tag_write(char **tokens, int tcount)
     if(tag.type == DAX_BOOL) size = points / 8 + 1;
     else                     size = (TYPESIZE(tag.type) / 8) * points;
     
-    buff = alloca(size);
+    buff = malloc(size);
     if(!buff) {
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
-        return 1;
+        return ERR_ALLOC;
     }
     /* TODO: I might want to add the ability to skip points with a '-'
      * I'd have to search for any '-' and then use dax_mask_tag() instead. */
@@ -441,10 +441,10 @@ tag_write(char **tokens, int tcount)
     result = dax_write_tag(handle, index, buff, points, tag.type);
     if(result) {
         fprintf(stderr, "ERROR: Problem writing data to opendax\n");
-        return result;
     }
     
     /**** Get data here *****/
     //printf("Tag Write Command handle = %d, index = %d, points = %d\n", handle, index, points);
-    return 0;
+    free(buff);
+    return result;
 }

@@ -126,7 +126,7 @@ dax_error(const char *format, ...)
 
 /* This function would be for logging events within the module */
 /* TODO: At some point this may send a message to opendax right
- now it either calls the callback or if none is given prints to stdout */
+   now it either calls the callback or if none is given prints to stdout */
 void
 dax_log(const char *format, ...)
 {

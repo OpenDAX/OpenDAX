@@ -59,7 +59,7 @@ typedef struct dax_Module {
 typedef struct CDT_Member {
     char *name;
     unsigned int type;
-    size_t count;
+    u_int32_t count;
     struct CDT_Member *next;
 } cdt_member;
 

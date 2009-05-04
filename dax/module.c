@@ -23,6 +23,7 @@
 
 #include <time.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 
 /* TODO: Module Scanning routine
@@ -528,7 +529,7 @@ module_register(char *name, pid_t pid, int fd)
             /* We already have one of these running */
             /* Get a new string big enough for adding the PID */
             //--size = strlen(name) + 7;
-            //--newname = (char *)alloca(size);
+            //--newname = (char *)malloc(size);
             //--snprintf(newname, size, "%s%d", name, pid);
             mod = module_add(name, NULL, NULL, 0, 0);
         //} else  {

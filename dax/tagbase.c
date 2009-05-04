@@ -785,7 +785,7 @@ serialize_datatype(type_t type, char **str)
     while(this != NULL) {
         size += strlen(this->name);
         size += strlen(cdt_get_name(this->type));
-        snprintf(test, DAX_TAGNAME_SIZE + 1, "%ld", this->count);
+        snprintf(test, DAX_TAGNAME_SIZE + 1, "%d", this->count);
         size += strlen(test);
         size += 3; /* This is for the ':' and the two commas */
         this = this->next;
@@ -807,7 +807,7 @@ serialize_datatype(type_t type, char **str)
         strlcat(*str, ",", size);
         strlcat(*str, cdt_get_name(this->type), size);
         strlcat(*str, ",", size);
-        snprintf(test, DAX_TAGNAME_SIZE + 1, "%ld", this->count);
+        snprintf(test, DAX_TAGNAME_SIZE + 1, "%d", this->count);
         strlcat(*str, test, size);
 
         this = this->next;

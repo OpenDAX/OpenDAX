@@ -639,7 +639,7 @@ msg_cdt_get(dax_message *msg)
     unsigned char subcommand;
     type_t cdt_type;
     char type[DAX_TAGNAME_SIZE + 1];
-    char *str, *data;
+    char *str, *data = NULL;
     
     result = 0;  /* result will stay zero if we don't have any errors */
     subcommand = msg->data[0];
@@ -665,7 +665,7 @@ msg_cdt_get(dax_message *msg)
     } else if(size < 0) {
         result = size;
     } else {
-        data = alloca(size + 4);
+        data = malloc(size + 4);
         if(data == NULL) {
             result = ERR_ALLOC;
         } else {
@@ -679,6 +679,7 @@ msg_cdt_get(dax_message *msg)
         _message_send(msg->fd, MSG_CDT_GET, data, size + 4, RESPONSE);
     }
     
-    if(str) free(str);
+    if(data) free(data);
+    if(str) free(str); /* Allocated by serialize_datatype() */
     return 0;
 }

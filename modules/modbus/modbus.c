@@ -19,12 +19,9 @@
 #include <modbus.h>
 #include <database.h>
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-//#define __USE_XOPEN
 #include <unistd.h>
-//#undef __USE_XOPEN
 #include <termios.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -624,7 +621,6 @@ static int
 handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
 {
     int n, result;
-    //u_int16_t temp;
     u_int16_t *data;
     
     DAX_DEBUG2("handleresponse() - Function Code = %d", cmd->function);
@@ -643,13 +639,15 @@ handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
             break;
         case 3:
         case 4:
-            data = alloca(buff[2] / 2);
+            data = malloc(buff[2] / 2);
+            if(data == NULL) return ERR_ALLOC;
             for(n = 0; n < (buff[2] / 2); n++) {
                 COPYWORD(&data[n], &buff[(n * 2) + 3]);
             }
             //--if(dt_setword(cmd->address + n, temp)) return -1;
             /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
-            if(dt_setwords(cmd->idx, cmd->index, data, cmd->length)) return -1;
+            result = dt_setwords(cmd->idx, cmd->index, data, cmd->length);
+            free(data);
             break;
         case 5:
         case 6:

@@ -124,7 +124,9 @@ db_read_bit(void)
 }
 
 /* Abstracts the db_read_bytes() dax library function call */
-int db_read(void) {
+int
+db_read(void)
+{
     tag_idx_t handle;
     void *buff;
     size_t count, n;
@@ -134,8 +136,9 @@ int db_read(void) {
     }
     
     /* Allocate the buffer on the stack */
-    buff = alloca(count);
-
+    buff = malloc(count);
+    if(buff == NULL) return ERR_ALLOC;
+    
     handle = handle / 8 * 8;
     
     /* Read the data */
@@ -157,6 +160,7 @@ int db_read(void) {
         }
     }
     printf("\n");
+    free(buff);
     return 0;
 }
 

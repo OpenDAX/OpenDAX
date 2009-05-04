@@ -21,8 +21,6 @@
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
 
-#define _GNU_SOURCE
-
 #include <common.h>
 #include <dax/daxtypes.h>
 
