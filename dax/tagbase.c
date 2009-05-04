@@ -796,19 +796,19 @@ serialize_datatype(type_t type, char **str)
     if(*str == NULL)
         return ERR_ALLOC;
     *str[0] = '\0'; /* Make the string zero length */
-
+    *str[size] = '\0'; /* NULL at the end just to be sure */
     /* Now build the string */
-    strlcat(*str, _datatypes[cdt_index].name, size);
+    strncat(*str, _datatypes[cdt_index].name, size -1);
     this = _datatypes[cdt_index].members;
 
     while(this != NULL) {
-        strlcat(*str, ":", size);
-        strlcat(*str, this->name, size);
-        strlcat(*str, ",", size);
-        strlcat(*str, cdt_get_name(this->type), size);
-        strlcat(*str, ",", size);
+        strncat(*str, ":", size - 1);
+        strncat(*str, this->name, size - 1);
+        strncat(*str, ",", size);
+        strncat(*str, cdt_get_name(this->type), size - 1);
+        strncat(*str, ",", size - 1);
         snprintf(test, DAX_TAGNAME_SIZE + 1, "%d", this->count);
-        strlcat(*str, test, size);
+        strncat(*str, test, size - 1);
 
         this = this->next;
     }
@@ -870,4 +870,4 @@ diag_list_tags(void)
         printf("__db[%d] = %s[%d] type = %d\n", n, _db[n].name, _db[n].count, _db[n].type);
     }
 }
-#endif DAX_DIAG
+#endif /* DAX_DIAG */
