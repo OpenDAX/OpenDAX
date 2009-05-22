@@ -89,6 +89,7 @@
 #define ERR_ILLEGAL   -15 /* Illegal Setting */
 #define ERR_INUSE     -16 /* Object is in use */
 #define ERR_PARSE     -17 /* Parsing Error */
+#define ERR_ARBITRARY -18 /* Arbitrary Argument */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */
@@ -129,7 +130,7 @@ struct Handle {
     int byte;          /* The byte offset where the data block starts */
     unsigned char bit; /* The bit offset */
     int count;         /* The number of items represented by the handle */
-    size_t size;       /* The total size of the data block in bytes */
+    u_int32_t size;    /* The total size of the data block in bytes */
     type_t type;       /* The datatype of the block */
 };
 

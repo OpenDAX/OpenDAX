@@ -29,11 +29,11 @@ cdt_add(test1, "Int5", "INT", 5)     --10
 cdt_add(test1, "Bool10", "BOOL", 10) -- 2
 cdt_add(test1, "Dint1", "DINT", 1)   -- 4
 cdt_add(test1, "Dint3", "DINT", 3)   --12
-cdt_finalize(test1)
+cdt_finalize(test1)                 -- 28 Total
 
-cdt_add(test2, "Int3", "INT", 3)
-cdt_add(test2, "Test1", "Test1", 5)
-cdt_finalize(test2)
+cdt_add(test2, "Int3", "INT", 3)     -- 6
+cdt_add(test2, "Test1", "Test1", 5)  --40
+cdt_finalize(test2)                 -- 46 Total
 
 cdt_add(test3, "Int7", "INT", 7)
 cdt_add(test3, "Bool30", "BOOL", 30)
@@ -42,6 +42,11 @@ cdt_add(test3, "Test1", "Test1", 1)
 cdt_add(test3, "Test2", "Test2", 2)
 cdt_finalize(test3)
 
+tag_add("HandleBool1", "BOOL", 1)
+tag_add("HandleBool7", "BOOL", 7)
+tag_add("HandleBool8", "BOOL", 8)
+tag_add("HandleBool9", "BOOL", 9)
+tag_add("HandleBool33", "BOOL", 33)
 tag_add("HandleInt", "INT", 2)
 tag_add("HandleTest1", "Test1", 1)
 tag_add("HandleTest2", test2, 5)
@@ -51,20 +56,44 @@ tag_add("HandleTest4", test3, 10)
 --Test that the handles returned are correct
 --Each tag entry contains...
 --    the tagname string to parse
---    item count (N)
---    byte offset(B)
---    bit offset (b)
---    byte size  (s)
+--    item count  (N) - requested by test
+-- Returned Values
+--    byte offset (B)
+--    bit offset  (b)
+--    item count  (c) - returned by opendax
+--    byte size   (s)
 --    data type  
 --    PASS/FAIL
 --If FAIL then all arguments are ignored and the string is expected to fail.
 --Otherwise the returned handle values must match those given
 --  or the test will fail.
---        NAME                N  B   b  s   TYPE     TEST  --
-tags = {{"HandleInt[1]",      1, 2,  0, 2,  "INT",   PASS},
-        {"HandleInt",         0, 0,  0, 4,  "INT",   PASS},
-        {"HandleInt[2]",      5, 0,  0, 0,  "INT",   FAIL},
-        {"HandleTest1",       0, 0,  0, 28, "Test1", PASS},
-        {"HandleTest1.Dint1", 1, 12, 0, 4,  "DINT",  PASS}}
-
+--        NAME                          N   B   b  c   s   TYPE      TEST  --
+tags = {{"HandleBool1",                 0,  0,  0, 1,  1,  "BOOL",   PASS},
+        {"HandleBool7",                 0,  0,  0, 7,  1,  "BOOL",   PASS},
+        {"HandleBool7[2]",              4,  0,  2, 4,  1,  "BOOL",   PASS},
+        {"HandleBool7[6]",              1,  0,  6, 1,  1,  "BOOL",   PASS},
+        {"HandleBool7[5]",              2,  0,  5, 2,  1,  "BOOL",   PASS},
+        {"HandleBool7[6]",              2,  0,  6, 2,  1,  "BOOL",   FAIL},
+        {"HandleBool7[7]",              1,  0,  2, 4,  1,  "BOOL",   FAIL},
+        {"HandleBool8",                 0,  0,  0, 8,  1,  "BOOL",   PASS},
+        {"HandleBool9",                 0,  0,  0, 9,  2,  "BOOL",   PASS},
+        {"HandleBool9[8]",              0,  1,  0, 1,  1,  "BOOL",   PASS},
+        {"HandleBool33",                0,  0,  0, 33, 5,  "BOOL",   PASS},
+        {"HandleBool33[7]",             1,  0,  7, 1,  1,  "BOOL",   PASS},
+        {"HandleBool33[3]",             8,  0,  3, 8,  1,  "BOOL",   PASS},
+        {"HandleBool33[3]",             9,  0,  3, 9,  2,  "BOOL",   PASS},
+        {"HandleInt[1]",                1,  2,  0, 1,  2,  "INT",    PASS},
+        {"HandleInt",                   0,  0,  0, 2,  4,  "INT",    PASS},
+        {"HandleInt[2]",                1,  0,  0, 0,  0,  "INT",    FAIL},
+        {"HandleInt[2]",                5,  0,  0, 0,  0,  "INT",    FAIL},
+        {"HandleTest1",                 0,  0,  0, 1,  28, "Test1",  PASS},
+        {"HandleTest1.Dint3",           0,  16, 0, 3,  12, "DINT",   PASS},
+        {"HandleTest1.Dint3[0]",        2,  16, 0, 2,  8,  "DINT",   PASS},
+        {"HandleTest1.Dint3[1]",        2,  20, 0, 2,  8,  "DINT",   PASS},
+        {"HandleTest1.Dint3[2]",        1,  24, 0, 1,  4,  "DINT",   PASS},
+        {"HandleTest1.Dint3[2]",        2,  24, 0, 1,  4,  "DINT",   FAIL},
+        {"HandleTest1.Dint1",           1,  12, 0, 1,  4,  "DINT",   PASS},
+        {"HandleTest2[0].Test1[2]",     1,  62, 0, 1,  28, "Test1",  PASS},
+        {"NoTagName",                   0,  0,  0, 0,  0,  "Duh",    FAIL}}
+        
 tag_handle_test(tags)

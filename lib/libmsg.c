@@ -404,8 +404,8 @@ dax_tag_byname(dax_tag *tag, char *name)
         buff[size - 1] = '\0'; /* Just to make sure */
         strcpy(tag->name, &buff[12]);
         cache_tag_add(tag);
+        free(buff);
     }
-    free(buff);
     return 0;
 }
 

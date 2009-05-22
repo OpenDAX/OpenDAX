@@ -328,19 +328,24 @@ dax_type_to_string(int type)
 typedef struct {
     char name[DAX_TAGNAME_SIZE + 1];
     int index;
+    type_t type;
+    int count;
+    int byte;
+    int bit;
 } _member_def;
 
+
+
+
+
 static int
-_parse_tagname(char *str, _member_def *list, int count)
+_parse_tagname(_member_def *list, char *str, int count)
 {
     int n = 0, i = 0, j = 0, idx = 0;
     int state = STATE_NAME;
     char name[DAX_TAGNAME_SIZE + 1];
     char test[TEST_SIZE];
     int index = 0;
-    
-    /* TEST TEST TEST */
-    printf("\nParsing '%s'\n", str);
     
     /* Initialize the list */
     for(n = 0; n < count; n++) {
@@ -422,17 +427,23 @@ _parse_tagname(char *str, _member_def *list, int count)
  * of the tag and the datatype and then returns zero if successful and an
  * error code otherwise.
  */
+#define HANDLE_MULTIPASS 1
+#ifdef HANDLE_MULTIPASS
+
 int
 dax_tag_handle(handle_t *h, char *str, int count)
 {
     int n = 0;
     int cnt = 1;
-    int result, byte, bit, index;
-    _member_def *list;
+    int result, index;
+    _member_def *list = NULL;
     dax_tag tag;
     cdt_member *this;
     type_t type;
     
+    /* TEST TEST TEST */
+    printf("\nGetting Handle for '%s' with count = %d\n", str, count);
+       
     /* Count the number of '.'s to figure out the size of the list */
     while(str[n] != '\0') {
         if(str[n] == '.') {
@@ -442,10 +453,159 @@ dax_tag_handle(handle_t *h, char *str, int count)
     }
     list = malloc(sizeof(_member_def) * cnt);
     if(list == NULL) {
-        result = ERR_ALLOC;
+        return ERR_ALLOC;
     }
+    
     /* parse the given string into tokens and place in list */
-    result = _parse_tagname(str, list, cnt);
+    result = _parse_tagname(list, str, cnt);
+    if(result) goto getout;
+    /* At this point 'list' should be populated with all the members of the 
+     * tag string.  Now we fill in the datatypes and the byte offsets */
+    
+    /* First PASS - Fill in all the bytes and bits for each member */
+    for(n = 0; n < cnt; n++) {
+        list[n].byte = list[n].bit = 0;
+        
+        if(n == 0) { /* This should be the tagname */
+            result = dax_tag_byname(&tag, list[0].name);
+            if(result) goto getout;
+            list[n].type = tag.type;  
+            list[n].count = tag.count;
+        } else { /* all the members of the tag */
+            type = list[n-1].type; /* We are looking inside the last members type */
+            if(IS_CUSTOM(type)) { /* Get the new members datatype */
+                /* We do this just to make sure that our type is in the cache */
+                if(dax_type_to_string(type) == NULL) {
+                    result = ERR_ARG;
+                    goto getout;
+                }
+                /* If we make it this far then our type should work */
+                index = CDT_TO_INDEX(type);
+                this = _datatypes[index].members;
+            
+                while(this != NULL) {
+                    /* Start by adding all the bytes of the members before the
+                     * one we are looking for */
+                    if(strcasecmp(list[n].name, this->name)) {
+                        if(this->type == DAX_BOOL) {
+                            list[n].byte += (this->count - 1)/8 + 1;
+                        } else {
+                            list[n].byte += _get_typesize(this->type) * this->count;
+                        }
+                    } else { /* When we find it */
+                        list[n].type = this->type;
+                        list[n].count = this->count;
+                        if(list[n].index >= 0 && list[n].index >= this->count) {
+                            result = ERR_2BIG;
+                            goto getout;
+                        }
+                        break;
+                    }
+                    this = this->next;
+                } /* while(this != NULL */
+                if(this == NULL ) {
+                    result = ERR_NOTFOUND;
+                    goto getout;
+                }
+            } else {
+                result = ERR_ARG; /* Datatype of previous member is not custom */
+                goto getout;
+            } /* if(IS_CUSTOM) */
+        } /* if(first item in list) */
+        /* The only time that we are allowed to leave the index off of a data member
+         * in the tagname string is if the count of the type (or tag) is 1 or if we are
+         * the last one in the list, in which case we'll return for the whole array */
+        if(list[n].count > 1 && list[n].index < 0 && n != cnt-1) {
+            result = ERR_ARBITRARY;
+            goto getout;
+        }
+        
+        if(list[n].index >= 0) {
+            if(list[n].type == DAX_BOOL) {
+                list[n].byte += list[n].index / 8;
+                list[n].bit += list[n].index % 8;
+            } else {
+                list[n].byte += _get_typesize(list[n].type) * list[n].index;
+                list[n].bit += 0;
+            } 
+        }
+        printf("list[%d]: .name = %s :.index = %d :.type = %s :.count = %d :.byte = %d :.bit = %d\n", 
+                n, list[n].name, list[n].index, dax_type_to_string(list[n].type), list[n].count, list[n].byte, list[n].bit);
+    
+    } /* First Pass for() loop */
+    
+    /* Now the second pass where we put it all together */
+    h->byte = 0;
+    for(n = 0; n < cnt; n++) {
+        h->byte += list[n].byte;
+    }
+    n = cnt-1; /* Set to the last item in the list */
+    
+    h->index = tag.idx;
+    h->bit = list[n].bit;
+    h->type = list[n].type;
+    if(list[n].index == -1) {
+        h->count = list[n].count;
+    } else {
+        if((list[n].index + count) > list[n].count) {
+            result = ERR_2BIG;
+            goto getout;
+        } else {
+            if(count <= 0) {
+                h->count = 1;
+            } else {
+                h->count = count;
+            }
+        }
+    }
+    if(list[n].type == DAX_BOOL) {
+        h->size = (h->count - 1)/8 + 1;
+    } else {
+        h->size = _get_typesize(list[n].type) * h->count;
+    }
+    
+    printf("Final Answer: byte = %d, bit = %d, type = %s, count = %d, size = %d\n", list[n].byte, list[n].bit, dax_type_to_string(list[n].type), h->count, h->size);
+    
+getout:
+    free(list);
+    if(result) {
+        //--printf("Exiting with error %d\n", result);
+        bzero(h, sizeof(*h));
+    }
+    return result;
+
+}
+
+#else
+
+int
+dax_tag_handle(handle_t *h, char *str, int count)
+{
+    int n = 0;
+    int cnt = 1;
+    int result, byte, bit, index, memcount;
+    _member_def *list = NULL;
+    dax_tag tag;
+    cdt_member *this;
+    type_t type;
+    
+    /* TEST TEST TEST */
+    printf("\nGetting Handle for '%s' with count = %d\n", str, count);
+       
+    /* Count the number of '.'s to figure out the size of the list */
+    while(str[n] != '\0') {
+        if(str[n] == '.') {
+            cnt++;
+        }
+        n++;
+    }
+    list = malloc(sizeof(_member_def) * cnt);
+    if(list == NULL) {
+        return ERR_ALLOC;
+    }
+    
+    /* parse the given string into tokens and place in list */
+    result = _parse_tagname(list, str, cnt);
     if(result) goto getout;
     /* At this point 'list' should contain all the tokens of the tag */
     
@@ -453,10 +613,11 @@ dax_tag_handle(handle_t *h, char *str, int count)
     if(result) goto getout;
     
     //--TESTING
-    printf("Found tag at index %d\n", tag.idx);
+    //--printf("Found tag at index %d\n", tag.idx);
     
     byte = bit = 0;
     type = tag.type;
+    memcount = tag.count;
     
     /* This get's the initial offset of the tag itself */
     if(list[0].index > 0) {
@@ -468,8 +629,11 @@ dax_tag_handle(handle_t *h, char *str, int count)
         } 
     }
     
-    for(n = 1; n < cnt; n++) {   
+    /* Loop through the CDT members if they are present */
+    for(n = 1; n < cnt; n++) {
+        printf("Trying list[%d]\n", n);
         if(IS_CUSTOM(type)) {
+            printf("I think that list[%d] is custom\n",n);
             /* We do this just to make sure that our type is in the cache */
             if(dax_type_to_string(type) == NULL) {
                 result = ERR_ARG;
@@ -490,6 +654,11 @@ dax_tag_handle(handle_t *h, char *str, int count)
                     }
                 } else { /* When we find it */
                     type = this->type;
+                    memcount = this->count;
+                    if(count > this->count) {
+                        result = ERR_2BIG;
+                        goto getout;
+                    }
                     break;
                 }
                 this = this->next;
@@ -499,26 +668,54 @@ dax_tag_handle(handle_t *h, char *str, int count)
                 goto getout;
             }
         } else {
+            printf("list[%d].index = %d\n",n, list[n].index);
             if(list[n].index > 0) {
+                printf("Is index > 0\n");
                 if(type == DAX_BOOL) {
-                    byte = list[0].index / 8;
-                    bit = list[0].index % 8;
+                    byte += list[n].index / 8;
+                    bit = list[n].index % 8;
                 } else {
-                    byte = _get_typesize(type) * list[0].index;
+                    printf("Do we get here??\n");
+                    byte += _get_typesize(type) * list[n].index;
                 } 
             }
         }
         
-        printf("list[%d].name = %s : list[%d].index = %d\n", n, list[n].name, n, list[n].index);
+     //--   printf("list[%d].name = %s : list[%d].index = %d\n", n, list[n].name, n, list[n].index);
     }
-    /* TODO!!!! Still need to calculate the size */
+    
     h->index = tag.idx;
     h->byte = byte;
     h->bit = bit;
     h->type = type;
-    printf("Final Answer: byte = %d, bit = %d, type = %s\n", byte, bit, dax_type_to_string(type));
+    if(list[cnt-1].index == -1) {
+        h->count = memcount;
+    } else {
+        if((list[cnt-1].index + count) > memcount) {
+            result = ERR_2BIG;
+            goto getout;
+        } else {
+            if(count <= 0) {
+                h->count = 1;
+            } else {
+                h->count = count;
+            }
+        }
+    }
+    if(type == DAX_BOOL) {
+        h->size = (h->count - 1)/8 + 1;
+    } else {
+        h->size = _get_typesize(type) * h->count;
+    }
+    
+    printf("Final Answer: byte = %d, bit = %d, type = %s, count = %d, size = %d\n", byte, bit, dax_type_to_string(type), h->count, h->size);
     
 getout:
-    if(list) free(list);
+    free(list);
+    if(result) {
+        bzero(h, sizeof(*h));
+    }
     return result;
 }
+
+#endif

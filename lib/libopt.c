@@ -36,7 +36,7 @@ typedef struct OptAttr {
 } optattr;
     
 static optattr *_attr_head = NULL;
-static lua_State *_L;
+static lua_State *__L;
 static char *_modulename;
 static int _msgtimeout;
 
@@ -47,11 +47,11 @@ dax_init_config(char *name)
 	int result = 0;
 	int flags;
 	
-	_L = luaL_newstate();
-	if(_L == NULL) {
+	__L = luaL_newstate();
+	if(__L == NULL) {
 		return ERR_ALLOC;
 	} else {
-        _L = lua_open();
+        __L = lua_open();
 	}
 	/* This sets up the configuration that is common to all modules */
 	flags = CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF | CFG_ARG_REQUIRED;
@@ -83,8 +83,8 @@ dax_init_config(char *name)
 int
 dax_set_luafunction(int (*f)(void *L), char *name)
 {
-	lua_pushcfunction(_L, (int (*)(lua_State *))f);
-    lua_setglobal(_L, name);
+	lua_pushcfunction(__L, (int (*)(lua_State *))f);
+    lua_setglobal(__L, name);
     return 0;
 }
 
@@ -408,11 +408,11 @@ _mod_config_file(void) {
 	}
 	    
     /* load and run the configuration file */
-    if(luaL_loadfile(_L, cfile)  || lua_pcall(_L, 0, 0, 0)) {
-        dax_error("Problem executing configuration file - %s", lua_tostring(_L, -1));
+    if(luaL_loadfile(__L, cfile)  || lua_pcall(__L, 0, 0, 0)) {
+        dax_error("Problem executing configuration file - %s", lua_tostring(__L, -1));
         return ERR_GENERIC;
     } else {
-        _get_lua_globals(_L, CFG_MODCONF);
+        _get_lua_globals(__L, CFG_MODCONF);
     }
     
     free(cfile);

@@ -216,9 +216,9 @@ static int
 _tag_handle_test(lua_State *L)
 {
     handle_t h;
-    int n = 1;
+    int n = 1, final = 0;
     const char *name, *type;
-    int count, result, byte, bit, size, test;
+    int count, result, byte, bit, rcount, size, test;
     
     if(lua_gettop(L) != 1) {
         luaL_error(L, "wrong number of arguments to tag_handle_test()");
@@ -226,7 +226,7 @@ _tag_handle_test(lua_State *L)
     if(! lua_istable(L, 1) ) {
         luaL_error(L, "should pass a table to tag_handle_test()");
     }
-    printf("Starting Tag Handle Test");
+    printf("Starting Tag Handle Test\n");
     _tests_run++;
     while(1) {
         lua_rawgeti(L, 1, n++);
@@ -240,17 +240,49 @@ _tag_handle_test(lua_State *L)
         lua_rawgeti(L, 2, 4);
         bit = lua_tointeger(L, -1);
         lua_rawgeti(L, 2, 5);
-        size = lua_tointeger(L, -1);
+        rcount = lua_tointeger(L, -1);
         lua_rawgeti(L, 2, 6);
-        type = lua_tostring(L, -1);
+        size = lua_tointeger(L, -1);
         lua_rawgeti(L, 2, 7);
+        type = lua_tostring(L, -1);
+        lua_rawgeti(L, 2, 8);
         test = lua_tointeger(L, -1);
         
         result = dax_tag_handle(&h, (char *)name, count);
-        
-        lua_pop(L,8);        
+        if(test == 1 && result == 0) { /* We should fail */
+            printf("Handle Test: %s : %d Should have Failed\n", name, count);
+            final = 1;
+        } else if(test == 0) {
+            if(result) {
+                printf("Handle Test: dax_tag_handle failed with code %d\n", result);
+                final = 1;
+            } else { 
+                if(h.byte != byte) {
+                    printf("Handle Test: %s : %d - Byte offset does not match (%d != %d)\n", name, count, h.byte, byte);
+                    final = 1;
+                }
+                if(h.bit != bit) {
+                    printf("Handle Test: %s : %d - Bit offset does not match (%d != %d)\n", name, count, h.bit, bit);
+                    final = 1;
+                }
+                if(h.count != rcount) {
+                    printf("Handle Test: %s : %d - Item count does not match (%d != %d)\n", name, count, h.count, rcount);
+                    final = 1;
+                }
+                if(h.size != size) {
+                    printf("Handle Test: %s : %d - Size does not match (%d != %d)\n", name, count, h.size, size);
+                    final = 1;
+                }
+                if(h.type != dax_string_to_type((char *)type)) {
+                    printf("Handle Test: %s : %d - Datatype does not match\n", name, count);
+                    final = 1;
+                }
+            }
+        }
+        lua_pop(L,9);        
     }
-    return 0;
+    if(final) _tests_failed++;
+    return final;
 }
 
 /* Adds the functions to the Lua State */
