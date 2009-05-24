@@ -90,6 +90,7 @@
 #define ERR_INUSE     -16 /* Object is in use */
 #define ERR_PARSE     -17 /* Parsing Error */
 #define ERR_ARBITRARY -18 /* Arbitrary Argument */
+#define ERR_NOTNUMBER -19 /* Non Numeric Argument */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */

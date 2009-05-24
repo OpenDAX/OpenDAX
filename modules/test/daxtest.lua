@@ -32,8 +32,8 @@ cdt_add(test1, "Dint3", "DINT", 3)   --12
 cdt_finalize(test1)                 -- 28 Total
 
 cdt_add(test2, "Int3", "INT", 3)     -- 6
-cdt_add(test2, "Test1", "Test1", 5)  --40
-cdt_finalize(test2)                 -- 46 Total
+cdt_add(test2, "Test1", "Test1", 5)  --140
+cdt_finalize(test2)                 -- 146 Total
 
 cdt_add(test3, "Int7", "INT", 7)
 cdt_add(test3, "Bool30", "BOOL", 30)
@@ -82,6 +82,7 @@ tags = {{"HandleBool1",                 0,  0,  0, 1,  1,  "BOOL",   PASS},
         {"HandleBool33[7]",             1,  0,  7, 1,  1,  "BOOL",   PASS},
         {"HandleBool33[3]",             8,  0,  3, 8,  1,  "BOOL",   PASS},
         {"HandleBool33[3]",             9,  0,  3, 9,  2,  "BOOL",   PASS},
+        {"HandleBool33[3a]",            1,  0,  0, 0,  0,  "BOOL",   FAIL},
         {"HandleInt[1]",                1,  2,  0, 1,  2,  "INT",    PASS},
         {"HandleInt",                   0,  0,  0, 2,  4,  "INT",    PASS},
         {"HandleInt[2]",                1,  0,  0, 0,  0,  "INT",    FAIL},
@@ -94,6 +95,18 @@ tags = {{"HandleBool1",                 0,  0,  0, 1,  1,  "BOOL",   PASS},
         {"HandleTest1.Dint3[2]",        2,  24, 0, 1,  4,  "DINT",   FAIL},
         {"HandleTest1.Dint1",           1,  12, 0, 1,  4,  "DINT",   PASS},
         {"HandleTest2[0].Test1[2]",     1,  62, 0, 1,  28, "Test1",  PASS},
+        {"HandleTest2[0].Test1[1]",     2,  34, 0, 2,  56, "Test1",  PASS},
+        {"HandleTest2[0].Test1[4]",     1,  118,0, 1,  28, "Test1",  PASS},
+        {"HandleTest2[0].Test1[1]",     5,  32, 0, 1,  28, "Test1",  FAIL},
+        {"HandleTest2[1].Test1",        1,  152,0, 5,  140,"Test1",  PASS},
+        {"HandleTest2[0].Test1[0].Bool10[4]",
+                                        1,  16, 4, 1,  1,  "BOOL",   PASS},
+        {"HandleTest2[0].Test1[0].Bool10", 
+                                        0,  16, 0, 10, 2,  "BOOL",   PASS},
+        {"HandleTest2[0].Test1[1].Bool10", 
+                                        0,  44, 0, 10, 2,  "BOOL",   PASS},
+        {"HandleTest2[4].Test1[0].Bool10", 
+                                        0,  600,0, 10, 2,  "BOOL",   PASS},
         {"NoTagName",                   0,  0,  0, 0,  0,  "Duh",    FAIL}}
         
 tag_handle_test(tags)
