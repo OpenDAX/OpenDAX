@@ -6,15 +6,14 @@ FAIL = 1
 
 --Test that a certain number of tags can be added. Creates the given number
 --of tags with random base datatypes and random sizes.
---add_random_tags(3000, "Rand")
-
+--add_random_tags(100000, "Rand")
 
 --This checks that the tagnames that should fail do so and that tags
 --that should be allowed are allowed
 fail = {"1Tag", "-Tag", "Tag-name", "Tag&name", "TagNameIsWayTooLong12345678912345"}
 pass = {"_Tag", "Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit12"}
 
-check_tagnames(fail, pass)
+--check_tagnames(fail, pass)
 
 --Test for proper handling of recursive cdt members
 cdt_recursion()

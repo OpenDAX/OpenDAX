@@ -22,6 +22,7 @@
 #include <tagbase.h>
 #include <func.h>
 #include <ctype.h>
+#include <assert.h>
 
 /* Notes:
  * The tagname symbol table list is implemented as a simple array that
@@ -142,7 +143,7 @@ _validate_name(char *name)
 }
 
 /* This function searches the _index array to find the tag with
- the given name.  It returns the index into the _index array */
+ * the given name.  It returns the index into the _index array */
 static int
 _get_by_name(char *name)
 {
@@ -152,7 +153,8 @@ _get_by_name(char *name)
     max = _tagcount - 1;
     
     while(min < max) {
-        try = min + ((max - min) / 2);
+        //try = min + ((max - min) / 2);
+        try = (min + max) / 2;
         i = strcmp(name, _index[try].name);
         if(i > 0) {
             min = try + 1;
@@ -216,21 +218,34 @@ _add_index(char *name, int index)
 {
     int n;
     char *temp;
-
+    int i, min, max, try;
+    
     /* Let's allocate the memory for the string first in case it fails */
     temp = strdup(name);
     if(temp == NULL)
         return ERR_ALLOC;
-    /* TODO: Linear search for now.  This needs to be a binary search */
+    
     if(_tagcount == 0) {
         n = 0;
     } else {
-        for(n = 1; n < _tagcount; n++) {
-            if(strcmp(_index[n].name, name) > 0) {
-                memmove(&_index[n + 1], &_index[n], (_dbsize - n - 1) * sizeof(_dax_tag_index));
-                break;
+        min = 0;
+        max = _tagcount - 1;
+        
+        while(min < max) {
+            try = (min + max) / 2;
+            i = strcmp(name, _index[try].name);
+            if(i > 0) {
+                min = try + 1;
+            } else if(i < 0) {
+                max = try;
+            } else {
+                /* It can't really get here because duplicates were checked in add_tag()
+                 * before this function was called */
+                assert(0);
             }
         }
+        n = min;
+        memmove(&_index[n + 1], &_index[n], (_dbsize - n - 1) * sizeof(_dax_tag_index));
     }
     /* Assign pointer to database node in the index */
     _index[n].tag_idx = index;
@@ -416,8 +431,6 @@ tag_get_name(char *name, dax_tag *tag)
     if(i < 0) {
         return ERR_NOTFOUND;
     } else {
-        //handle = __index[i].handle;
-        //handle = i; //__index[i].handle;
         tag->idx = i;
         tag->type = _db[i].type;
         tag->count = _db[i].count;

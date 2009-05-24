@@ -67,7 +67,8 @@ add_random_tags(int tagcount, char *name)
     
     srand(12); /* Random but not so random */
     for(n = 0; n < tagcount; n++) {
-        sprintf(tagname,"%s%d", name, index++);
+        /* TODO: Perhaps we should randomize the name too */
+        sprintf(tagname,"%s%d_%d", name, rand()%100, index++);
         if(rand()%4 == 0) { /* One of four tags will be an array */
             count = rand() % 100 + 1;
         } else {
