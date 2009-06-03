@@ -64,6 +64,8 @@
 #  include <lua/lua.h>
 #elif defined(HAVE_LUA_H)
 #  include <lua.h>
+#else
+#  error "lua.h Not Found"
 #endif
 
 #if defined(HAVE_LUA51_LAUXLIB_H)
@@ -74,6 +76,8 @@
 #  include <lua/lauxlib.h>
 #elif defined(HAVE_LAUXLIB_H)
 #  include <lauxlib.h>
+#else
+#  error "lauxlib.h Not Found"
 #endif
 
 #if defined(HAVE_LUA51_LUALIB_H)
@@ -84,6 +88,8 @@
 #  include <lua/lualib.h>
 #elif defined(HAVE_LUALIB_H)
 #  include <lualib.h>
+#else
+#  error "lualib.h Not Found"
 #endif 
 
 
