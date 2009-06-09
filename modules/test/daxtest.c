@@ -26,43 +26,30 @@
 
 /* TODO: Tests that need to be added....
  * Check that duplicate tags fail
- * Check datatype functions
  */
-
-//static int
-//_check_cdt_handles(void)
-//{
-//    int n, result;
-//    handle_t h;
-//    char *tags[9] = {
-//            "CombinedTag",
-//            "CombinedTag[2]",
-//            "CombinedTag.Bit1",
-//            "CombinedTag[2].Bit1",
-//            "CombinedTag[2].Bit1[3]",
-//            "CombinedTag[2].Test.TestBool",
-//            "CombinedTag[2].Test[3].TestBool",
-//            "CombinedTag.Test[3].TestBool[1]",
-//            NULL
-//            };
-//    n = 0;
-//    
-//    while(tags[n] != NULL) {
-//        result = dax_tag_handle(&h, tags[n], 1);
-//        if(result) printf("dax_tag_handle() returned %d\n", result);
-//        n++;
-//    }
-//    return 0;
-//}
+int static
+tag_read_write_test(void)
+{
+    tag_idx_t index;
+    handle_t handle;
+    dax_int_t write_data[32], read_data[32];
+    index = dax_tag_add("TestReadTagInt", DAX_INT, 32);
+    
+    dax_tag_handle(&handle, "TestReadTagInt", 32);
+    
+    write_data[0] = 0x5555;
+    dax_write_tag(handle, write_data);
+    dax_read_tag(handle, read_data);
+    
+    printf("read_data[0] = 0x%X\n", read_data[0]);
+    return 0;
+}
 
 int
 main(int argc,char *argv[])
 {
     int result=0, flags;
     char *script;
-    //tag_idx_t handle[10];
-    //int dummy[20];
-    //type_t type;
     lua_State *L;
     
     
@@ -186,7 +173,8 @@ main(int argc,char *argv[])
     
     /* TODO: Check the corner conditions of the tag reading and writing.
      * Offset, size vs. tag size etc. */
-    
+    tag_read_write_test();
+
     
     /* TEST TO DO
         Tag Read / Write Test

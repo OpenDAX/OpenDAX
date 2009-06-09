@@ -98,6 +98,8 @@ typedef struct {
     cdt_member *members;
 } datatype;
 
+int get_typesize(type_t type);
+datatype *get_cdt_pointer(type_t);
 int add_cdt_to_cache(type_t type, char *typedesc);
 int dax_cdt_get(type_t type, char *name);
 

@@ -215,277 +215,525 @@ cache_tag_add(dax_tag *tag)
 
 /* Type specific reading and writing functions.  These should be the most common
  * methods to read and write tags to the sever.*/
-/* TODO: These may get replaced with versions that use the handle instead.  Perhaps I
- * will create another set of functions that use the handle and let the module developers
- * decide which they like.  These are pretty efficient for BASE types, but won't
- * work with custom datatypes */
-int
-dax_read_tag(tag_idx_t idx, int index, void *data, int count, type_t type)
+
+/* This is a recursive function that traverses the *data and makes the proper
+ * data conversions based on the data type. */
+static inline int
+_read_format(type_t type, int count, void *data, int offset)
 {
-    int bytes, result, offset, n, i;
-    char *buff;
+    int n, pos, result;
+    char *newdata;
+    datatype *dtype = NULL;
+    cdt_member *this = NULL;
     
-    if(type == DAX_BOOL) {
-        bytes = (index + count - 1)  / 8 - index / 8 + 1;
-        offset = index / 8;
+    newdata = (char *)data + offset;
+    if(IS_CUSTOM(type)) {
+        /* iterate through the list */
+        dtype = get_cdt_pointer(type);
+        pos = offset;
+        if(dtype != NULL) {
+            this = dtype->members;
+        } else {
+            return ERR_NOTFOUND;
+        }
+        while(this != NULL) {
+            result = _read_format(this->type, this->count, data, pos);
+            if(result) return result;
+            if(IS_CUSTOM(this->type)) {
+                pos += (get_typesize(this->type) * this->count);
+            } else {
+                /* This gets the size in bits */
+                pos += TYPESIZE(this->type) * this->count / 8;
+            }
+            this = this->next;
+        }
     } else {
-        bytes = (TYPESIZE(type) / 8) * count;
-        offset = (TYPESIZE(type) / 8) * index;
-    }
-    buff = alloca(bytes);
-    bzero(buff, bytes);
-    bzero(data, (count - 1) / 8 + 1);
-    result = dax_read(idx, offset, buff, bytes);
-    
-    if(result) return result;
-    
-    switch(type) {
-        case DAX_BOOL:
-            i = index % 8;
-            for(n = 0; n < count; n++) {
-                if( (0x01 << i % 8) & buff[i / 8] ) {
-                    ((char *)data)[n / 8] |= (1 << (n % 8));
+        switch(type) {
+            case DAX_BOOL:
+            case DAX_BYTE:
+            case DAX_SINT:
+                /* Since there are no conversions for byte level tags we do nothing */
+                break;
+            case DAX_WORD:
+            case DAX_UINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_uint_t *)newdata)[n] = stom_uint(((dax_uint_t *)newdata)[n]);
                 }
-                i++;
-            }
-            break;
-        case DAX_BYTE:
-        case DAX_SINT:
-            memcpy(data, buff, bytes);
-            break;
-        case DAX_WORD:
-        case DAX_UINT:
-            for(n = 0; n < count; n++) {
-                ((dax_uint_t *)data)[n] = stom_uint(((dax_uint_t *)buff)[n]);
-            }
-            break;
-        case DAX_INT:
-            for(n = 0; n < count; n++) {
-                ((dax_int_t *)data)[n] = stom_int(((dax_int_t *)buff)[n]);
-            }
-            break;
-        case DAX_DWORD:
-        case DAX_UDINT:
-        case DAX_TIME:
-            for(n = 0; n < count; n++) {
-                ((dax_udint_t *)data)[n] = stom_udint(((dax_udint_t *)buff)[n]);
-            }
-            break;
-        case DAX_DINT:
-            for(n = 0; n < count; n++) {
-                ((dax_dint_t *)data)[n] = stom_dint(((dax_dint_t *)buff)[n]);
-            }
-            break;
-        case DAX_REAL:
-            for(n = 0; n < count; n++) {
-                ((dax_real_t *)data)[n] = stom_real(((dax_real_t *)buff)[n]);
-            }
-            break;
-        case DAX_LWORD:
-        case DAX_ULINT:
-            for(n = 0; n < count; n++) {
-                ((dax_ulint_t *)data)[n] = stom_ulint(((dax_ulint_t *)buff)[n]);
-            }
-            break;
-        case DAX_LINT:
-            for(n = 0; n < count; n++) {
-                ((dax_lint_t *)data)[n] = stom_lint(((dax_lint_t *)buff)[n]);
-            }
-            break;
-        case DAX_LREAL:
-            for(n = 0; n < count; n++) {
-                ((dax_lreal_t *)data)[n] = stom_lreal(((dax_lreal_t *)buff)[n]);
-            }
-            break;
-        default:
-            return ERR_ARG;
-            break;
-    }    
+                break;
+            case DAX_INT:
+                for(n = 0; n < count; n++) {
+                    ((dax_int_t *)newdata)[n] = stom_int(((dax_int_t *)newdata)[n]);
+                }
+                break;
+            case DAX_DWORD:
+            case DAX_UDINT:
+            case DAX_TIME:
+                for(n = 0; n < count; n++) {
+                    ((dax_udint_t *)newdata)[n] = stom_udint(((dax_udint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_DINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_dint_t *)newdata)[n] = stom_dint(((dax_dint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_REAL:
+                for(n = 0; n < count; n++) {
+                    ((dax_real_t *)newdata)[n] = stom_real(((dax_real_t *)newdata)[n]);
+                }
+                break;
+            case DAX_LWORD:
+            case DAX_ULINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_ulint_t *)newdata)[n] = stom_ulint(((dax_ulint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_LINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_lint_t *)newdata)[n] = stom_lint(((dax_lint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_LREAL:
+                for(n = 0; n < count; n++) {
+                    ((dax_lreal_t *)newdata)[n] = stom_lreal(((dax_lreal_t *)newdata)[n]);
+                }
+                break;
+            default:
+                return ERR_ARG;
+                break;
+        }    
+    }
     return 0;
 }
 
-int
-dax_write_tag(tag_idx_t idx, int index, void *data, int count, type_t type)
-{
-    int bytes, result, offset, n, i;
-    char *buff, *mask;
-    
-    if(type == DAX_BOOL) {
-        bytes = (index + count - 1)  / 8 - index / 8 + 1;
-        offset = index / 8;
-    } else {
-        bytes = (TYPESIZE(type) / 8) * count;
-        offset = (TYPESIZE(type) / 8) * index;
-    }
-    buff = alloca(bytes);
-    
-    switch(type) {
-        case DAX_BOOL:
-            mask = alloca(bytes);
-            bzero(buff, bytes);
-            bzero(mask, bytes);
-            
-            i = index % 8;
-            for(n = 0; n < count; n++) {
-                if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
-                    buff[i / 8] |= (1 << (i % 8));
-                }
-                mask[i / 8] |= (1 << (i % 8));
-                i++;
-            }            
-            break;
-        case DAX_BYTE:
-        case DAX_SINT:
-            memcpy(buff, data, bytes);
-            break;
-        case DAX_WORD:
-        case DAX_UINT:
-            for(n = 0; n < count; n++) {
-                ((dax_uint_t *)buff)[n] = mtos_uint(((dax_uint_t *)data)[n]);
-            }
-            break;
-        case DAX_INT:
-            for(n = 0; n < count; n++) {
-                ((dax_int_t *)buff)[n] = mtos_int(((dax_int_t *)data)[n]);
-            }
-            break;
-        case DAX_DWORD:
-        case DAX_UDINT:
-        case DAX_TIME:
-            for(n = 0; n < count; n++) {
-                ((dax_udint_t *)buff)[n] = mtos_udint(((dax_udint_t *)data)[n]);
-            }
-            break;
-        case DAX_DINT:
-            for(n = 0; n < count; n++) {
-                ((dax_dint_t *)buff)[n] = mtos_dint(((dax_dint_t *)data)[n]);
-            }
-            break;
-        case DAX_REAL:
-            for(n = 0; n < count; n++) {
-                ((dax_real_t *)buff)[n] = mtos_real(((dax_real_t *)data)[n]);
-            }
-            break;
-        case DAX_LWORD:
-        case DAX_ULINT:
-            for(n = 0; n < count; n++) {
-                ((dax_ulint_t *)buff)[n] = mtos_ulint(((dax_ulint_t *)data)[n]);
-            }
-            break;
-        case DAX_LINT:
-            for(n = 0; n < count; n++) {
-                ((dax_lint_t *)buff)[n] = mtos_lint(((dax_lint_t *)data)[n]);
-            }
-            break;
-        case DAX_LREAL:
-            for(n = 0; n < count; n++) {
-                ((dax_lreal_t *)buff)[n] = mtos_lreal(((dax_lreal_t *)data)[n]);
-            }
-            break;
-        default:
-            return ERR_ARG;
-            break;
-    }
-    if(type == DAX_BOOL) {
-        result = dax_mask(idx, offset, buff, mask, bytes);
-    } else {    
-        result = dax_write(idx, offset, buff, bytes);
-    }
-    return result;
-}
 
 int
-dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, type_t type)
+dax_read_tag(handle_t handle, void *data)
 {
-    int bytes, result, offset, n, i;
-    char *buff, *maskbuff;
+    int result, n, i;
     
-    if(type == DAX_BOOL) {
-        bytes = (index + count - 1)  / 8 - index / 8 + 1;
-        offset = index / 8;
+    result = dax_read(handle.index, handle.byte, data, handle.size);
+    if(result) return result;
+
+    /* The only time that the bit index should be greater than 0 is if
+     * the tag datatype is BOOL.  If not the bytes should be aligned.
+     * If there is a bit index then we need to 'realign' the bits so that
+     * the bits that the handle point to start at the top of the *data buffer */
+    if(handle.type == DAX_BOOL && handle.bit > 0) {
+        i = handle.bit;
+        for(n = 0; n < handle.count; n++) {
+            if( (0x01 << i % 8) & ((char *)data)[i / 8] ) {
+                ((char *)data)[n / 8] |= (1 << (n % 8));
+            }
+            i++;
+        }
     } else {
-        bytes = (TYPESIZE(type) / 8) * count;
-        offset = (TYPESIZE(type) / 8) * index;
+        return _read_format(handle.type, handle.count, data, 0);
     }
-    buff = alloca(bytes);
-    maskbuff = alloca(bytes);
-    
-    switch(type) {
-        case DAX_BOOL:
-            bzero(buff, bytes);
-            bzero(maskbuff, bytes);
-            
-            i = index % 8;
-            for(n = 0; n < count; n++) {
-                if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
-                    buff[i / 8] |= (1 << (i % 8));
-                }
-                maskbuff[i / 8] |= (1 << (i % 8));
-                i++;
-            }            
-            break;
-        case DAX_BYTE:
-        case DAX_SINT:
-            memcpy(buff, data, bytes);
-            memcpy(maskbuff, mask, bytes);
-            break;
-        case DAX_WORD:
-        case DAX_UINT:
-            for(n = 0; n < count; n++) {
-                ((dax_uint_t *)buff)[n] = mtos_uint(((dax_uint_t *)data)[n]);
-                ((dax_uint_t *)maskbuff)[n] = mtos_uint(((dax_uint_t *)mask)[n]);
-            }
-            break;
-        case DAX_INT:
-            for(n = 0; n < count; n++) {
-                ((dax_int_t *)buff)[n] = mtos_int(((dax_int_t *)data)[n]);
-                ((dax_int_t *)maskbuff)[n] = mtos_int(((dax_int_t *)mask)[n]);
-            }
-            break;
-        case DAX_DWORD:
-        case DAX_UDINT:
-        case DAX_TIME:
-            for(n = 0; n < count; n++) {
-                ((dax_udint_t *)buff)[n] = mtos_udint(((dax_udint_t *)data)[n]);
-                ((dax_udint_t *)maskbuff)[n] = mtos_udint(((dax_udint_t *)mask)[n]);
-            }
-            break;
-        case DAX_DINT:
-            for(n = 0; n < count; n++) {
-                ((dax_dint_t *)buff)[n] = mtos_dint(((dax_dint_t *)data)[n]);
-                ((dax_dint_t *)maskbuff)[n] = mtos_dint(((dax_dint_t *)mask)[n]);
-            }
-            break;
-        case DAX_REAL:
-            for(n = 0; n < count; n++) {
-                ((dax_real_t *)buff)[n] = mtos_real(((dax_real_t *)data)[n]);
-                ((dax_real_t *)maskbuff)[n] = mtos_real(((dax_real_t *)mask)[n]);
-            }
-            break;
-        case DAX_LWORD:
-        case DAX_ULINT:
-            for(n = 0; n < count; n++) {
-                ((dax_ulint_t *)buff)[n] = mtos_ulint(((dax_ulint_t *)data)[n]);
-                ((dax_ulint_t *)maskbuff)[n] = mtos_ulint(((dax_ulint_t *)mask)[n]);
-            }
-            break;
-        case DAX_LINT:
-            for(n = 0; n < count; n++) {
-                ((dax_lint_t *)buff)[n] = mtos_lint(((dax_lint_t *)data)[n]);
-                ((dax_lint_t *)maskbuff)[n] = mtos_lint(((dax_lint_t *)mask)[n]);
-            }
-            break;
-        case DAX_LREAL:
-            for(n = 0; n < count; n++) {
-                ((dax_lreal_t *)buff)[n] = mtos_lreal(((dax_lreal_t *)data)[n]);
-                ((dax_lreal_t *)maskbuff)[n] = mtos_lreal(((dax_lreal_t *)mask)[n]);
-            }
-            break;
-        default:
-            return ERR_ARG;
-            break;
-    }
-    result = dax_mask(idx, offset, buff, maskbuff, bytes);
-    return result;
+    return 0;
 }
+
+//int
+//dax_read_tag(tag_idx_t idx, int index, void *data, int count, type_t type)
+//{
+//    int bytes, result, offset, n, i;
+//    char *buff;
+//    
+//    if(type == DAX_BOOL) {
+//        bytes = (index + count - 1)  / 8 - index / 8 + 1;
+//        offset = index / 8;
+//    } else {
+//        bytes = (TYPESIZE(type) / 8) * count;
+//        offset = (TYPESIZE(type) / 8) * index;
+//    }
+//    buff = alloca(bytes);
+//    bzero(buff, bytes);
+//    bzero(data, (count - 1) / 8 + 1);
+//    result = dax_read(idx, offset, buff, bytes);
+//    
+//    if(result) return result;
+//    
+//    switch(type) {
+//        case DAX_BOOL:
+//            i = index % 8;
+//            for(n = 0; n < count; n++) {
+//                if( (0x01 << i % 8) & buff[i / 8] ) {
+//                    ((char *)data)[n / 8] |= (1 << (n % 8));
+//                }
+//                i++;
+//            }
+//            break;
+//        case DAX_BYTE:
+//        case DAX_SINT:
+//            memcpy(data, buff, bytes);
+//            break;
+//        case DAX_WORD:
+//        case DAX_UINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_uint_t *)data)[n] = stom_uint(((dax_uint_t *)buff)[n]);
+//            }
+//            break;
+//        case DAX_INT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_int_t *)data)[n] = stom_int(((dax_int_t *)buff)[n]);
+//            }
+//            break;
+//        case DAX_DWORD:
+//        case DAX_UDINT:
+//        case DAX_TIME:
+//            for(n = 0; n < count; n++) {
+//                ((dax_udint_t *)data)[n] = stom_udint(((dax_udint_t *)buff)[n]);
+//            }
+//            break;
+//        case DAX_DINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_dint_t *)data)[n] = stom_dint(((dax_dint_t *)buff)[n]);
+//            }
+//            break;
+//        case DAX_REAL:
+//            for(n = 0; n < count; n++) {
+//                ((dax_real_t *)data)[n] = stom_real(((dax_real_t *)buff)[n]);
+//            }
+//            break;
+//        case DAX_LWORD:
+//        case DAX_ULINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_ulint_t *)data)[n] = stom_ulint(((dax_ulint_t *)buff)[n]);
+//            }
+//            break;
+//        case DAX_LINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_lint_t *)data)[n] = stom_lint(((dax_lint_t *)buff)[n]);
+//            }
+//            break;
+//        case DAX_LREAL:
+//            for(n = 0; n < count; n++) {
+//                ((dax_lreal_t *)data)[n] = stom_lreal(((dax_lreal_t *)buff)[n]);
+//            }
+//            break;
+//        default:
+//            return ERR_ARG;
+//            break;
+//    }    
+//    return 0;
+//}
+//
+
+static inline int
+_write_format(type_t type, int count, void *data, int offset)
+{
+    int n, pos, result;
+    char *newdata;
+    datatype *dtype = NULL;
+    cdt_member *this = NULL;
+    
+    newdata = (char *)data + offset;
+    if(IS_CUSTOM(type)) {
+        /* iterate through the list */
+        dtype = get_cdt_pointer(type);
+        pos = offset;
+        if(dtype != NULL) {
+            this = dtype->members;
+        } else {
+            return ERR_NOTFOUND;
+        }
+        while(this != NULL) {
+            result = _write_format(this->type, this->count, newdata, pos);
+            if(result) return result;
+            if(IS_CUSTOM(this->type)) {
+                pos += (get_typesize(this->type) * this->count);
+            } else {
+                /* This gets the size in bits */
+                pos += TYPESIZE(this->type) * this->count / 8;
+            }
+            this = this->next;
+        }
+    } else {
+        switch(type) {
+            case DAX_BOOL:
+            case DAX_BYTE:
+            case DAX_SINT:
+                break;
+            case DAX_WORD:
+            case DAX_UINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_uint_t *)newdata)[n] = mtos_uint(((dax_uint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_INT:
+                for(n = 0; n < count; n++) {
+                    ((dax_int_t *)newdata)[n] = mtos_int(((dax_int_t *)newdata)[n]);
+                }
+                break;
+            case DAX_DWORD:
+            case DAX_UDINT:
+            case DAX_TIME:
+                for(n = 0; n < count; n++) {
+                    ((dax_udint_t *)newdata)[n] = mtos_udint(((dax_udint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_DINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_dint_t *)newdata)[n] = mtos_dint(((dax_dint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_REAL:
+                for(n = 0; n < count; n++) {
+                    ((dax_real_t *)newdata)[n] = mtos_real(((dax_real_t *)newdata)[n]);
+                }
+                break;
+            case DAX_LWORD:
+            case DAX_ULINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_ulint_t *)newdata)[n] = mtos_ulint(((dax_ulint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_LINT:
+                for(n = 0; n < count; n++) {
+                    ((dax_lint_t *)newdata)[n] = mtos_lint(((dax_lint_t *)newdata)[n]);
+                }
+                break;
+            case DAX_LREAL:
+                for(n = 0; n < count; n++) {
+                    ((dax_lreal_t *)newdata)[n] = mtos_lreal(((dax_lreal_t *)newdata)[n]);
+                }
+                break;
+            default:
+                return ERR_ARG;
+                break;
+        }
+    }
+
+    return 0;
+}
+
+
+
+int
+dax_write_tag(handle_t handle, void *data)
+{
+    int i, n, result = 0;
+    char *mask = NULL;
+    
+    if(handle.type == DAX_BOOL && handle.bit > 0) {
+        mask = malloc(handle.size);
+        if(mask == NULL) return ERR_ALLOC;
+        bzero(mask, handle.size);
+            
+        i = handle.bit % 8;
+        for(n = 0; n < handle.count; n++) {
+            if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
+                ((char *)data)[i / 8] |= (1 << (i % 8));
+            }
+            mask[i / 8] |= (1 << (i % 8));
+            i++;
+        }
+    } else {
+        result =  _write_format(handle.type, handle.count, data, 0);
+    }
+    if(result) return result;
+    if(handle.type == DAX_BOOL && handle.bit > 0) {
+        result = dax_mask(handle.index, handle.byte, data, mask, handle.size);
+        free(mask);
+    } else {    
+        result = dax_write(handle.index, handle.byte, data, handle.size);
+    }
+    return result;
+
+    
+    return 0;
+}
+
+//int
+//dax_write_tag(tag_idx_t idx, int index, void *data, int count, type_t type)
+//{
+//    int bytes, result, offset, n, i;
+//    char *buff, *mask;
+//    
+//    if(type == DAX_BOOL) {
+//        bytes = (index + count - 1)  / 8 - index / 8 + 1;
+//        offset = index / 8;
+//    } else {
+//        bytes = (TYPESIZE(type) / 8) * count;
+//        offset = (TYPESIZE(type) / 8) * index;
+//    }
+//    buff = alloca(bytes);
+//    
+//    switch(type) {
+//        case DAX_BOOL:
+//            mask = alloca(bytes);
+//            bzero(buff, bytes);
+//            bzero(mask, bytes);
+//            
+//            i = index % 8;
+//            for(n = 0; n < count; n++) {
+//                if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
+//                    buff[i / 8] |= (1 << (i % 8));
+//                }
+//                mask[i / 8] |= (1 << (i % 8));
+//                i++;
+//            }            
+//            break;
+//        case DAX_BYTE:
+//        case DAX_SINT:
+//            memcpy(buff, data, bytes);
+//            break;
+//        case DAX_WORD:
+//        case DAX_UINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_uint_t *)buff)[n] = mtos_uint(((dax_uint_t *)data)[n]);
+//            }
+//            break;
+//        case DAX_INT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_int_t *)buff)[n] = mtos_int(((dax_int_t *)data)[n]);
+//            }
+//            break;
+//        case DAX_DWORD:
+//        case DAX_UDINT:
+//        case DAX_TIME:
+//            for(n = 0; n < count; n++) {
+//                ((dax_udint_t *)buff)[n] = mtos_udint(((dax_udint_t *)data)[n]);
+//            }
+//            break;
+//        case DAX_DINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_dint_t *)buff)[n] = mtos_dint(((dax_dint_t *)data)[n]);
+//            }
+//            break;
+//        case DAX_REAL:
+//            for(n = 0; n < count; n++) {
+//                ((dax_real_t *)buff)[n] = mtos_real(((dax_real_t *)data)[n]);
+//            }
+//            break;
+//        case DAX_LWORD:
+//        case DAX_ULINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_ulint_t *)buff)[n] = mtos_ulint(((dax_ulint_t *)data)[n]);
+//            }
+//            break;
+//        case DAX_LINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_lint_t *)buff)[n] = mtos_lint(((dax_lint_t *)data)[n]);
+//            }
+//            break;
+//        case DAX_LREAL:
+//            for(n = 0; n < count; n++) {
+//                ((dax_lreal_t *)buff)[n] = mtos_lreal(((dax_lreal_t *)data)[n]);
+//            }
+//            break;
+//        default:
+//            return ERR_ARG;
+//            break;
+//    }
+//    if(type == DAX_BOOL) {
+//        result = dax_mask(idx, offset, buff, mask, bytes);
+//    } else {    
+//        result = dax_write(idx, offset, buff, bytes);
+//    }
+//    return result;
+//}
+
+
+int
+dax_mask_tag(handle_t handle, void *data, void*mask)
+{
+    
+    return 0;
+}
+
+//int
+//dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, type_t type)
+//{
+//    int bytes, result, offset, n, i;
+//    char *buff, *maskbuff;
+//    
+//    if(type == DAX_BOOL) {
+//        bytes = (index + count - 1)  / 8 - index / 8 + 1;
+//        offset = index / 8;
+//    } else {
+//        bytes = (TYPESIZE(type) / 8) * count;
+//        offset = (TYPESIZE(type) / 8) * index;
+//    }
+//    buff = alloca(bytes);
+//    maskbuff = alloca(bytes);
+//    
+//    switch(type) {
+//        case DAX_BOOL:
+//            bzero(buff, bytes);
+//            bzero(maskbuff, bytes);
+//            
+//            i = index % 8;
+//            for(n = 0; n < count; n++) {
+//                if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
+//                    buff[i / 8] |= (1 << (i % 8));
+//                }
+//                maskbuff[i / 8] |= (1 << (i % 8));
+//                i++;
+//            }            
+//            break;
+//        case DAX_BYTE:
+//        case DAX_SINT:
+//            memcpy(buff, data, bytes);
+//            memcpy(maskbuff, mask, bytes);
+//            break;
+//        case DAX_WORD:
+//        case DAX_UINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_uint_t *)buff)[n] = mtos_uint(((dax_uint_t *)data)[n]);
+//                ((dax_uint_t *)maskbuff)[n] = mtos_uint(((dax_uint_t *)mask)[n]);
+//            }
+//            break;
+//        case DAX_INT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_int_t *)buff)[n] = mtos_int(((dax_int_t *)data)[n]);
+//                ((dax_int_t *)maskbuff)[n] = mtos_int(((dax_int_t *)mask)[n]);
+//            }
+//            break;
+//        case DAX_DWORD:
+//        case DAX_UDINT:
+//        case DAX_TIME:
+//            for(n = 0; n < count; n++) {
+//                ((dax_udint_t *)buff)[n] = mtos_udint(((dax_udint_t *)data)[n]);
+//                ((dax_udint_t *)maskbuff)[n] = mtos_udint(((dax_udint_t *)mask)[n]);
+//            }
+//            break;
+//        case DAX_DINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_dint_t *)buff)[n] = mtos_dint(((dax_dint_t *)data)[n]);
+//                ((dax_dint_t *)maskbuff)[n] = mtos_dint(((dax_dint_t *)mask)[n]);
+//            }
+//            break;
+//        case DAX_REAL:
+//            for(n = 0; n < count; n++) {
+//                ((dax_real_t *)buff)[n] = mtos_real(((dax_real_t *)data)[n]);
+//                ((dax_real_t *)maskbuff)[n] = mtos_real(((dax_real_t *)mask)[n]);
+//            }
+//            break;
+//        case DAX_LWORD:
+//        case DAX_ULINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_ulint_t *)buff)[n] = mtos_ulint(((dax_ulint_t *)data)[n]);
+//                ((dax_ulint_t *)maskbuff)[n] = mtos_ulint(((dax_ulint_t *)mask)[n]);
+//            }
+//            break;
+//        case DAX_LINT:
+//            for(n = 0; n < count; n++) {
+//                ((dax_lint_t *)buff)[n] = mtos_lint(((dax_lint_t *)data)[n]);
+//                ((dax_lint_t *)maskbuff)[n] = mtos_lint(((dax_lint_t *)mask)[n]);
+//            }
+//            break;
+//        case DAX_LREAL:
+//            for(n = 0; n < count; n++) {
+//                ((dax_lreal_t *)buff)[n] = mtos_lreal(((dax_lreal_t *)data)[n]);
+//                ((dax_lreal_t *)maskbuff)[n] = mtos_lreal(((dax_lreal_t *)mask)[n]);
+//            }
+//            break;
+//        default:
+//            return ERR_ARG;
+//            break;
+//    }
+//    result = dax_mask(idx, offset, buff, maskbuff, bytes);
+//    return result;
+//}
 

@@ -81,7 +81,7 @@ dt_getwords(tag_idx_t handle, int index, void *data, int length)
     int result;
     if(handle) {
         pthread_mutex_lock(&datamutex);
-        result = dax_read_tag(handle, index, data, length, DAX_UINT);
+        //--result = dax_read_tag(handle, index, data, length, DAX_UINT);
         pthread_mutex_unlock(&datamutex);
     } else {
         result = ERR_ARG;
@@ -95,7 +95,8 @@ dt_setwords(tag_idx_t handle, int index, void *data, int length)
     int result;
     if(handle) {
         pthread_mutex_lock(&datamutex);
-        result = dax_write_tag(handle, index, data, length, DAX_UINT);
+        //--result = dax_write_tag(handle, index, data, length, DAX_UINT);
+        assert(0); /* This is because we have commented out the above write function */
         pthread_mutex_unlock(&datamutex);
     } else {
         result = ERR_ARG;
@@ -110,7 +111,9 @@ dt_getbits(tag_idx_t handle, int index, void *data, int length)
     int result;
     if(handle) {
         pthread_mutex_lock(&datamutex);
-        result = dax_read_tag(handle, index, data, length, DAX_BOOL);
+        //--result = dax_read_tag(handle, index, data, length, DAX_BOOL);
+        assert(0); /* This assert is because we have comented out the tag reading */
+    
         pthread_mutex_unlock(&datamutex);
     } else {
         result = ERR_ARG;
@@ -124,7 +127,8 @@ dt_setbits(tag_idx_t handle, int index, void *data, int length)
     int result;
     if(handle) {
         pthread_mutex_lock(&datamutex);
-        result = dax_write_tag(handle, index, data, length, DAX_BOOL);
+        //--result = dax_write_tag(handle, index, data, length, DAX_BOOL);
+        assert(0); /* This is because we have commented out the above write function */
         pthread_mutex_unlock(&datamutex);
     } else {
         result = ERR_ARG;

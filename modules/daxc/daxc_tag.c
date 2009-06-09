@@ -343,7 +343,9 @@ tag_read(char **tokens)
     }
     
     //--printf("Attempting read: handle = %d, index = %d, count = %d, type = %d\n", handle, index, points, tag.type);
-    result = dax_read_tag(handle, index, buff, points, tag.type);
+    //--result = dax_read_tag(handle, index, buff, points, tag.type);
+    result = 0;
+    assert(0); /* This assert is because we have comented out the tag reading */
     if(result) {
         fprintf(stderr, "ERROR: Problem reading tag from opendax: %d\n", result);
         result = 1;
@@ -439,7 +441,8 @@ tag_write(char **tokens, int tcount)
     for(n = 0; n < points; n++) {
         string_to_dax(tokens[next + n], tag.type, buff, NULL, n);
     }
-    result = dax_write_tag(handle, index, buff, points, tag.type);
+    //--result = dax_write_tag(handle, index, buff, points, tag.type);
+    assert(0); /* This is because we have commented out the above write function */
     if(result) {
         fprintf(stderr, "ERROR: Problem writing data to opendax\n");
     }

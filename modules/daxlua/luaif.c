@@ -195,7 +195,9 @@ fetch_tag(lua_State *L, char *tagname)
     if(buff == NULL) {
         luaL_error(L, "Unable to allocate buffer size = %d", size);
     }
-    result = dax_read_tag(tag.idx, 0, buff, tag.count, tag.type);
+    //--result = dax_read_tag(tag.idx, 0, buff, tag.count, tag.type);
+    assert(0); /* This assert is because we have comented out the tag reading */
+    
     if(result) {
         free(buff);
         luaL_error(L, "Unable to read tag - %s", tag.name);
@@ -309,14 +311,16 @@ send_tag(lua_State *L, char *tagname)
             lua_pop(L, 1);
         }
         /* Write the data to DAX */
-        dax_mask_tag(tag.idx, 0, buff, mask, tag.count, tag.type);
+        //--dax_mask_tag(tag.idx, 0, buff, mask, tag.count, tag.type);
+        assert(0); /* This is because we have commented out the above mask function */
     } else { /* Retrieved tag is a single point */
         if(tag.type == DAX_BOOL) {
             ((char *)buff)[0] = lua_toboolean(L, -1);
         } else {
             _lua_to_dax(L, tag.type, buff, mask, 0);
         }
-        dax_write_tag(tag.idx, 0, buff, tag.count, tag.type);
+        //--dax_write_tag(tag.idx, 0, buff, tag.count, tag.type);
+        assert(0); /* This is because we have commented out the above write function */
     }
     return 0;
 }

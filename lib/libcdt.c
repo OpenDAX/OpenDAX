@@ -103,8 +103,8 @@ _add_member(int index, char *desc) {
 }
 
 /* Calculate the size (in bytes) of the datatype */
-static int
-_get_typesize(type_t type)
+int
+get_typesize(type_t type)
 {
     int size = 0;
     unsigned int pos = 0; /* Bit position within the data area */
@@ -127,7 +127,7 @@ _get_typesize(type_t type)
                     pos++;
                 }
                 if(IS_CUSTOM(this->type)) {
-                    pos += (_get_typesize(this->type) * this->count) * 8;
+                    pos += (get_typesize(this->type) * this->count) * 8;
                 } else {
                     /* This gets the size in bits */
                     pos += TYPESIZE(this->type) * this->count;
@@ -144,6 +144,27 @@ _get_typesize(type_t type)
         size = TYPESIZE(type) / 8; /* Size in bytes */
     }
     return size;
+}
+
+/* Retrieves a pointer to the datatype array element identified by type */
+datatype *
+get_cdt_pointer(type_t type)
+{
+    int index;
+    
+    if(IS_CUSTOM(type)) {
+        index = CDT_TO_INDEX(type);
+        if(index < _datatype_size && _datatypes[index].name != NULL) {
+            return &_datatypes[index];
+        } else {
+            if(!dax_cdt_get(type, NULL)) {
+                return &_datatypes[index]; 
+            }
+            return NULL;
+        }
+    } else {
+        return NULL;
+    }
 }
 
 /* Adds the given type to the array cache.  'type' is the type id
@@ -267,10 +288,11 @@ dax_string_to_type(char *type)
 
 /* Returns a pointer to a string that is the name of the datatype */
 const char *
-dax_type_to_string(int type)
+dax_type_to_string(type_t type)
 {
     int index;
     
+    /* TODO: Could replace this with a call to get_cdt_pointer() */
     if(IS_CUSTOM(type)) {
         index = CDT_TO_INDEX(type);
         if(index < _datatype_size && _datatypes[index].name != NULL) {
@@ -334,9 +356,6 @@ typedef struct {
     int byte;
     int bit;
 } _member_def;
-
-
-
 
 
 static int
@@ -491,7 +510,7 @@ dax_tag_handle(handle_t *h, char *str, int count)
                         if(this->type == DAX_BOOL) {
                             list[n].byte += (this->count - 1)/8 + 1;
                         } else {
-                            list[n].byte += _get_typesize(this->type) * this->count;
+                            list[n].byte += get_typesize(this->type) * this->count;
                         }
                     } else { /* When we find it */
                         list[n].type = this->type;
@@ -526,7 +545,7 @@ dax_tag_handle(handle_t *h, char *str, int count)
                 list[n].byte += list[n].index / 8;
                 list[n].bit += list[n].index % 8;
             } else {
-                list[n].byte += _get_typesize(list[n].type) * list[n].index;
+                list[n].byte += get_typesize(list[n].type) * list[n].index;
                 list[n].bit += 0;
             } 
         }
@@ -562,7 +581,7 @@ dax_tag_handle(handle_t *h, char *str, int count)
     if(list[n].type == DAX_BOOL) {
         h->size = (h->count - 1)/8 + 1;
     } else {
-        h->size = _get_typesize(list[n].type) * h->count;
+        h->size = get_typesize(list[n].type) * h->count;
     }
     
     //--printf("Final Answer: byte = %d, bit = %d, type = %s, count = %d, size = %d\n", list[n].byte, list[n].bit, dax_type_to_string(list[n].type), h->count, h->size);

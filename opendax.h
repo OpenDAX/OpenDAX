@@ -203,7 +203,7 @@ int dax_tag_handle(handle_t *h, char *str, int count);
 /* Get the datatype from a string */
 type_t dax_string_to_type(char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
-const char *dax_type_to_string(int type);
+const char *dax_type_to_string(type_t type);
 /* Retrieves the tagname and index from the form of Tagname[i] */
 /* TODO: dax_tag_parse should probably be deprecated */
 int dax_tag_parse(char *name, char *tagname, int *index);
@@ -236,9 +236,12 @@ int dax_mask(tag_idx_t idx, int offset, void *data, void *mask, size_t size);
  * count is the number of items in the tag to read/write.  The mask is
  * a binary mask that only allows data through where bits are high.
  * type is the tag type. */
-int dax_read_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
-int dax_write_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
-int dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, unsigned int type);
+int dax_read_tag(handle_t handle, void *data);
+int dax_write_tag(handle_t handle, void *data);
+int dax_mask_tag(handle_t handle, void *data, void *mask);
+//--int dax_read_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
+//--int dax_write_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
+//--int dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, unsigned int type);
 
 /* Event control functions */
 int dax_event_add(char *tag, int count);
