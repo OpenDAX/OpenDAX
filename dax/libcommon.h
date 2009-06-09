@@ -25,6 +25,7 @@
 
 #include <opendax.h>
 #include <sys/types.h>
+#include <assert.h>
 
 /* Message functions */
 #define MSG_MOD_REG    0x0000 /* Register the module with the server */

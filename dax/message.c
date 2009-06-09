@@ -402,7 +402,7 @@ msg_tag_add(dax_message *msg)
     
     idx = tag_add(&msg->data[8], type, count);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d, handle 0x%X", &msg->data[8], msg->fd, type, count, idx);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d, index %d", &msg->data[8], msg->fd, type, count, idx);
     
     if(idx >= 0) {
         _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_idx_t), RESPONSE);
@@ -478,7 +478,7 @@ msg_tag_read(dax_message *msg)
     offset = *((int *)&msg->data[4]);
     size = *((size_t *)&msg->data[8]);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Read Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
     
     result = tag_read(handle, offset, &data, size);
     
@@ -504,7 +504,7 @@ msg_tag_write(dax_message *msg)
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
 
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Write Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
 
     result = tag_write(handle, offset, data, size);
     if(result) {
@@ -531,7 +531,7 @@ msg_tag_mask_write(dax_message *msg)
     data = &msg->data[8];
     mask = &msg->data[8 + size];
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Masked Write Message from module %d, handle 0x%X, offset %d, size %d", msg->fd, handle, offset, size);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
     
     result = tag_mask_write(handle, offset, data, mask, size);
     if(result) {

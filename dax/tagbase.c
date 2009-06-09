@@ -334,7 +334,7 @@ tag_add(char *name, type_t type, unsigned int count)
     if(count == 0)
         return ERR_ARG;
 
-    printf("tag_add() called with name = %s, type = %d, count = %d\n", name, type, count);
+    //--printf("tag_add() called with name = %s, type = 0x%X, count = %d\n", name, type, count);
     if(_tagcount >= _dbsize) {
         if(_database_grow()) {
             xerror("Failure to increae database size");
@@ -839,7 +839,7 @@ serialize_datatype(type_t type, char **str)
 /* Figures out how large the datatype is and returns
  * that size in bytes.  This function is recursive */
     int
-type_size(unsigned int type)
+type_size(type_t type)
 {
     int size = 0;
     unsigned int pos = 0; /* Bit position within the data area */
