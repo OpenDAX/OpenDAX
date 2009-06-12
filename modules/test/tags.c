@@ -62,7 +62,7 @@ add_random_tags(int tagcount, char *name)
 {
     static int index = 0;
     int n, count, data_type;
-    tag_idx_t result;
+    tag_index result;
     char tagname[32];
     
     srand(12); /* Random but not so random */
@@ -91,7 +91,7 @@ add_random_tags(int tagcount, char *name)
 int
 tagtopass(const char *name)
 {
-    tag_idx_t index;
+    tag_index index;
     
     index = dax_tag_add((char *)name, DAX_BOOL, 1);
     if(index < 0) {
@@ -105,7 +105,7 @@ tagtopass(const char *name)
 int
 tagtofail(const char *name)
 {
-    tag_idx_t index;
+    tag_index index;
     
     index = dax_tag_add((char *)name, DAX_BOOL, 1);
     if(index >= 0) {
@@ -122,7 +122,7 @@ int
 cdt_recursion(void)
 {
     int n, p, f, pass[10], fail[10];
-    type_t t[6];
+    tag_type t[6];
     
     dax_debug(LOG_MINOR, "Starting Custom Datatype Recursion Test");
     
@@ -218,7 +218,7 @@ cdt_recursion(void)
 int
 check_tagbase(void)
 {
-    tag_idx_t n = 0;
+    tag_index n = 0;
     dax_tag last_tag, this_tag;
     long int lastbit;
  
@@ -250,7 +250,7 @@ check_tagbase(void)
 int
 check_tag_events(void)
 {
-    tag_idx_t handle;
+    tag_index handle;
     int id;
     
     handle = dax_tag_add("EventTest", DAX_DINT, 10);

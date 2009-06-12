@@ -23,32 +23,32 @@
 //static u_int16_t *datatable;
 static unsigned int tablesize;
 static pthread_mutex_t datamutex;
-static tag_idx_t dt_handle;
+static tag_index dt_handle;
 
 /* Allocate and Initialize the datatable */
-int
-dt_init(unsigned int size, char *tagname)
-{
-    dt_handle = dax_tag_add(tagname, DAX_UINT, size);
-    if(dt_handle < 0) {
-        return dt_handle;
-    }
-    
-    tablesize = size;
-    
-    pthread_mutex_init(&datamutex, NULL);
-    return(0);
-}
+//int
+//dt_init(handle *h, unsigned int size, char *tagname)
+//{
+//    dt_handle = dax_tag_add(h, tagname, DAX_UINT, size);
+//    if(dt_handle < 0) {
+//        return dt_handle;
+//    }
+//    
+//    tablesize = size;
+//    
+//    pthread_mutex_init(&datamutex, NULL);
+//    return(0);
+//}
+//
+//int
+//dt_destroy(void)
+//{
+//    pthread_mutex_destroy(&datamutex);
+//    return 0;
+//}
 
 int
-dt_destroy(void)
-{
-    pthread_mutex_destroy(&datamutex);
-    return 0;
-}
-
-int
-dt_add_tag(char *name, int index, int function, int length)
+dt_add_tag(Handle *h, char *name, int index, int function, int length)
 {
     int result;
     
@@ -56,18 +56,18 @@ dt_add_tag(char *name, int index, int function, int length)
         case 1:
         case 2:
         case 15:
-            result = dax_tag_add(name, DAX_BOOL, index + length);
+            result = dax_tag_add(h, name, DAX_BOOL, index + length);
             return result;
         case 5:
-            result = dax_tag_add(name, DAX_BOOL, index + 1);
+            result = dax_tag_add(h, name, DAX_BOOL, index + 1);
             return result;
         case 3:
         case 4:
         case 16:
-            result = dax_tag_add(name, DAX_UINT, index + length);
+            result = dax_tag_add(h, name, DAX_UINT, index + length);
             return result;
         case 6:
-            result = dax_tag_add(name, DAX_UINT, index + 1);
+            result = dax_tag_add(h, name, DAX_UINT, index + 1);
             return result;
         default:
             return -1;
@@ -76,7 +76,7 @@ dt_add_tag(char *name, int index, int function, int length)
 
 
 int
-dt_getwords(tag_idx_t handle, int index, void *data, int length)
+dt_getwords(tag_index handle, int index, void *data, int length)
 {
     int result;
     if(handle) {
@@ -90,7 +90,7 @@ dt_getwords(tag_idx_t handle, int index, void *data, int length)
 }
 
 int
-dt_setwords(tag_idx_t handle, int index, void *data, int length)
+dt_setwords(tag_index handle, int index, void *data, int length)
 {
     int result;
     if(handle) {
@@ -106,7 +106,7 @@ dt_setwords(tag_idx_t handle, int index, void *data, int length)
 
 
 int
-dt_getbits(tag_idx_t handle, int index, void *data, int length)
+dt_getbits(tag_index handle, int index, void *data, int length)
 {
     int result;
     if(handle) {
@@ -122,7 +122,7 @@ dt_getbits(tag_idx_t handle, int index, void *data, int length)
 }
 
 int
-dt_setbits(tag_idx_t handle, int index, void *data, int length)
+dt_setbits(tag_index handle, int index, void *data, int length)
 {
     int result;
     if(handle) {

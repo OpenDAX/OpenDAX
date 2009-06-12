@@ -108,44 +108,45 @@
 #endif
 
 /* typedefs to the basic DAX_? datatypes */
-typedef u_int8_t   dax_byte_t;
-typedef u_int8_t   dax_sint_t;
-typedef u_int16_t  dax_word_t;
-typedef int16_t    dax_int_t;
-typedef u_int16_t  dax_uint_t;
-typedef u_int32_t  dax_dword_t;
-typedef int32_t    dax_dint_t;
-typedef u_int32_t  dax_udint_t;
-typedef u_int32_t  dax_time_t;
-typedef float      dax_real_t;
-typedef u_int64_t  dax_lword_t;
-typedef int64_t    dax_lint_t;
-typedef u_int64_t  dax_ulint_t;
-typedef double     dax_lreal_t;
+typedef u_int8_t   dax_byte;
+typedef u_int8_t   dax_sint;
+typedef u_int16_t  dax_word;
+typedef int16_t    dax_int;
+typedef u_int16_t  dax_uint;
+typedef u_int32_t  dax_dword;
+typedef int32_t    dax_dint;
+typedef u_int32_t  dax_udint;
+typedef u_int32_t  dax_time;
+typedef float      dax_real;
+typedef u_int64_t  dax_lword;
+typedef int64_t    dax_lint;
+typedef u_int64_t  dax_ulint;
+typedef double     dax_lreal;
 
-typedef int tag_idx_t;
-typedef unsigned int type_t;
+typedef int tag_index;
+typedef unsigned int tag_type;
 
 struct Handle {
-    tag_idx_t index;   /* The Index of the Tag */
-    int byte;          /* The byte offset where the data block starts */
-    unsigned char bit; /* The bit offset */
-    int count;         /* The number of items represented by the handle */
-    u_int32_t size;    /* The total size of the data block in bytes */
-    type_t type;       /* The datatype of the block */
+    tag_index index;      /* The Index of the Tag */
+    int byte;            /* The byte offset where the data block starts */
+    unsigned char bit;   /* The bit offset */
+    int count;           /* The number of items represented by the handle */
+    u_int32_t size;      /* The total size of the data block in bytes */
+    tag_type type;       /* The datatype of the block */
 };
 
-typedef struct Handle handle_t;
+typedef struct Handle Handle;
 
 /* This is a generic representation of a tag, it may or may
  * not actually represent how tags are stored. */
-typedef struct {
-    tag_idx_t idx;      /* Unique tag index */
-    type_t type;        /* Tags data type */
-    unsigned int count; /* The number of items in the tag array */
-    //int index;          /* Index if we are looking at a particular item */
+struct dax_tag {
+    tag_index idx;         /* Unique tag index */
+    tag_type type;        /* Tags data type */
+    unsigned int count;   /* The number of items in the tag array */
     char name[DAX_TAGNAME_SIZE + 1];
-} dax_tag;
+};
+
+typedef struct dax_tag dax_tag;
 
 /* These functions are for module configuration */
 int dax_init_config(char *name);
@@ -187,23 +188,24 @@ int dax_mod_register(char *);   /* Registers the Module with the server */
 int dax_mod_unregister(void);   /* Unregister the Module with the server */
 
 /* Adds a tag to the opendax server database. */
-tag_idx_t dax_tag_add(char *name, type_t type, unsigned int count);
+int dax_tag_add(Handle *h, char *name, tag_type type, int count);
+//--tag_index dax_tag_add(char *name, tag_type type, unsigned int count);
 
 /* Get tag by name, will decode members and subscripts */
 int dax_tag_byname(dax_tag *tag, char *name);
 /* Get tag by index */
-int dax_tag_byindex(dax_tag *tag, tag_idx_t index);
+int dax_tag_byindex(dax_tag *tag, tag_index index);
 
 /* The handle is a complete description of where in the tagbase the
  * data that we wish to retrieve is located.  This can be used in place
  * of a tagname string such as "Tag1.member1[5]".  Count is the number of
  * items, that we want. */
-int dax_tag_handle(handle_t *h, char *str, int count);
+int dax_tag_handle(Handle *h, char *str, int count);
 
 /* Get the datatype from a string */
-type_t dax_string_to_type(char *type);
+tag_type dax_string_to_type(char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
-const char *dax_type_to_string(type_t type);
+const char *dax_type_to_string(tag_type type);
 /* Retrieves the tagname and index from the form of Tagname[i] */
 /* TODO: dax_tag_parse should probably be deprecated */
 int dax_tag_parse(char *name, char *tagname, int *index);
@@ -216,11 +218,11 @@ int dax_tag_parse(char *name, char *tagname, int *index);
  * may go away. */
 
 /* simple untyped tag reading function */
-int dax_read(tag_idx_t idx, int offset, void *data, size_t size);
+int dax_read(tag_index idx, int offset, void *data, size_t size);
 /* simple untyped tag writing function */
-int dax_write(tag_idx_t idx, int offset, void *data, size_t size);
+int dax_write(tag_index idx, int offset, void *data, size_t size);
 /* simple untyped masked tag write */
-int dax_mask(tag_idx_t idx, int offset, void *data, void *mask, size_t size);
+int dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size);
 
 /* These are the bread and butter tag handling functions.  The functions
  * understand the type of tag being written and take care of all the
@@ -236,9 +238,9 @@ int dax_mask(tag_idx_t idx, int offset, void *data, void *mask, size_t size);
  * count is the number of items in the tag to read/write.  The mask is
  * a binary mask that only allows data through where bits are high.
  * type is the tag type. */
-int dax_read_tag(handle_t handle, void *data);
-int dax_write_tag(handle_t handle, void *data);
-int dax_mask_tag(handle_t handle, void *data, void *mask);
+int dax_read_tag(Handle handle, void *data);
+int dax_write_tag(Handle handle, void *data);
+int dax_mask_tag(Handle handle, void *data, void *mask);
 //--int dax_read_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
 //--int dax_write_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
 //--int dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, unsigned int type);
@@ -249,8 +251,8 @@ int dax_event_del(int id);
 int dax_event_get(int id);
 
 /* Custom Datatype Functions */
-type_t dax_cdt_create(char *name, int *error);
-int dax_cdt_add(type_t cdt_type, char *name, type_t mem_type, unsigned int count);
-int dax_cdt_finalize(type_t type);
+tag_type dax_cdt_create(char *name, int *error);
+int dax_cdt_add(tag_type cdt_type, char *name, tag_type mem_type, unsigned int count);
+int dax_cdt_finalize(tag_type type);
 
 #endif /* !__OPENDAX_H */

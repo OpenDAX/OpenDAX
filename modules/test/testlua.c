@@ -135,7 +135,7 @@ static int
 _cdt_add(lua_State *L)
 {
     int result;
-    type_t mtype, ttype;
+    tag_type mtype, ttype;
     
     if(lua_gettop(L) != 4) {
         luaL_error(L, "wrong number of arguments to cdt_add()");
@@ -164,7 +164,7 @@ static int
 _cdt_finalize(lua_State *L)
 {
     int result;
-    type_t type;
+    tag_type type;
     
     if(lua_gettop(L) != 1) {
         luaL_error(L, "wrong number of arguments to check_tagnames()");
@@ -182,7 +182,7 @@ static int
 _tag_add(lua_State *L)
 {
     int result;
-    type_t type;
+    tag_type type;
     
     if(lua_gettop(L) != 3) {
         luaL_error(L, "wrong number of arguments to tag_add()");
@@ -215,7 +215,7 @@ _cdt_recursion(lua_State *L)
 static int
 _tag_handle_test(lua_State *L)
 {
-    handle_t h;
+    Handle h;
     int n = 1, final = 0;
     const char *name, *type;
     int count, result, byte, bit, rcount, size, test;

@@ -90,38 +90,38 @@ stom_real(float x)
     return x;
 }
 
-dax_lint_t
-mtos_lint(dax_lint_t x)
+dax_lint
+mtos_lint(dax_lint x)
 {
     return x;
 }
 
-dax_ulint_t
-mtos_ulint(dax_ulint_t x)
+dax_ulint
+mtos_ulint(dax_ulint x)
 {
     return x;
 }
 
-dax_lreal_t
-mtos_lreal(dax_lreal_t x)
+dax_lreal
+mtos_lreal(dax_lreal x)
 {
     return x;
 }
 
-dax_lint_t
-stom_lint(dax_lint_t x)
+dax_lint
+stom_lint(dax_lint x)
 {
     return x;
 }
 
-dax_ulint_t
-stom_ulint(dax_ulint_t x)
+dax_ulint
+stom_ulint(dax_ulint x)
 {
     return x;
 }
 
-dax_lreal_t
-stom_lreal(dax_lreal_t x)
+dax_lreal
+stom_lreal(dax_lreal x)
 {
     return x;
 }

@@ -393,7 +393,7 @@ msg_mod_register(dax_message *msg)
 int
 msg_tag_add(dax_message *msg)
 {
-    tag_idx_t idx;
+    tag_index idx;
     u_int32_t type;
     u_int32_t count;
         
@@ -405,9 +405,9 @@ msg_tag_add(dax_message *msg)
     xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d, index %d", &msg->data[8], msg->fd, type, count, idx);
     
     if(idx >= 0) {
-        _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_idx_t), RESPONSE);
+        _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_index), RESPONSE);
     } else {
-        _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_idx_t), ERROR);
+        _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_index), ERROR);
     }
     return 0;
 }
@@ -430,7 +430,7 @@ msg_tag_get(dax_message *msg)
     char *buff;
     
     if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
-        index = *((tag_idx_t *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
+        index = *((tag_index *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
         result = tag_get_index(index, &tag); /* get the tag */
         xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for handle 0x%X", msg->fd, index);
     } else { /* A name was passed */
@@ -470,11 +470,11 @@ int
 msg_tag_read(dax_message *msg)
 {
     char data[MSG_DATA_SIZE];
-    tag_idx_t handle;
+    tag_index handle;
     int result, offset;
     size_t size;
     
-    handle = *((tag_idx_t *)&msg->data[0]);
+    handle = *((tag_index *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     size = *((size_t *)&msg->data[8]);
     
@@ -494,13 +494,13 @@ msg_tag_read(dax_message *msg)
 int
 msg_tag_write(dax_message *msg)
 {
-    tag_idx_t handle;
+    tag_index handle;
     int result, offset;
     void *data;
     size_t size;
     	
-    size = msg->size - sizeof(tag_idx_t) - sizeof(int);
-    handle = *((tag_idx_t *)&msg->data[0]);
+    size = msg->size - sizeof(tag_index) - sizeof(int);
+    handle = *((tag_index *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
 
@@ -520,13 +520,13 @@ msg_tag_write(dax_message *msg)
 int
 msg_tag_mask_write(dax_message *msg)
 {
-    tag_idx_t handle;
+    tag_index handle;
     int result, offset;
     void *data, *mask;
     size_t size;
     
-    size = (msg->size - sizeof(tag_idx_t) - sizeof(int)) / 2;
-    handle = *((tag_idx_t *)&msg->data[0]);
+    size = (msg->size - sizeof(tag_index) - sizeof(int)) / 2;
+    handle = *((tag_index *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
     mask = &msg->data[8 + size];
@@ -602,7 +602,7 @@ msg_cdt_create(dax_message *msg)
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_CDT_CREATE, &result, 0, ERROR);    
     } else {
-        _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(type_t), RESPONSE);
+        _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(tag_type), RESPONSE);
     }
     return 0;
 }
@@ -611,12 +611,12 @@ int
 msg_cdt_add(dax_message *msg)
 {
     int result;
-    type_t cdt_type;
-    type_t mem_type;
+    tag_type cdt_type;
+    tag_type mem_type;
     u_int32_t count;
     
-    cdt_type = *((type_t *)&msg->data[0]);
-    mem_type = *((type_t *)&msg->data[4]);
+    cdt_type = *((tag_type *)&msg->data[0]);
+    mem_type = *((tag_type *)&msg->data[4]);
     count = *((u_int32_t *)&msg->data[8]);
     
     xlog(LOG_MSG | LOG_OBSCURE, "CDT Add Member to '%s' Message for '%s' from module %d, type 0x%X, count %d", 
@@ -638,14 +638,14 @@ msg_cdt_get(dax_message *msg)
 {
     int result, size;
     unsigned char subcommand;
-    type_t cdt_type;
+    tag_type cdt_type;
     char type[DAX_TAGNAME_SIZE + 1];
     char *str, *data = NULL;
     
     result = 0;  /* result will stay zero if we don't have any errors */
     subcommand = msg->data[0];
     if(subcommand == CDT_GET_TYPE) {
-        cdt_type = *((type_t *)&msg->data[1]);
+        cdt_type = *((tag_type *)&msg->data[1]);
     } else {
         strncpy(type, &msg->data[1], DAX_TAGNAME_SIZE);
         type[DAX_TAGNAME_SIZE] = '\0';  /* Just to be sure */
@@ -670,7 +670,7 @@ msg_cdt_get(dax_message *msg)
         if(data == NULL) {
             result = ERR_ALLOC;
         } else {
-            *((type_t *)data) = cdt_type;
+            *((tag_type *)data) = cdt_type;
             memcpy(&(data[4]), str, size);
         }
     }

@@ -22,10 +22,10 @@
 #include <common.h>
 #include <opendax.h>
 
-int dt_add_tag(char *name, int index, int function, int length);
-int dt_getwords(tag_idx_t handle, int index, void *data, int length);
-int dt_setwords(tag_idx_t handle, int index, void *data, int length);
-int dt_getbits(tag_idx_t handle, int index, void *data, int length);
-int dt_setbits(tag_idx_t handle, int index, void *data, int length);
+int dt_add_tag(Handle *h, char *name, int index, int function, int length);
+int dt_getwords(tag_index handle, int index, void *data, int length);
+int dt_setwords(tag_index handle, int index, void *data, int length);
+int dt_getbits(tag_index handle, int index, void *data, int length);
+int dt_setbits(tag_index handle, int index, void *data, int length);
 
 #endif

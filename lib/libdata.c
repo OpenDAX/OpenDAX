@@ -35,7 +35,7 @@
 
 /* This is the structure for our tag cache */
 typedef struct Tag_Cnode {
-    tag_idx_t idx;
+    tag_index idx;
     unsigned int type;
     unsigned int count;
     struct Tag_Cnode *next;
@@ -117,7 +117,7 @@ _cache_hit(tag_cnode *this, dax_tag *tag)
  * cache.  Returns a pointer to the tag if found and
  * returns ERR_NOTFOUND otherwise */
 int
-check_cache_index(tag_idx_t idx, dax_tag *tag)
+check_cache_index(tag_index idx, dax_tag *tag)
 {
     tag_cnode *this;
     
@@ -219,7 +219,7 @@ cache_tag_add(dax_tag *tag)
 /* This is a recursive function that traverses the *data and makes the proper
  * data conversions based on the data type. */
 static inline int
-_read_format(type_t type, int count, void *data, int offset)
+_read_format(tag_type type, int count, void *data, int offset)
 {
     int n, pos, result;
     char *newdata;
@@ -257,45 +257,45 @@ _read_format(type_t type, int count, void *data, int offset)
             case DAX_WORD:
             case DAX_UINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_uint_t *)newdata)[n] = stom_uint(((dax_uint_t *)newdata)[n]);
+                    ((dax_uint *)newdata)[n] = stom_uint(((dax_uint *)newdata)[n]);
                 }
                 break;
             case DAX_INT:
                 for(n = 0; n < count; n++) {
-                    ((dax_int_t *)newdata)[n] = stom_int(((dax_int_t *)newdata)[n]);
+                    ((dax_int *)newdata)[n] = stom_int(((dax_int *)newdata)[n]);
                 }
                 break;
             case DAX_DWORD:
             case DAX_UDINT:
             case DAX_TIME:
                 for(n = 0; n < count; n++) {
-                    ((dax_udint_t *)newdata)[n] = stom_udint(((dax_udint_t *)newdata)[n]);
+                    ((dax_udint *)newdata)[n] = stom_udint(((dax_udint *)newdata)[n]);
                 }
                 break;
             case DAX_DINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_dint_t *)newdata)[n] = stom_dint(((dax_dint_t *)newdata)[n]);
+                    ((dax_dint *)newdata)[n] = stom_dint(((dax_dint *)newdata)[n]);
                 }
                 break;
             case DAX_REAL:
                 for(n = 0; n < count; n++) {
-                    ((dax_real_t *)newdata)[n] = stom_real(((dax_real_t *)newdata)[n]);
+                    ((dax_real *)newdata)[n] = stom_real(((dax_real *)newdata)[n]);
                 }
                 break;
             case DAX_LWORD:
             case DAX_ULINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_ulint_t *)newdata)[n] = stom_ulint(((dax_ulint_t *)newdata)[n]);
+                    ((dax_ulint *)newdata)[n] = stom_ulint(((dax_ulint *)newdata)[n]);
                 }
                 break;
             case DAX_LINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_lint_t *)newdata)[n] = stom_lint(((dax_lint_t *)newdata)[n]);
+                    ((dax_lint *)newdata)[n] = stom_lint(((dax_lint *)newdata)[n]);
                 }
                 break;
             case DAX_LREAL:
                 for(n = 0; n < count; n++) {
-                    ((dax_lreal_t *)newdata)[n] = stom_lreal(((dax_lreal_t *)newdata)[n]);
+                    ((dax_lreal *)newdata)[n] = stom_lreal(((dax_lreal *)newdata)[n]);
                 }
                 break;
             default:
@@ -308,7 +308,7 @@ _read_format(type_t type, int count, void *data, int offset)
 
 
 int
-dax_read_tag(handle_t handle, void *data)
+dax_read_tag(Handle handle, void *data)
 {
     int result, n, i;
     
@@ -420,7 +420,7 @@ dax_read_tag(handle_t handle, void *data)
 //
 
 static inline int
-_write_format(type_t type, int count, void *data, int offset)
+_write_format(tag_type type, int count, void *data, int offset)
 {
     int n, pos, result;
     char *newdata;
@@ -457,45 +457,45 @@ _write_format(type_t type, int count, void *data, int offset)
             case DAX_WORD:
             case DAX_UINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_uint_t *)newdata)[n] = mtos_uint(((dax_uint_t *)newdata)[n]);
+                    ((dax_uint *)newdata)[n] = mtos_uint(((dax_uint *)newdata)[n]);
                 }
                 break;
             case DAX_INT:
                 for(n = 0; n < count; n++) {
-                    ((dax_int_t *)newdata)[n] = mtos_int(((dax_int_t *)newdata)[n]);
+                    ((dax_int *)newdata)[n] = mtos_int(((dax_int *)newdata)[n]);
                 }
                 break;
             case DAX_DWORD:
             case DAX_UDINT:
             case DAX_TIME:
                 for(n = 0; n < count; n++) {
-                    ((dax_udint_t *)newdata)[n] = mtos_udint(((dax_udint_t *)newdata)[n]);
+                    ((dax_udint *)newdata)[n] = mtos_udint(((dax_udint *)newdata)[n]);
                 }
                 break;
             case DAX_DINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_dint_t *)newdata)[n] = mtos_dint(((dax_dint_t *)newdata)[n]);
+                    ((dax_dint *)newdata)[n] = mtos_dint(((dax_dint *)newdata)[n]);
                 }
                 break;
             case DAX_REAL:
                 for(n = 0; n < count; n++) {
-                    ((dax_real_t *)newdata)[n] = mtos_real(((dax_real_t *)newdata)[n]);
+                    ((dax_real *)newdata)[n] = mtos_real(((dax_real *)newdata)[n]);
                 }
                 break;
             case DAX_LWORD:
             case DAX_ULINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_ulint_t *)newdata)[n] = mtos_ulint(((dax_ulint_t *)newdata)[n]);
+                    ((dax_ulint *)newdata)[n] = mtos_ulint(((dax_ulint *)newdata)[n]);
                 }
                 break;
             case DAX_LINT:
                 for(n = 0; n < count; n++) {
-                    ((dax_lint_t *)newdata)[n] = mtos_lint(((dax_lint_t *)newdata)[n]);
+                    ((dax_lint *)newdata)[n] = mtos_lint(((dax_lint *)newdata)[n]);
                 }
                 break;
             case DAX_LREAL:
                 for(n = 0; n < count; n++) {
-                    ((dax_lreal_t *)newdata)[n] = mtos_lreal(((dax_lreal_t *)newdata)[n]);
+                    ((dax_lreal *)newdata)[n] = mtos_lreal(((dax_lreal *)newdata)[n]);
                 }
                 break;
             default:
@@ -510,7 +510,7 @@ _write_format(type_t type, int count, void *data, int offset)
 
 
 int
-dax_write_tag(handle_t handle, void *data)
+dax_write_tag(Handle handle, void *data)
 {
     int i, n, result = 0;
     char *mask = NULL;
@@ -636,7 +636,7 @@ dax_write_tag(handle_t handle, void *data)
 
 
 int
-dax_mask_tag(handle_t handle, void *data, void*mask)
+dax_mask_tag(Handle handle, void *data, void*mask)
 {
     
     return 0;

@@ -42,11 +42,11 @@
 #define mtos_word mtos_uint
 #define stom_word stom_uint
 
-dax_int_t mtos_int(dax_int_t);
-dax_uint_t mtos_uint(dax_uint_t);
+dax_int mtos_int(dax_int);
+dax_uint mtos_uint(dax_uint);
 
-dax_int_t stom_int(dax_int_t);
-dax_uint_t stom_uint(dax_uint_t);
+dax_int stom_int(dax_int);
+dax_uint stom_uint(dax_uint);
 
 /* 32 Bit conversion functions */
 #define mtos_word mtos_uint
@@ -54,29 +54,29 @@ dax_uint_t stom_uint(dax_uint_t);
 #define mtos_time mtos_uint
 #define stom_time stom_uint
 
-dax_dint_t mtos_dint(dax_dint_t);
-dax_udint_t mtos_udint(dax_udint_t);
-dax_real_t mtos_real(dax_real_t);
+dax_dint mtos_dint(dax_dint);
+dax_udint mtos_udint(dax_udint);
+dax_real mtos_real(dax_real);
 
-dax_dint_t stom_dint(dax_dint_t);
-dax_udint_t stom_udint(dax_udint_t);
-dax_real_t stom_real(dax_real_t);
+dax_dint stom_dint(dax_dint);
+dax_udint stom_udint(dax_udint);
+dax_real stom_real(dax_real);
 
 /* 64 bit Conversions */
 #define mtos_lword mtos_ulint
 #define stom_lword stom_ulint
 
-dax_lint_t mtos_lint(dax_lint_t);
-dax_ulint_t mtos_ulint(dax_ulint_t);
-dax_lreal_t mtos_lreal(dax_lreal_t);
+dax_lint mtos_lint(dax_lint);
+dax_ulint mtos_ulint(dax_ulint);
+dax_lreal mtos_lreal(dax_lreal);
 
-dax_lint_t stom_lint(dax_lint_t);
-dax_ulint_t stom_ulint(dax_ulint_t);
-dax_lreal_t stom_lreal(dax_lreal_t);
+dax_lint stom_lint(dax_lint);
+dax_ulint stom_ulint(dax_ulint);
+dax_lreal stom_lreal(dax_lreal);
 
 /* These functions handle the tag cache */
 int init_tag_cache(void);
-int check_cache_index(tag_idx_t, dax_tag *);
+int check_cache_index(tag_index, dax_tag *);
 int check_cache_name(char *, dax_tag *);
 int cache_tag_add(dax_tag *);
 
@@ -98,9 +98,9 @@ typedef struct {
     cdt_member *members;
 } datatype;
 
-int get_typesize(type_t type);
-datatype *get_cdt_pointer(type_t);
-int add_cdt_to_cache(type_t type, char *typedesc);
-int dax_cdt_get(type_t type, char *name);
+int get_typesize(tag_type type);
+datatype *get_cdt_pointer(tag_type);
+int add_cdt_to_cache(tag_type type, char *typedesc);
+int dax_cdt_get(tag_type type, char *name);
 
 #endif /* !__LIBDAX_H */

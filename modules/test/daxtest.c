@@ -30,9 +30,10 @@
 int static
 tag_read_write_test(void)
 {
-    tag_idx_t index;
-    handle_t handle;
-    dax_int_t write_data[32], read_data[32];
+    tag_index index;
+    Handle handle;
+    tag_type type;
+    dax_int write_data[32], read_data[32];
     index = dax_tag_add("TestReadTagInt", DAX_INT, 32);
     
     dax_tag_handle(&handle, "TestReadTagInt", 32);
@@ -42,6 +43,20 @@ tag_read_write_test(void)
     dax_read_tag(handle, read_data);
     
     printf("read_data[0] = 0x%X\n", read_data[0]);
+    
+    type = dax_cdt_create("TestCDT", NULL);
+    dax_cdt_add(type, "TheDint", DAX_DINT, 1);
+    dax_cdt_add(type, "TheInt", DAX_INT, 2);
+    dax_cdt_finalize(type);
+    
+    dax_tag_add("TestCDTRead", type, 1);
+    dax_tag_handle(&handle, "TestCDTRead.TheInt[1]", 1);
+    write_data[1] = 444;
+    dax_write_tag(handle, &write_data[1]);
+    dax_read_tag(handle, &read_data[1]);
+    printf("read_data[1] = %d\n", read_data[1]);
+    
+    
     return 0;
 }
 

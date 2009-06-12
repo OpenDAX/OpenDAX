@@ -62,7 +62,7 @@ static unsigned int _datatype_size;
 
 /* checks whether type is a valid datatype */
 static int
-_checktype(type_t type)
+_checktype(tag_type type)
 {
     int index;
     
@@ -113,7 +113,7 @@ _checktype(type_t type)
  This will also return 0 when the tag has been deleted
  which is designated by zero type and zero count */
 static inline size_t
-_get_tag_size(tag_idx_t idx)
+_get_tag_size(tag_index idx)
 {
     if(_db[idx].type == DAX_BOOL)
         return _db[idx].count / 8 + 1;
@@ -171,13 +171,13 @@ _get_by_name(char *name)
  * custom data type.  It assumes that the type is valid, if
  * the type is not valid, bad things will happen */
 static inline void
-_cdt_inc_refcount(type_t type) {
+_cdt_inc_refcount(tag_type type) {
     _datatypes[CDT_TO_INDEX(type)].refcount++;
 }
 
 /* This funtion decrements the reference counter */
 static inline void
-_cdt_dec_refcount(type_t type) {
+_cdt_dec_refcount(tag_type type) {
     if(_datatypes[CDT_TO_INDEX(type)].refcount != 0) {
         _datatypes[CDT_TO_INDEX(type)].refcount--;
     }
@@ -260,7 +260,7 @@ _add_index(char *name, int index)
 void
 initialize_tagbase(void)
 {
-    type_t type;
+    tag_type type;
     int result;
     
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
@@ -323,8 +323,8 @@ initialize_tagbase(void)
 
 
 /* This adds a tag to the database. */
-tag_idx_t
-tag_add(char *name, type_t type, unsigned int count)
+tag_index
+tag_add(char *name, tag_type type, unsigned int count)
 {
     int n;
     void *newdata;
@@ -464,7 +464,7 @@ tag_get_index(int index, dax_tag *tag)
  * return 0 on success and some negative number on failure.
  */
 int
-tag_read(tag_idx_t idx, int offset, void *data, size_t size)
+tag_read(tag_index idx, int offset, void *data, size_t size)
 {
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
@@ -481,7 +481,7 @@ tag_read(tag_idx_t idx, int offset, void *data, size_t size)
 
 /* This function writes data to the _db just like the above function reads it */
 int
-tag_write(tag_idx_t idx, int offset, void *data, size_t size)
+tag_write(tag_index idx, int offset, void *data, size_t size)
 {
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
@@ -498,7 +498,7 @@ tag_write(tag_idx_t idx, int offset, void *data, size_t size)
 
 /* Writes the data to the tagbase but only if the corresponding mask bit is set */
 int
-tag_mask_write(tag_idx_t idx, int offset, void *data, void *mask, size_t size)
+tag_mask_write(tag_index idx, int offset, void *data, void *mask, size_t size)
 {
     char *db, *newdata, *newmask;
     int n;
@@ -572,7 +572,7 @@ cdt_create(char *name, int *error)
 
 /* Returns the type of the datatype with given name
  * If the datatype isn't found it returns 0 */
-type_t
+tag_type
 cdt_get_type(char *name)
 {
     int n;
@@ -619,7 +619,7 @@ cdt_get_type(char *name)
 /* Returns a pointer to the name of the datatype given
  * by 'type'.  Returns NULL on failure */
 char *
-cdt_get_name(type_t type)
+cdt_get_name(tag_type type)
 {
     int index;
     
@@ -700,7 +700,7 @@ _cdt_does_contain(unsigned int needle, unsigned int haystack)
 /* Adds a member to the datatype referenced by it's array index 'cdt_index'. 
  * Returns 0 on success, nonzero error code on failure. */
 int
-cdt_add_member(int cdt_index, char *name, type_t type, unsigned int count)
+cdt_add_member(int cdt_index, char *name, tag_type type, unsigned int count)
 {
     int retval;
     cdt_member *this, *new;
@@ -783,7 +783,7 @@ cdt_add_member(int cdt_index, char *name, type_t type, unsigned int count)
  * the same thread as any function that manipulates the cdt 
  * array, or it will have to be protected by a Mutex */
 int
-serialize_datatype(type_t type, char **str)
+serialize_datatype(tag_type type, char **str)
 {
     int size;
     char test[DAX_TAGNAME_SIZE + 1];
@@ -839,7 +839,7 @@ serialize_datatype(type_t type, char **str)
 /* Figures out how large the datatype is and returns
  * that size in bytes.  This function is recursive */
     int
-type_size(type_t type)
+type_size(tag_type type)
 {
     int size = 0;
     unsigned int pos = 0; /* Bit position within the data area */

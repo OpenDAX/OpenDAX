@@ -45,7 +45,8 @@ _dax_tag_add(lua_State *L)
 {
     char *name, *type;
     int count;
-    tag_idx_t result;
+    tag_index result;
+    Handle h;
     if(lua_gettop(L) != 3) {
         lua_pushnumber(L, -1.0);
         return 1;
@@ -60,11 +61,11 @@ _dax_tag_add(lua_State *L)
     }
     
     pthread_mutex_lock(&daxmutex);
-    result = dax_tag_add(name, dax_string_to_type(type), count);
+    result = dax_tag_add(&h, name, dax_string_to_type(type), count);
     pthread_mutex_unlock(&daxmutex);
     
     if( result > 0 ) {
-        lua_pushnumber(L, (double)result);
+        lua_pushnumber(L, (double)h.index);
     } else {
         lua_pushnumber(L, -1.0);
     }
@@ -81,35 +82,35 @@ _dax_pushdata(lua_State *L, unsigned int type, void *buff)
            and then cast to double for pushing into the Lua stack */
         case DAX_BYTE:
         case DAX_SINT:
-            lua_pushnumber(L, (double)*((dax_sint_t *)buff));
+            lua_pushnumber(L, (double)*((dax_sint *)buff));
             break;
         case DAX_WORD:
         case DAX_UINT:
-            lua_pushnumber(L, (double)*((dax_uint_t *)buff));
+            lua_pushnumber(L, (double)*((dax_uint *)buff));
             break;
         case DAX_INT:
-            lua_pushnumber(L, (double)*((dax_int_t *)buff));
+            lua_pushnumber(L, (double)*((dax_int *)buff));
             break;
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
-            lua_pushnumber(L, (double)*((dax_udint_t *)buff));
+            lua_pushnumber(L, (double)*((dax_udint *)buff));
             break;
         case DAX_DINT:
-            lua_pushnumber(L, (double)*((dax_dint_t *)buff));
+            lua_pushnumber(L, (double)*((dax_dint *)buff));
             break;
         case DAX_REAL:
-            lua_pushnumber(L, (double)*((dax_real_t *)buff));
+            lua_pushnumber(L, (double)*((dax_real *)buff));
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            lua_pushnumber(L, (double)*((dax_ulint_t *)buff));
+            lua_pushnumber(L, (double)*((dax_ulint *)buff));
             break;
         case DAX_LINT:
-            lua_pushnumber(L, (double)*((dax_lint_t *)buff));
+            lua_pushnumber(L, (double)*((dax_lint *)buff));
             break;
         case DAX_LREAL:
-            lua_pushnumber(L, *((dax_lreal_t *)buff));
+            lua_pushnumber(L, *((dax_lreal *)buff));
             break;
     }
 }
@@ -125,50 +126,50 @@ _lua_to_dax(lua_State *L, unsigned int type, void *buff, void *mask, int index)
         case DAX_BYTE:
         case DAX_SINT:
             x = lua_tointeger(L, -1) % 256;
-            ((dax_sint_t *)buff)[index] = x;
-            if(mask) ((dax_sint_t *)mask)[index] = 0xFF;
+            ((dax_sint *)buff)[index] = x;
+            if(mask) ((dax_sint *)mask)[index] = 0xFF;
             break;
         case DAX_WORD:
         case DAX_UINT:
             x = lua_tointeger(L, -1);
-            ((dax_uint_t *)buff)[index] = x;
-            if(mask) ((dax_uint_t *)mask)[index] = 0xFFFF;
+            ((dax_uint *)buff)[index] = x;
+            if(mask) ((dax_uint *)mask)[index] = 0xFFFF;
             break;
         case DAX_INT:
             x = lua_tointeger(L, -1);
-            ((dax_int_t *)buff)[index] = x;
-            if(mask) ((dax_int_t *)mask)[index] = 0xFFFF;
+            ((dax_int *)buff)[index] = x;
+            if(mask) ((dax_int *)mask)[index] = 0xFFFF;
             break;
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
             x = lua_tointeger(L, -1);
-            ((dax_udint_t *)buff)[index] = x;
-            if(mask) ((dax_udint_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_udint *)buff)[index] = x;
+            if(mask) ((dax_udint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_DINT:
             x = lua_tointeger(L, -1);
-            ((dax_dint_t *)buff)[index] = x;
-            if(mask) ((dax_dint_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_dint *)buff)[index] = x;
+            if(mask) ((dax_dint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_REAL:
-            ((dax_real_t *)buff)[index] = (dax_real_t)lua_tonumber(L, -1);
-            if(mask) ((dax_real_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_real *)buff)[index] = (dax_real)lua_tonumber(L, -1);
+            if(mask) ((dax_real *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_LWORD:
         case DAX_ULINT:
             x = lua_tointeger(L, -1);
-            ((dax_ulint_t *)buff)[index] = x;
-            if(mask) ((dax_ulint_t *)mask)[index] = DAX_64_ONES;
+            ((dax_ulint *)buff)[index] = x;
+            if(mask) ((dax_ulint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LINT:
             x = lua_tointeger(L, -1);
-            ((dax_lint_t *)buff)[index] = x;
-            if(mask) ((dax_lint_t *)mask)[index] = DAX_64_ONES;
+            ((dax_lint *)buff)[index] = x;
+            if(mask) ((dax_lint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LREAL:
-            ((dax_lreal_t *)buff)[index] = lua_tonumber(L, -1);
-            if(mask) ((dax_lreal_t *)mask)[index] = DAX_64_ONES;
+            ((dax_lreal *)buff)[index] = lua_tonumber(L, -1);
+            if(mask) ((dax_lreal *)mask)[index] = DAX_64_ONES;
             break;
     }
 }

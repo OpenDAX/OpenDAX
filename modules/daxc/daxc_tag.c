@@ -43,7 +43,7 @@ int
 tag_add(char **tokens)
 {
     int type, count;
-    tag_idx_t handle;
+    tag_index handle;
     const char usage[] = "Usage: add type count\n";
     
     /* Make sure that name is not NULL and we get the tagname */
@@ -175,35 +175,35 @@ dax_to_string(unsigned int type, void *buff, int index)
             break;
         case DAX_BYTE:
         case DAX_SINT:
-            printf("%hhd\n", ((dax_sint_t *)buff)[index]);
+            printf("%hhd\n", ((dax_sint *)buff)[index]);
             break;
         case DAX_WORD:
         case DAX_UINT:
-            printf("%d\n", ((dax_uint_t *)buff)[index]);
+            printf("%d\n", ((dax_uint *)buff)[index]);
             break;
         case DAX_INT:
-            printf("%hd\n", ((dax_int_t *)buff)[index]);
+            printf("%hd\n", ((dax_int *)buff)[index]);
             break;
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
-            printf("%d\n", ((dax_udint_t *)buff)[index]);
+            printf("%d\n", ((dax_udint *)buff)[index]);
             break;
         case DAX_DINT:
-            printf("%d\n", ((dax_dint_t *)buff)[index]);
+            printf("%d\n", ((dax_dint *)buff)[index]);
             break;
         case DAX_REAL:
-            printf("%g\n", ((dax_real_t *)buff)[index]);
+            printf("%g\n", ((dax_real *)buff)[index]);
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            printf("%lld\n", ((dax_ulint_t *)buff)[index]);
+            printf("%lld\n", ((dax_ulint *)buff)[index]);
             break;
         case DAX_LINT:
-            printf("%lld\n", ((dax_lint_t *)buff)[index]);
+            printf("%lld\n", ((dax_lint *)buff)[index]);
             break;
         case DAX_LREAL:
-            printf("%g\n", ((dax_lreal_t *)buff)[index]);
+            printf("%g\n", ((dax_lreal *)buff)[index]);
             break;
     }
 }
@@ -225,43 +225,43 @@ string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
             break;
         case DAX_BYTE:
         case DAX_SINT:
-            ((dax_sint_t *)buff)[index] = (dax_sint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_sint_t *)mask)[index] = 0xFF;
+            ((dax_sint *)buff)[index] = (dax_sint)strtol(val, NULL, 0);
+            if(mask) ((dax_sint *)mask)[index] = 0xFF;
             break;
         case DAX_WORD:
         case DAX_UINT:
-            ((dax_uint_t *)buff)[index] = (dax_uint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_uint_t *)mask)[index] = 0xFFFF;
+            ((dax_uint *)buff)[index] = (dax_uint)strtol(val, NULL, 0);
+            if(mask) ((dax_uint *)mask)[index] = 0xFFFF;
             break;
         case DAX_INT:
-            ((dax_int_t *)buff)[index] = (dax_int_t)strtol(val, NULL, 0);
-            if(mask) ((dax_int_t *)mask)[index] = 0xFFFF;
+            ((dax_int *)buff)[index] = (dax_int)strtol(val, NULL, 0);
+            if(mask) ((dax_int *)mask)[index] = 0xFFFF;
             break;
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
-            ((dax_udint_t *)buff)[index] = (dax_udint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_udint_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_udint *)buff)[index] = (dax_udint)strtol(val, NULL, 0);
+            if(mask) ((dax_udint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_DINT:
-            ((dax_dint_t *)buff)[index] = (dax_dint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_dint_t *)mask)[index] = 0xFFFFFFFF;
+            ((dax_dint *)buff)[index] = (dax_dint)strtol(val, NULL, 0);
+            if(mask) ((dax_dint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_REAL:
-            ((dax_real_t *)buff)[index] = strtof(val, NULL);
+            ((dax_real *)buff)[index] = strtof(val, NULL);
             if(mask) ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            ((dax_ulint_t *)buff)[index] = (dax_ulint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_ulint_t *)mask)[index] = DAX_64_ONES;
+            ((dax_ulint *)buff)[index] = (dax_ulint)strtol(val, NULL, 0);
+            if(mask) ((dax_ulint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LINT:
-            ((dax_lint_t *)buff)[index] = (dax_lint_t)strtol(val, NULL, 0);
-            if(mask) ((dax_lint_t *)mask)[index] = DAX_64_ONES;
+            ((dax_lint *)buff)[index] = (dax_lint)strtol(val, NULL, 0);
+            if(mask) ((dax_lint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LREAL:
-            ((dax_lreal_t *)buff)[index] = strtod(val, NULL);
+            ((dax_lreal *)buff)[index] = strtod(val, NULL);
             if(mask) ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
     }
@@ -272,7 +272,7 @@ int
 tag_read(char **tokens)
 {
     char name[DAX_TAGNAME_SIZE+ 1];
-    tag_idx_t handle;
+    tag_index handle;
     int index = -1, result, points = 0, n;
     size_t size;
     dax_tag tag;
@@ -374,7 +374,7 @@ int
 tag_write(char **tokens, int tcount)
 {
     char name[DAX_TAGNAME_SIZE+ 1 ];
-    tag_idx_t handle;
+    tag_index handle;
     int index = -1, result, points, next, n;
     size_t size;
     dax_tag tag;

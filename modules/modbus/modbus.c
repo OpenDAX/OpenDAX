@@ -87,8 +87,7 @@ initcmd(struct mb_cmd *c)
     c->function = 0;
     c->m_register = 0;
     c->length = 0;
-    //--c->address = 0;
-    c->idx = 0;
+    c->handle.index = 0;
     c->index = 0;
     c->interval = 0;
     

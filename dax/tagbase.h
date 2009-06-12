@@ -70,7 +70,7 @@ struct mod_list {
 
 typedef struct dax_event_t {
     int id;
-    tag_idx_t idx;
+    tag_index idx;
     size_t size;
     u_int32_t checksum;
     struct mod_list *notify;
@@ -79,7 +79,7 @@ typedef struct dax_event_t {
 
 /* This is the internal structure for the tag array. */
 typedef struct {
-    type_t type;
+    tag_type type;
     unsigned int count;
     char *name;
     _dax_event *events;
@@ -95,22 +95,22 @@ typedef struct {
 
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
-tag_idx_t tag_add(char *name, type_t type, unsigned int count);
+tag_index tag_add(char *name, tag_type type, unsigned int count);
 int tag_del(char *name);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
 
-int tag_read(tag_idx_t handle, int offset, void *data, size_t size);
-int tag_write(tag_idx_t handle, int offset, void *data, size_t size);
-int tag_mask_write(tag_idx_t handle, int offset, void *data, void *mask, size_t size);
+int tag_read(tag_index handle, int offset, void *data, size_t size);
+int tag_write(tag_index handle, int offset, void *data, size_t size);
+int tag_mask_write(tag_index handle, int offset, void *data, void *mask, size_t size);
 
 /* Custom DataType functions */
 unsigned int cdt_create(char *name, int *error);
 unsigned int cdt_get_type(char *name);
 char *cdt_get_name(unsigned int type);
-int cdt_add_member(int cdt_index, char *name, type_t type, unsigned int count);
-int type_size(type_t type);
-int serialize_datatype(type_t type, char **str);
+int cdt_add_member(int cdt_index, char *name, tag_type type, unsigned int count);
+int type_size(tag_type type);
+int serialize_datatype(tag_type type, char **str);
 
 /*
 handle_t tag_get_handle(char *name);

@@ -104,7 +104,7 @@ _add_member(int index, char *desc) {
 
 /* Calculate the size (in bytes) of the datatype */
 int
-get_typesize(type_t type)
+get_typesize(tag_type type)
 {
     int size = 0;
     unsigned int pos = 0; /* Bit position within the data area */
@@ -148,7 +148,7 @@ get_typesize(type_t type)
 
 /* Retrieves a pointer to the datatype array element identified by type */
 datatype *
-get_cdt_pointer(type_t type)
+get_cdt_pointer(tag_type type)
 {
     int index;
     
@@ -171,7 +171,7 @@ get_cdt_pointer(type_t type)
  * and typedesc is the type description string that would be generated
  * by a call to serialize_datatype() in the server. */
 int
-add_cdt_to_cache(type_t type, char *typedesc)
+add_cdt_to_cache(tag_type type, char *typedesc)
 {
     int index, result, n;
     char *str, *last;
@@ -233,7 +233,7 @@ add_cdt_to_cache(type_t type, char *typedesc)
  * the datatype is finalized it can't be modified and tags can then be
  * added. */
 int
-dax_cdt_finalize(type_t type)
+dax_cdt_finalize(tag_type type)
 {
     /* With a type of 0 dax_cdt_add() will finalize the datatype */
     return dax_cdt_add(type, "NULL", 0, 1);
@@ -241,7 +241,7 @@ dax_cdt_finalize(type_t type)
 
 /* Find the datatype that has the name 'type' and return it's numeric ID 
  * returns 0 on error.  */
-type_t
+tag_type
 dax_string_to_type(char *type)
 {
     int result, n;
@@ -288,7 +288,7 @@ dax_string_to_type(char *type)
 
 /* Returns a pointer to a string that is the name of the datatype */
 const char *
-dax_type_to_string(type_t type)
+dax_type_to_string(tag_type type)
 {
     int index;
     
@@ -351,7 +351,7 @@ dax_type_to_string(type_t type)
 typedef struct {
     char name[DAX_TAGNAME_SIZE + 1];
     int index;
-    type_t type;
+    tag_type type;
     int count;
     int byte;
     int bit;
@@ -451,7 +451,7 @@ _parse_tagname(_member_def *list, char *str, int count)
  */
 
 int
-dax_tag_handle(handle_t *h, char *str, int count)
+dax_tag_handle(Handle *h, char *str, int count)
 {
     int n = 0;
     int cnt = 1;
@@ -459,7 +459,7 @@ dax_tag_handle(handle_t *h, char *str, int count)
     _member_def *list = NULL;
     dax_tag tag;
     cdt_member *this;
-    type_t type;
+    tag_type type;
     
     /* TEST TEST TEST */
     //--printf("Getting Handle for '%s' with count = %d\n", str, count);
