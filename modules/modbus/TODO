@@ -1,3 +1,7 @@
+Completely separate the modbus protocol stuff from the OpenDAX stuff.
+
+Put the modbus protocol stuff in it's own library.
+
 Complete the function code list
     01
     02

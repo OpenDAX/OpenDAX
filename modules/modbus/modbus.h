@@ -14,158 +14,74 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * 
+ * This is the public header file for the modbus library functions
  */
 
 #ifndef __MODBUS_H
 #define __MODBUS_H
 
-#include <common.h>
-#ifdef HAVE_SYS_SOCKET_H
- #include <sys/socket.h>
-#endif
-#ifdef HAVE_SYS_PARAM_H
- #include <sys/param.h>
-#endif
-#include <database.h>
-#include <opendax.h>
+#include <sys/types.h>
 
-#ifdef __BIG_ENDIAN__ /* PPC Endianness */
-# define __MB_BIG_ENDIAN
-#endif
-
-#ifdef __BYTE_ORDER /* x86 Endianness */
-# if __BYTE_ORDER == __BIG_ENDIAN
-#   define __MB_BIG_ENDIAN
-# endif
-#endif
-
-/* Used to insert a 16bit value into the modbus buffer 
- another endian machine would simply use memcpy() */
-#ifndef __MB_BIG_ENDIAN
-# define COPYWORD(OUT,IN) swab((const void *)IN,(void *)OUT,(ssize_t)2)
-#else
-# define COPYWORD(OUT,IN) memcpy(OUT,IN,2);
-#endif
-
-#define MB_FRAME_LEN 255
-
-#ifndef MAX_RETRIES
-#  define MAX_RETRIES 100
-#endif
-
-#define ALIAS_LENGTH 33
-#define ALIAS_COUNT 64
-/* Device Port Types */
-#define SERIAL 0
-#define NET 1
 /* Port Types */
-#define MASTER 0
-#define SLAVE 1
+#define MB_MASTER 0
+#define MB_SLAVE  1
 /* Protocols */
-#define RTU 1
-#define ASCII 2
-#define TCP 4
-#define LAN 8 /* OR this with RTU or ASCII to get TCP/IP socket passthru */
+#define MB_RTU   1
+#define MB_ASCII 2
+#define MB_TCP   4
 /* Socket type for network ports */
 #define UDP_SOCK 1
 #define TCP_SOCK 2
 
 /* Parity */
-#define NONE 0
-#define EVEN 1
-#define ODD 2
+#define MB_NONE 0
+#define MB_EVEN 1
+#define MB_ODD  2
+
+/* Library Errors */
+#define MB_ERR_GENERIC    -1
+#define MB_ERR_ALLOC      -2      /* Unable to Allocate Storage */
+#define MB_ERR_BAUDRATE   -3      /* Bad Baudrate */
+#define MB_ERR_DATABITS   -4      /* Wrong number of databits */
+#define MB_ERR_STOPBITS   -5      /* Wrong number of stopbits */
+#define MB_ERR_SOCKET     -6      /* Bad socket identifier */
 
 /* Modbus Errors */
-#define ME_EXCEPTION 0x80;
-#define ME_WRONG_DEVICE 1;
+#define ME_EXCEPTION      0x80;
+#define ME_WRONG_DEVICE   1;
 #define ME_WRONG_FUNCTION 2;
-#define ME_CHECKSUM 4;
-#define ME_TIMEOUT 8;
-
-/* I really should make the port and the commands invisible to the outside
-   world and use functions to manipulate the members.  For now I'll just 
-   get it working. */
-
-struct mb_port {
-    char *name;
-    char *device;
-    char enable;    /* 0=Pause, 1=Run */
-    unsigned char type;      /* 0=Master, 1=Slave */
-    unsigned char devtype;   /* 0=serial, 1=network */
-    unsigned char protocol;  /* [Only RTU is implemented so far] */
-    u_int8_t slaveid;        /* Slave ID 1-247 (Slave Only) */
-    unsigned int baudrate;
-    unsigned char databits;
-    unsigned char stopbits;
-    unsigned char parity;    /* 0=NONE, 1=EVEN OR 2=ODD */
-    char ipaddress[16];
-    unsigned int bindport;   /* IP port to bind to */
-    unsigned char socket;    /* either UDP_SOCK or TCP_SOCK */
-    unsigned int delay;      /* Intercommand delay */
-    unsigned int wait;       /* Interbyte timeout */
-    unsigned short retries;  /* Number of retries to try */
-    unsigned int scanrate;   /* scanrate in mSeconds */
-    unsigned int holdreg;    /* database index for holding registers (slave only) */
-    unsigned int holdsize;   /* size of the internaln holding register bank */
-    unsigned int inputreg;   /* database index for input registers (slave only) */
-    unsigned int inputsize;  /* size of the internal input register bank */
-    unsigned int coilreg;    /* database index for coils (slave only) */
-    unsigned int coilsize;   /* size of the internal bank of coils in 16-bit registers */
-    unsigned int floatreg;       /* database index for Enron style float table */
-    unsigned int floatsize;      /* size of the float table */
-    unsigned int timeout;        /* Response timeout */
-    unsigned int attempt;        /* Attempt counter */
-    unsigned int maxattempts;    /* Number of failed attempts to allow before closing and exiting the port */
-    struct mb_cmd *commands;     /* Linked list of Modbus commands */
-    int fd;                      /* File descriptor to the port */
-    int dienow;
-    pthread_t thread;
-    pthread_mutex_t port_mutex;  /* Port Mutex */
-    unsigned char running;       /* Flag to indicate the port is running */
-    unsigned char inhibit;       /* When set the port will not be started */
-    unsigned int inhibit_time;   /* Number of seconds before the port will be retried */
-    unsigned int inhibit_temp;
-    /* These are callback function pointers for the port data */
-    void (* out_callback)(struct mb_port *, u_int8_t *, unsigned int);
-    void (* in_callback)(struct mb_port *, u_int8_t *, unsigned int);
-};
+#define ME_CHECKSUM       4;
+#define ME_TIMEOUT        8;
 
 /* Command Methods */
-#define	MB_DISABLE 0
-#define MB_CONTINUOUS 1
-#define	MB_ONCHANGE 2
-#define MB_TRIGGER 3
+#define	MB_DISABLE     0
+#define MB_CONTINUOUS  1
+#define	MB_ONCHANGE    2
+#define MB_TRIGGER     3
 
-struct mb_cmd {
-    unsigned char method;    /* 0=disable 1=continuous 2=on change */
-    u_int8_t node;           /* Modbus device ID */
-    u_int8_t function;       /* Function Code */
-    u_int16_t m_register;    /* Modbus Register */
-    u_int16_t length;        /* length of modbus data */
-    char *tagname;           /* tagname to use */
-    Handle handle;           /* handle to the tag */
-    int index;               /* tag index */
-    unsigned int interval;   /* number of port scans between messages */
-    unsigned int icount;     /* number of intervals passed */
-    unsigned int requests;   /* total number of times this command has been sent */
-    unsigned int responses;  /* number of valid modbus responses (exceptions included) */
-    unsigned int timeouts;   /* number of times this command has timed out */
-    unsigned int crcerrors;  /* number of checksum errors */
-    unsigned int exceptions; /* number of modbus exceptions recieved from slave */
-    u_int8_t lasterror;      /* last error on command */
-    u_int16_t lastcrc;       /* used to determine if a conditional message should be sent */
-    unsigned char firstrun;  /* Indicates that this command has been sent once */
-    struct mb_cmd* next;
-};
+typedef struct mb_port mb_port;
+typedef struct mb_cmd  mb_cmd;
 
-struct mb_port *mb_new_port(void);
-struct mb_cmd *mb_new_cmd(void);
-void mb_set_output_callback(struct mb_port *, void (* outfunc)(struct mb_port *,u_int8_t *,unsigned int));
-void mb_set_input_callback(struct mb_port *, void (* infunc)(struct mb_port *,u_int8_t *,unsigned int));
-int mb_add_cmd(struct mb_port *,struct mb_cmd *);
-struct mb_cmd *mb_get_cmd(struct mb_port *,unsigned int);
-int mb_open_port(struct mb_port *);
-int mb_start_port(struct mb_port *);
-int mb_send_command(struct mb_port *, struct mb_cmd *);
+/* New Interface */
+
+mb_port *mb_new_port(const char *name);
+void mb_destroy_port(mb_port *port);
+int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
+int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
+int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid);
+void mb_set_output_callback(mb_port *, void (*outfunc)(mb_port *,u_int8_t *,unsigned int));
+void mb_set_input_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsigned int));
+
+mb_cmd  *mb_new_cmd(mb_port *port);
+void mb_disable_cmd(mb_cmd *cmd);
+void mb_enable_cmd(mb_cmd *cmd);
+
+/* End New Interface */
+//--int mb_add_cmd(mb_port *,mb_cmd *);
+mb_cmd *mb_get_cmd(mb_port *, unsigned int);
+int mb_open_port(mb_port *);
+int mb_start_port(mb_port *);
+int mb_send_command(mb_port *, mb_cmd *);
 
 #endif

@@ -16,167 +16,16 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+//--#include <database.h>
+
+
+#include <modlib.h>
 #include <modbus.h>
-#include <database.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <termios.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/uio.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
-#include <pthread.h>
+static int openport(mb_port *);
+static int openIPport(mb_port *);
 
-static int openport(struct mb_port *);
-static int openIPport(struct mb_port *);
-
-void masterRTUthread(struct mb_port *);
-
-/************************
- *  Support functions   *
- ************************/
-
-/* Initializes the port structure given by pointer p */
-static void
-initport(struct mb_port *p)
-{
-    p->name = NULL;
-    p->device = NULL;
-    p->enable = 0;
-    p->type = 0; 
-    p->protocol = 0;
-    p->devtype = SERIAL;
-    p->slaveid = 1;      
-    p->baudrate = B9600;
-    p->databits = 8;
-    p->stopbits = 1;
-    p->timeout = 1000;      
-    p->wait = 10;
-    p->delay = 0;     
-    p->retries = 3;
-    p->parity = NONE;  
-    p->bindport = 5001;
-    p->scanrate = 1000; 
-    p->holdreg = 0;  
-    p->holdsize = 0; 
-    p->inputreg = 0;
-    p->inputsize = 0;
-    p->coilreg = 0;
-    p->coilsize = 0;
-    p->floatreg = 0;
-    p->floatsize = 0;
-    p->running = 0;
-    p->inhibit = 0;
-    p->commands = NULL;
-    p->out_callback = NULL;
-    p->in_callback = NULL;
-};
-
-/* Sets the command values to some defaults */
-static void
-initcmd(struct mb_cmd *c)
-{
-    c->method = 0;
-    c->node = 0;
-    c->function = 0;
-    c->m_register = 0;
-    c->length = 0;
-    c->handle.index = 0;
-    c->index = 0;
-    c->interval = 0;
-    
-    c->icount = 0;
-    c->requests = 0;
-    c->responses = 0;
-    c->timeouts = 0;
-    c->crcerrors = 0;
-    c->exceptions = 0;
-    c->lasterror = 0;
-    c->lastcrc = 0;
-    c->firstrun = 0;
-    c->next = NULL;
-};
-
-/* CRC table straight from the modbus spec */
-static unsigned char aCRCHi[] = {
-    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
-    0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
-    0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01,
-    0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
-    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81,
-    0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0,
-    0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01,
-    0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
-    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
-    0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
-    0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01,
-    0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
-    0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
-    0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
-    0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01,
-    0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
-    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
-    0x40
-};
-
-/* Table of CRC values for low order byte */
-static char aCRCLo[] = {
-    0x00, 0xC0, 0xC1, 0x01, 0xC3, 0x03, 0x02, 0xC2, 0xC6, 0x06, 0x07, 0xC7, 0x05, 0xC5, 0xC4,
-    0x04, 0xCC, 0x0C, 0x0D, 0xCD, 0x0F, 0xCF, 0xCE, 0x0E, 0x0A, 0xCA, 0xCB, 0x0B, 0xC9, 0x09,
-    0x08, 0xC8, 0xD8, 0x18, 0x19, 0xD9, 0x1B, 0xDB, 0xDA, 0x1A, 0x1E, 0xDE, 0xDF, 0x1F, 0xDD,
-    0x1D, 0x1C, 0xDC, 0x14, 0xD4, 0xD5, 0x15, 0xD7, 0x17, 0x16, 0xD6, 0xD2, 0x12, 0x13, 0xD3,
-    0x11, 0xD1, 0xD0, 0x10, 0xF0, 0x30, 0x31, 0xF1, 0x33, 0xF3, 0xF2, 0x32, 0x36, 0xF6, 0xF7,
-    0x37, 0xF5, 0x35, 0x34, 0xF4, 0x3C, 0xFC, 0xFD, 0x3D, 0xFF, 0x3F, 0x3E, 0xFE, 0xFA, 0x3A,
-    0x3B, 0xFB, 0x39, 0xF9, 0xF8, 0x38, 0x28, 0xE8, 0xE9, 0x29, 0xEB, 0x2B, 0x2A, 0xEA, 0xEE,
-    0x2E, 0x2F, 0xEF, 0x2D, 0xED, 0xEC, 0x2C, 0xE4, 0x24, 0x25, 0xE5, 0x27, 0xE7, 0xE6, 0x26,
-    0x22, 0xE2, 0xE3, 0x23, 0xE1, 0x21, 0x20, 0xE0, 0xA0, 0x60, 0x61, 0xA1, 0x63, 0xA3, 0xA2,
-    0x62, 0x66, 0xA6, 0xA7, 0x67, 0xA5, 0x65, 0x64, 0xA4, 0x6C, 0xAC, 0xAD, 0x6D, 0xAF, 0x6F,
-    0x6E, 0xAE, 0xAA, 0x6A, 0x6B, 0xAB, 0x69, 0xA9, 0xA8, 0x68, 0x78, 0xB8, 0xB9, 0x79, 0xBB,
-    0x7B, 0x7A, 0xBA, 0xBE, 0x7E, 0x7F, 0xBF, 0x7D, 0xBD, 0xBC, 0x7C, 0xB4, 0x74, 0x75, 0xB5,
-    0x77, 0xB7, 0xB6, 0x76, 0x72, 0xB2, 0xB3, 0x73, 0xB1, 0x71, 0x70, 0xB0, 0x50, 0x90, 0x91,
-    0x51, 0x93, 0x53, 0x52, 0x92, 0x96, 0x56, 0x57, 0x97, 0x55, 0x95, 0x94, 0x54, 0x9C, 0x5C,
-    0x5D, 0x9D, 0x5F, 0x9F, 0x9E, 0x5E, 0x5A, 0x9A, 0x9B, 0x5B, 0x99, 0x59, 0x58, 0x98, 0x88,
-    0x48, 0x49, 0x89, 0x4B, 0x8B, 0x8A, 0x4A, 0x4E, 0x8E, 0x8F, 0x4F, 0x8D, 0x4D, 0x4C, 0x8C,
-    0x44, 0x84, 0x85, 0x45, 0x87, 0x47, 0x46, 0x86, 0x82, 0x42, 0x43, 0x83, 0x41, 0x81, 0x80,
-    0x40
-};
-
-
-/* Modbus CRC16 checksum calculation. Taken straight from the modbus specification,
-   but I fixed the typos and changed the name to protect the guilty */ 
-unsigned short
-crc16(unsigned char *msg, unsigned short length)
-{
-    unsigned char CRCHi = 0xFF;
-    unsigned char CRCLo = 0xFF;
-    unsigned int index;
-    while(length--) {
-        index = CRCHi ^ *msg++;
-        CRCHi = CRCLo ^ aCRCHi[index];
-        CRCLo = aCRCLo[index];
-    }
-    return (CRCHi << 8 | CRCLo);
-};
-
-/* Checks the checksum of the modbus message given by *buff 
-   length should be the length of the modbus data buffer INCLUDING the
-   two byte checksum.  Returns 1 if checksum matches */
-static int
-crc16check(u_int8_t *buff,int length)
-{
-    u_int16_t crcLocal, crcRemote;
-    if(length < 2) return 0; /* Otherwise a bad pointer will go to crc16 */
-    crcLocal = crc16(buff, length-2);
-    COPYWORD(&crcRemote, &buff[length-2]);
-    if(crcLocal == crcRemote) return 1;
-    else return 0;
-};
+void masterRTUthread(mb_port *);
 
 /* Calculates the difference between the two times */
 inline unsigned long long
@@ -187,72 +36,6 @@ timediff(struct timeval oldtime,struct timeval newtime)
 };
 
 
-/************************
- *   Public functions   *
- ************************/
-
-/* This allocates and initializes a port.  Returns the pointer to the port on 
-   success or NULL on failure. */
-struct mb_port *
-mb_new_port(void)
-{
-    struct mb_port *mport;
-    mport=(struct mb_port *)malloc(sizeof(struct mb_port));
-    if(mport != NULL) {
-        initport(mport);
-    }
-    return mport;    
-}
-
-/* Allocates and initializes a master modbus command.  Returns the pointer
-   to the new command or NULL on failure. */
-struct mb_cmd *
-mb_new_cmd(void)
-{
-    struct mb_cmd *mcmd;
-    mcmd = (struct mb_cmd *)malloc(sizeof(struct mb_cmd));
-    if(mcmd != NULL) {
-        initcmd(mcmd);
-    }
-    return mcmd;    
-}
-
-void
-mb_set_output_callback(struct mb_port *mp, void (* outfunc)(struct mb_port *,u_int8_t *,unsigned int))
-{
-    mp->out_callback = outfunc;
-}
-
-
-void
-mb_set_input_callback(struct mb_port *mp, void (* infunc)(struct mb_port *,u_int8_t *,unsigned int))
-{
-    mp->in_callback = infunc;
-}
-
-/* Adds a new command to the linked list of commands on port p 
-   This is the master port threads list of commands that it sends
-   while running.  If all commands are to be asynchronous then this
-   would not be necessary.  Slave ports would never use this.
-   Returns 0 on success. */
-int
-mb_add_cmd(struct mb_port *p, struct mb_cmd *mc)
-{
-    struct mb_cmd *node;
-    
-    if(p == NULL || mc == NULL) return -1;
-    
-    if(p->commands == NULL) {
-        p->commands = mc;
-    } else {
-        node = p->commands;
-        while(node->next != NULL) {
-            node = node->next;
-        }
-        node->next = mc;
-    }
-    return 0;
-}
 
 /* Finds the modbus master command indexed by cmd.  Returns a pointer
    to the command when found and NULL on error. */
@@ -284,7 +67,7 @@ mb_open_port(struct mb_port *m_port)
     
     /* if the LAN bit or the TCP bit are set then we need a network
         socket.  Otherwise we need a serial port opened */
-    if(m_port->devtype == NET) {
+    if(m_port->devtype == MB_NETWORK) {
         fd = openIPport(m_port);
     } else {
         fd = openport(m_port);
@@ -318,7 +101,7 @@ mb_start_port(struct mb_port *m_port)
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         
-        if(m_port->type == MASTER) {
+        if(m_port->type == MB_MASTER) {
             if(pthread_create(&m_port->thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
                 dax_error( "Unable to start thread for port - %s", m_port->name);
                 return -1;
@@ -326,7 +109,7 @@ mb_start_port(struct mb_port *m_port)
                 dax_debug(3, "Started Thread for port - %s", m_port->name);
                 return 0;
             }
-        } else if(m_port->type == SLAVE) {
+        } else if(m_port->type == MB_SLAVE) {
             ; /* TODO: start slave thread */
         } else {
             dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
@@ -661,10 +444,10 @@ handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
 
 
 /* External function to send a Modbus commaond (mc) to port (mp).  The function
-   sets some function pointers to the functions that handle the port protocol and
-   then uses those functions generically.  The retry loop tries the command for the
-   configured number of times and if successful returns 0.  If not, an error code
-   is returned. mb_buff should be at least MB_FRAME_LEN in length */
+ * sets some function pointers to the functions that handle the port protocol and
+ * then uses those functions generically.  The retry loop tries the command for the
+ * configured number of times and if successful returns 0.  If not, an error code
+ * is returned. mb_buff should be at least MB_FRAME_LEN in length */
 
 int
 mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
@@ -679,10 +462,10 @@ mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
     /*This sets up the function pointers so we don't have to constantly check
       which protocol we are using for communication.  From this point on the 
       code is generic for RTU or ASCII */
-    if(mp->protocol == RTU) {
+    if(mp->protocol == MB_RTU) {
         sendrequest = sendRTUrequest;
         getresponse = getRTUresponse;
-    } else if(mp->protocol == ASCII) {
+    } else if(mp->protocol == MB_ASCII) {
         sendrequest = sendASCIIrequest;
         getresponse = getASCIIresponse;
     } else {
@@ -730,6 +513,5 @@ mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
     /* TODO: Should set error code?? */
     return -2;
 }
-
 
 

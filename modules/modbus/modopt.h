@@ -44,9 +44,8 @@ struct Config {
     unsigned int tablesize;
     int portcount;
     int maxports;
-    struct mb_port *ports; /* Pointer to an array of ports */
+    mb_port *ports; /* Pointer to an array of ports */
 };
-
 
 int modbus_configure(int, const char **);
 int getbaudrate(int);

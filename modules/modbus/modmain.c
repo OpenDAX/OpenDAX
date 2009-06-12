@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * 
+ * This is the main starting point for the OpenDAX Modbus Module
  */
 
 #include <common.h>
@@ -34,13 +36,13 @@ void catchpipe(int sig);
 
 static void getout(int);
 
-void outdata(struct mb_port *,u_int8_t *,unsigned int);
-void indata(struct mb_port *,u_int8_t *,unsigned int);
+void outdata(mb_port *,u_int8_t *,unsigned int);
+void indata(mb_port *,u_int8_t *,unsigned int);
 
 int main (int argc, const char * argv[]) {
     int result, n;
-    struct mb_port *mp;
-    struct mb_cmd *mc;
+    mb_port *mp;
+    mb_cmd *mc;
     struct sigaction sa;
     
     /* Set up the signal handlers */
@@ -162,7 +164,7 @@ getout(int exitcode)
 
 /* Callback functions for printing the serial traffic */
 void
-outdata(struct mb_port *mp,u_int8_t *buff,unsigned int len)
+outdata(mb_port *mp,u_int8_t *buff,unsigned int len)
 {
    int n;
    for(n=0;n<len;n++) {
@@ -172,7 +174,7 @@ outdata(struct mb_port *mp,u_int8_t *buff,unsigned int len)
 }
 
 void
-indata(struct mb_port *mp,u_int8_t *buff,unsigned int len)
+indata(mb_port *mp,u_int8_t *buff,unsigned int len)
 {
    int n;
    for(n=0;n<len;n++) {

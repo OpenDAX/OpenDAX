@@ -1,4 +1,4 @@
-/* database.h - Modbus (tm) Database Handling Library
+/* database.h - Modbus (tm) Database Handling for OpenDAX
  * Copyright (C) 2006 Phil Birkelbach
  *
  * This program is free software; you can redistribute it and/or
@@ -19,8 +19,9 @@
 #ifndef __DATABASE_H
 #define __DATABASE_H
 
-#include <common.h>
-#include <opendax.h>
+//--The modbus protocol stuff should be independant of the OpenDAX stuff
+//--#include <common.h>
+//--#include <opendax.h>
 
 int dt_add_tag(Handle *h, char *name, int index, int function, int length);
 int dt_getwords(tag_index handle, int index, void *data, int length);

@@ -70,22 +70,22 @@ _get_serial_config(lua_State *L, struct mb_port *p)
     lua_getfield(L, -5, "parity");
     if(lua_isnumber(L, -1)) {
         p->parity = (unsigned char)lua_tonumber(L, -1);
-        if(p->parity != ODD && p->parity != EVEN && p->parity != NONE) {
+        if(p->parity != MB_ODD && p->parity != MB_EVEN && p->parity != MB_NONE) {
             dax_debug(1, "Unknown Parity %d, using NONE", p->parity);
         }
     } else {
         string = (char *)lua_tostring(L, -1);
         if(string) {
-            if(strcasecmp(string, "NONE") == 0) p->parity = NONE;
-            else if(strcasecmp(string, "EVEN") == 0) p->parity = EVEN;
-            else if(strcasecmp(string, "ODD") == 0) p->parity = ODD;
+            if(strcasecmp(string, "NONE") == 0) p->parity = MB_NONE;
+            else if(strcasecmp(string, "EVEN") == 0) p->parity = MB_EVEN;
+            else if(strcasecmp(string, "ODD") == 0) p->parity = MB_ODD;
             else {
                 dax_debug(1, "Unknown Parity %s, using NONE", string);
-                p->parity = NONE;
+                p->parity = MB_NONE;
             }
         } else {
             dax_debug(1, "Parity not given, using NONE");
-            p->parity = NONE;
+            p->parity = MB_NONE;
         }
     }
     lua_pop(L, 5);    
@@ -201,15 +201,15 @@ _add_port(lua_State *L)
     lua_getfield(L, -3, "devtype");
     string = (char *)lua_tostring(L, -1);
     if(string) {
-        if(strcasecmp(string, "SERIAL") == 0) p->devtype = SERIAL;
-        else if(strcasecmp(string, "NET") == 0) p->devtype = NET;
+        if(strcasecmp(string, "SERIAL") == 0) p->devtype = MB_SERIAL;
+        else if(strcasecmp(string, "NET") == 0) p->devtype = MB_NETWORK;
         else {
             dax_debug(1, "Unknown Device Type %s, assuming SERIAL", string);
-            p->devtype = SERIAL;
+            p->devtype = MB_SERIAL;
         }
     } else {
         dax_debug(1, "Device Type not given, assuming SERIAL");
-        p->devtype = SERIAL;
+        p->devtype = MB_SERIAL;
     }
         
     lua_pop(L, 3);
@@ -217,40 +217,40 @@ _add_port(lua_State *L)
      two functions will get the right stuff out of the table.  The table
      is not checked to see if too much information is given only that
      enough information is given to do the job */
-    if(p->devtype == SERIAL) {
+    if(p->devtype == MB_SERIAL) {
         _get_serial_config(L, p);
-    } else if(p->devtype == NET) {
+    } else if(p->devtype == MB_NETWORK) {
         _get_network_config(L, p);
     }
     /* What Modbus protocol are we going to talk on this port */
     lua_getfield(L, -1, "protocol");
     string = (char *)lua_tostring(L, -1);
     if(string) {
-        if(strcasecmp(string, "RTU") == 0) p->protocol = RTU;
-        else if(strcasecmp(string, "ASCII") == 0) p->protocol = ASCII;
-        else if(strcasecmp(string, "TCP") == 0) p->protocol = TCP;
+        if(strcasecmp(string, "RTU") == 0) p->protocol = MB_RTU;
+        else if(strcasecmp(string, "ASCII") == 0) p->protocol = MB_ASCII;
+        else if(strcasecmp(string, "TCP") == 0) p->protocol = MB_TCP;
         else {
             dax_debug(1, "Unknown Protocol %s, assuming RTU", string);
-            p->protocol = RTU;
+            p->protocol = MB_RTU;
         }
     } else {
         dax_debug(1, "Protocol not given, assuming RTU");
-        p->protocol = RTU;
+        p->protocol = MB_RTU;
     }
     lua_getfield(L, -2, "type");
     string = (char *)lua_tostring(L, -1);
-    if(strcasecmp(string, "MASTER") == 0) p->type = MASTER;
-    else if(strcasecmp(string, "SLAVE") == 0) p->type = SLAVE;
-    else if(strcasecmp(string, "CLIENT") == 0) p->type = MASTER;
-    else if(strcasecmp(string, "SERVER") == 0) p->type = SLAVE;
+    if(strcasecmp(string, "MASTER") == 0) p->type = MB_MASTER;
+    else if(strcasecmp(string, "SLAVE") == 0) p->type = MB_SLAVE;
+    else if(strcasecmp(string, "CLIENT") == 0) p->type = MB_MASTER;
+    else if(strcasecmp(string, "SERVER") == 0) p->type = MB_SLAVE;
     
     else {
         dax_debug(1, "Unknown Port Type %s, assuming MASTER", string);
-        p->type = MASTER;
+        p->type = MB_MASTER;
     }
     
     lua_pop(L, 2);
-    if(p->type == SLAVE) _get_slave_config(L, p);
+    if(p->type == MB_SLAVE) _get_slave_config(L, p);
     
     lua_getfield(L, -1, "delay");
     p->delay = (unsigned int)lua_tonumber(L, -1);
@@ -313,7 +313,7 @@ _add_command(lua_State *L)
     if(!lua_istable(L, 2)) {
         luaL_error(L, "add_command() received an argument that is not a table");
     }
-    if(config.ports[p].type != MASTER) {
+    if(config.ports[p].type != MB_MASTER) {
         dax_debug(1, "Adding commands only makes sense for a Master or Client port");
         return 0;
     }
@@ -398,33 +398,6 @@ modbus_configure(int argc, const char *argv[])
     return 0;
 }
 
-int
-getbaudrate(int b_in)
-{
-    switch(b_in) {
-        case 300:
-            return B300;
-        case 600:
-            return B600;
-        case 1200:
-            return B1200;
-        case 1800:
-            return B1800;
-        case 2400:
-            return B2400;
-        case 4800:
-            return B4800;
-        case 9600:
-            return B9600;
-        case 19200:
-            return B19200;
-        case 38400:
-            return B38400;
-        default:
-            return 0;
-    }
-}
-
 
 /* TODO: Really should print out more than this*/
 static void
@@ -438,7 +411,7 @@ printconfig(void)
     printf("Maximum Ports: %d\n", config.maxports);
     printf("\n");
     for(n=0; n<config.portcount; n++) {
-        if(config.ports[n].devtype == NET) {
+        if(config.ports[n].devtype == MB_NETWORK) {
             printf("Port[%d] %s %s:%d\n",n,config.ports[n].name,
                                              config.ports[n].ipaddress,
                                              config.ports[n].bindport);
