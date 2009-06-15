@@ -70,8 +70,8 @@ int main (int argc, const char * argv[]) {
     /* Set the input and output callbacks if we aren't going to the background */
     /* TODO: Configuration option for these??? */
     for(n = 0; n < config.portcount; n++) {
-        mb_set_output_callback(&config.ports[n], outdata);
-        mb_set_input_callback(&config.ports[n], indata);
+        mb_set_msgout_callback(&config.ports[n], outdata);
+        mb_set_msgin_callback(&config.ports[n], indata);
         
         mc = config.ports[n].commands;
         while(mc != NULL) {

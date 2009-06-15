@@ -48,7 +48,8 @@
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include <pthread.h>
+//--Do I really want to have this dependency???
+//--#include <pthread.h>
 
 //--#include <database.h>
 
@@ -114,14 +115,14 @@ struct mb_port {
     unsigned int inputsize;   /* size of the internal input register bank */
     u_int16_t *coilreg;       /* database index for coils (slave only) */
     unsigned int coilsize;    /* size of the internal bank of coils in 16-bit registers */
-    u_int16_t *floatreg;          /* database index for Enron style float table */
+    float *floatreg;          /* database index for Enron style float table */
     unsigned int floatsize;   /* size of the float table */
     
     struct mb_cmd *commands;  /* Linked list of Modbus commands */
     int fd;                   /* File descriptor to the port */
     int dienow;
-    pthread_t thread;
-    pthread_mutex_t port_mutex;  /* Port Mutex */
+    //--pthread_t thread;
+    //--pthread_mutex_t port_mutex;  /* Port Mutex */
     unsigned int attempt;        /* Attempt counter */
     unsigned char running;       /* Flag to indicate the port is running */
     unsigned char inhibit;       /* When set the port will not be started */
@@ -133,7 +134,8 @@ struct mb_port {
 };
 
 struct mb_cmd {
-    unsigned char method;    /* 0=disable 1=continuous 2=on change */
+    unsigned char enable;    /* 0=disable, 1=enable */
+    unsigned char mode;      /* MB_CONTINUOUS, MB_ONCHANGE */
     u_int8_t node;           /* Modbus device ID */
     u_int8_t function;       /* Function Code */
     u_int16_t m_register;    /* Modbus Register */
@@ -151,7 +153,7 @@ struct mb_cmd {
     u_int16_t lastcrc;       /* used to determine if a conditional message should be sent */
     unsigned char firstrun;  /* Indicates that this command has been sent once */
     void *userdata;          /* Data that can be assigned by the user.  Use free function callback */
-    void (*userdata_free)(struct mb_cmd *cmd, void *data); /* Callback to free userdata */
+    void (*userdata_free)(struct mb_cmd *cmd, void *userdata); /* Callback to free userdata */
     struct mb_cmd* next;
 };
 
@@ -160,7 +162,6 @@ int add_cmd(mb_port *p, mb_cmd *mc);
 
 
 /* Command Functions - defined in modcmds.c */
-void destroy_cmd(mb_cmd *cmd);
 
 
 /* Utility Functions - defined in modutil.c */
@@ -168,9 +169,11 @@ int crc16check(u_int8_t *buff, int length);
 
 #ifdef DEBUG
  #define DEBUGMSG(x) debug(x)
-void debug(char *message);
+ #define DEBUGMSG2(x,y) debug(x,y)
+void debug(char *message, ...);
 #else
- #define DEBUGMSG(x) 
+ #define DEBUGMSG(x)
+ #define DEBUGMSG2(x,y)
 #endif
 
 #endif /* __MODLIB_H */

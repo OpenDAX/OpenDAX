@@ -80,10 +80,111 @@ getbaudrate(unsigned int b_in)
             return B19200;
         case 38400:
             return B38400;
+        case 57600:
+            return B57600;
+        case 76800:
+            return B76800;
+        case 115200:
+            return B115200;
         default:
             return 0;
     }
 }
+
+/* Open and set up the serial port */
+static int
+openport(mb_port *m_port)
+{
+    int fd;
+    struct termios options;
+    
+    /* the port is opened RW and reads will not block */
+    fd = open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if(fd == -1)  {
+        DEBUGMSG2("openport: %s", strerror(errno));
+        return(-1);
+    } else  {
+        fcntl(fd, F_SETFL, 0);
+        tcgetattr(fd, &options);
+        /* Set the baudrate */
+        cfsetispeed(&options, m_port->baudrate);
+        cfsetospeed(&options, m_port->baudrate);
+        options.c_cflag |= (CLOCAL | CREAD);
+        /* Set the parity */
+        if(m_port->parity == MB_ODD) {
+            options.c_cflag |= PARENB;        
+            options.c_cflag |= PARODD;        
+        } else if(m_port->parity == MB_EVEN) {
+            options.c_cflag |= PARENB;        
+            options.c_cflag &= ~PARODD;        
+        } else { /* No Parity */ 
+            options.c_cflag &= ~PARENB;
+        }
+        /* Set stop bits */
+        if(m_port->stopbits == 2) {
+            options.c_cflag |= CSTOPB;
+        } else {
+            options.c_cflag &= ~CSTOPB;
+        }
+        /* Set databits */
+        options.c_cflag &= ~CSIZE;
+        if(m_port->databits == 5) {
+            options.c_cflag |= CS5;    
+        } else if(m_port->databits == 6) {
+            options.c_cflag |= CS6;
+        } else if(m_port->databits == 7) {
+            options.c_cflag |= CS7;
+        } else {
+            options.c_cflag |= CS8;    
+        }
+        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+        options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
+        options.c_oflag &= ~OPOST;
+        options.c_cc[VMIN] = 0;
+        options.c_cc[VTIME] = 0;
+        /* TODO: Should check for errors here */
+        tcsetattr(fd, TCSANOW, &options);
+    } 
+    m_port->fd = fd;
+    return fd;
+}
+
+/* Opens a IP socket instead of a serial port for both
+   the TCP protocol and the LAN protocol. */
+static int
+openIPport(mb_port *mp)
+{
+    int fd;
+    struct sockaddr_in addr;
+    int result;
+    
+    DEBUGMSG("Opening IP Port");
+    if(mp->socket == TCP_SOCK) {
+        fd = socket(AF_INET, SOCK_STREAM, 0);
+    } else if (mp->socket == UDP_SOCK) {
+        fd = socket(AF_INET, SOCK_DGRAM, 0);
+    }
+    
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(mp->ipaddress);
+    addr.sin_port = htons(mp->bindport);
+    
+    result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+    DEBUGMSG2("Connect returned %d", result);
+    if(result == -1) {
+        DEBUGMSG2( "openIPport: %s", strerror(errno));
+        return -1;
+    }
+    result = fcntl(fd, F_SETFL, O_NONBLOCK);
+    if(result) {
+        DEBUGMSG( "Unable to set socket to non blocking");
+        return -1 ;
+    }
+    DEBUGMSG2( "Socket Connected, fd = %d", fd);
+    mp->fd = fd;
+    return fd;
+}
+
 
 /********************/
 /* Public Functions */
@@ -109,10 +210,11 @@ mb_new_port(const char *name)
 
 /* This function closes the port and frees all the memory associated with it. */
 void
-mb_destroy_port(mb_port *port) {
+mb_destroy_port(mb_port *port)
+{
     mb_cmd *this;
     
-    /* TODO: Close the port */
+    mb_close_port(port);
     
     if(port->name != NULL) free(port->name);
     if(port->device != NULL) free(port->device);
@@ -120,7 +222,7 @@ mb_destroy_port(mb_port *port) {
     /* destroys all of the commands */
     this = port->commands;
     while(this != NULL) {
-        destroy_cmd(this);
+        mb_destroy_cmd(this);
         this = this->next;
     }
         
@@ -130,8 +232,8 @@ mb_destroy_port(mb_port *port) {
  * the serial port to use.  baudrate is an integer representation of the baudrate, 'parity' can either be
  * MB_NONE, MB_EVEN, or MB_ODD, and 'stopbits' is either 0, 1 or 2. */
 int
-mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits) {
-    
+mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits)
+{
     port->devtype = MB_SERIAL;
     port->device = strdup(device);
     if(port->device == NULL) {
@@ -167,8 +269,8 @@ mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databi
  * TCP_SOCK.  If the port is a master or client the ipaddress is the server/slave to connect too
  * otherwise it is the address of the local interface to listen on.  port is used similarly. */
 int
-mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket) {
-    
+mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket)
+{
     port->devtype = MB_NETWORK;
     
     if(ipaddress == NULL) {
@@ -187,23 +289,96 @@ mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport,
     return 0;
 }
 
+/* This function sets up the modbus protocol.  Type is either MB_MASTER or MB_SLAVE
+ * (MB_SERVER and MB_CLIENT are also defined but they are the same).  Protocol is
+ * either MB_RTU, MB_ASCII or MB_TCP.  'slaveid' is the node id that the port will
+ * use if it is configured as a slave.  It will be ignored if the port is type is
+ * set up as a modbus master */
 int
-mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid) {
+mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid)
+{
+    if(type == MB_MASTER || type == MB_SLAVE) {
+        port->type = type;
+    } else {
+        return MB_ERR_PORTTYPE;
+    }
+    if(protocol == MB_RTU || protocol == MB_ASCII || protocol == MB_TCP) {
+        port->protocol = protocol;
+    } else {
+        return MB_ERR_PROTOCOL;
+    }
+    port->slaveid = slaveid;
     return 0;
 }
 
+/* Determines whether or not the port is a serial port or an IP
+ * socket and opens it appropriately */
+int
+mb_open_port(mb_port *m_port)
+{
+    int fd;
+    
+    if(m_port->devtype == MB_NETWORK) {
+        fd = openIPport(m_port);
+    } else {
+        fd = openport(m_port);
+    }
+    //--Removing pthread from the modbus library
+    //--if(pthread_mutex_init (&m_port->port_mutex, NULL)) {
+    //--    dax_error("Problem Initilizing Mutex for port: %s", m_port->name);
+    //--    return -1;
+    //--}
+    if(fd > 0) return 0;
+    return fd;
+}
+
+int
+mb_close_port(mb_port *port)
+{
+    int result;
+    
+    result = close(port->fd);
+    port->fd = 0;
+    return result;
+}
+
+/* The following functions are used to set up the data for the slave port */
+int
+mb_set_holdsize(mb_port *port, unsigned int size)
+{
+    return -1;
+}
+
+int
+mb_set_inputsize(mb_port *port, unsigned int size)
+{
+    return -1;    
+}
+
+int
+mb_set_coilsize(mb_port *port, unsigned int size)
+{
+    return -1;    
+}
+
+int
+mb_set_floatsize(mb_port *port, unsigned int size)
+{
+    return -1;
+}
 
 
-
+/* This sets the msgout callback function.  The given function will receive the bytes
+ * that are actually being sent by the modbus functions. */
 void
-mb_set_output_callback(mb_port *mp, void (*outfunc)(mb_port *,u_int8_t *,unsigned int))
+mb_set_msgout_callback(mb_port *mp, void (*outfunc)(mb_port *,u_int8_t *,unsigned int))
 {
     mp->out_callback = outfunc;
 }
 
-
+/* The msgin callback receives the bytes that are coming in from the port */
 void
-mb_set_input_callback(mb_port *mp, void (*infunc)(mb_port *,u_int8_t *,unsigned int))
+mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *,u_int8_t *,unsigned int))
 {
     mp->in_callback = infunc;
 }

@@ -25,7 +25,8 @@
 static void
 initcmd(struct mb_cmd *c)
 {
-    c->method = 0;
+    c->enable = 1;
+    c->mode = MB_CONTINUOUS;
     c->node = 0;
     c->function = 0;
     c->m_register = 0;
@@ -33,7 +34,7 @@ initcmd(struct mb_cmd *c)
     c->data = NULL;
     c->datasize = 0;
     c->interval = 0;
-
+    
     c->icount = 0;
     c->requests = 0;
     c->responses = 0;
@@ -54,7 +55,11 @@ initcmd(struct mb_cmd *c)
 
 
 /* Allocates and initializes a master modbus command.  Returns the pointer
- * to the new command or NULL on failure. */
+ * to the new command or NULL on failure.  If 'port' is not NULL then the
+ * new command is added to the port.  The mb_destroy_port() function will
+ * take care of deallocating this command in that instance.  Otherwise the
+ * caller will have to worry about deallocation using the mb_destroy_cmd()
+ * function */
 mb_cmd *
 mb_new_cmd(mb_port *port)
 {
@@ -64,14 +69,33 @@ mb_new_cmd(mb_port *port)
     mcmd = (mb_cmd *)malloc(sizeof(mb_cmd));
     if(mcmd != NULL) {
         initcmd(mcmd);
-        result = add_cmd(port, mcmd);
-        if(result) {
-            free(mcmd);
-            return NULL;
+        if(port != NULL) {
+            result = add_cmd(port, mcmd);
+            if(result) {
+                free(mcmd);
+                return NULL;
+            }
         }
     }
     return mcmd;    
 }
+
+void
+mb_destroy_cmd(mb_cmd *cmd) {
+    
+/* This frees the userdata if it is set.  If there is
+ * a userdata_free callback assigned it will call that
+ * otherwise it just calls free */    
+    if(cmd->userdata != NULL) {
+        if(cmd->userdata_free != NULL) {
+            cmd->userdata_free(cmd, cmd->userdata);
+        } else {
+            free(cmd);
+        }
+    }
+    free(cmd);
+}
+
 
 void
 mb_disable_cmd(mb_cmd *cmd) {
@@ -80,27 +104,22 @@ mb_disable_cmd(mb_cmd *cmd) {
 
 void
 mb_enable_cmd(mb_cmd *cmd) {
-    cmd->enable = 1;
+    cmd->enable = cmd->mode;
 }
+
+void
+mb_set_mode(mb_cmd *cmd, unsigned char mode)
+{
+    if(mode == MB_ONCHANGE)
+        cmd->mode = MB_ONCHANGE;
+    else
+        cmd->mode = MB_CONTINUOUS;
+}
+
 
 /*********************/
 /* Utility Functions */
 /*********************/
 
-void
-destroy_cmd(mb_cmd *cmd) {
-    
-/* This frees the userdata if it is set.  If there is
- * a userdata_free callback assigned it will call that
- * otherwise it just calls free */    
-    if(cmd->userdata != NULL) {
-        if(cmd->userdata_free != NULL) {
-            userdata_free(cmd);
-        } else {
-            free(cmd);
-        }
-    }
-    free(cmd);
-}
 
  

@@ -101,9 +101,11 @@ crc16check(u_int8_t *buff, int length)
  * turns into DEBUGMSG() in the code.  Redefine to something
  * other than printf() needed */
 void
-debug(char *message)
+debug(char *message, ...)
 {
-    printf("%s\n", message);
+    va_start(val, format);
+    vprintf(format, val);
+    printf("\n");
 }
 
 #endif

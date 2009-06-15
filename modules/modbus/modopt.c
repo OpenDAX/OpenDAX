@@ -34,121 +34,153 @@ static void printconfig(void);
 struct Config config;
 
 static inline int
-_get_serial_config(lua_State *L, struct mb_port *p)
+_get_serial_config(lua_State *L, mb_port *p)
 {
     char *string;
-    
+    char *device;
+    u_int8_t slaveid;
+    int baudrate;
+    short databits;
+    short stopbits;
+    short parity;
+    int result;
+
     lua_getfield(L, -1, "device");
-    string = (char *)lua_tostring(L, -1);
+    device = (char *)lua_tostring(L, -1);
     if(string == NULL) {
         luaL_error(L, "No device given for serial port %s", p->name);
-    } else {
-        p->device = strdup(string);
     }
     
     lua_getfield(L, -2, "baudrate");
-    p->baudrate = (unsigned int)lua_tonumber(L, -1);
-    if(getbaudrate(p->baudrate) == 0) {
+    baudrate = (int)lua_tonumber(L, -1);
+    if(baudrate == 0) {
         dax_debug(1, "Unknown Baudrate - %s, Using 9600", lua_tostring(L, -1));
-        p->baudrate=9600;
+        baudrate = 9600;
     }
     
     lua_getfield(L, -3, "databits");
-    p->databits = (unsigned int)lua_tonumber(L, -1);
-    if(p->databits < 7 && p->databits > 8) {
-        dax_debug(1, "Unknown databits - %d, Using 8", p->databits);
+    databits = (short)lua_tonumber(L, -1);
+    if(databits < 7 && databits > 8) {
+        dax_debug(1, "Unknown databits - %d, Using 8", databits);
         p->databits=8;
     }
 
     lua_getfield(L, -4, "stopbits");
-    p->stopbits = (unsigned int)lua_tonumber(L, -1);
-    if(p->stopbits !=1 && p->stopbits != 2) {
-        dax_debug(1, "Unknown stopbits - %d, Using 1", p->stopbits);
-        p->stopbits=8;
+    stopbits = (unsigned int)lua_tonumber(L, -1);
+    if(stopbits !=1 && stopbits != 2) {
+        dax_debug(1, "Unknown stopbits - %d, Using 1", stopbits);
+        stopbits=8;
     }
     
     lua_getfield(L, -5, "parity");
     if(lua_isnumber(L, -1)) {
-        p->parity = (unsigned char)lua_tonumber(L, -1);
-        if(p->parity != MB_ODD && p->parity != MB_EVEN && p->parity != MB_NONE) {
-            dax_debug(1, "Unknown Parity %d, using NONE", p->parity);
+        parity = (unsigned char)lua_tonumber(L, -1);
+        if(parity != MB_ODD && parity != MB_EVEN && parity != MB_NONE) {
+            dax_debug(1, "Unknown Parity %d, using NONE", parity);
         }
     } else {
         string = (char *)lua_tostring(L, -1);
         if(string) {
-            if(strcasecmp(string, "NONE") == 0) p->parity = MB_NONE;
-            else if(strcasecmp(string, "EVEN") == 0) p->parity = MB_EVEN;
-            else if(strcasecmp(string, "ODD") == 0) p->parity = MB_ODD;
+            if(strcasecmp(string, "NONE") == 0) parity = MB_NONE;
+            else if(strcasecmp(string, "EVEN") == 0) parity = MB_EVEN;
+            else if(strcasecmp(string, "ODD") == 0) parity = MB_ODD;
             else {
                 dax_debug(1, "Unknown Parity %s, using NONE", string);
-                p->parity = MB_NONE;
+                parity = MB_NONE;
             }
         } else {
             dax_debug(1, "Parity not given, using NONE");
-            p->parity = MB_NONE;
+            parity = MB_NONE;
         }
     }
+    result = mb_set_serial_port(p, device, baudrate, databits, parity, stopbits);
     lua_pop(L, 5);    
-    return 0;
+    return result;
+;
 }
 
 static inline int
-_get_network_config(lua_State *L, struct mb_port *p)
+_get_network_config(lua_State *L, mb_port *p)
 {
+    char *ipaddress;
     char *string;
-    
+    unsigned int bindport;    /* IP port to bind to */
+    unsigned char socket;     /* either UDP_SOCK or TCP_SOCK */
+    int result;
+
     lua_getfield(L, -1, "ipaddress");
-    string = (char *)lua_tostring(L, -1);
-    if(string == NULL) {
-        dax_debug(1, "No ipaddress given for port %s, using default", p->name);
-        strcpy(p->ipaddress, "0.0.0.0");
-    } else {
-        strncpy(p->ipaddress, string, 15);
-    }
+    ipaddress = (char *)lua_tostring(L, -1);
+    //if(ipaddress == NULL) {
+        //dax_debug(1, "No ipaddress given for port %s, using default", p->name);
+        //--strcpy(p->ipaddress, "0.0.0.0");
+    //} else {
+        ///strncpy(p->ipaddress, string, 15);
+    //}
     
     lua_getfield(L, -2, "bindport");
-    p->bindport = (unsigned int)lua_tonumber(L, -1);
-    if(p->bindport == 0) p->bindport = 5001;
+    bindport = (unsigned int)lua_tonumber(L, -1);
+    if(bindport == 0) bindport = 502;
     
     lua_getfield(L, -3, "socket");
     string = (char *)lua_tostring(L, -1);
     if(string) {
-        if(strcasecmp(string, "TCP") == 0) p->socket = TCP_SOCK;
-        else if(strcasecmp(string, "UDP") == 0) p->socket = UDP_SOCK;
+        if(strcasecmp(string, "TCP") == 0) socket = TCP_SOCK;
+        else if(strcasecmp(string, "UDP") == 0) socket = UDP_SOCK;
         else {
             dax_debug(1, "Unknown Socket Type %s, using TCP", string);
-            p->socket = TCP_SOCK;
+            socket = TCP_SOCK;
         }
     } else {
         dax_debug(1, "Socket Type not given, using TCP");
-        p->socket = TCP_SOCK;
+        socket = TCP_SOCK;
+    }
+    if(ipaddress != NULL) {
+        result = mb_set_network_port(p, ipaddress, bindport, socket);
+    } else {
+        result = mb_set_network_port(p, "0.0.0.0", bindport, socket);        
     }
     lua_pop(L, 3);
-    return 0;
+    return result;
 }
 
 static inline int
-_get_slave_config(lua_State *L, struct mb_port *p)
+_get_slave_config(lua_State *L, mb_port *p)
 {
+    unsigned int size;
+    int result;
     dax_error("Slave functionality is not yet implemented");
     
-    lua_getfield(L, -1, "holdreg");
-    p->holdreg = (unsigned int)lua_tonumber(L, -1);
+    //--lua_getfield(L, -1, "holdreg");
+    //--holdreg = (unsigned int)lua_tonumber(L, -1);
     lua_getfield(L, -2, "holdsize");
-    p->holdsize = (unsigned int)lua_tonumber(L, -1);
-    lua_getfield(L, -3, "inputreg");
-    p->inputreg = (unsigned int)lua_tonumber(L, -1);
+    size = (unsigned int)lua_tonumber(L, -1);
+    result = mb_set_holdsize(p, size);
+    lua_pop(L, 1);
+    if(result) return result;
+    
+    //--lua_getfield(L, -3, "inputreg");
+    //--p->inputreg = (unsigned int)lua_tonumber(L, -1);
     lua_getfield(L, -4, "inputsize");
-    p->inputsize = (unsigned int)lua_tonumber(L, -1);
+    size = (unsigned int)lua_tonumber(L, -1);
+    result = mb_set_inputsize(p, size);
+    lua_pop(L, 1);
+    if(result) return result;
+    
     lua_getfield(L, -5, "coilreg");
-    p->coilreg = (unsigned int)lua_tonumber(L, -1);
-    lua_getfield(L, -6, "coilsize");
-    p->coilsize = (unsigned int)lua_tonumber(L, -1);
+    //--p->coilreg = (unsigned int)lua_tonumber(L, -1);
+    //--lua_getfield(L, -6, "coilsize");
+    size = (unsigned int)lua_tonumber(L, -1);
+    result = mb_set_coilsize(p, size);
+    lua_pop(L, 1);
+    if(result) return result;
     lua_getfield(L, -7, "floatreg");
-    p->floatreg = (unsigned int)lua_tonumber(L, -1);
-    lua_getfield(L, -8, "floatsize");
-    p->floatsize = (unsigned int)lua_tonumber(L, -1);
-    lua_pop(L, 8);
+    
+    //--p->floatreg = (unsigned int)lua_tonumber(L, -1);
+    //--lua_getfield(L, -8, "floatsize");
+    size = (unsigned int)lua_tonumber(L, -1);
+    result = mb_set_floatsize(p, size);
+    lua_pop(L, 1);
+    if(result) return result;
     
     return 0;
 }
@@ -158,8 +190,9 @@ _get_slave_config(lua_State *L, struct mb_port *p)
 static int
 _add_port(lua_State *L)
 {
-    struct mb_port *p;
+    mb_port *p;
     char *string;
+    unsigned char devtype, protocol, type; 
     
     if(!lua_istable(L, -1)) {
         luaL_error(L, "add_port() received an argument that is not a table");
@@ -176,7 +209,8 @@ _add_port(lua_State *L)
             config.maxports = MAX_PORTS;
         }
         dax_debug(10, "Allocating %d ports", config.maxports);
-        config.ports = (struct mb_port *)malloc(sizeof(struct mb_port) * config.maxports);
+        //--NO GOOD MUST USE NEW FUNCTION TO CREATE A PORT
+        //--config.ports = (struct mb_port *)malloc(sizeof(struct mb_port) * config.maxports);
         if(config.ports == NULL) {
             dax_fatal("Unable to allocate port array");
         }
@@ -191,25 +225,25 @@ _add_port(lua_State *L)
     p = &config.ports[config.portcount];
     
     lua_getfield(L, -1, "name");
-    p->name = (char *)lua_tostring(L, -1);
+    name = (char *)lua_tostring(L, -1);
     
     lua_getfield(L, -2, "enable");
-    p->enable = (char)lua_toboolean(L, -1);
+    enable = (char)lua_toboolean(L, -1);
     
     /* The devtype is the type of device we are going to use to communicte.
      right now its either a serial port or a network socket */
     lua_getfield(L, -3, "devtype");
     string = (char *)lua_tostring(L, -1);
     if(string) {
-        if(strcasecmp(string, "SERIAL") == 0) p->devtype = MB_SERIAL;
-        else if(strcasecmp(string, "NET") == 0) p->devtype = MB_NETWORK;
+        if(strcasecmp(string, "SERIAL") == 0) devtype = MB_SERIAL;
+        else if(strcasecmp(string, "NET") == 0) devtype = MB_NETWORK;
         else {
             dax_debug(1, "Unknown Device Type %s, assuming SERIAL", string);
-            p->devtype = MB_SERIAL;
+            devtype = MB_SERIAL;
         }
     } else {
         dax_debug(1, "Device Type not given, assuming SERIAL");
-        p->devtype = MB_SERIAL;
+        devtype = MB_SERIAL;
     }
         
     lua_pop(L, 3);
@@ -217,80 +251,71 @@ _add_port(lua_State *L)
      two functions will get the right stuff out of the table.  The table
      is not checked to see if too much information is given only that
      enough information is given to do the job */
-    if(p->devtype == MB_SERIAL) {
+    if(devtype == MB_SERIAL) {
         _get_serial_config(L, p);
-    } else if(p->devtype == MB_NETWORK) {
+    } else if(devtype == MB_NETWORK) {
         _get_network_config(L, p);
     }
     /* What Modbus protocol are we going to talk on this port */
     lua_getfield(L, -1, "protocol");
     string = (char *)lua_tostring(L, -1);
     if(string) {
-        if(strcasecmp(string, "RTU") == 0) p->protocol = MB_RTU;
-        else if(strcasecmp(string, "ASCII") == 0) p->protocol = MB_ASCII;
-        else if(strcasecmp(string, "TCP") == 0) p->protocol = MB_TCP;
+        if(strcasecmp(string, "RTU") == 0) protocol = MB_RTU;
+        else if(strcasecmp(string, "ASCII") == 0) protocol = MB_ASCII;
+        else if(strcasecmp(string, "TCP") == 0) protocol = MB_TCP;
         else {
             dax_debug(1, "Unknown Protocol %s, assuming RTU", string);
-            p->protocol = MB_RTU;
+            protocol = MB_RTU;
         }
     } else {
         dax_debug(1, "Protocol not given, assuming RTU");
-        p->protocol = MB_RTU;
+        protocol = MB_RTU;
     }
     lua_getfield(L, -2, "type");
     string = (char *)lua_tostring(L, -1);
-    if(strcasecmp(string, "MASTER") == 0) p->type = MB_MASTER;
-    else if(strcasecmp(string, "SLAVE") == 0) p->type = MB_SLAVE;
-    else if(strcasecmp(string, "CLIENT") == 0) p->type = MB_MASTER;
-    else if(strcasecmp(string, "SERVER") == 0) p->type = MB_SLAVE;
+    if(strcasecmp(string, "MASTER") == 0) type = MB_MASTER;
+    else if(strcasecmp(string, "SLAVE") == 0) type = MB_SLAVE;
+    else if(strcasecmp(string, "CLIENT") == 0) type = MB_MASTER;
+    else if(strcasecmp(string, "SERVER") == 0) type = MB_SLAVE;
     
     else {
         dax_debug(1, "Unknown Port Type %s, assuming MASTER", string);
-        p->type = MB_MASTER;
+        type = MB_MASTER;
     }
     
     lua_pop(L, 2);
-    if(p->type == MB_SLAVE) _get_slave_config(L, p);
+    if(type == MB_SLAVE) _get_slave_config(L, p);
     
-    lua_getfield(L, -1, "delay");
-    p->delay = (unsigned int)lua_tonumber(L, -1);
+    /* Have to decide how much of this will really be needed */
+//    lua_getfield(L, -1, "delay");
+//    p->delay = (unsigned int)lua_tonumber(L, -1);
+//    
+//    lua_getfield(L, -2, "wait");
+//    p->wait = (unsigned int)lua_tonumber(L, -1);
+//    
+//    lua_getfield(L, -3, "scanrate");
+//    p->scanrate = (unsigned int)lua_tonumber(L, -1);
+//    if(p->scanrate == 0) p->scanrate = 100;
+//    
+//    lua_getfield(L, -4, "timeout");
+//    p->timeout = (unsigned int)lua_tonumber(L, -1);
+//    if(p->timeout == 0) p->timeout = 1000;
+//    
+//    lua_getfield(L, -5, "retries");
+//    p->retries = (unsigned int)lua_tonumber(L, -1);
+//    if(p->retries == 0) p->timeout = 1;
+//    if(p->retries > MAX_RETRIES) p->retries = MAX_RETRIES;
+//    
+//    lua_getfield(L, -6, "inhibit");
+//    p->inhibit_time = (unsigned int)lua_tonumber(L, -1);
+//    
+//    lua_getfield(L, -7, "maxattempts");
+//    p->maxattempts = (unsigned int)lua_tonumber(L, -1);
     
-    lua_getfield(L, -2, "wait");
-    p->wait = (unsigned int)lua_tonumber(L, -1);
-    
-    lua_getfield(L, -3, "scanrate");
-    p->scanrate = (unsigned int)lua_tonumber(L, -1);
-    if(p->scanrate == 0) p->scanrate = 100;
-    
-    lua_getfield(L, -4, "timeout");
-    p->timeout = (unsigned int)lua_tonumber(L, -1);
-    if(p->timeout == 0) p->timeout = 1000;
-    
-    lua_getfield(L, -5, "retries");
-    p->retries = (unsigned int)lua_tonumber(L, -1);
-    if(p->retries == 0) p->timeout = 1;
-    if(p->retries > MAX_RETRIES) p->retries = MAX_RETRIES;
-    
-    lua_getfield(L, -6, "inhibit");
-    p->inhibit_time = (unsigned int)lua_tonumber(L, -1);
-    
-    lua_getfield(L, -7, "maxattempts");
-    p->maxattempts = (unsigned int)lua_tonumber(L, -1);
-    
-    lua_pop(L, 7);
+//    lua_pop(L, 7);
     /* The lua script gets the index +1 */
     config.portcount++;
     lua_pushnumber(L, config.portcount);
-    
-    p->commands = NULL;
-    p->running = 0;
-	p->inhibit = 0;
-	p->attempt = 0;
-    p->inhibit_temp = 0;
-	p->fd = 0;
-    p->dienow = 0;
-    p->out_callback = NULL;
-    p->in_callback = NULL;
     
     return 1;
 }
@@ -375,8 +400,8 @@ _add_command(lua_State *L)
 }
 
 /* This function should be called from main() to configure the program.
-   First the defaults are set then the configuration file is parsed then
-   the command line is handled.  This gives the command line priority.  */
+ * First the defaults are set then the configuration file is parsed then
+ * the command line is handled.  This gives the command line priority.  */
 int
 modbus_configure(int argc, const char *argv[])
 {

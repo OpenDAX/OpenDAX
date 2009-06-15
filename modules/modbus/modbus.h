@@ -26,6 +26,9 @@
 /* Port Types */
 #define MB_MASTER 0
 #define MB_SLAVE  1
+#define MB_CLIENT 0
+#define MB_SERVER 1
+
 /* Protocols */
 #define MB_RTU   1
 #define MB_ASCII 2
@@ -46,6 +49,8 @@
 #define MB_ERR_DATABITS   -4      /* Wrong number of databits */
 #define MB_ERR_STOPBITS   -5      /* Wrong number of stopbits */
 #define MB_ERR_SOCKET     -6      /* Bad socket identifier */
+#define MB_ERR_PORTTYPE   -7      /* Bad port type - Master/Slave */
+#define MB_ERR_PROTOCOL   -8      /* Bad protocol - RTU/ASCII/TCP */
 
 /* Modbus Errors */
 #define ME_EXCEPTION      0x80;
@@ -58,7 +63,7 @@
 #define	MB_DISABLE     0
 #define MB_CONTINUOUS  1
 #define	MB_ONCHANGE    2
-#define MB_TRIGGER     3
+//--#define MB_TRIGGER     3
 
 typedef struct mb_port mb_port;
 typedef struct mb_cmd  mb_cmd;
@@ -70,17 +75,30 @@ void mb_destroy_port(mb_port *port);
 int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
 int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid);
-void mb_set_output_callback(mb_port *, void (*outfunc)(mb_port *,u_int8_t *,unsigned int));
-void mb_set_input_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsigned int));
+int mb_open_port(mb_port *port);
+int mb_close_port(mb_port *port);
+int mb_set_holdsize(mb_port *port, unsigned int size);
+int mb_set_inputsize(mb_port *port, unsigned int size);
+int mb_set_coilsize(mb_port *port, unsigned int size);
+int mb_set_floatsize(mb_port *port, unsigned int size);
+void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,u_int8_t *,unsigned int));
+void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsigned int));
 
-mb_cmd  *mb_new_cmd(mb_port *port);
+mb_cmd *mb_new_cmd(mb_port *port);
+void mb_destroy_cmd(mb_cmd *cmd);
 void mb_disable_cmd(mb_cmd *cmd);
 void mb_enable_cmd(mb_cmd *cmd);
+void mb_set_mode(mb_cmd *cmd, unsigned char mode);
+
+/* Functions to add...
+add free function to cmd
+assign memory to the cmd's userdata
+return pointer to cmd's userdata
+*/
 
 /* End New Interface */
 //--int mb_add_cmd(mb_port *,mb_cmd *);
 mb_cmd *mb_get_cmd(mb_port *, unsigned int);
-int mb_open_port(mb_port *);
 int mb_start_port(mb_port *);
 int mb_send_command(mb_port *, mb_cmd *);
 

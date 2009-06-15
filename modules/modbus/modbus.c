@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * 
+ * Source code file that contains all of the modbus protocol stuff.
  */
 
 //--#include <database.h>
@@ -21,9 +23,6 @@
 
 #include <modlib.h>
 #include <modbus.h>
-
-static int openport(mb_port *);
-static int openIPport(mb_port *);
 
 void masterRTUthread(mb_port *);
 
@@ -38,11 +37,12 @@ timediff(struct timeval oldtime,struct timeval newtime)
 
 
 /* Finds the modbus master command indexed by cmd.  Returns a pointer
-   to the command when found and NULL on error. */
-struct
-mb_cmd *mb_get_cmd(struct mb_port *mp,unsigned int cmd)
+ * to the command when found and NULL on error. */
+/* TODO: Replace with an iterator */
+mb_cmd *
+mb_get_cmd(struct mb_port *mp, unsigned int cmd)
 {
-    struct mb_cmd *node;
+    mb_cmd *node;
     unsigned int n = 0;
     if(mp == NULL) return NULL;
     
@@ -58,27 +58,6 @@ mb_cmd *mb_get_cmd(struct mb_port *mp,unsigned int cmd)
     return node;
 }
 
-/* Determines whether or not the port is a serial port or an IP
-   socket and opens it appropriately */
-int
-mb_open_port(struct mb_port *m_port)
-{
-    int fd;
-    
-    /* if the LAN bit or the TCP bit are set then we need a network
-        socket.  Otherwise we need a serial port opened */
-    if(m_port->devtype == MB_NETWORK) {
-        fd = openIPport(m_port);
-    } else {
-        fd = openport(m_port);
-    }
-    if(pthread_mutex_init (&m_port->port_mutex, NULL)) {
-        dax_error("Problem Initilizing Mutex for port: %s", m_port->name);
-        return -1;
-    }
-    if(fd > 0) return 0;
-    return fd;
-}
 
 /* Opens the port passed in m_port and starts the thread that
    will handle the port */
@@ -124,81 +103,6 @@ mb_start_port(struct mb_port *m_port)
 }
 
 
-/* Open and set up the serial port */
-static int
-openport(struct mb_port *m_port)
-{
-    int fd;
-    struct termios options;
-    
-    /* the port is opened RW and reads will not block */
-    fd = open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if(fd == -1)  {
-        dax_error("openport: %s", strerror(errno));
-        return(-1);
-    } else  {
-    
-    /* TODO: this should set the port up like the configuration says */
-        fcntl(fd, F_SETFL, 0);
-        tcgetattr(fd, &options);
-        cfsetispeed(&options, m_port->baudrate);
-        cfsetospeed(&options, m_port->baudrate);
-        options.c_cflag |= (CLOCAL | CREAD);
-        options.c_cflag &= ~PARENB;
-        options.c_cflag &= ~CSTOPB;
-        options.c_cflag &= ~CSIZE;
-        options.c_cflag |= CS8;
-      
-        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-        options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
-        options.c_oflag &= ~OPOST;
-        options.c_cc[VMIN] = 0;
-        options.c_cc[VTIME] = 0; /* 1 sec */
-        /* TODO: Should check for errors here */
-        tcsetattr(fd, TCSANOW, &options);
-    } 
-    m_port->fd = fd;
-    return fd;
-}
-
-/* Opens a IP socket instead of a serial port for both
-   the TCP protocol and the LAN protocol. */
-static int
-openIPport(struct mb_port *mp)
-{
-    int fd;
-    struct sockaddr_in addr;
-    int result;
-    
-    dax_debug(10, "Opening IP Port");
-    if(mp->socket == TCP_SOCK) {
-		fd = socket(AF_INET, SOCK_STREAM, 0);
-	} else if (mp->socket == UDP_SOCK) {
-		fd = socket(AF_INET, SOCK_DGRAM, 0);
-	} else {
-        dax_error( "Unknown socket type");
-	    return -1;
-	}
-	
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(mp->ipaddress);
-    addr.sin_port = htons(mp->bindport);
-    
-    result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
-    dax_debug(10, "Connect returned %d", result);
-    if(result == -1) {
-        dax_error( "openIPport: %s", strerror(errno));
-        return -1;
-    }
-    result = fcntl(fd, F_SETFL, O_NONBLOCK);
-    if(result) {
-        dax_error( "Unable to set socket to non blocking");
-        return -1 ;
-    }
-    dax_debug(10, "Socket Connected, fd = %d", fd);
-    mp->fd = fd;
-    return fd;
-}
         
 
 /* This is the primary thread for a Modbus RTU master.  It calls the functions
@@ -332,16 +236,16 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
 }
 
 /* This function waits for one interbyte timeout (wait) period and then
- checks to see if there is data on the port.  If there is no data and
- we still have not received any data then it compares the current time
- against the time the loop was started to see about the timeout.  If there
- is data then it is written into the buffer.  If there is no data on the
- read() and we have received some data already then the full message should
- have been received and the function exits. 
+ * checks to see if there is data on the port.  If there is no data and
+ * we still have not received any data then it compares the current time
+ * against the time the loop was started to see about the timeout.  If there
+ * is data then it is written into the buffer.  If there is no data on the
+ * read() and we have received some data already then the full message should
+ * have been received and the function exits. 
  
- Returns 0 on timeout
- Returns -1 on CRC fail
- Returns the length of the message on success */
+ * Returns 0 on timeout
+ * Returns -1 on CRC fail
+ * Returns the length of the message on success */
 static int
 getRTUresponse(u_int8_t *buff, struct mb_port *mp)
 {
@@ -499,12 +403,12 @@ mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
             }
             return 0; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
-            DAX_DEBUG("Timeout");
+            DEBUGMSG("Timeout");
 			mc->timeouts++;
 			mc->lasterror = ME_TIMEOUT;
         } else {
             /* Checksum failed in response */
-            DAX_DEBUG("Checksum");
+            DEBUGMSG("Checksum");
 			mc->crcerrors++;
             mc->lasterror = ME_CHECKSUM;
         }
