@@ -21,7 +21,7 @@
 //--#include <database.h>
 
 
-#include <modlib.h>
+#include <mblib.h>
 #include <modbus.h>
 
 void masterRTUthread(mb_port *);
@@ -64,42 +64,42 @@ mb_get_cmd(struct mb_port *mp, unsigned int cmd)
 int
 mb_start_port(struct mb_port *m_port)
 {
-    pthread_attr_t attr;
-    
-    /* If the port is not already open */
-    if(!m_port->fd) {
-        if(mb_open_port(m_port)) {
-            dax_error( "Unable to open port - %s", m_port->name);
-            return -1;
-        }
-    }
-    if(m_port->fd > 0) {
-        /* Set up the thread attributes 
-         * The thread is set up to be detached so that it's resources will
-         * be deallocated automatically. */
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-        
-        if(m_port->type == MB_MASTER) {
-            if(pthread_create(&m_port->thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
-                dax_error( "Unable to start thread for port - %s", m_port->name);
-                return -1;
-            } else {
-                dax_debug(3, "Started Thread for port - %s", m_port->name);
-                return 0;
-            }
-        } else if(m_port->type == MB_SLAVE) {
-            ; /* TODO: start slave thread */
-        } else {
-            dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
-            return -1;
-        }
-        return 0;
-    } else {
-        dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
-        return -1;
-    }
-    return 0; //should never get here
+//    pthread_attr_t attr;
+//    
+//    /* If the port is not already open */
+//    if(!m_port->fd) {
+//        if(mb_open_port(m_port)) {
+//            DEBUGMSG2( "Unable to open port - %s", m_port->name);
+//            return -1;
+//        }
+//    }
+//    if(m_port->fd > 0) {
+//        /* Set up the thread attributes 
+//         * The thread is set up to be detached so that it's resources will
+//         * be deallocated automatically. */
+//        pthread_attr_init(&attr);
+//        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+//        
+//        if(m_port->type == MB_MASTER) {
+//            if(pthread_create(&m_port->thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
+//                dax_error( "Unable to start thread for port - %s", m_port->name);
+//                return -1;
+//            } else {
+//                dax_debug(3, "Started Thread for port - %s", m_port->name);
+//                return 0;
+//            }
+//        } else if(m_port->type == MB_SLAVE) {
+//            ; /* TODO: start slave thread */
+//        } else {
+//            dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
+//            return -1;
+//        }
+//        return 0;
+//    } else {
+//        dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
+//        return -1;
+//    }
+//    return 0; //should never get here
 }
 
 
@@ -112,7 +112,7 @@ mb_start_port(struct mb_port *m_port)
 be set to 0 and the mp->fd closed.  This will cause the main while(1) loop to restart
 the port */
 void
-masterRTUthread(struct mb_port *mp)
+masterRTUthread(mb_port *mp)
 {
     long time_spent;
     struct mb_cmd *mc;
@@ -128,11 +128,11 @@ masterRTUthread(struct mb_port *mp)
             mc = mp->commands;
             while(mc != NULL && !bail) {
                 /* Only if the command is enabled and the interval counter is over */
-                if(mc->method && (++mc->icount >= mc->interval)) { 
+                if(mc->enable && (++mc->icount >= mc->interval)) { 
                     mc->icount = 0;
                     if(mp->maxattempts) {
                         mp->attempt++;
-                        DAX_DEBUG2("Incrementing attempt - %d", mp->attempt);
+                        DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
                     }
                     if( mb_send_command(mp, mc) > 0 )
                         mp->attempt = 0; /* Good response, reset counter */
@@ -156,11 +156,12 @@ masterRTUthread(struct mb_port *mp)
         if(time_spent < mp->scanrate)
             usleep((mp->scanrate - time_spent) * 1000);
     }
-     /* Close the port */
-    if(close(mp->fd)) {
-        dax_error("Could not close port");
-    }
-    dax_error("Too Many Errors: Shutting down port - %s", mp->name);
+    /* Close the port */
+    
+    //--if(close(mp->fd)) {
+        //dax_error("Could not close port");
+    //--}
+    //dax_error("Too Many Errors: Shutting down port - %s", mp->name);
     mp->fd = 0;
     mp->dienow = 0;
     mp->running = 0;
@@ -168,7 +169,7 @@ masterRTUthread(struct mb_port *mp)
 
 /* This function formulates and sends the modbus master request */
 static int
-sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
+sendRTUrequest(mb_port *mp, mb_cmd *cmd)
 {
     u_int8_t buff[MB_FRAME_LEN], length;
     u_int16_t crc, temp, result;
@@ -179,6 +180,7 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
     
     switch (cmd->function) {
         case 1:
+        case 2:
         case 3:
         case 4:
             COPYWORD(&buff[2], &cmd->m_register);
@@ -187,11 +189,10 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
             break;
         case 5:
             //--temp = dt_getbit(cmd->handle, cmd->index);
-            temp = 0;
-            result = dt_getbits(cmd->idx, cmd->index, &temp, 1);
+            temp = *cmd->data;
+            //--result = dt_getbits(cmd->idx, cmd->index, &temp, 1);
             //--printf("...getbits returned 0x%X for index %d\n", temp, cmd->index);
-            /* TODO: Error Check result */
-            if(cmd->method == MB_CONTINUOUS || (temp != cmd->lastcrc) || !cmd->firstrun ) {
+            if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc) || !cmd->firstrun ) {
                 COPYWORD(&buff[2], &cmd->m_register);
                 if(temp) buff[4] = 0xff;
                 else     buff[4] = 0x00;
@@ -206,11 +207,12 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
             break;
         case 6:
             //--temp = dt_getword(cmd->address);
-            result = dt_getwords(cmd->idx, cmd->index, &temp, 1);
+            //--result = dt_getwords(cmd->idx, cmd->index, &temp, 1);
+            temp = *cmd->data;
             /* TODO: Error Check result */
             /* If the command is contiunous go, if conditional then 
              check the last checksum against the current datatable[] */
-            if(cmd->method == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
+            if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
                 COPYWORD(&buff[2], &cmd->m_register);
                 COPYWORD(&buff[4], &temp);
                 cmd->lastcrc = temp; /* Since it's a single just store the word */
@@ -222,8 +224,8 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
             default:
             break;
     }
-    crc = crc16(buff,length);
-    COPYWORD(&buff[length],&crc);
+    crc = crc16(buff, length);
+    COPYWORD(&buff[length], &crc);
     /* Send Request */
     cmd->requests++; /* Increment the request counter */
     tcflush(mp->fd, TCIOFLUSH);
@@ -231,7 +233,7 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
     if(mp->out_callback) {
         mp->out_callback(mp, buff, length + 2);
     }
-    
+
     return write(mp->fd, buff, length + 2);
 }
 
@@ -247,7 +249,7 @@ sendRTUrequest(struct mb_port *mp,struct mb_cmd *cmd)
  * Returns -1 on CRC fail
  * Returns the length of the message on success */
 static int
-getRTUresponse(u_int8_t *buff, struct mb_port *mp)
+getRTUresponse(u_int8_t *buff, mb_port *mp)
 {
     unsigned int buffptr = 0;
     struct timeval oldtime, thistime;
@@ -256,7 +258,7 @@ getRTUresponse(u_int8_t *buff, struct mb_port *mp)
     gettimeofday(&oldtime, NULL);
     
     while(1) {
-        usleep(mp->wait * 1000);
+        usleep(mp->frame * 1000);
         result = read(mp->fd, &buff[buffptr], MB_FRAME_LEN);
         if(result > 0) { /* Get some data */
             buffptr += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
@@ -284,32 +286,32 @@ getRTUresponse(u_int8_t *buff, struct mb_port *mp)
 }
 
 static int
-sendASCIIrequest(struct mb_port *mp,struct mb_cmd *cmd)
+sendASCIIrequest(mb_port *mp, mb_cmd *cmd)
 {
     return 0;
 }
 
 static int
-getASCIIresponse(u_int8_t *buff,struct mb_port *mp)
+getASCIIresponse(u_int8_t *buff, mb_port *mp)
 {
     return 0;
 }
 
 /* This function takes the message buffer and the current command and
- determines what to do with the message.  It may write data to the 
- datatable or just return if the message is an acknowledge of a write.
- This function is protocol indifferent so the checksums should be
- checked before getting here.  This function assumes that *buff looks
- like an RTU message so the ASCII response functions should translate
- the ASCII responses into RTUish messages */
-
+ * determines what to do with the message.  It may write data to the 
+ * datatable or just return if the message is an acknowledge of a write.
+ * This function is protocol indifferent so the checksums should be
+ * checked before getting here.  This function assumes that *buff looks
+ * like an RTU message so the ASCII & TCP response functions should translate
+ * the their responses into RTUish messages */
+/* TODO: There is all kinds of buffer overflow potential here.  It should all be checked */
 static int
-handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
+handleresponse(u_int8_t *buff, mb_cmd *cmd)
 {
     int n, result;
     u_int16_t *data;
     
-    DAX_DEBUG2("handleresponse() - Function Code = %d", cmd->function);
+    DEBUGMSG2("handleresponse() - Function Code = %d", cmd->function);
     cmd->responses++;
     if(buff[1] >= 0x80) 
         return buff[2];
@@ -320,24 +322,26 @@ handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
     /* If we get this far the message should be good */
     switch (cmd->function) {
         case 1:
+        case 2:
             //--dt_setbits(cmd->address, &buff[3], cmd->length);
-            result = dt_setbits(cmd->idx, cmd->index, &buff[3], cmd->length);
+            //--result = dt_setbits(cmd->idx, cmd->index, &buff[3], cmd->length);
+            memcpy(cmd->data, &buff[3], buff[2]);
             break;
         case 3:
         case 4:
-            data = malloc(buff[2] / 2);
-            if(data == NULL) return ERR_ALLOC;
+            //--data = malloc(buff[2] / 2);
+            //--if(data == NULL) return ERR_ALLOC;
+            /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
             for(n = 0; n < (buff[2] / 2); n++) {
-                COPYWORD(&data[n], &buff[(n * 2) + 3]);
+                COPYWORD(&cmd->data[n], &buff[(n * 2) + 3]);
             }
             //--if(dt_setword(cmd->address + n, temp)) return -1;
-            /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
-            result = dt_setwords(cmd->idx, cmd->index, data, cmd->length);
-            free(data);
+            //--result = dt_setwords(cmd->idx, cmd->index, data, cmd->length);
+            //--free(data);
             break;
         case 5:
         case 6:
-            //COPYWORD(&temp, &buff[2]);
+            COPYWORD(cmd->data, &buff[2]);
             //if(dt_setword(cmd->address,temp)) return -1;
             break;
         default:
@@ -354,7 +358,7 @@ handleresponse(u_int8_t *buff, struct mb_cmd *cmd)
  * is returned. mb_buff should be at least MB_FRAME_LEN in length */
 
 int
-mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
+mb_send_command(mb_port *mp, mb_cmd *mc)
 {
     u_int8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
     int try = 1;
@@ -362,10 +366,9 @@ mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
     static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
     static int (*getresponse)(u_int8_t *,struct mb_port *) = NULL;
     
-    
-    /*This sets up the function pointers so we don't have to constantly check
-      which protocol we are using for communication.  From this point on the 
-      code is generic for RTU or ASCII */
+  /* This sets up the function pointers so we don't have to constantly check
+   *  which protocol we are using for communication.  From this point on the
+   *  code is generic for RTU or ASCII */
     if(mp->protocol == MB_RTU) {
         sendrequest = sendRTUrequest;
         getresponse = getRTUresponse;
@@ -376,38 +379,53 @@ mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
         return -1;
     }
     
+    if(mc->pre_send != NULL) {
+        mc->pre_send(mc, mc->userdata, mc->data, mc->datasize);
+    }
     do { /* retry loop */
-        pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
+//        pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
                 
 		result = sendrequest(mp, mc);
 		if(result > 0) {
 			msglen = getresponse(buff, mp);
-		    pthread_mutex_unlock(&mp->port_mutex);
+//		    pthread_mutex_unlock(&mp->port_mutex);
         } else if(result == 0) {
             /* Should be 0 when a conditional command simply doesn't run */
-            pthread_mutex_unlock(&mp->port_mutex);
+//            pthread_mutex_unlock(&mp->port_mutex);
             return result;
         } else {
-            pthread_mutex_unlock(&mp->port_mutex);
+//            pthread_mutex_unlock(&mp->port_mutex);
             return -1;
         }
         
         if(msglen > 0) {
             result = handleresponse(buff,mc);
             if(result > 0) {
+                if(mc->send_fail != NULL) {
+                    mc->send_fail(mc, mc->userdata);
+                }
                 mc->exceptions++;
                 mc->lasterror = result | ME_EXCEPTION;
-                DAX_DEBUG2("Exception Received - %d", result);
+                DEBUGMSG2("Exception Received - %d", result);
             } else { /* Everything is good */
+                if(mc->post_send != NULL) {
+                    mc->post_send(mc, mc->userdata, mc->data, mc->datasize);
+                }
                 mc->lasterror = 0;
             }
             return 0; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
+            if(mc->send_fail != NULL) {
+                mc->send_fail(mc, mc->userdata);
+            }
             DEBUGMSG("Timeout");
 			mc->timeouts++;
 			mc->lasterror = ME_TIMEOUT;
         } else {
             /* Checksum failed in response */
+            if(mc->send_fail != NULL) {
+                mc->send_fail(mc, mc->userdata);
+            }
             DEBUGMSG("Checksum");
 			mc->crcerrors++;
             mc->lasterror = ME_CHECKSUM;
@@ -415,6 +433,9 @@ mb_send_command(struct mb_port *mp, struct mb_cmd *mc)
     } while(try++ <= mp->retries);
     /* After all the retries get out with error */
     /* TODO: Should set error code?? */
+    if(mc->send_fail != NULL) {
+        mc->send_fail(mc, mc->userdata);
+    }
     return -2;
 }
 

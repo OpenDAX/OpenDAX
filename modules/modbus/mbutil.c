@@ -17,9 +17,11 @@
  * 
  * Source file for modbus library utility functions
  */
- 
+
+#include <stdarg.h>
+
 #include <modbus.h>
-#include <modlib.h>
+#include <mblib.h>
 
 /* CRC table straight from the modbus spec */
 static unsigned char aCRCHi[] = {
@@ -68,7 +70,7 @@ static char aCRCLo[] = {
 
 /* Modbus CRC16 checksum calculation. Taken straight from the modbus specification,
  * but I fixed the typos and changed the name to protect the guilty */ 
-static u_int16_t
+u_int16_t
 crc16(unsigned char *msg, unsigned short length)
 {
     unsigned char CRCHi = 0xFF;
@@ -97,15 +99,17 @@ crc16check(u_int8_t *buff, int length)
 };
 
 #ifdef DEBUG
-/* This function is only included with DEBUG is defined.  It 
- * turns into DEBUGMSG() in the code.  Redefine to something
- * other than printf() needed */
+/* This function is only included when DEBUG is defined.  It 
+ * turns into DEBUGMSGx() in the code.  Redefine to something
+ * other than fprintf() ifneeded */
 void
-debug(char *message, ...)
+debug(char *format, ...)
 {
+    va_list val;
     va_start(val, format);
-    vprintf(format, val);
-    printf("\n");
+    vfprintf(stderr, format, val);
+    fprintf(stderr, "\n");
+    va_end(val);
 }
 
 #endif

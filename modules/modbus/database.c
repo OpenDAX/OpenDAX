@@ -16,14 +16,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <common.h>
+//#include <common.h>
 #include <database.h>
-#include <pthread.h>
+//#include <assert.h>
+//#include <pthread.h>
 
 //static u_int16_t *datatable;
-static unsigned int tablesize;
-static pthread_mutex_t datamutex;
-static tag_index dt_handle;
+//static unsigned int tablesize;
+//static pthread_mutex_t datamutex;
+//static tag_index dt_handle;
 
 /* Allocate and Initialize the datatable */
 //int
@@ -47,91 +48,147 @@ static tag_index dt_handle;
 //    return 0;
 //}
 
-int
-dt_add_tag(Handle *h, char *name, int index, int function, int length)
+/* These are the callbacks that get assigned to each command */
+static void
+_write_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
-    int result;
+    /* It really should be this easy if we have done everything right up to here */
+    dax_write_tag(*((Handle *)userdata), data);
+}
+
+
+static void
+_read_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
+{
+    /* It really should be this easy if we have done everything right up to here */
+    dax_read_tag(*((Handle *)userdata), data);
+}
+
+
+/* This function was setup as the pre_send callback to the modbus library.
+ * If this function is called it means that the command is about to be sent for
+ * the first time.  We add the OpenDAX tags, change the userdata in the command
+ * to point to the tag handle of the OpenDAX tags, free the old userdata and
+ * set up the permanent callbacks that will actuallyhandle the data */
+void
+setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
+{
+    int result, count;
+    cmd_temp_data *cdata;
+    Handle *h;
+    char tagname[DAX_TAGNAME_SIZE + 20];
     
-    switch(function) {
+    h = malloc(sizeof(Handle));
+    if(h == NULL) {
+        return;
+    }
+    
+    cdata = (cmd_temp_data *)userdata;
+    
+    switch(cdata->function) {
         case 1:
         case 2:
         case 15:
-            result = dax_tag_add(h, name, DAX_BOOL, index + length);
-            return result;
+            count = cdata->length;
+            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + cdata->length);
+            break;
         case 5:
-            result = dax_tag_add(h, name, DAX_BOOL, index + 1);
-            return result;
+            count = 1;
+            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + 1);
+            break;
         case 3:
         case 4:
         case 16:
-            result = dax_tag_add(h, name, DAX_UINT, index + length);
-            return result;
+            count = cdata->length;
+            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + cdata->length);
+            break;
         case 6:
-            result = dax_tag_add(h, name, DAX_UINT, index + 1);
-            return result;
+            count = 1;
+            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + 1);
+            break;
         default:
-            return -1;
+            return;
     }
-}
-
-
-int
-dt_getwords(tag_index handle, int index, void *data, int length)
-{
-    int result;
-    if(handle) {
-        pthread_mutex_lock(&datamutex);
-        //--result = dax_read_tag(handle, index, data, length, DAX_UINT);
-        pthread_mutex_unlock(&datamutex);
-    } else {
-        result = ERR_ARG;
-    }
-    return result;
-}
-
-int
-dt_setwords(tag_index handle, int index, void *data, int length)
-{
-    int result;
-    if(handle) {
-        pthread_mutex_lock(&datamutex);
-        //--result = dax_write_tag(handle, index, data, length, DAX_UINT);
-        assert(0); /* This is because we have commented out the above write function */
-        pthread_mutex_unlock(&datamutex);
-    } else {
-        result = ERR_ARG;
-    }
-    return result;
-}
-
-
-int
-dt_getbits(tag_index handle, int index, void *data, int length)
-{
-    int result;
-    if(handle) {
-        pthread_mutex_lock(&datamutex);
-        //--result = dax_read_tag(handle, index, data, length, DAX_BOOL);
-        assert(0); /* This assert is because we have comented out the tag reading */
     
-        pthread_mutex_unlock(&datamutex);
-    } else {
-        result = ERR_ARG;
+    snprintf(tagname, DAX_TAGNAME_SIZE + 20, "%s[%d]", cdata->tagname, cdata->index);
+    free(userdata); /* This offsets the malloc in _add_command() */
+    mb_set_userdata(c, NULL); /* Just so we know */
+    
+    result = dax_tag_handle(h, tagname, count);
+    if(result == 0) {
+        /* Since h is allocated with a single malloc call we don't have to free
+         * it because it will be freed when the command is destroyed */
+        mb_set_userdata(c, h);
     }
-    return result;
+    mb_pre_send_callback(c, NULL);
+    if(mb_is_write_cmd(c)) {
+        mb_pre_send_callback(c, _read_data);
+    } else if(mb_is_read_cmd(c)) {
+        mb_post_send_callback(c, _write_data);
+    }
+    
+    /* just a sanity check to make sure that we've got the sizes right */
+    assert(h->size == datasize);
 }
 
-int
-dt_setbits(tag_index handle, int index, void *data, int length)
-{
-    int result;
-    if(handle) {
-        pthread_mutex_lock(&datamutex);
-        //--result = dax_write_tag(handle, index, data, length, DAX_BOOL);
-        assert(0); /* This is because we have commented out the above write function */
-        pthread_mutex_unlock(&datamutex);
-    } else {
-        result = ERR_ARG;
-    }
-    return result;
-}
+//int
+//dt_getwords(tag_index handle, int index, void *data, int length)
+//{
+//    int result;
+//    if(handle) {
+//        pthread_mutex_lock(&datamutex);
+//        //--result = dax_read_tag(handle, index, data, length, DAX_UINT);
+//        assert(0); /* This assert is because we have comented out the tag reading */
+//        pthread_mutex_unlock(&datamutex);
+//    } else {
+//        result = ERR_ARG;
+//    }
+//    return result;
+//}
+//
+//int
+//dt_setwords(tag_index handle, int index, void *data, int length)
+//{
+//    int result;
+//    if(handle) {
+//        pthread_mutex_lock(&datamutex);
+//        //--result = dax_write_tag(handle, index, data, length, DAX_UINT);
+//        assert(0); /* This is because we have commented out the above write function */
+//        pthread_mutex_unlock(&datamutex);
+//    } else {
+//        result = ERR_ARG;
+//    }
+//    return result;
+//}
+//
+//
+//int
+//dt_getbits(tag_index handle, int index, void *data, int length)
+//{
+//    int result;
+//    if(handle) {
+//        pthread_mutex_lock(&datamutex);
+//        //--result = dax_read_tag(handle, index, data, length, DAX_BOOL);
+//        assert(0); /* This assert is because we have comented out the tag reading */
+//    
+//        pthread_mutex_unlock(&datamutex);
+//    } else {
+//        result = ERR_ARG;
+//    }
+//    return result;
+//}
+//
+//int
+//dt_setbits(tag_index handle, int index, void *data, int length)
+//{
+//    int result;
+//    if(handle) {
+//        pthread_mutex_lock(&datamutex);
+//        //--result = dax_write_tag(handle, index, data, length, DAX_BOOL);
+//        assert(0); /* This is because we have commented out the above write function */
+//        pthread_mutex_unlock(&datamutex);
+//    } else {
+//        result = ERR_ARG;
+//    }
+//    return result;
+//}

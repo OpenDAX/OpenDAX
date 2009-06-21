@@ -19,7 +19,7 @@
  */
  
 #include <modbus.h>
-#include <modlib.h>
+#include <mblib.h>
 
 /* Initializes the port structure given by pointer p */
 static void
@@ -36,7 +36,7 @@ initport(mb_port *p)
     p->databits = 8;
     p->stopbits = 1;
     p->timeout = 1000;      
-    p->wait = 10;
+    p->frame = 10;
     p->delay = 0;     
     p->retries = 3;
     p->parity = MB_NONE;  
@@ -48,8 +48,8 @@ initport(mb_port *p)
     p->inputsize = 0;
     p->coilreg = NULL;
     p->coilsize = 0;
-    p->floatreg = NULL;
-    p->floatsize = 0;
+    p->discreg = NULL;
+    p->discsize = 0;
     p->running = 0;
     p->inhibit = 0;
     p->commands = NULL;
@@ -208,24 +208,27 @@ mb_new_port(const char *name)
     return mport;    
 }
 
+/* recursive function that destroys all of the commands */
+static void
+_free_cmd(mb_cmd *cmd)
+{
+    if(cmd->next != NULL) {
+        _free_cmd(cmd->next);
+    }
+    mb_destroy_cmd(cmd);
+}
+
 /* This function closes the port and frees all the memory associated with it. */
 void
 mb_destroy_port(mb_port *port)
 {
-    mb_cmd *this;
-    
     mb_close_port(port);
     
     if(port->name != NULL) free(port->name);
     if(port->device != NULL) free(port->device);
     
     /* destroys all of the commands */
-    this = port->commands;
-    while(this != NULL) {
-        mb_destroy_cmd(this);
-        this = this->next;
-    }
-        
+    _free_cmd(port->commands);
 }
 
 /* This function sets the port up as a normal serial port. 'device' is the system device file that represents 
@@ -311,6 +314,11 @@ mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int
     return 0;
 }
 
+const char *mb_get_name(mb_port *port) {
+    return (const char *)port->name;
+}
+
+
 /* Determines whether or not the port is a serial port or an IP
  * socket and opens it appropriately */
 int
@@ -342,29 +350,61 @@ mb_close_port(mb_port *port)
     return result;
 }
 
+int
+mb_set_frame_time(mb_port *port, int frame)
+{
+    port->frame = frame;
+    return 0;
+}
+
+int
+mb_set_delay_time(mb_port *port, int delay)
+{
+    port->delay = delay;
+    return 0;
+}
+
+int
+mb_set_scan_rate(mb_port *port, int rate)
+{
+    port->scanrate = rate;
+    return 0;    
+}
+
+int
+mb_set_timeout(mb_port *port, int timeout)
+{
+    port->timeout = timeout;
+    return 0;    
+}
+
+int
+mb_set_retries(mb_port *port, int retries)
+{
+    port->retries = retries;
+    return 0;    
+}
+
+unsigned char
+mb_get_type(mb_port *port)
+{
+    return port->type;
+}
+
+
 /* The following functions are used to set up the data for the slave port */
 int
-mb_set_holdsize(mb_port *port, unsigned int size)
+mb_set_register_size(mb_port *port, int reg, int size)
 {
-    return -1;
-}
-
-int
-mb_set_inputsize(mb_port *port, unsigned int size)
-{
-    return -1;    
-}
-
-int
-mb_set_coilsize(mb_port *port, unsigned int size)
-{
-    return -1;    
-}
-
-int
-mb_set_floatsize(mb_port *port, unsigned int size)
-{
-    return -1;
+    if(reg == MB_REG_HOLDING) {
+        //set holding register size
+        return 0;
+    } else if(reg == MB_REG_INPUT) {
+        return 0;
+    } else if(reg == MB_REG_COIL) {
+        return 0;
+    }
+    return MB_ERR_GENERIC;
 }
 
 

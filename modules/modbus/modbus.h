@@ -51,6 +51,7 @@
 #define MB_ERR_SOCKET     -6      /* Bad socket identifier */
 #define MB_ERR_PORTTYPE   -7      /* Bad port type - Master/Slave */
 #define MB_ERR_PROTOCOL   -8      /* Bad protocol - RTU/ASCII/TCP */
+#define MB_ERR_FUNCTION   -9      /* Bad Function Code Given */
 
 /* Modbus Errors */
 #define ME_EXCEPTION      0x80;
@@ -65,6 +66,11 @@
 #define	MB_ONCHANGE    2
 //--#define MB_TRIGGER     3
 
+#define MB_REG_HOLDING 1
+#define MB_REG_INPUT   2
+#define MB_REG_COIL    3
+#define MB_REG_DISC    4
+
 typedef struct mb_port mb_port;
 typedef struct mb_cmd  mb_cmd;
 
@@ -75,12 +81,17 @@ void mb_destroy_port(mb_port *port);
 int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
 int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid);
+const char *mb_get_name(mb_port *port);
 int mb_open_port(mb_port *port);
 int mb_close_port(mb_port *port);
-int mb_set_holdsize(mb_port *port, unsigned int size);
-int mb_set_inputsize(mb_port *port, unsigned int size);
-int mb_set_coilsize(mb_port *port, unsigned int size);
-int mb_set_floatsize(mb_port *port, unsigned int size);
+int mb_set_register_size(mb_port *port, int reg, int size);
+int mb_set_frame_time(mb_port *port, int frame);
+int mb_set_delay_time(mb_port *port, int delay);
+int mb_set_scan_rate(mb_port *port, int rate);
+int mb_set_timeout(mb_port *port, int timeout);
+int mb_set_retries(mb_port *port, int retries);
+unsigned char mb_get_type(mb_port *port);
+
 void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,u_int8_t *,unsigned int));
 void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsigned int));
 
@@ -88,7 +99,19 @@ mb_cmd *mb_new_cmd(mb_port *port);
 void mb_destroy_cmd(mb_cmd *cmd);
 void mb_disable_cmd(mb_cmd *cmd);
 void mb_enable_cmd(mb_cmd *cmd);
+int mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_int16_t length);
+int mb_set_interval(mb_cmd *cmd, int interval);
 void mb_set_mode(mb_cmd *cmd, unsigned char mode);
+void mb_set_userdata(mb_cmd *cmd, void *data);
+int mb_is_write_cmd(mb_cmd *cmd);
+int mb_is_read_cmd(mb_cmd *cmd);
+
+
+void mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *, void *, u_int8_t *, int));
+void mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *, void *, u_int8_t *, int));
+void mb_send_fail_callback(mb_cmd *cmd, void (*send_fail)(struct mb_cmd *, void *));
+void mb_userdata_free_callback(mb_cmd *cmd, void (*userdata_free)(struct mb_cmd *, void *));
+    
 
 /* Functions to add...
 add free function to cmd

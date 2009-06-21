@@ -22,30 +22,42 @@
 #include <modbus.h>
 
 
-#ifndef DEFAULT_PID
- #define DEFAULT_PID "/var/run/modbus.pid"
-#endif
+//#ifndef DEFAULT_PID
+// #define DEFAULT_PID "/var/run/modbus.pid"
+//#endif
 
 #ifndef DEFAULT_DEVICE
  #define DEFAULT_DEVICE "/dev/serial"
 #endif
 
-/* Default number of ports to allocate if none is specified */
-#ifndef MAX_PORTS
-  #define MAX_PORTS 16
+/* Beginning number of port to allocate */
+#ifndef DEFAULT_PORTS
+  #define DEFAULT_PORTS 16
 #endif
 
+#define SERIAL_PORT  1
+#define NETWORK_PORT 2
+
 struct Config {
-    char *pidfile;
-    char *configfile;
-    char *tagname;
-    int verbosity;
-    u_int8_t daemonize;
-    unsigned int tablesize;
-    int portcount;
-    int maxports;
-    mb_port *ports; /* Pointer to an array of ports */
+    //char *pidfile;
+    //char *configfile;
+    //char *tagname;
+    //int verbosity;
+    //u_int8_t daemonize;
+    //unsigned int tablesize;
+    int portcount;   /* Number of ports that are assigned */
+    int portsize;    /* Number of ports that are allocated */
+    mb_port **ports; /* Pointer to an array of ports */
 };
+
+struct cmd_temp_data {
+    char *tagname;
+    int index;
+    u_int8_t function;
+    u_int16_t length;
+};
+
+typedef struct cmd_temp_data cmd_temp_data;
 
 int modbus_configure(int, const char **);
 int getbaudrate(int);

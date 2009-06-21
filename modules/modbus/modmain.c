@@ -41,8 +41,8 @@ void indata(mb_port *,u_int8_t *,unsigned int);
 
 int main (int argc, const char * argv[]) {
     int result, n;
-    mb_port *mp;
-    mb_cmd *mc;
+    //--mb_port *mp;
+    //--mb_cmd *mc;
     struct sigaction sa;
     
     /* Set up the signal handlers */
@@ -57,57 +57,58 @@ int main (int argc, const char * argv[]) {
     sa.sa_handler = &catchpipe;
     sigaction(SIGPIPE, &sa, NULL);
     
-    
+    dax_set_debug_topic(-1);
     dax_debug(LOG_MAJOR, "Modbus Starting");
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
     result = modbus_configure(argc, argv);
     
-    if( dax_mod_register("modbus") ) {
-        dax_fatal("Unable to connect to OpenDAX server!");
-    }
+//    if( dax_mod_register("modbus") ) {
+//        dax_fatal("Unable to connect to OpenDAX server!");
+//    }
     
     /* Set the input and output callbacks if we aren't going to the background */
     /* TODO: Configuration option for these??? */
-    for(n = 0; n < config.portcount; n++) {
-        mb_set_msgout_callback(&config.ports[n], outdata);
-        mb_set_msgin_callback(&config.ports[n], indata);
+//    for(n = 0; n < config.portcount; n++) {
+//        mb_set_msgout_callback(config.ports[n], outdata);
+//        mb_set_msgin_callback(config.ports[n], indata);
         
-        mc = config.ports[n].commands;
-        while(mc != NULL) {
-            result = dt_add_tag(&(mc->handle), mc->tagname, mc->index, mc->function, mc->length);
-            /* TODO: for now if we can't add the tag we'll keep the handle at zero.  The database
-             * routines won't read or write if the handle is zero.  We should do more */
-            if(result) ;
-            //if(mc->idx < 0) {
-            //    mc->idx = 0;
-            //}
-            mc = mc->next; /* get next command from the linked list */
-        }
-    }
+//        mc = config.ports[n].commands;
+//        while(mc != NULL) {
+//            //-- *** This ain't gonna work.  Creating tags should be done during configuration */
+//            result = dt_add_tag(&(mc->handle), mc->tagname, mc->index, mc->function, mc->length);
+//            /* TODO: for now if we can't add the tag we'll keep the handle at zero.  The database
+//             * routines won't read or write if the handle is zero.  We should do more */
+//            if(result) ;
+//            if(mc->idx < 0) {
+//                mc->idx = 0;
+//            }
+//            mc = mc->next; /* get next command from the linked list */
+//        }
+//    }
     
-    while(1) { /* Infinite loop, threads are doing all the work.*/
-        /* Starts the port threads if they are not running */
-        for(n=0; n < config.portcount; n++) {
-            mp = &config.ports[n];
-            if(!mp->running && !mp->inhibit) {
-                if(mb_start_port(mp) < 0) { /* If the port fails to open */
-                    mp->inhibit = 1; /* then don't try to open it anymore */
-                    mp->inhibit_temp = 0; /* reset the inhibit timer */
-                }
-            } else if(mp->inhibit && mp->inhibit_time) {
-                mp->inhibit_temp++;
-                if(mp->inhibit_temp >= mp->inhibit_time) {
-                    mp->inhibit = 0;
-                    mp->inhibit_temp = 0;
-                }
-            }
-/* TODO: The inhibition above could be tied to a timer or counter so that it would only be tried
-every so often instead of being inhibited completely.  This would make it possible for the program to
-recover from a USB serial port being pulled and then replaced or a device server going offline. */
-        }
-        sleep(1);
-    }            
+//    while(1) { /* Infinite loop, threads are doing all the work.*/
+//        /* Starts the port threads if they are not running */
+//        for(n=0; n < config.portcount; n++) {
+//            mp = config.ports[n];
+//            if(!mp->running && !mp->inhibit) {
+//                if(mb_start_port(mp) < 0) { /* If the port fails to open */
+//                    mp->inhibit = 1; /* then don't try to open it anymore */
+//                    mp->inhibit_temp = 0; /* reset the inhibit timer */
+//                }
+//            } else if(mp->inhibit && mp->inhibit_time) {
+//                mp->inhibit_temp++;
+//                if(mp->inhibit_temp >= mp->inhibit_time) {
+//                    mp->inhibit = 0;
+//                    mp->inhibit_temp = 0;
+//                }
+//            }
+///* TODO: The inhibition above could be tied to a timer or counter so that it would only be tried
+//every so often instead of being inhibited completely.  This would make it possible for the program to
+//recover from a USB serial port being pulled and then replaced or a device server going offline. */
+//        }
+//        sleep(1);
+//    }            
     return 0;
 }
 
@@ -140,9 +141,9 @@ catchpipe(int sig)
     int n;
     
     for(n = 0; n < config.portcount; n++) {
-        if(pthread_equal(pthread_self(), config.ports[n].thread)) {
-            config.ports[n].dienow = 1;
-        }
+        //if(pthread_equal(pthread_self(), config.ports[n].thread)) {
+            //mb_kill_port_thread(config.ports[n]);
+        //}
     }
 }
 
@@ -152,12 +153,10 @@ getout(int exitcode)
     int n;
     dax_debug(1, "Modbus Module Exiting");
     dax_mod_unregister();
-    //--dt_destroy();
     
-    /* Delete the PID file */   
     for(n = 0; n < config.portcount; n++) {
     /* TODO: Should probably stop the running threads here and then close the ports */
-        close(config.ports[n].fd);
+        mb_destroy_port(config.ports[n]);
     }
     exit(exitcode);
 }
