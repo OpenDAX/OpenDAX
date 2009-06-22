@@ -75,7 +75,7 @@ add_random_tags(int tagcount, char *name)
             count = 1; /* the rest are just tags */
         }
         data_type = get_random_type();
-        result = dax_tag_add(tagname, data_type, count);
+        result = dax_tag_add(NULL, tagname, data_type, count);
         if(result < 0) {
             dax_debug(LOG_MINOR, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
             return -1;
@@ -93,7 +93,7 @@ tagtopass(const char *name)
 {
     tag_index index;
     
-    index = dax_tag_add((char *)name, DAX_BOOL, 1);
+    index = dax_tag_add(NULL, (char *)name, DAX_BOOL, 1);
     if(index < 0) {
         dax_debug(LOG_MINOR, "Test Failed - %s was not allowed", name);
         return -1;
@@ -107,7 +107,7 @@ tagtofail(const char *name)
 {
     tag_index index;
     
-    index = dax_tag_add((char *)name, DAX_BOOL, 1);
+    index = dax_tag_add(NULL, (char *)name, DAX_BOOL, 1);
     if(index >= 0) {
         dax_debug(LOG_MINOR, "Test Failed - %s was allowed", name);
         return -1;
@@ -253,7 +253,7 @@ check_tag_events(void)
     tag_index handle;
     int id;
     
-    handle = dax_tag_add("EventTest", DAX_DINT, 10);
+    handle = dax_tag_add(NULL, "EventTest", DAX_DINT, 10);
     if(handle < 0) {
         dax_debug(1, "Unable to add EventTest Tag");
         return -1;

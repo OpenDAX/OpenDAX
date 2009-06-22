@@ -42,8 +42,8 @@ show_tag(int n, dax_tag temp_tag)
 int
 tag_add(char **tokens)
 {
-    int type, count;
-    tag_index handle;
+    int type, count, result;
+    Handle handle;
     const char usage[] = "Usage: add type count\n";
     
     /* Make sure that name is not NULL and we get the tagname */
@@ -76,9 +76,9 @@ tag_add(char **tokens)
         return 1;
     }
     
-    handle = dax_tag_add(tokens[0], type, count);
-    if(handle > 0) {
-        printf("Tag Added at handle %d\n", handle);
+    result = dax_tag_add(&handle, tokens[0], type, count);
+    if(result > 0) {
+        printf("Tag Added at index %d\n", handle.index);
     } else {
         /* TODO: Print descriptive error message here */
         printf("OPPS Can't add tag???\n");
@@ -159,8 +159,7 @@ tag_list(char **tokens)
 }
 
 
-/* This function figures out what type of data the tag is and translates
- * buff appropriately and pushes the value onto the lua stack. */
+/* Used to printf a dax tag value. */
 static void inline
 dax_to_string(unsigned int type, void *buff, int index)
 {

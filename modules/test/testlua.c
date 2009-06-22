@@ -196,7 +196,7 @@ _tag_add(lua_State *L)
         }
     }
 
-    result = dax_tag_add((char *)lua_tostring(L,1), type, lua_tointeger(L,3));
+    result = dax_tag_add(NULL, (char *)lua_tostring(L,1), type, lua_tointeger(L,3));
     return 0;
 }
 

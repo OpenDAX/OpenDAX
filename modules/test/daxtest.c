@@ -34,7 +34,7 @@ tag_read_write_test(void)
     Handle handle;
     tag_type type;
     dax_int write_data[32], read_data[32];
-    index = dax_tag_add("TestReadTagInt", DAX_INT, 32);
+    index = dax_tag_add(&handle, "TestReadTagInt", DAX_INT, 32);
     
     dax_tag_handle(&handle, "TestReadTagInt", 32);
     
@@ -49,7 +49,7 @@ tag_read_write_test(void)
     dax_cdt_add(type, "TheInt", DAX_INT, 2);
     dax_cdt_finalize(type);
     
-    dax_tag_add("TestCDTRead", type, 1);
+    dax_tag_add(&handle, "TestCDTRead", type, 1);
     dax_tag_handle(&handle, "TestCDTRead.TheInt[1]", 1);
     write_data[1] = 444;
     dax_write_tag(handle, &write_data[1]);
