@@ -82,8 +82,10 @@ getbaudrate(unsigned int b_in)
             return B38400;
         case 57600:
             return B57600;
+#ifdef B76800 /* Not a common baudrate */
         case 76800:
             return B76800;
+#endif
         case 115200:
             return B115200;
         default:
