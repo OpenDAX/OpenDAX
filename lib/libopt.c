@@ -202,12 +202,12 @@ dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value)) {
 /* This function sets the value and calls the callback function. */
 static int
 _set_attr(optattr *attr, char *value) {
-    printf("_set_attr() called to set %s to %s\n", attr->name, value);
+    //--printf("_set_attr() called to set %s to %s\n", attr->name, value);
     /* Set the value and call the callback function if there is one */
     if( !(attr->flags & CFG_NO_VALUE) ) {
         attr->value = strdup(value);
     }
-    printf("%s was set to %s", attr->name, attr->value);
+    //--printf("%s was set to %s\n", attr->name, attr->value);
     if(attr->callback) {
         attr->callback(attr->name, value);
     }
@@ -392,7 +392,7 @@ _mod_config_file(void) {
 	/* This gets the default configuration file name
 	 * We add 2 for the NULL character and the '/' */
 	cfile = dax_get_attr("config");
-	printf("dax_get_attr(\"config\" returned %s\n", cfile);
+	//--printf("dax_get_attr(\"config\") returned %s\n", cfile);
 	if(cfile == NULL) { 
 	    /* No configuration file in the attribute list then we'll
 	     * build the path from the default config directory and 

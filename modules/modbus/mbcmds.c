@@ -93,7 +93,7 @@ mb_destroy_cmd(mb_cmd *cmd) {
         if(cmd->userdata_free != NULL) {
             cmd->userdata_free(cmd, cmd->userdata);
         } else {
-            free(cmd);
+            free(cmd->userdata);
         }
     }
     free(cmd);
@@ -188,9 +188,9 @@ mb_set_userdata(mb_cmd *cmd, void *data)
     cmd->userdata = data;
 }
 
-/* Returns true (1) if the function code for cmd will write to the node */
+/* Returns true (1) if the function code for cmd will read from the node */
 int
-mb_is_write_cmd(mb_cmd *cmd)
+mb_is_read_cmd(mb_cmd *cmd)
 {
     switch(cmd->function) {
         case 1:
@@ -204,9 +204,9 @@ mb_is_write_cmd(mb_cmd *cmd)
 
 }
 
-/* Returns true (1) if the function code for cmd will read from the node */
+/* Returns true (1) if the function code for cmd will write to the node */
 int
-mb_is_read_cmd(mb_cmd *cmd)
+mb_is_write_cmd(mb_cmd *cmd)
 {
     switch(cmd->function) {
         case 5:

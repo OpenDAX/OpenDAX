@@ -204,6 +204,7 @@ _add_port(lua_State *L)
     mb_port *p;
     mb_port **newports;
     char *string, *name;
+    int slaveid, tmp;
     unsigned char devtype, protocol, type, enable; 
     
     if(!lua_istable(L, -1)) {
@@ -217,21 +218,6 @@ _add_port(lua_State *L)
             dax_fatal("Unable to allocate port array");
         }
     }
-//        lua_getglobal(L, "maxports");
-//        if(config.maxports == 0) {
-//            config.maxports = (int)lua_tonumber(L, -1);
-//        }
-//        lua_pop(L, 1);
-//        if(config.maxports <= 0) {
-//            config.maxports = MAX_PORTS;
-//        }
-//        dax_debug(10, "Allocating %d ports", config.maxports);
-//        //--NO GOOD MUST USE NEW FUNCTION TO CREATE A PORT
-//        //--config.ports = (struct mb_port *)malloc(sizeof(struct mb_port) * config.maxports);
-//        if(config.ports == NULL) {
-//            dax_fatal("Unable to allocate port array");
-//        }
-//    }
     /* Check to makes sure that we have some ports left */
     if(config.portcount >= config.portsize) {
         /* Double the size of the array */
@@ -244,7 +230,7 @@ _add_port(lua_State *L)
         }
     }
     
-    dax_debug(8, "Adding a port at index = %d", config.portcount);
+    dax_debug(LOG_MINOR, "Adding a port at index = %d", config.portcount);
     
     lua_getfield(L, -1, "name");
     name = (char *)lua_tostring(L, -1);
@@ -312,16 +298,25 @@ _add_port(lua_State *L)
         dax_debug(1, "Unknown Port Type %s, assuming MASTER", string);
         type = MB_MASTER;
     }
-    
     lua_pop(L, 2);
-    if(type == MB_SLAVE) _get_slave_config(L, p);
+    if(type == MB_SLAVE) {
+        lua_getfield(L, -1, "slaveid");
+        slaveid = (int)lua_tonumber(L, -1);
+        lua_pop(L, 1);
+       _get_slave_config(L, p);
+    } else {
+        slaveid = 0;
+    }
+    mb_set_protocol(p, type, protocol, slaveid);
     
     /* Have to decide how much of this will really be needed */
 //    lua_getfield(L, -1, "delay");
 //    p->delay = (unsigned int)lua_tonumber(L, -1);
 //    
-//    lua_getfield(L, -2, "wait");
-//    p->wait = (unsigned int)lua_tonumber(L, -1);
+    lua_getfield(L, -1, "frame");
+    tmp = (unsigned int)lua_tonumber(L, -1);
+    if(tmp > 0) mb_set_frame_time(p, tmp);
+    lua_pop(L, 1);
 //    
 //    lua_getfield(L, -3, "scanrate");
 //    p->scanrate = (unsigned int)lua_tonumber(L, -1);
@@ -344,7 +339,6 @@ _add_port(lua_State *L)
     
 //    lua_pop(L, 7);
     /* The lua script gets the index +1 */
-    config.portcount++;
     lua_pushnumber(L, config.portcount);
     
     return 1;
@@ -374,14 +368,16 @@ _add_command(lua_State *L)
     if(!lua_istable(L, 2)) {
         luaL_error(L, "add_command() received an argument that is not a table");
     }
-    if(mb_get_type(config.ports[p-1]) != MB_MASTER) {
+    printf("What do I think a MB_MASTER is?  I think %d\n", MB_MASTER);
+    if(mb_get_type(config.ports[p]) != MB_MASTER) {
+        printf("What kind of port did I get? %d\n", mb_get_type(config.ports[p-1]));
         dax_debug(1, "Adding commands only makes sense for a Master or Client port");
         return 0;
     }
     dax_debug(10, "Adding a command to port %d", p);
     
     /* Allocate the new command and add it to the port */
-    c = mb_new_cmd(config.ports[p-1]);
+    c = mb_new_cmd(config.ports[p]);
     if(c == NULL) {
         luaL_error(L, "Can't allocate memory for the command");
     }

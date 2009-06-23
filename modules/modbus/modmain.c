@@ -69,11 +69,25 @@ int main (int argc, const char * argv[]) {
     
     /* Set the input and output callbacks if we aren't going to the background */
     /* TODO: Configuration option for these??? */
-//    for(n = 0; n < config.portcount; n++) {
-//        mb_set_msgout_callback(config.ports[n], outdata);
-//        mb_set_msgin_callback(config.ports[n], indata);
-        
-//        mc = config.ports[n].commands;
+    printf("Port Count = %d\n", config.portcount);
+    for(n = 0; n < config.portcount; n++) {
+        mb_open_port(config.ports[n]);
+    }
+    while(1) {
+        for(n = 0; n < config.portcount; n++) {
+            printf("Running Port %d\n", n);
+            mb_set_msgout_callback(config.ports[n], outdata);
+            mb_set_msgin_callback(config.ports[n], indata);
+            
+            mb_scan_port(config.ports[n]);
+        }
+        sleep(1);
+    }
+    for(n = 0; n < config.portcount; n++) {
+        mb_close_port(config.ports[n]);
+    }
+
+    //        mc = config.ports[n].commands;
 //        while(mc != NULL) {
 //            //-- *** This ain't gonna work.  Creating tags should be done during configuration */
 //            result = dt_add_tag(&(mc->handle), mc->tagname, mc->index, mc->function, mc->length);
@@ -163,20 +177,20 @@ getout(int exitcode)
 
 /* Callback functions for printing the serial traffic */
 void
-outdata(mb_port *mp,u_int8_t *buff,unsigned int len)
+outdata(mb_port *mp, u_int8_t *buff, unsigned int len)
 {
    int n;
-   for(n=0;n<len;n++) {
-       printf("(%X)",buff[n]);
+   for(n = 0; n < len; n++) {
+       printf("(%X)", buff[n]);
    }
    printf("\n");
 }
 
 void
-indata(mb_port *mp,u_int8_t *buff,unsigned int len)
+indata(mb_port *mp, u_int8_t *buff, unsigned int len)
 {
    int n;
-   for(n=0;n<len;n++) {
+   for(n = 0; n < len; n++) {
        printf("[%X]",buff[n]);
    }
    printf("\n");

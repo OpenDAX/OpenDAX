@@ -333,7 +333,7 @@ mb_open_port(mb_port *m_port)
     } else {
         fd = openport(m_port);
     }
-    //--Removing pthread from the modbus library
+    //--Removing pthread from the modbus library??
     //--if(pthread_mutex_init (&m_port->port_mutex, NULL)) {
     //--    dax_error("Problem Initilizing Mutex for port: %s", m_port->name);
     //--    return -1;
@@ -390,6 +390,8 @@ mb_set_retries(mb_port *port, int retries)
 unsigned char
 mb_get_type(mb_port *port)
 {
+    DEBUGMSG2("mb_get_type() called for modbus port %s", port->name);
+    DEBUGMSG2("mb_get_type() returning %d", port->type);
     return port->type;
 }
 

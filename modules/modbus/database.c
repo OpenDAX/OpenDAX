@@ -52,16 +52,30 @@
 static void
 _write_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
+    int n;
+    
+    printf("_write_data");
+    for(n = 0; n < datasize; n++)
+        printf("[0x%X] ", data[n]);
+    printf("\n");
+    
     /* It really should be this easy if we have done everything right up to here */
-    dax_write_tag(*((Handle *)userdata), data);
+    //dax_write_tag(*((Handle *)userdata), data);
 }
 
 
 static void
 _read_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
+    int n;
+    
     /* It really should be this easy if we have done everything right up to here */
-    dax_read_tag(*((Handle *)userdata), data);
+    //dax_read_tag(*((Handle *)userdata), data);
+
+    printf("_read_data");
+    for(n = 0; n < datasize; n++)
+        printf("[0x%X] ", data[n]);
+    printf("\n");
 }
 
 
@@ -90,21 +104,21 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
         case 2:
         case 15:
             count = cdata->length;
-            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + cdata->length);
+            //result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + cdata->length);
             break;
         case 5:
             count = 1;
-            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + 1);
+            //result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + 1);
             break;
         case 3:
         case 4:
         case 16:
             count = cdata->length;
-            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + cdata->length);
+            //result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + cdata->length);
             break;
         case 6:
             count = 1;
-            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + 1);
+            //result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + 1);
             break;
         default:
             return;
@@ -114,7 +128,8 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
     free(userdata); /* This offsets the malloc in _add_command() */
     mb_set_userdata(c, NULL); /* Just so we know */
     
-    result = dax_tag_handle(h, tagname, count);
+    //result = dax_tag_handle(h, tagname, count);
+    result = 0;
     if(result == 0) {
         /* Since h is allocated with a single malloc call we don't have to free
          * it because it will be freed when the command is destroyed */
@@ -123,12 +138,14 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
     mb_pre_send_callback(c, NULL);
     if(mb_is_write_cmd(c)) {
         mb_pre_send_callback(c, _read_data);
+        /* Since this is a pre call we go ahead and call the function here */
+        _read_data(c, userdata, data, datasize);
     } else if(mb_is_read_cmd(c)) {
         mb_post_send_callback(c, _write_data);
     }
     
     /* just a sanity check to make sure that we've got the sizes right */
-    assert(h->size == datasize);
+    //assert(h->size == datasize);
 }
 
 //int

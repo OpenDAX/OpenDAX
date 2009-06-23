@@ -112,6 +112,7 @@ void mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *, void 
 void mb_send_fail_callback(mb_cmd *cmd, void (*send_fail)(struct mb_cmd *, void *));
 void mb_userdata_free_callback(mb_cmd *cmd, void (*userdata_free)(struct mb_cmd *, void *));
     
+int mb_scan_port(mb_port *mp);
 
 /* Functions to add...
 add free function to cmd

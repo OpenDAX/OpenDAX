@@ -3,11 +3,7 @@
 -- Configuration file for OpenDAX Modbus module
 
 tablesize = 1500         -- Size of the datatable
-tagname = "modbus"      -- The tagname that will be used for the datatable
-
--- Maximum number of ports to allocate
--- must be set before the first call to add_port()
-maxports = 3 
+tagname = "modbus"       -- The tagname that will be used for the datatable
 
 verbosity = 10
 
@@ -16,10 +12,10 @@ c = {}
 
 p.name = "SmokeDetectors"
 p.enable = true       -- enable port for scanning
-p.devtype = "SERIAL"  -- device type SERIAL, NET
+p.devtype = "SERIAL"  -- device type SERIAL, NETWORK
 p.ipaddress = "0.0.0.0"
 p.socket = "TCP"      -- IP socket protocol to use TCP or UDP
-p.bindport = 7777     -- TCP/UDP Port to use
+p.bindport = 502      -- TCP/UDP Port to use
 p.device = "/dev/ttyS0"
 --p.device = "/dev/tty.usbserial-FT3Q9XETA"
 p.type = "MASTER"     -- modbus master
@@ -35,9 +31,9 @@ p.baudrate = 9600
 p.databits = 8    
 p.stopbits = 1
 p.parity = "NONE"     -- NONE, EVEN, ODD
-p.scanrate = 1000      -- rate at which this port is scanned in mSec
+p.scanrate = 1000     -- rate at which this port is scanned in mSec
 p.timeout = 1000      -- timeout period in mSec for response from slave
-p.wait = 30           -- wait time for the interbyte timeout
+p.frame = 30          -- frame time for the interbyte timeout
 p.delay = 0           -- delay between response and the next request
 p.retries = 2         -- number of times to retry the command
 p.maxfailures = 20    -- total number of consecutive timeouts before the port is restarted
@@ -47,7 +43,8 @@ portid = add_port(p)
 
 if portid then
   -- These commands get the inputs
-  c.method = "CONTINUOUS"
+  c.enable = true
+  c.mode = "CONTINUOUS"
   c.node = 1
   c.fcode = 4
   c.register = 0

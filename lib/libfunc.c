@@ -24,7 +24,7 @@
 #include <stdarg.h>
 #include <signal.h>
 
-static int _verbosity = 0;
+//static int _verbosity = 0;
 static int _logflags = 0;
 
 /* These functions handle the logging and error callback function */
@@ -35,14 +35,14 @@ static void (*_dax_error)(const char *output) = NULL;
 static void (*_dax_log)(const char *output) = NULL;
 
 /* Set the verbosity level for the debug callback */
-void
-dax_set_verbosity(int level)
-{
-    /* bounds check */
-    if(level < 0) _verbosity = 0;
-    else if(level > 10) _verbosity = 10;
-    else _verbosity = level;
-}
+//void
+//dax_set_verbosity(int level)
+//{
+//    /* bounds check */
+//    if(level < 0) _verbosity = 0;
+//    else if(level > 10) _verbosity = 10;
+//    else _verbosity = level;
+//}
 
 void
 dax_set_debug_topic(u_int32_t topic)
@@ -76,14 +76,14 @@ dax_set_log(void (*log)(const char *format))
 }
 
 /* TODO: Make these function allocate the memory at run time so that
-   we don't have this limitation */
+ * we don't have this limitation */
 #ifndef DEBUG_STRING_SIZE
   #define DEBUG_STRING_SIZE 80
 #endif
 
 /* Function for use inside the library for sending debug messages.
-   If the level is lower than the global _verbosity level then it will
-   print the message.  Otherwise do nothing */
+ * If the level is lower than the global _verbosity level then it will
+ * print the message.  Otherwise do nothing */
 void
 dax_debug(int level, const char *format, ...)
 {

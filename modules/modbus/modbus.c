@@ -99,11 +99,33 @@ mb_start_port(struct mb_port *m_port)
 //        dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
 //        return -1;
 //    }
-//    return 0; //should never get here
+    return 0; //should never get here
+}
+
+int
+mb_scan_port(mb_port *mp)
+{
+    int cmds_sent = 0;
+    mb_cmd *mc;
+    
+    mc = mp->commands;
+    while(mc != NULL) {
+        /* Only if the command is enabled and the interval counter is over */
+        if(mc->enable && (++mc->icount >= mc->interval)) { 
+            mc->icount = 0;
+            /* TODO: Need to check the actual return value and act appropriately */
+            if( mb_send_command(mp, mc) > 0 ) {
+                mp->attempt = 0; /* Good response, reset counter */
+                cmds_sent++;
+                if(mp->delay > 0) usleep(mp->delay * 1000);
+            }
+        }
+        mc = mc->next; /* get next command from the linked list */
+    } /* End of while for sending commands */
+    return cmds_sent;
 }
 
 
-        
 
 /* This is the primary thread for a Modbus RTU master.  It calls the functions
    to send the request and recieve the responses.  It also takes care of the
@@ -308,8 +330,8 @@ getASCIIresponse(u_int8_t *buff, mb_port *mp)
 static int
 handleresponse(u_int8_t *buff, mb_cmd *cmd)
 {
-    int n, result;
-    u_int16_t *data;
+    int n;
+    //--u_int16_t *data;
     
     DEBUGMSG2("handleresponse() - Function Code = %d", cmd->function);
     cmd->responses++;
@@ -333,7 +355,7 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
             //--if(data == NULL) return ERR_ALLOC;
             /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
             for(n = 0; n < (buff[2] / 2); n++) {
-                COPYWORD(&cmd->data[n], &buff[(n * 2) + 3]);
+                COPYWORD(&((u_int16_t *)cmd->data)[n], &buff[(n * 2) + 3]);
             }
             //--if(dt_setword(cmd->address + n, temp)) return -1;
             //--result = dt_setwords(cmd->idx, cmd->index, data, cmd->length);
