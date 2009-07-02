@@ -15,8 +15,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- *
- * This is the source file for Custom Data Type handling code
+ * This is the source file for Custom Data Type handling code in the library
  */
 
 #include <libdax.h>
@@ -146,19 +145,26 @@ get_typesize(tag_type type)
     return size;
 }
 
-/* Retrieves a pointer to the datatype array element identified by type */
+/* Retrieves a pointer to the datatype array element identified by type 
+ * returns NULL on failure and if the error pointer is not NULL the error
+ * code will be placed there. */
 datatype *
-get_cdt_pointer(tag_type type)
+get_cdt_pointer(tag_type type, int *error)
 {
     int index;
+    int result;
     
+    if(error != NULL) *error = 0;
     if(IS_CUSTOM(type)) {
         index = CDT_TO_INDEX(type);
         if(index < _datatype_size && _datatypes[index].name != NULL) {
             return &_datatypes[index];
         } else {
-            if(!dax_cdt_get(type, NULL)) {
+            result = dax_cdt_get(type, NULL);
+            if(result == 0) {
                 return &_datatypes[index]; 
+            } else {
+                if(error != NULL) *error = result;
             }
             return NULL;
         }
@@ -269,7 +275,7 @@ dax_string_to_type(char *type)
         }
     }
     
-    /* If not got to the server for it */
+    /* If not go to the server for it */
     result = dax_cdt_get(0, type);
 
     if(result) {
@@ -584,8 +590,6 @@ dax_tag_handle(Handle *h, char *str, int count)
         h->size = get_typesize(list[n].type) * h->count;
     }
     
-    //--printf("Final Answer: byte = %d, bit = %d, type = %s, count = %d, size = %d\n", list[n].byte, list[n].bit, dax_type_to_string(list[n].type), h->count, h->size);
-    
 getout:
     free(list);
     if(result) {
@@ -593,5 +597,71 @@ getout:
         bzero(h, sizeof(*h));
     }
     return result;
+}
 
+/* This is the custom datatype iterator.  If type is a datatype then this
+ * function iterates over each member of the datatype and calls 'callback'
+ * with the cdt_iter structure and passes back the udata pointer as well.
+ * If type is 0 then it iterates over the list of datatypes.  In this case
+ * the name and type fields in cdt_iter are the only things that are relevant. */
+int
+dax_cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter, void *))
+{
+    datatype *dt;
+    cdt_member *this;
+    cdt_iter iter;
+    int result;
+    int byte = 0;
+    int bit = 0;
+    int index = 1;
+    
+    if(type == 0) { /* iterate through the custom types */
+        dt = get_cdt_pointer(CDT_TO_TYPE(index), &result);
+        while(result == 0 || result == ERR_INUSE) {
+            if(result == 0) {
+                iter.name = dt->name;
+                iter.type = CDT_TO_TYPE(index);
+                iter.count = iter.byte = iter.bit = 0;
+                callback(iter, udata);
+            }
+            index++;
+            dt = get_cdt_pointer(CDT_TO_TYPE(index), &result); 
+        }
+    } else { /* iterate over the members */
+        dt = get_cdt_pointer(type, &result);
+        if(dt == NULL) {
+            return result;
+        }
+        
+        this = dt->members;
+        while(this != NULL) {
+            iter.name = this->name;
+            iter.type = this->type;
+            iter.count = this->count;
+            iter.bit = bit;
+            iter.byte = byte;
+            callback(iter, udata); /* Call the callback */
+            /* No sense in calculating the offsets if we're done */
+            if(this->next != NULL) { 
+                if(this->type == DAX_BOOL) {
+                    bit += this->count % 8;
+                    byte += this->count / 8;
+                    if(bit > 7) { /* adjust for the overflow */
+                        bit %= 8;
+                        byte ++;
+                    }
+                    /* if the next one is not a BOOL then we should align */
+                    if(this->next->type != DAX_BOOL && bit != 0) {
+                        bit = 0;
+                        byte++;
+                    }
+                } else { /* Not this->type == DAX_BOOL */
+                    bit = 0;
+                    byte += get_typesize(this->type) * this->count;
+                }
+            }
+            this = this->next;
+        }
+    }
+    return 0;
 }

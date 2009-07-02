@@ -229,7 +229,7 @@ _read_format(tag_type type, int count, void *data, int offset)
     newdata = (char *)data + offset;
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
-        dtype = get_cdt_pointer(type);
+        dtype = get_cdt_pointer(type, NULL);
         pos = offset;
         if(dtype != NULL) {
             this = dtype->members;
@@ -430,7 +430,7 @@ _write_format(tag_type type, int count, void *data, int offset)
     newdata = (char *)data + offset;
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
-        dtype = get_cdt_pointer(type);
+        dtype = get_cdt_pointer(type, NULL);
         pos = offset;
         if(dtype != NULL) {
             this = dtype->members;

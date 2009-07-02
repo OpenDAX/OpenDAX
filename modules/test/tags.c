@@ -153,6 +153,10 @@ cdt_recursion(void)
     pass[p++] = dax_cdt_add(t[5], "T3", t[3], 1);
     fail[f++] = dax_cdt_add(t[4], "T5", t[4], 1);
     
+    for(n = 0; n < 6; n++) {
+        dax_cdt_finalize(t[n]);
+    }
+    
     
     /* Check that everything that is supposed to pass did */
     for(n = 0; n < p; n++) {

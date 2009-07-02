@@ -109,9 +109,9 @@ _checktype(tag_type type)
 }
 
 /* Determine the size of the tag in bytes.  It'll
- be big trouble if the handle is out of bounds.
- This will also return 0 when the tag has been deleted
- which is designated by zero type and zero count */
+ * be big trouble if the index is out of bounds.
+ * This will also return 0 when the tag has been deleted
+ * which is designated by zero type and zero count */
 static inline size_t
 _get_tag_size(tag_index idx)
 {
@@ -529,6 +529,7 @@ unsigned int
 cdt_create(char *name, int *error)
 {
     int retval;
+    datatype *new_datatype;
 
     if( (retval = _validate_name(name)))
         return retval;
@@ -543,8 +544,6 @@ cdt_create(char *name, int *error)
     /* Do we have space in the array */
     if(_datatype_index == _datatype_size) {
         /* Allocate more space for the array */
-        datatype *new_datatype;
-
         new_datatype = xrealloc(_datatypes, (_datatype_size + DAX_DATATYPE_SIZE) * sizeof(datatype));
 
         if(new_datatype != NULL) {

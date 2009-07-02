@@ -79,8 +79,8 @@
 #define ERR_NOTFOUND  -5  /* Not found */
 #define ERR_MSG_SEND  -6  /* Unable to send message */
 #define ERR_MSG_RECV  -7  /* Unable to receive message */
-#define ERR_TAG_BAD   -8  /* Bad tagname */
-#define ERR_TAG_DUPL  -9  /* Duplicate tagname */
+#define ERR_TAG_BAD   -8  /* Bad name */
+#define ERR_TAG_DUPL  -9  /* Duplicate name */
 #define ERR_ALLOC     -10 /* Unable to allocate resource */
 #define ERR_MSG_BAD   -11 /* Bad Message Received */
 #define ERR_DUPL      -12 /* Duplicate */
@@ -191,7 +191,7 @@ int dax_mod_unregister(void);   /* Unregister the Module with the server */
 int dax_tag_add(Handle *h, char *name, tag_type type, int count);
 //--tag_index dax_tag_add(char *name, tag_type type, unsigned int count);
 
-/* Get tag by name, will decode members and subscripts */
+/* Get tag by name, will not decode members and subscripts */
 int dax_tag_byname(dax_tag *tag, char *name);
 /* Get tag by index */
 int dax_tag_byindex(dax_tag *tag, tag_index index);
@@ -202,10 +202,6 @@ int dax_tag_byindex(dax_tag *tag, tag_index index);
  * items, that we want. */
 int dax_tag_handle(Handle *h, char *str, int count);
 
-/* Get the datatype from a string */
-tag_type dax_string_to_type(char *type);
-/* Get a string that is the datatype, i.e. "BOOL" */
-const char *dax_type_to_string(tag_type type);
 /* Retrieves the tagname and index from the form of Tagname[i] */
 /* TODO: dax_tag_parse should probably be deprecated */
 int dax_tag_parse(char *name, char *tagname, int *index);
@@ -251,8 +247,28 @@ int dax_event_del(int id);
 int dax_event_get(int id);
 
 /* Custom Datatype Functions */
+
+/* Get the datatype from a string */
+tag_type dax_string_to_type(char *type);
+/* Get a string that is the datatype, i.e. "BOOL" */
+const char *dax_type_to_string(tag_type type);
+
+/* TODO: This could be improved. It really needs to be atomic */
 tag_type dax_cdt_create(char *name, int *error);
 int dax_cdt_add(tag_type cdt_type, char *name, tag_type mem_type, unsigned int count);
 int dax_cdt_finalize(tag_type type);
+
+/* Custom Datatype Iterator */
+struct cdt_iter {
+    const char *name;
+    tag_type type;
+    int count;
+    int byte;
+    int bit;
+};
+
+typedef struct cdt_iter cdt_iter;
+
+int dax_cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
 
 #endif /* !__OPENDAX_H */

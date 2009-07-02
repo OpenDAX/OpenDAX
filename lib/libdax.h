@@ -86,8 +86,8 @@ int opt_get_msgtimeout(void);
  * members are represented as a linked list */
 typedef struct CDT_Member {
     char *name;
-    unsigned int type;
-    u_int32_t count;
+    tag_type type;
+    int count;
     struct CDT_Member *next;
 } cdt_member;
 
@@ -99,7 +99,7 @@ typedef struct {
 } datatype;
 
 int get_typesize(tag_type type);
-datatype *get_cdt_pointer(tag_type);
+datatype *get_cdt_pointer(tag_type, int *);
 int add_cdt_to_cache(tag_type type, char *typedesc);
 int dax_cdt_get(tag_type type, char *name);
 

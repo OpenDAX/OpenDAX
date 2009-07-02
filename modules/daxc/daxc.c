@@ -46,7 +46,7 @@ int main(int argc,char *argv[]) {
     dax_init_config("daxc");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute("execute","execute", 'x', flags, NULL);
-    result += dax_add_attribute("file","file", 'f', flags, "daxtest.lua");
+    result += dax_add_attribute("file","file", 'f', flags, NULL);
     
     dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF);
     
@@ -144,20 +144,19 @@ runcmd(char *instr)
     } else if( !strncasecmp(tokens[0], "add", 1)) {
         result = tag_add(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "list", 4)) {
-        result = tag_list(&tokens[1]);
+        if(tokens[1] == NULL || !strncasecmp(tokens[1], "tag", 3)) {
+            result = list_tags(&tokens[2]);
+        } else if(!strncasecmp(tokens[1], "type", 3)) {
+            result = list_types(&tokens[2]);
+        } else {
+            fprintf(stderr, "ERROR: Unknown list parameter %s\n", tokens[1]);
+        }
     } else if( !strncasecmp(tokens[0], "read", 1)) {
         result = tag_read(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "write", 1)) {
         result = tag_write(&tokens[1], tcount-1);
-/* The tag stuff needs to be removed.  The single commands are simpler */
-    //} else if( !strcasecmp(tok,"tag")) {
-    //    tok = strtok(NULL, " ");
-    //    if(tok == NULL) fprintf(stderr,"ERROR: Missing Subcommand\n");
-    //    else if( !strcasecmp(tok, "list")) return(tag_list());
-    //    else if( !strcasecmp(tok, "set")) return(tag_set());
-    //    else if( !strcasecmp(tok, "get")) return(tag_get());
-    //    else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tok);
-    
+    } else if( !strncasecmp(tokens[0], "cdt", 3)) {
+        result = cdt_add(&tokens[1], tcount -1);
     } else if( !strncasecmp(tokens[0], "mod", 3)) {
         printf("Haven't done 'mod' yet!\n");
     } else if( !strcasecmp(tokens[0],"db")) {

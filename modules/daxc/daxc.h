@@ -24,9 +24,13 @@
 
 /* TAG commands */
 int tag_add(char **tokens);
-int tag_list(char **tokens);
+int list_tags(char **tokens);
 int tag_read(char **tokens);
 int tag_write(char **tokens, int tcount);
+
+/* Custom datatype commands */
+int cdt_add(char **tokens, int tcount);
+int list_types(char **tokens);
 
 /* DB commands (DataBase) */
 int db_read_bit(void);

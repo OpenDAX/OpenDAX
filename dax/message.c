@@ -640,7 +640,7 @@ msg_cdt_get(dax_message *msg)
     unsigned char subcommand;
     tag_type cdt_type;
     char type[DAX_TAGNAME_SIZE + 1];
-    char *str, *data = NULL;
+    char *str = NULL, *data = NULL;
     
     result = 0;  /* result will stay zero if we don't have any errors */
     subcommand = msg->data[0];

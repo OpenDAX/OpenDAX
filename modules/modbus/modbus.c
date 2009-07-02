@@ -106,19 +106,31 @@ int
 mb_scan_port(mb_port *mp)
 {
     int cmds_sent = 0;
+    int result;
     mb_cmd *mc;
     
     mc = mp->commands;
-    while(mc != NULL) {
+    while(mc != NULL && mp->inhibit == 0) {
         /* Only if the command is enabled and the interval counter is over */
         if(mc->enable && (++mc->icount >= mc->interval)) { 
             mc->icount = 0;
-            /* TODO: Need to check the actual return value and act appropriately */
-            if( mb_send_command(mp, mc) > 0 ) {
+            if(mp->maxattempts) {
+                mp->attempt++;
+                DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
+            }
+/* TODO: Need to check the actual return value and act appropriately */
+            result = mb_send_command(mp, mc);
+            if( result > 0 ) {
                 mp->attempt = 0; /* Good response, reset counter */
                 cmds_sent++;
                 if(mp->delay > 0) usleep(mp->delay * 1000);
+            } else if( result == 0 ) mp->maxattempts--; /* Conditional command that was not sent */
+            
+            if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
+                mp->inhibit_temp = 0;
+                mp->inhibit = 1;
             }
+
         }
         mc = mc->next; /* get next command from the linked list */
     } /* End of while for sending commands */
@@ -144,7 +156,7 @@ masterRTUthread(mb_port *mp)
     mp->running = 1; /* Tells the world that we are going */
     mp->attempt = 0;
     /* If enable goes negative we bail at the next scan */
-    while(mp->enable >= 0 && !bail) {
+    while(mp->enable != 0 && !bail) {
         gettimeofday(&start, NULL);
         if(mp->enable) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
@@ -194,7 +206,7 @@ static int
 sendRTUrequest(mb_port *mp, mb_cmd *cmd)
 {
     u_int8_t buff[MB_FRAME_LEN], length;
-    u_int16_t crc, temp, result;
+    u_int16_t crc, temp; //, result;
     
     /* build the request message */
     buff[0]=cmd->node;
@@ -421,7 +433,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
         }
         
         if(msglen > 0) {
-            result = handleresponse(buff,mc);
+            result = handleresponse(buff,mc); /* Returns 0 on success + on failure */
             if(result > 0) {
                 if(mc->send_fail != NULL) {
                     mc->send_fail(mc, mc->userdata);
@@ -435,7 +447,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
                 }
                 mc->lasterror = 0;
             }
-            return 0; /* We got some kind of message so no sense in retrying */
+            return msglen; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
             if(mc->send_fail != NULL) {
                 mc->send_fail(mc, mc->userdata);
@@ -458,7 +470,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     if(mc->send_fail != NULL) {
         mc->send_fail(mc, mc->userdata);
     }
-    return -2;
+    return 0 - mc->lasterror;
 }
 
 

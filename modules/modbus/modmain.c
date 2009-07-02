@@ -73,6 +73,7 @@ int main (int argc, const char * argv[]) {
     for(n = 0; n < config.portcount; n++) {
         mb_open_port(config.ports[n]);
     }
+    
     while(1) {
         for(n = 0; n < config.portcount; n++) {
             printf("Running Port %d\n", n);

@@ -25,15 +25,12 @@ static inline void
 show_tag(int n, dax_tag temp_tag)
 {
     /* Print the name */
-    if( n >=0 ) printf("[%d] ", n);
-    printf("%s \t %s", temp_tag.name, dax_type_to_string(temp_tag.type));
+    if( n >= 0 ) printf("[%3d] ", n);
+    printf("%-32s %s", temp_tag.name, dax_type_to_string(temp_tag.type));
     /* Output the array size of it's greater than 1 */
     if(temp_tag.count > 1) {
         printf("[%d]", temp_tag.count);
     }
-    /* Output the handle and the carriage return */
-    //printf(" \t 0x%08X\n", temp_tag.handle);
-    //--printf(" \t %d\n", temp_tag.handle);
     printf("\n");
 }
 
@@ -77,7 +74,7 @@ tag_add(char **tokens)
     }
     
     result = dax_tag_add(&handle, tokens[0], type, count);
-    if(result > 0) {
+    if(result == 0) {
         printf("Tag Added at index %d\n", handle.index);
     } else {
         /* TODO: Print descriptive error message here */
@@ -97,7 +94,7 @@ tag_add(char **tokens)
 /* TODO: If we allow tags to be deleted then gaps will appear in the list.
  * We should deal with these appropriately */
 int
-tag_list(char **tokens)
+list_tags(char **tokens)
 {
     dax_tag temp_tag;
     static int lastindex;
@@ -160,7 +157,7 @@ tag_list(char **tokens)
 
 
 /* Used to printf a dax tag value. */
-static void inline
+static void
 dax_to_string(unsigned int type, void *buff, int index)
 {
     switch (type) {
@@ -209,7 +206,7 @@ dax_to_string(unsigned int type, void *buff, int index)
 
 /* This function figures out how to format the data from the string given
  * by *val and places the result in *buff.  If *mask is NULL it is ignored */
-static inline void
+static void
 string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
 {   
     long temp;
@@ -266,77 +263,140 @@ string_to_dax(char *val, unsigned int type, void *buff, void *mask, int index)
     }
 }
 
+//static int
+//_get_tag_handle(Handle *h, char **tokens)
+//{
+//    tag_index index;
+//    dax_tag tag;
+//    int result;
+//    
+//    
+//    if(tokens[0]) {
+//        /* If token is numeric then it's a handle that's being passed */
+//        if(isdigit(tokens[0][0])) {
+//            index = strtol(tokens[0], NULL, 0);
+//            result = dax_tag_byindex(&tag, index);
+//            if(result) {
+//                fprintf(stderr, "ERROR: No Tag at Index: %d\n", handle);
+//                return 1;
+//            }
+//            /* otherwise the token is a tagname */
+//        } else {
+//            if(dax_tag_byname(&tag, name)) {
+//                fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
+//                return 1;
+//            } else {
+//                handle = tag.idx;
+//            }
+//        }
+//        
+//        /* If we have not found an index by this point then... */
+//        if(index < 0) {
+//            if( tokens[1] && (tokens[1][0] == 'i' || tokens[1][0] == 'I' )) {
+//                if(tokens[2] != NULL) {
+//                    index = strtol(tokens[2], NULL, 0);
+//                    if(tokens[3] != NULL) {
+//                        points = strtol(tokens[3], NULL, 0);
+//                    } else {
+//                        points = 1;
+//                    }
+//                } else {
+//                    fprintf(stderr, "ERROR: Missing Index\n");
+//                    return 1;
+//                }
+//            } else {
+//                index = 0;
+//                points = tag.count;
+//            }
+//        } else {
+//            if(tokens[1] != NULL) {
+//                points = strtol(tokens[1], NULL, 0);
+//            }
+//        }
+//    } else {
+//        fprintf(stderr, "ERROR: No Tagname or index given\n");
+//        return 1;
+//    }
+//
+//}
+
 
 int
 tag_read(char **tokens)
 {
-    char name[DAX_TAGNAME_SIZE+ 1];
-    tag_index handle;
+    //char name[DAX_TAGNAME_SIZE + 1];
+    Handle handle;
     int index = -1, result, points = 0, n;
-    size_t size;
+    //size_t size;
     dax_tag tag;
     void *buff;
     
-    if(tokens[0]) {
-        /* If token is numeric then it's a handle that's being passed */
-        if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
-            handle = strtol(tokens[0], NULL, 0);
-            result = dax_tag_byindex(&tag, handle);
-            if(result) {
-                fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
-                return 1;
-            }
-            /* otherwise the token is a tagname */
-        } else {
-            if(dax_tag_parse(tokens[0], name, &index) || dax_tag_byname(&tag, name)) {
-                fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
-                return 1;
-            } else {
-                handle = tag.idx;
-            }
-        }
-        
-        /* If we have not found an index by this point then... */
-        if(index < 0) {
-            if( tokens[1] && (tokens[1][0] == 'i' || tokens[1][0] == 'I' )) {
-                if(tokens[2] != NULL) {
-                    index = strtol(tokens[2], NULL, 0);
-                    if(tokens[3] != NULL) {
-                        points = strtol(tokens[3], NULL, 0);
-                    } else {
-                        points = 1;
-                    }
-                } else {
-                    fprintf(stderr, "ERROR: Missing Index\n");
-                    return 1;
-                }
-            } else {
-                index = 0;
-                points = tag.count;
-            }
-        } else {
-            if(tokens[1] != NULL) {
-                points = strtol(tokens[1], NULL, 0);
-            }
-        }
-    } else {
-        fprintf(stderr, "ERROR: No Tagname or handle given\n");
-        return 1;
-    }
-    
-    /* Get the smaller value */
-    if(tag.count < points) {
-        points = tag.count;
-        /* Should I print a warning??? */
-    }
-    
-    /* Determine how much memory we need */
-    if(tag.type == DAX_BOOL) size = points / 8 + 1;
-    else                     size = (TYPESIZE(tag.type) / 8) * points;
-    
-    buff = malloc(size);
-    //--printf("buff = %p\n", buff);
-    if(!buff) {
+//    if(tokens[0]) {
+//        /* If token is numeric then it's a handle that's being passed */
+//        if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
+//            handle = strtol(tokens[0], NULL, 0);
+//            result = dax_tag_byindex(&tag, handle);
+//            if(result) {
+//                fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
+//                return 1;
+//            }
+//            /* otherwise the token is a tagname */
+//        } else {
+//            if(dax_tag_byname(&tag, name)) {
+//                fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
+//                return 1;
+//            } else {
+//                handle = tag.idx;
+//            }
+//        }
+//        
+//        /* If we have not found an index by this point then... */
+//        if(index < 0) {
+//            if( tokens[1] && (tokens[1][0] == 'i' || tokens[1][0] == 'I' )) {
+//                if(tokens[2] != NULL) {
+//                    index = strtol(tokens[2], NULL, 0);
+//                    if(tokens[3] != NULL) {
+//                        points = strtol(tokens[3], NULL, 0);
+//                    } else {
+//                        points = 1;
+//                    }
+//                } else {
+//                    fprintf(stderr, "ERROR: Missing Index\n");
+//                    return 1;
+//                }
+//            } else {
+//                index = 0;
+//                points = tag.count;
+//            }
+//        } else {
+//            if(tokens[1] != NULL) {
+//                points = strtol(tokens[1], NULL, 0);
+//            }
+//        }
+//    } else {
+//        fprintf(stderr, "ERROR: No Tagname or index given\n");
+//        return 1;
+//    }
+//    
+//    /* Get the smaller value */
+//    if(tag.count < points) {
+//        points = tag.count;
+//        /* Should I print a warning??? */
+//    }
+//    
+//    /* Determine how much memory we need */
+//    if(tag.type == DAX_BOOL) size = points / 8 + 1;
+//    else                     size = (TYPESIZE(tag.type) / 8) * points;
+//    
+//    buff = malloc(size);
+//    //--printf("buff = %p\n", buff);
+//    if(!buff) {
+//        fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
+//        return 1;
+//    }
+//    result = _get_tag_handle(&handle, tokens);
+    buff = malloc(handle.size);
+    if(buff == NULL) {
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
         return 1;
     }
@@ -349,12 +409,6 @@ tag_read(char **tokens)
         fprintf(stderr, "ERROR: Problem reading tag from opendax: %d\n", result);
         result = 1;
     } else {
-    /*
-        for(n = 0; n < size; n++) {
-            printf("0x%hhX ", ((char *)buff)[n]);
-        }
-        printf("\n");
-     */   
         for(n = 0; n < points; n++) {
             dax_to_string(tag.type, buff, n);
         }
@@ -364,11 +418,7 @@ tag_read(char **tokens)
     return result;
 }
 
-/* Write data to the dax database.
- * Syntax: handle <i index> data0 data1 ...
- * Or    : tagname <i index> data0 data1 ...
- * Or    : tagname[i] data0 data1 ...
- */
+
 int
 tag_write(char **tokens, int tcount)
 {
@@ -450,4 +500,68 @@ tag_write(char **tokens, int tcount)
     //printf("Tag Write Command handle = %d, index = %d, points = %d\n", handle, index, points);
     free(buff);
     return result;
+}
+
+/* adds a custom datatype to the server.
+ * Usage:
+ * >cdt typename mem1name mem1type mem1count mem2name mem2type mem2count ...
+ */
+/* TODO: This one needs a lot of cleaning up.  Probably should have a way to
+ * delete a datatype if it's not finalized.  Then we can undo this stuff if
+ * we run into an error */
+int
+cdt_add(char **tokens, int tcount)
+{
+    tag_type type;
+    tag_type memtype;
+    int count, n;
+    int result;
+    
+    if(tcount < 4 || (tcount - 1) % 3 != 0) {
+        fprintf(stderr, "ERROR: Wrong number of arguments\n");
+        return ERR_ARG;
+    }
+    type = dax_cdt_create(tokens[0], &result);
+    if(type == 0) {
+        fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
+        return result;
+    }
+    for(n = 1; n < tcount - 2; n += 3) {
+        memtype = dax_string_to_type(tokens[n+1]);
+        count = strtol(tokens[n+2], NULL, 0);
+        result = dax_cdt_add(type, tokens[n], memtype, count);
+        /* TODO: Should be able to uncreate the dt if any of these members fail */
+        if(result) {
+            fprintf(stderr, "ERROR: Unable to add member %s\n", tokens[n]);
+        }
+    }
+    dax_cdt_finalize(type);
+        
+    return 0;
+}
+
+static void
+_print_cdt_callback(cdt_iter iter, void *udata)
+{
+    if(udata == NULL) {
+        printf("%s\n", iter.name);
+    } else {
+        printf("%-32s  %s\n", iter.name, dax_type_to_string(iter.type));
+    }
+}
+
+
+int
+list_types(char **tokens)
+{
+    tag_type type;
+    
+    if(tokens[0] == NULL) {
+        dax_cdt_iter(0, NULL, _print_cdt_callback);
+    } else {
+        type = dax_string_to_type(tokens[0]);
+        //--printf("%s", tokens[0]);
+        dax_cdt_iter(type, &type, _print_cdt_callback);
+    }
+    return 0;
 }
