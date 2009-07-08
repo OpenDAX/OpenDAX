@@ -39,24 +39,24 @@ timediff(struct timeval oldtime,struct timeval newtime)
 /* Finds the modbus master command indexed by cmd.  Returns a pointer
  * to the command when found and NULL on error. */
 /* TODO: Replace with an iterator */
-mb_cmd *
-mb_get_cmd(struct mb_port *mp, unsigned int cmd)
-{
-    mb_cmd *node;
-    unsigned int n = 0;
-    if(mp == NULL) return NULL;
-    
-    if(mp->commands == NULL) {
-        node = NULL;
-    } else { 
-        node = mp->commands;
-        do {
-            if(n++ == cmd) return node;
-            node = node->next;
-        } while(node != NULL);
-    }
-    return node;
-}
+//mb_cmd *
+//mb_get_cmd(struct mb_port *mp, unsigned int cmd)
+//{
+//    mb_cmd *node;
+//    unsigned int n = 0;
+//    if(mp == NULL) return NULL;
+//    
+//    if(mp->commands == NULL) {
+//        node = NULL;
+//    } else { 
+//        node = mp->commands;
+//        do {
+//            if(n++ == cmd) return node;
+//            node = node->next;
+//        } while(node != NULL);
+//    }
+//    return node;
+//}
 
 
 /* Opens the port passed in m_port and starts the thread that

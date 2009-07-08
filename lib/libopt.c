@@ -498,7 +498,7 @@ dax_configure(int argc, char **argv, int flags)
         _main_config_file();
         
     _set_defaults();
-    _print_config();
+    //--_print_config();
     return _verify_config();
 }
 

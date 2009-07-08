@@ -107,6 +107,8 @@
  #define DAX_TAGNAME_SIZE 32
 #endif
 
+#define IS_CUSTOM(TYPE) ((TYPE) & DAX_CUSTOM)
+
 /* typedefs to the basic DAX_? datatypes */
 typedef u_int8_t   dax_byte;
 typedef u_int8_t   dax_sint;

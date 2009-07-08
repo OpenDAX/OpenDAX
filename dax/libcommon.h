@@ -75,7 +75,6 @@
 #define CDT_GET_TYPE    0x02 /* Retrieve the type by it's type */
 
 /* Some Macros for manipulating CDT types */
-#define IS_CUSTOM(TYPE) (TYPE & DAX_CUSTOM)
 #define CDT_TO_INDEX(TYPE) (TYPE & ~DAX_CUSTOM)
 #define CDT_TO_TYPE(INDEX) (INDEX | DAX_CUSTOM)
 
