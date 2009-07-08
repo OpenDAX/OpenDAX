@@ -23,18 +23,22 @@
 #include <readline/history.h>
 #include <getopt.h>
 
+#define HISTORY_FILE ".dax_history"
+
 int runcmd(char *inst);
 char *rl_gets(const char *prompt);
 void quit_signal(int sig);
 static void getout(int exitstatus);
 
 static int _quitsignal = 0;
+static char *history_file = NULL;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
     struct sigaction sa;
     int flags, result = 0;
     char *instr, *command, *filename;
+    char *home_dir;
     
  /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
@@ -51,7 +55,7 @@ int main(int argc,char *argv[]) {
     dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF);
     
     /* TODO: These have got to move to the configuration */
-    dax_set_debug_topic(-1);
+    dax_set_debug_topic(0);
         
  /* Check for OpenDAX and register the module */
     if( dax_mod_register("daxc") ) {
@@ -72,8 +76,21 @@ int main(int argc,char *argv[]) {
     
     if(filename || command) getout(0);
     
- /* At this point we are in interactive mode.  We call the readline
-    function repeatedly and then send the input to runcmd */
+/* At this point we are in interactive mode.  We first read the 
+ * readline history file and then start an infininte loop where
+ * We call the readline function repeatedly and then send the
+ * input to runcmd */
+    home_dir = getenv("HOME");
+    if(home_dir != NULL) {
+        history_file = malloc(strlen(home_dir) + strlen(HISTORY_FILE) + 2);
+        if(history_file != NULL) {
+            using_history();
+            sprintf(history_file, "%s/%s", home_dir, HISTORY_FILE);
+            read_history(history_file);
+            /* TODO: Add to configuration */
+            stifle_history(100);
+        }
+    }
     while(1) {
         if(_quitsignal) {
             dax_debug(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
@@ -207,7 +224,7 @@ rl_gets(const char *prompt)
     line_read = readline(prompt);
 
     /* If the line has any text in it,
-       save it on the history. */
+     * save it on the history. */
     if (line_read && *line_read)
         add_history(line_read);
 
@@ -225,6 +242,10 @@ quit_signal(int sig)
 static void
 getout(int exitstatus)
 {
+    if(history_file != NULL) {
+        write_history(history_file);
+        free(history_file);
+    }
     dax_mod_unregister();
     exit(exitstatus);
 }
