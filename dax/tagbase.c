@@ -150,10 +150,9 @@ _get_by_name(char *name)
     int i, min, max, try;
     
     min = 0;
-    max = _tagcount - 1;
+    max = _tagcount;
     
     while(min < max) {
-        //try = min + ((max - min) / 2);
         try = (min + max) / 2;
         i = strcmp(name, _index[try].name);
         if(i > 0) {
@@ -260,7 +259,7 @@ _add_index(char *name, int index)
 void
 initialize_tagbase(void)
 {
-    tag_type type;
+    //tag_type type;
     int result;
     
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
@@ -290,7 +289,7 @@ initialize_tagbase(void)
     _datatype_index = 0;
     _datatype_size = DAX_DATATYPE_SIZE;
 
-    type = cdt_create("System", NULL);
+    //type = cdt_create("System", NULL);
     //index = cdt_create("TimeStruct");
 
     /*
@@ -420,12 +419,12 @@ tag_del(char *name)
     return 0; /* Return good for now */
 }
 
-/* Finds a tag based on it's name.  Basically just a wrapper for get_by_name().
- Returns a pointer to the tag given by 'name' NULL if not found */
+/* Finds a tag based on it's name.  Basically just a wrapper for _get_by_name().
+ * Fills in the structure 'tag' and returns zero on sucess */
 int
 tag_get_name(char *name, dax_tag *tag)
 {
-    int i; //, handle;
+    int i;
 
     i = _get_by_name(name);
     if(i < 0) {

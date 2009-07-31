@@ -432,7 +432,7 @@ msg_tag_get(dax_message *msg)
     if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
         index = *((tag_index *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
         result = tag_get_index(index, &tag); /* get the tag */
-        xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for handle 0x%X", msg->fd, index);
+        xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for index 0x%X", msg->fd, index);
     } else { /* A name was passed */
         ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Add a NULL to avoid trouble */
         /* Get the tag by it's name */
@@ -656,7 +656,7 @@ msg_cdt_get(dax_message *msg)
     
     size = serialize_datatype(cdt_type, &str);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type 0x%X Message from Module %d", cdt_type, msg->fd);
+    xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type %s:0x%X Message from Module %d", type, cdt_type, msg->fd);
     
     /* TODO: !! We need to figure out how to deal with a string that is longer than one
      * message can hold.  For now we are going to return error. */

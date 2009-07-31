@@ -251,7 +251,8 @@ tag_type
 dax_string_to_type(char *type)
 {
     int result, n;
-    
+    printf("Looking for type %s\n", type);
+    usleep(500000);
     if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
     if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
     if(!strcasecmp(type, "SINT"))  return DAX_SINT;
@@ -613,15 +614,17 @@ dax_cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter, void *))
     int result;
     int byte = 0;
     int bit = 0;
-    int index = 1;
+    int index = 0;
     
     if(type == 0) { /* iterate through the custom types */
         dt = get_cdt_pointer(CDT_TO_TYPE(index), &result);
+        
         while(result == 0 || result == ERR_INUSE) {
             if(result == 0) {
                 iter.name = dt->name;
                 iter.type = CDT_TO_TYPE(index);
                 iter.count = iter.byte = iter.bit = 0;
+                printf("Iterating type %s\n", iter.name);
                 callback(iter, udata);
             }
             index++;

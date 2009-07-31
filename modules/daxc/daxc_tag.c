@@ -276,7 +276,6 @@ _get_tag_handle(Handle *h, char **tokens)
     }
 }
 
-
 int
 tag_read(char **tokens)
 {
@@ -285,7 +284,10 @@ tag_read(char **tokens)
     void *buff;
     
     result = _get_tag_handle(&handle, tokens);
-    if(result < 0) return result;
+    if(result < 0) {
+        fprintf(stderr, "ERROR: Unable to find tag - %s\n", tokens[0]);
+        return result;
+    }
     
     buff = malloc(handle.size);
     if(buff == NULL) {
