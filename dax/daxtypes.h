@@ -56,23 +56,25 @@ typedef struct dax_Module {
 
 /* This is the custom datatype member definition.  The 
  * members are represented as a linked list */
-typedef struct CDT_Member {
+struct cdt_member {
     char *name;
     unsigned int type;
     u_int32_t count;
-    struct CDT_Member *next;
-} cdt_member;
+    struct cdt_member *next;
+};
+
+typedef struct cdt_member cdt_member;
 
 /* This is the structure that represents the container for each
  * datatype. */
-typedef struct {
+struct datatype {
     char *name;
     unsigned char flags;
     unsigned int refcount; /* Number of tags of this type */
     cdt_member *members;
-} datatype;
+};
 
-
+typedef struct datatype datatype;
 
 
 #endif /* !__DAXTYPES_H */

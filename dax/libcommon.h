@@ -41,8 +41,7 @@
 #define MSG_EVNT_DEL   0x000A /* Delete an event */
 #define MSG_EVNT_GET   0x000B /* Get an event definition */
 #define MSG_CDT_CREATE 0x000C /* Create a Custom Datatype */
-#define MSG_CDT_ADD    0x000D /* Add a memeber to a Custom Datatype */
-#define MSG_CDT_GET    0x000E /* Get the definition of a Custom Datatype */
+#define MSG_CDT_GET    0x000D /* Get the definition of a Custom Datatype */
 /* More to come */
 
 #define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
@@ -89,15 +88,17 @@
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(tag_idx_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent */
-typedef struct {
+struct dax_message{
     /* Message Header Stuff.  Changes here should be reflected in the 
-       MSG_HDR_SIZE definition above */
+     * MSG_HDR_SIZE definition above */
     u_int32_t size;     /* size of the data sent */
     u_int32_t command;  /* Which function to call */
     /* Main data payload */
     char data[MSG_DATA_SIZE];
     /* The following stuff isn't in the socket message */
     int fd;             /* We'll use the fd to identify the module*/
-} dax_message;
+};
+
+typedef struct dax_message dax_message;
 
 #endif /* ! __LIBCOMMON_H */

@@ -119,8 +119,9 @@ _cdt_create(lua_State *L)
     if(lua_gettop(L) != 1) {
         luaL_error(L, "wrong number of arguments to cdt_create()");
     }
-    result = dax_cdt_create((char *)lua_tostring(L, -1), NULL);
-
+    //result = dax_cdt_new((char *)lua_tostring(L, -1), NULL);
+assert(0); //--Assertion because of the above commented function
+    
     if(result == 0) {
         luaL_error(L, "Unable to create datatype %s", lua_tostring(L, -1));
         return -1;
@@ -151,7 +152,8 @@ _cdt_add(lua_State *L)
         }
     }
     
-    result = dax_cdt_add(ttype, (char *)lua_tostring(L, 2), mtype, lua_tointeger(L,4));
+    //result = dax_cdt_member(ttype, (char *)lua_tostring(L, 2), mtype, lua_tointeger(L,4));
+    assert(0); //--Assertion because of the above commented function
     if(result) {
         luaL_error(L, "Unable to Add Member %s", lua_tostring(L, 2));
         return -1;
@@ -170,7 +172,7 @@ _cdt_finalize(lua_State *L)
         luaL_error(L, "wrong number of arguments to check_tagnames()");
     }
     type = lua_tointeger(L, 1);
-    result = dax_cdt_finalize(type);
+    result = dax_cdt_create(type);
     if(result) {
         luaL_error(L, "Ouch can't finalize 0x%X", type);
     }
@@ -200,17 +202,6 @@ _tag_add(lua_State *L)
     return 0;
 }
 
-/* Lua wrapper for cdt_recursion */
-static int
-_cdt_recursion(lua_State *L)
-{
-    _tests_run++;
-    if(cdt_recursion()) {
-        _tests_failed++;
-        return -1;
-    }
-    return 0;
-}
 
 static int
 _tag_handle_test(lua_State *L)
@@ -307,9 +298,6 @@ add_test_functions(lua_State *L)
     lua_pushcfunction(L, _check_tagnames);
     lua_setglobal(L, "check_tagnames");
 
-    lua_pushcfunction(L, _cdt_recursion);
-    lua_setglobal(L, "cdt_recursion");
-    
     lua_pushcfunction(L, _tag_handle_test);
     lua_setglobal(L, "tag_handle_test");
     

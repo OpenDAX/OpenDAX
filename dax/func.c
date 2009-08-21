@@ -94,6 +94,11 @@ xcalloc(size_t count, size_t size)
     return xmalloc(count * size);
 }
 
+void
+xfree(void *ptr) {
+    free(ptr);
+}
+
 /* Some general error handling functions. */
 /* TODO: These should get changed to deal with logging
    and properly exiting the program.  For now just print to

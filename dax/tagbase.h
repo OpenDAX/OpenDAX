@@ -32,8 +32,8 @@
  #define DAX_TAGLIST_SIZE 1024
 #endif
 
-/* This is the size that the tagname list array will grow when
-   the size is exceeded */
+/* This is the amount that the tagname list array will grow when
+ * the size is exceeded. */
 #ifndef DAX_TAGLIST_INC
  #define DAX_TAGLIST_INC 1024
 #endif
@@ -105,10 +105,11 @@ int tag_write(tag_index handle, int offset, void *data, size_t size);
 int tag_mask_write(tag_index handle, int offset, void *data, void *mask, size_t size);
 
 /* Custom DataType functions */
-unsigned int cdt_create(char *name, int *error);
+tag_type cdt_create(char *str, int *error);
+int cdt_append(datatype *cdt, char *str);
+//int cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count);
 unsigned int cdt_get_type(char *name);
 char *cdt_get_name(unsigned int type);
-int cdt_add_member(int cdt_index, char *name, tag_type type, unsigned int count);
 int type_size(tag_type type);
 int serialize_datatype(tag_type type, char **str);
 

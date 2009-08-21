@@ -289,35 +289,12 @@ initialize_tagbase(void)
     _datatype_index = 0;
     _datatype_size = DAX_DATATYPE_SIZE;
 
+    /* TODO: These can be done by manually entering the description string
+     * in the argument */
     //type = cdt_create("System", NULL);
     //index = cdt_create("TimeStruct");
 
-    /*
-    result = cdt_add_member(index, "TimeStamp", DAX_TIME, 1);
-    result = cdt_add_member(index, "Year", DAX_INT, 1);
-    result = cdt_add_member(index, "Month", DAX_INT, 1);
-    result = cdt_add_member(index, "Day", DAX_INT, 1);
-    result = cdt_add_member(index, "Hour", DAX_INT, 1);
-    result = cdt_add_member(index, "Minute", DAX_INT, 1);
-    result = cdt_add_member(index, "Second", DAX_INT, 1);
-    result = cdt_add_member(index, "uSecond", DAX_DINT, 1);
-
-    result = cdt_add_member(0, "StartTime", cdt_get_type("TimeStruct"), 1);
     
-    result = cdt_add_member(index, "StartTime", DAX_TIME, 1);
-    if(result) printf("OOPs - Unable to Add StartTime\n");
-    result = cdt_add_member(index, "Modules", DAX_DINT, 1);
-    if(result) printf("OOPs - Unable to Add Modules\n");
-    
-    
-    result = tag_add("System", cdt_get_type("System"), 1);
-    result = cdt_add_member(index, "Failure", DAX_DINT, 1);
-    if(result) printf("OK - Unable to Add Failure\n");
-    
-    serialize_datatype(index, &str);
-    printf("%s\n", str);
-    free(str);
-    */
 }
 
 
@@ -521,25 +498,65 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, size_t size)
     return 0;
 }
 
-/* Creates a new CDT with 'name'  Returns zero on error.
- * If there is an error an error code is left in 'error' if
- * it is non NULL. 0 will be left in 'error' if succesfull */
-unsigned int
-cdt_create(char *name, int *error)
-{
-    int retval;
+/* These two static functions destroy the cdt that is
+ * passed as *cdt to _cdt_destroy.  _cdt_member_destroy
+ * is a static function to free the member list */
+static void
+_cdt_member_destroy(cdt_member *member) {
+    if(member->next != NULL) _cdt_member_destroy(member->next);
+    xfree(member->name);
+    xfree(member);
+}
+
+static inline void
+_cdt_destroy(datatype *cdt) {
+    if(cdt->members != NULL) _cdt_member_destroy(cdt->members);
+    if(cdt->name != NULL ) xfree(cdt->name);
+}
+
+/* Creates a compound datatype using the definition string in *str.
+ * Returns the positive index of the newly created datatype if
+ * sucessful or 0 on failure. If *error is not NULL any error codes
+ * will be placed there otherwise zero will assigned to error. */
+tag_type
+cdt_create(char *str, int *error) {
+    int result;
+    char *name, *member, *last;
+    datatype cdt;
     datatype *new_datatype;
-
-    if( (retval = _validate_name(name)))
-        return retval;
-
-    /* Check for duplicates */
-    if(cdt_get_type(name) != 0) {
-        xerror("Duplicate name '%s' given to cdt_create()");
-        if(error) *error = ERR_DUPL;
+    
+    /* This messes with *str.  It puts a '\0' everywhere there is a ':'
+     * and that is okay because the calling function doesn't need it anymore
+     * except for printing the name so this works out okay. */
+    name = strtok_r(str, ":", &last);
+    /* Check that the name is okay */
+    if( (result = _validate_name(name)) ) {
+        if(error != NULL) *error = result;
         return 0;
     }
-
+    if(cdt_get_type(name)) {
+        if(error != NULL) *error = ERR_DUPL;
+        return 0;
+    }
+    
+    /* Initialize the new datatype */
+    cdt.name = strdup(name);
+    if(cdt.name == NULL) {
+        if(error != NULL) *error = ERR_ALLOC;
+        return 0;
+    }
+    cdt.members = NULL;
+    
+    printf("NEW CDT - %s\n", name);
+    while((member = strtok_r(NULL, ":", &last))) {
+        result = cdt_append(&cdt, member);
+        if(result) {
+            _cdt_destroy(&cdt);
+            if(error != NULL) *error = result;
+            return 0;
+        }
+    }
+    
     /* Do we have space in the array */
     if(_datatype_index == _datatype_size) {
         /* Allocate more space for the array */
@@ -555,17 +572,124 @@ cdt_create(char *name, int *error)
     }
 
     /* Add the datatype */
-    _datatypes[_datatype_index].name = strdup(name);
-    if(_datatypes[_datatype_index].name == NULL) {
-        if(error) *error = ERR_ALLOC;
-        return 0;
-    }
-    _datatypes[_datatype_index].members = NULL;
+    _datatypes[_datatype_index].name = cdt.name;
+    _datatypes[_datatype_index].members = cdt.members;
     _datatypes[_datatype_index].refcount = 0;
+    _datatypes[_datatype_index].flags = 0;
     _datatype_index++;
 
     if(error) *error = 0;
     return CDT_TO_TYPE((_datatype_index - 1));
+}
+
+/* Recieves a definition string in the form of "Name,Type,Count" and 
+ * appends that member to the compound datatype passed as *cdt.  Returns
+ * 0 on success and dax error code on failure */
+int
+cdt_append(datatype *cdt, char *str)
+{
+    int retval, count;
+    cdt_member *this, *new;
+    char *name, *typestr, *countstr, *last;
+    tag_type type;
+    
+    //--printf("  NEW MEMBER - %s >> ", str);
+    /* Parse the description string */
+    name = strtok_r(str, ",", &last);
+    if(name == NULL) return ERR_ARG;
+    typestr = strtok_r(NULL, ",", &last);
+    if(typestr == NULL) return ERR_ARG;
+    countstr = strtok_r(NULL, ",", &last);
+    if(countstr == NULL) return ERR_ARG;
+    count = strtol(countstr, NULL, 0);
+    
+    /* Check that the name is okay */
+    if( (retval = _validate_name(name)) ) {
+        return retval;
+    }
+
+    /* Check that the type is valid */
+    if( (type = cdt_get_type(typestr)) == 0 ) {
+        return ERR_ARG;
+    }
+
+    /* Check for duplicates */
+    this = cdt->members;
+    while(this != NULL) {
+        if( !strcasecmp(name, this->name) ) {
+            return ERR_DUPL;
+        }
+        this = this->next;
+    }
+    
+    /* Allocate the new member */
+    new = xmalloc(sizeof(cdt_member));
+    if(new == NULL) {
+        return ERR_ALLOC;
+    }
+    /* Assign everything to the new datatype member */
+    new->name = strdup(name);
+    if(new->name == NULL) {
+        free(new);
+        return ERR_ALLOC;
+    }
+    new->type = type;
+    new->count = count;
+    new->next = NULL;
+
+    /* Find the end of the linked list and put it there */
+    if(cdt->members == NULL) {
+        cdt->members = new;
+    } else {
+        this = cdt->members;
+
+        while(this->next != NULL) {
+            this = this->next;
+        }
+        this->next = new;
+    }
+    
+    return 0;
+    
+//    int retval;
+//    datatype *new_datatype;
+//
+//    if((retval = _validate_name(name)))
+//        return retval;
+//
+//    /* Check for duplicates */
+//    if(cdt_get_type(name) != 0) {
+//        xerror("Duplicate name '%s' given to cdt_create()");
+//        if(error) *error = ERR_DUPL;
+//        return 0;
+//    }
+//
+//    /* Do we have space in the array */
+//    if(_datatype_index == _datatype_size) {
+//        /* Allocate more space for the array */
+//        new_datatype = xrealloc(_datatypes, (_datatype_size + DAX_DATATYPE_SIZE) * sizeof(datatype));
+//
+//        if(new_datatype != NULL) {
+//            _datatypes = new_datatype;
+//            _datatype_size += DAX_DATATYPE_SIZE;
+//        } else {
+//            if(error) *error = ERR_ALLOC;
+//            return 0;
+//        }
+//    }
+//
+//    /* Add the datatype */
+//    _datatypes[_datatype_index].name = strdup(name);
+//    if(_datatypes[_datatype_index].name == NULL) {
+//        if(error) *error = ERR_ALLOC;
+//        return 0;
+//    }
+//    _datatypes[_datatype_index].members = NULL;
+//    _datatypes[_datatype_index].refcount = 0;
+//    _datatype_index++;
+//
+//    if(error) *error = 0;
+//    return CDT_TO_TYPE((_datatype_index - 1));
 }
 
 /* Returns the type of the datatype with given name
@@ -672,63 +796,61 @@ cdt_get_name(tag_type type)
  * returns 0 if nothing is found and -1 if it is found.  This
  * function assumes that only custom datatypes that really exist
  * will be passed.  If not then bad things will happen */
-static int
-_cdt_does_contain(unsigned int needle, unsigned int haystack)
-{
-    cdt_member *this;
-    int result;
-    
-    if(haystack == needle) return -1;
-    
-    this = _datatypes[CDT_TO_INDEX(haystack)].members;
-    while(this != NULL) {
-        if(IS_CUSTOM(this->type)) {
-            if(this->type == needle) {
-                return -1;
-            } else {
-                result = _cdt_does_contain(needle, this->type);
-                if(result) return result;
-            }
-        }
-        this = this->next;
-    }
-    return 0;
-}
+/* TODO: Now that I have made CDT creation atomic I don't think that it's
+ * possible to have recursive type??? Probably should delete all this */
+//static int
+//_cdt_does_contain(unsigned int needle, unsigned int haystack)
+//{
+//    cdt_member *this;
+//    int result;
+//    
+//    if(haystack == needle) return -1;
+//    
+//    this = _datatypes[CDT_TO_INDEX(haystack)].members;
+//    while(this != NULL) {
+//        if(IS_CUSTOM(this->type)) {
+//            if(this->type == needle) {
+//                return -1;
+//            } else {
+//                result = _cdt_does_contain(needle, this->type);
+//                if(result) return result;
+//            }
+//        }
+//        this = this->next;
+//    }
+//    return 0;
+//}
 
 /* Adds a member to the datatype referenced by it's array index 'cdt_index'. 
  * Returns 0 on success, nonzero error code on failure. */
 int
-cdt_add_member(int cdt_index, char *name, tag_type type, unsigned int count)
+cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
 {
     int retval;
     cdt_member *this, *new;
     
-    /* Check bounds of cdt_index */
-    if(cdt_index < 0 || cdt_index >= _datatype_index) {
-        return ERR_ARG;
-    }
     /* Check that there aren't any references and that the FINAL flag is not set */
-    if(_datatypes[cdt_index].refcount > 0 || (_datatypes[cdt_index].flags & CDT_FLAGS_FINAL) ) {
-        xlog(LOG_MINOR, "CDT in Use");
-        return ERR_INUSE;
-    }
+//    if(cdt->refcount > 0 || (cdt->flags & CDT_FLAGS_FINAL) ) {
+//        xlog(LOG_MINOR, "CDT in Use");
+//        return ERR_INUSE;
+//    }
     /* Check that the name is okay */
     if( (retval = _validate_name(name)) ) {
         return retval;
     }
     /* if type is 0 then set the FINAL flag and return success */
-    if( type == 0) {
-        xlog(LOG_MINOR, "Finalizing %s", _datatypes[cdt_index].name);
-        _datatypes[cdt_index].flags |= CDT_FLAGS_FINAL;
-        return 0;
-    }
+//    if( type == 0) {
+//        xlog(LOG_MINOR, "Finalizing %s", _datatypes[cdt_index].name);
+//        _datatypes[cdt_index].flags |= CDT_FLAGS_FINAL;
+//        return 0;
+//    }
     /* Check that the type is valid */
     if( _checktype(type) ) {
         return ERR_ARG;
     }
 
     /* Check for duplicates */
-    this = _datatypes[cdt_index].members;
+    this = cdt->members;
     while(this != NULL) {
         if( !strcasecmp(name, this->name) ) {
             return ERR_DUPL;
@@ -738,9 +860,9 @@ cdt_add_member(int cdt_index, char *name, tag_type type, unsigned int count)
     
     /* This checks for recursion in the members.  Bad things
      * will happen if we include a member to ourselves. */
-    if( IS_CUSTOM(type) && _cdt_does_contain(CDT_TO_TYPE(cdt_index), type)) {
-        return ERR_ILLEGAL;
-    }
+//    if( IS_CUSTOM(type) && _cdt_does_contain(CDT_TO_TYPE(cdt_index), type)) {
+//        return ERR_ILLEGAL;
+//    }
     
     /* Allocate the new member */
     new = xmalloc(sizeof(cdt_member));
@@ -758,10 +880,10 @@ cdt_add_member(int cdt_index, char *name, tag_type type, unsigned int count)
     new->next = NULL;
 
     /* Find the end of the linked list and put it there */
-    if(_datatypes[cdt_index].members == NULL) {
-        _datatypes[cdt_index].members = new;
+    if(cdt->members == NULL) {
+        cdt->members = new;
     } else {
-        this = _datatypes[cdt_index].members;
+        this = cdt->members;
 
         while(this->next != NULL) {
             this = this->next;
@@ -777,9 +899,6 @@ cdt_add_member(int cdt_index, char *name, tag_type type, unsigned int count)
  * as str will be set to the string.  This pointer will have
  * to be freed by the calling program.  Returns the size
  * of the string. <0 on error */
-/* CRITICAL: This is a critical function.  It must run in
- * the same thread as any function that manipulates the cdt 
- * array, or it will have to be protected by a Mutex */
 int
 serialize_datatype(tag_type type, char **str)
 {
@@ -836,7 +955,7 @@ serialize_datatype(tag_type type, char **str)
 
 /* Figures out how large the datatype is and returns
  * that size in bytes.  This function is recursive */
-    int
+int
 type_size(tag_type type)
 {
     int size = 0;

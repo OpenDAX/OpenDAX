@@ -398,9 +398,6 @@ tag_write(char **tokens, int tcount)
  * Usage:
  * >cdt typename mem1name mem1type mem1count mem2name mem2type mem2count ...
  */
-/* TODO: This one needs a lot of cleaning up.  Probably should have a way to
- * delete a datatype if it's not finalized.  Then we can undo this stuff if
- * we run into an error */
 int
 cdt_add(char **tokens, int tcount)
 {
@@ -413,7 +410,8 @@ cdt_add(char **tokens, int tcount)
         fprintf(stderr, "ERROR: Wrong number of arguments\n");
         return ERR_ARG;
     }
-    type = dax_cdt_create(tokens[0], &result);
+    //--type = dax_cdt_new(tokens[0], &result);
+    assert(0); //--Assertion because of the above commented function
     if(type == 0) {
         fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
         return result;
@@ -421,14 +419,13 @@ cdt_add(char **tokens, int tcount)
     for(n = 1; n < tcount - 2; n += 3) {
         memtype = dax_string_to_type(tokens[n+1]);
         count = strtol(tokens[n+2], NULL, 0);
-        result = dax_cdt_add(type, tokens[n], memtype, count);
-        /* TODO: Should be able to uncreate the dt if any of these members fail.  This
-         * would work better if creation of the cdts was atomic */
+        //result = dax_cdt_member(type, tokens[n], memtype, count);
+        assert(0); //--Assertion because of the above commented function
         if(result) {
             fprintf(stderr, "ERROR: Unable to add member %s\n", tokens[n]);
         }
     }
-    dax_cdt_finalize(type);
+    dax_cdt_create(type);
         
     return 0;
 }

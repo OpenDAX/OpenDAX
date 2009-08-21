@@ -44,10 +44,11 @@ tag_read_write_test(void)
     
     printf("read_data[0] = 0x%X\n", read_data[0]);
     
-    type = dax_cdt_create("TestCDT", NULL);
-    dax_cdt_add(type, "TheDint", DAX_DINT, 1);
-    dax_cdt_add(type, "TheInt", DAX_INT, 2);
-    dax_cdt_finalize(type);
+    //--type = dax_cdt_new("TestCDT", NULL);
+    //--dax_cdt_member(type, "TheDint", DAX_DINT, 1);
+    //--dax_cdt_member(type, "TheInt", DAX_INT, 2);
+    //dax_cdt_finalize(type);
+    assert(0); //--Assertion because of the above commented function
     
     dax_tag_add(&handle, "TestCDTRead", type, 1);
     dax_tag_handle(&handle, "TestCDTRead.TheInt[1]", 1);
@@ -115,8 +116,20 @@ main(int argc,char *argv[])
     get_status_tag_test();
     /* TODO: Check the corner conditions of the tag reading and writing.
      * Offset, size vs. tag size etc. */
-    tag_read_write_test();
+    //tag_read_write_test();
 
+    printf("Starting Temporary CDT Test\n");
+    dax_cdt *test_cdt;
+    test_cdt = dax_cdt_new("TestCDT", NULL);
+    result = dax_cdt_member(test_cdt, "Member1", DAX_DINT, 1);
+    if(result) printf("Problem Adding Member1\n");
+    result = dax_cdt_member(test_cdt, "Member1", DAX_DINT, 1);
+    if(result) printf("This was supposed to fail\n");
+    result = dax_cdt_member(test_cdt, "Member2", DAX_DINT, 1);
+    if(result) printf("Problem Adding Member2\n");
+    result = dax_cdt_member(test_cdt, "Member3", DAX_DINT, 1);
+    if(result) printf("Problem Adding Member3\n");
+    dax_cdt_create(test_cdt);
     
     /* TEST TO DO
         Tag Read / Write Test
@@ -130,62 +143,6 @@ main(int argc,char *argv[])
         dax_log("Tag Event Test - PASSED");
     }
     
-    dummy[0] = 0x0505;
-    dummy[1] = 0x8888;
-    dummy[2] = 0x3333;
-    dummy[3] = 0x4444;
-    dummy[4] = 0x7777;
-    
-    idx = dax_tag_add("BitTest", DAX_WORD, 10);
-    printf("Handle = %d\n",idx);
-    dax_tag_write_bits(idx + 1, &dummy, 77);
-    dax_tag_read_bits(idx + 1, &test, 77);
-    for(n=0;n<5;n++) {
-        printf("Before write 0x%X: After Read 0x%X\n",dummy[n], test[n]);
-    }
-    
-    
-    /*
-    for(n = 0; n<126; n++) {
-        if(n % 5) {
-            sprintf(tagname,"BOOL%d",n);
-            handle = dax_tag_add(tagname,DAX_BOOL,1);
-        } else {
-            sprintf(tagname,"BYTE%d",n);
-            handle = dax_tag_add(tagname,DAX_BYTE,1);
-        }
-    }
-    
-    handle = dax_tag_add("Byte1", DAX_BYTE, 1);
-    handle = dax_tag_add("Dint2", DAX_DINT, 10);
-    handle = dax_tag_add("Byte3", DAX_BYTE, 1);
-    handle = dax_tag_add("Dint4", DAX_DINT, 100);
-    handle = dax_tag_add("Bool5", DAX_BOOL, 1);
-    handle = dax_tag_add("Dint6", DAX_DINT, 10);
-    handle = dax_tag_add("Dint7", DAX_DINT, 100);
-    handle = dax_tag_add("Bool8", DAX_BOOL, 5);
-    handle = dax_tag_add("Bool9", DAX_BOOL, 1);
-    handle = dax_tag_add("Real10", DAX_REAL, 5);
-    handle = dax_tag_add("Byte11", DAX_BYTE, 1);
-    handle = dax_tag_add("Real12", DAX_REAL, 5);
-    handle = dax_tag_add("Real13", DAX_REAL, 5);
-    handle = dax_tag_add("Real14", DAX_REAL, 5);
-    handle = dax_tag_add("Real15", DAX_REAL, 5);
-    handle = dax_tag_add("Real16", DAX_REAL, 5);
-    handle = dax_tag_add("Real17", DAX_REAL, 5);
-    handle = dax_tag_add("Real18", DAX_REAL, 5);
-    handle = dax_tag_add("Real19", DAX_REAL, 38);
-    handle = dax_tag_add("Real20", DAX_REAL, 1);
-    handle = dax_tag_add("Bool21", DAX_BOOL, 1);
-    handle = dax_tag_add("Bool22", DAX_BOOL, 1);
-    handle = dax_tag_add("Bool23", DAX_BOOL, 1);
-    handle = dax_tag_add("Bool24", DAX_BOOL, 1);
-    
-    //handle = dax_tag_add("test",DAX_UINT,100);
-    //printf("Test received handle 0x%X\n",handle);
-    */
-     
-    /* Verify the integrity of the tag database */
 #endif    
     dax_debug(LOG_MAJOR, "OpenDAX Test Finished, %d tests run, %d tests failed",
               tests_run(), tests_failed());

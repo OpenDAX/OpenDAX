@@ -91,6 +91,7 @@
 #define ERR_PARSE     -17 /* Parsing Error */
 #define ERR_ARBITRARY -18 /* Arbitrary Argument */
 #define ERR_NOTNUMBER -19 /* Non Numeric Argument */
+#define ERR_EMPTY     -20 /* Empty */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */
@@ -191,7 +192,6 @@ int dax_mod_unregister(void);   /* Unregister the Module with the server */
 
 /* Adds a tag to the opendax server database. */
 int dax_tag_add(Handle *h, char *name, tag_type type, int count);
-//--tag_index dax_tag_add(char *name, tag_type type, unsigned int count);
 
 /* Get tag by name, will not decode members and subscripts */
 int dax_tag_byname(dax_tag *tag, char *name);
@@ -249,6 +249,7 @@ int dax_event_del(int id);
 int dax_event_get(int id);
 
 /* Custom Datatype Functions */
+typedef struct datatype dax_cdt;
 
 /* Get the datatype from a string */
 tag_type dax_string_to_type(char *type);
@@ -256,9 +257,9 @@ tag_type dax_string_to_type(char *type);
 const char *dax_type_to_string(tag_type type);
 
 /* TODO: This could be improved. It really needs to be atomic */
-tag_type dax_cdt_create(char *name, int *error);
-int dax_cdt_add(tag_type cdt_type, char *name, tag_type mem_type, unsigned int count);
-int dax_cdt_finalize(tag_type type);
+dax_cdt *dax_cdt_new(char *name, int *error);
+int dax_cdt_member(dax_cdt *cdt, char *name, tag_type mem_type, unsigned int count);
+int dax_cdt_create(dax_cdt *cdt);
 
 /* Custom Datatype Iterator */
 struct cdt_iter {

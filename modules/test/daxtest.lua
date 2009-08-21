@@ -15,11 +15,10 @@ pass = {"_Tag", "Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit
 
 --check_tagnames(fail, pass)
 
---Test for proper handling of recursive cdt members
-cdt_recursion()
 
 --This test checks how members are added to datatypes
 --We start by setting up the environment 
+--[[
 test1 = cdt_create("Test1")
 test2 = cdt_create("Test2")
 test3 = cdt_create("Test3")
@@ -51,6 +50,7 @@ tag_add("HandleTest1", "Test1", 1)
 tag_add("HandleTest2", test2, 5)
 tag_add("HandleTest3", test3, 1)
 tag_add("HandleTest4", test3, 10)
+--]]
 
 --Test that the handles returned are correct
 --Each tag entry contains...
@@ -108,4 +108,4 @@ tags = {{"HandleBool1",                 0,  0,  0, 1,  1,  "BOOL",   PASS},
                                         0,  600,0, 10, 2,  "BOOL",   PASS},
         {"NoTagName",                   0,  0,  0, 0,  0,  "Duh",    FAIL}}
         
-tag_handle_test(tags)
+--tag_handle_test(tags)

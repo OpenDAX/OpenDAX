@@ -47,7 +47,7 @@ static fd_set _fdset;
 static int _maxfd;
 
 /* This array holds the functions for each message command */
-#define NUM_COMMANDS 15
+#define NUM_COMMANDS 14
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
 /* Macro to check whether or not the command 'x' is valid */
@@ -66,7 +66,6 @@ int msg_evnt_add(dax_message *msg);
 int msg_evnt_del(dax_message *msg);
 int msg_evnt_get(dax_message *msg);
 int msg_cdt_create(dax_message *msg);
-int msg_cdt_add(dax_message *msg);
 int msg_cdt_get(dax_message *msg);
 
 
@@ -199,7 +198,6 @@ msg_setup(void)
     cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
     cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
     cmd_arr[MSG_CDT_CREATE] = &msg_cdt_create;
-    cmd_arr[MSG_CDT_ADD]    = &msg_cdt_add;
     cmd_arr[MSG_CDT_GET]    = &msg_cdt_get;
     
     return 0;
@@ -551,7 +549,6 @@ msg_mod_get(dax_message *msg)
     return 0;
 }
 
-
 int
 msg_evnt_add(dax_message *msg)
 {
@@ -596,38 +593,15 @@ msg_cdt_create(dax_message *msg)
     int result;
     unsigned int type;
     
+    msg->data[MSG_DATA_SIZE-1] = '\0'; /* Just to be safe */
     type = cdt_create(msg->data, &result);
     xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message with name '%s'", msg->data);
+    //result = ERR_GENERIC;
     
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_CDT_CREATE, &result, 0, ERROR);    
     } else {
         _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(tag_type), RESPONSE);
-    }
-    return 0;
-}
-
-int
-msg_cdt_add(dax_message *msg)
-{
-    int result;
-    tag_type cdt_type;
-    tag_type mem_type;
-    u_int32_t count;
-    
-    cdt_type = *((tag_type *)&msg->data[0]);
-    mem_type = *((tag_type *)&msg->data[4]);
-    count = *((u_int32_t *)&msg->data[8]);
-    
-    xlog(LOG_MSG | LOG_OBSCURE, "CDT Add Member to '%s' Message for '%s' from module %d, type 0x%X, count %d", 
-         cdt_get_name(cdt_type), &msg->data[12], msg->fd, mem_type, count);
-    
-    result = cdt_add_member(CDT_TO_INDEX(cdt_type), &msg->data[12], mem_type, count);
-    
-    if(result >= 0) {
-        _message_send(msg->fd, MSG_CDT_ADD, &result, sizeof(int), RESPONSE);
-    } else {
-        _message_send(msg->fd, MSG_CDT_ADD, &result, sizeof(int), ERROR);
     }
     return 0;
 }

@@ -613,68 +613,72 @@ dax_event_get(int id)
     return 0;
 }
 
-/* Creates an empty Custom Datatype with 'name' if
- * 'error' is non NULL then results are put there. 
- * Returns zero on error and the datatype id if
- * successfull.
- * 
- * The Payload is nothing more than the name.  */
-tag_type
-dax_cdt_create(char *name, int *error)
-{
-    int result, test, size;
-    
-    size = strlen(name);
-    if(size > DAX_TAGNAME_SIZE) return ERR_2BIG;
-    
-    if(_message_send( MSG_CDT_CREATE, name, size + 1)) {
-        if(error) *error = ERR_MSG_SEND;
-        return 0;
-    } else {
-        test = _message_recv(MSG_CDT_CREATE, &result, &size, 1);
-        if(test) {
-            if(error) *error = test;
-            return 0;
-        }
-    }
-    if(error) *error = 0;
-    return result;
-}
-
-/* Adds a member to the Custom Datatype, 'index' is the index
- * of the datatype that was returned when created.  'name' is the
- * name of the member, 'type' is the datatype of the new member.
- * 'count' is the array size of the member. */
+/* write the datatype to the server, and free() it */
+/* TODO: There is an arbitrary limit to the size that a compound
+ * datatype can be. If the desription string is larger than can
+ * be sent in one message this will fail. */
 int
-dax_cdt_add(tag_type cdt_type, char *name, tag_type mem_type, unsigned int count)
+dax_cdt_create(dax_cdt *cdt)
 {
-    int size, result;
-    char buff[DAX_TAGNAME_SIZE + 8 + 1];
+    int size = 0, result;
+    tag_type type;
+    cdt_member *this;
+    char test[DAX_TAGNAME_SIZE + 1];
+    char buff[MSG_DATA_SIZE], rbuff[10];
     
-    if(count == 0) return ERR_ARG;
-    if(name) {
-        if((size = strlen(name)) > DAX_TAGNAME_SIZE) {
-            return ERR_2BIG;
-        }
-        /* Add the 12 bytes for arguments and one byte for NULL */
-        size += 13;
-        /* TODO Need to do some more error checking here */
-        *((u_int32_t *)&buff[0]) = mtos_udint(cdt_type);
-        *((u_int32_t *)&buff[4]) = mtos_udint(mem_type);
-        *((u_int32_t *)&buff[8]) = mtos_udint(count);
-        
-        strcpy(&buff[12], name);
-    } else {
-        return ERR_TAG_BAD;
+    if(cdt->name == NULL || cdt->members == NULL) return ERR_EMPTY;
+    
+    /* The first thing we do is figure out how big it
+     * will all be. */
+    size = strlen(cdt->name);
+    this = cdt->members;
+
+    while(this != NULL) {
+        size += strlen(this->name);
+        size += strlen(dax_type_to_string(this->type));
+        snprintf(test, DAX_TAGNAME_SIZE + 1, "%d", this->count);
+        size += strlen(test);
+        size += 3; /* This is for the ':' and the two commas */
+        this = this->next;
     }
+    size += 1; /* For Trailing NULL */
     
-    result = _message_send( MSG_CDT_ADD, buff, size);
+    if(size > MSG_DATA_SIZE) return ERR_2BIG;
+    
+    /* Now build the string */
+    strncpy(buff, cdt->name, size - 1);
+    this = cdt->members;
+
+    while(this != NULL) {
+        strncat(buff, ":", size - 1);
+        strncat(buff, this->name, size - 1);
+        strncat(buff, ",", size);
+        strncat(buff, dax_type_to_string(this->type), size - 1);
+        strncat(buff, ",", size - 1);
+        snprintf(test, DAX_TAGNAME_SIZE + 1, "%d", this->count);
+        strncat(buff, test, size - 1);
+
+        this = this->next;
+    }
+
+    printf("%s\n", buff);
+
+    result = _message_send(MSG_CDT_CREATE, buff, size);
+    
     if(result) { 
         return ERR_MSG_SEND;
     }
     
-    size = 4; /* we just need the result */
-    result = _message_recv(MSG_CDT_ADD, buff, &size, 1);
+    size = 10;
+    result = _message_recv(MSG_CDT_CREATE, rbuff, &size, 1);
+    //--printf("_message_recv() returned %d\n", result);
+    if(result == 0) {
+        type = stom_udint(*((tag_type *)rbuff));
+        //--printf("0x%X : %s\n", type, &(buff[4]));
+        result = add_cdt_to_cache(type, buff);
+        free(cdt);
+    }
+    
     return result;
 }
 

@@ -115,66 +115,6 @@ tagtofail(const char *name)
     return 0;
 }
 
-/* This test makes sure that the library handles adding members to 
- * datatypes that are other datatypes and making sure that we can't
- * create any circular references. */
-int
-cdt_recursion(void)
-{
-    int n, p, f, pass[10], fail[10];
-    tag_type t[6];
-    
-    dax_debug(LOG_MINOR, "Starting Custom Datatype Recursion Test");
-    
-    t[0] = dax_cdt_create("RecursionCDT1", NULL);
-    t[1] = dax_cdt_create("RecursionCDT2", NULL);
-    t[2] = dax_cdt_create("RecursionCDT3", NULL);
-    t[3] = dax_cdt_create("RecursionCDT4", NULL);
-    t[4] = dax_cdt_create("RecursionCDT5", NULL);
-    t[5] = dax_cdt_create("RecursionCDT6", NULL);
-    
-    for(n = 0; n < 6; n++) {
-        if(t[n] == 0) {
-            dax_debug(LOG_MINOR, "Test Failed - Unable to create datatype for recursion");
-            return -1;
-        }
-    }
-    p = f = 0;
-    /* TODO: This prbably isn't every way to test this */
-    pass[p++] = dax_cdt_add(t[0], "T1", t[1], 1);
-    pass[p++] = dax_cdt_add(t[1], "T2", t[2], 1);
-    fail[f++] = dax_cdt_add(t[1], "T0", t[0], 1);
-    fail[f++] = dax_cdt_add(t[2], "T2", t[0], 1);
-    pass[p++] = dax_cdt_add(t[0], "T2", t[2], 1);
-    pass[p++] = dax_cdt_add(t[2], "T3", t[3], 1);
-    fail[f++] = dax_cdt_add(t[3], "T1", t[1], 1);
-    pass[p++] = dax_cdt_add(t[4], "T3", t[3], 1);
-    fail[f++] = dax_cdt_add(t[4], "T4", t[4], 1);
-    pass[p++] = dax_cdt_add(t[5], "T3", t[3], 1);
-    fail[f++] = dax_cdt_add(t[4], "T5", t[4], 1);
-    
-    for(n = 0; n < 6; n++) {
-        dax_cdt_finalize(t[n]);
-    }
-    
-    
-    /* Check that everything that is supposed to pass did */
-    for(n = 0; n < p; n++) {
-        if(pass[n]) {
-            dax_debug(LOG_MINOR, "Test Failed - Should have been able to add member - Attempt %d", n+1);
-            return -1;    
-        }
-    }
-    
-    /* Check that everything that is supposed to fail did */
-    for(n = 0; n < f; n++) {
-        if(fail[n] == 0) {
-            dax_debug(LOG_MINOR, "Test Failed - Should not have been able to add member - Attempt %d", n+1);
-            return -1;    
-        }
-    }
-    return 0;
-}
 
 /******************************
  * TODO: Stuff below hasn't been added to Lua Yet

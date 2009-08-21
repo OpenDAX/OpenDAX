@@ -234,16 +234,79 @@ add_cdt_to_cache(tag_type type, char *typedesc)
     return 0;
 }
 
-/* This is just a wrapper function that calls dax_cdt_add() with the
- * right parameters to tell the server to finalize the datatype.  Once
- * the datatype is finalized it can't be modified and tags can then be
- * added. */
-int
-dax_cdt_finalize(tag_type type)
+/* Creates an empty Custom Datatype with 'name' if
+ * 'error' is non NULL then results are put there. 
+ * Returns NULL on error and a pointer to the new
+ * datatype if successfull.
+ */
+
+dax_cdt *
+dax_cdt_new(char *name, int *error)
 {
-    /* With a type of 0 dax_cdt_add() will finalize the datatype */
-    return dax_cdt_add(type, "NULL", 0, 1);
+    int result = 0;
+    dax_cdt *new = NULL;
+    
+    if(strlen(name) > DAX_TAGNAME_SIZE) {
+        result = ERR_2BIG;
+    } else {
+        new = malloc(sizeof(dax_cdt *));
+        if(new == NULL) {
+            result = ERR_ALLOC;
+        } else {
+            new->members = NULL;
+            new->name = strdup(name);
+            if(new->name == NULL) {
+                free(new);
+                new = NULL;
+                result = ERR_ALLOC;
+            }
+        }
+    }
+    if(result != 0 && error != NULL) {
+        *error = result;
+    }
+    
+    return new;
 }
+
+
+/* Adds a member to the Custom Datatype. */
+int
+dax_cdt_member(dax_cdt *cdt, char *name, tag_type type, unsigned int count)
+{
+    cdt_member *new = NULL, *this, *last;
+     
+    /* Duplicate Check */
+    this = cdt->members;
+    while(this != NULL) {
+        last = this;
+        if(strcmp(name, this->name) == 0) return ERR_DUPL;
+        this = this->next;
+    }
+    /* Valid type check */
+    if(dax_type_to_string(type) == NULL) return ERR_ARG;
+    /* Size check */
+    if(strlen(name) > DAX_TAGNAME_SIZE) return ERR_2BIG;
+    
+    /* Allocate the new member */
+    new = malloc(sizeof(cdt_member));
+    if(new == NULL) return ERR_ALLOC;
+    
+    /* Assign values */
+    new->name = strdup(name);
+    if(new->name == NULL) return ERR_ALLOC;
+    new->type = type;
+    new->count = count;
+    new->next = NULL;
+    
+    /* Put it in the linked list */
+    if(cdt->members == NULL) cdt->members = new;
+    else last->next = new;
+    
+    return 0;
+}
+
+
 
 /* Find the datatype that has the name 'type' and return it's numeric ID 
  * returns 0 on error.  */
@@ -251,8 +314,8 @@ tag_type
 dax_string_to_type(char *type)
 {
     int result, n;
-    printf("Looking for type %s\n", type);
-    usleep(500000);
+    //--printf("dax_string_to_type() - Looking for type %s\n", type);
+    //--usleep(500000);
     if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
     if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
     if(!strcasecmp(type, "SINT"))  return DAX_SINT;

@@ -31,6 +31,7 @@ ssize_t xwrite(int fd, const void *buff, size_t nbyte);
 void *xmalloc(size_t);
 void *xrealloc(void *, size_t);
 void *xcalloc(size_t, size_t);
+void xfree(void *);
 
 /* Error handling and logging functions */
 /* If this is defined the output goes to the system log otherwise it
