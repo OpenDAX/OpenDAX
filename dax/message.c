@@ -620,21 +620,18 @@ msg_cdt_get(dax_message *msg)
     subcommand = msg->data[0];
     if(subcommand == CDT_GET_TYPE) {
         cdt_type = *((tag_type *)&msg->data[1]);
+        xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type 0x%X Message from Module %d", cdt_type, msg->fd);
     } else {
         strncpy(type, &msg->data[1], DAX_TAGNAME_SIZE);
         type[DAX_TAGNAME_SIZE] = '\0';  /* Just to be sure */
         cdt_type = cdt_get_type(type);
-        //--printf("msg_cdt_get: Name = %s : ", type);
+        xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type %s Message from Module %d", type, msg->fd);
     }
-    //--printf("msg_cdt_get: Type = 0x%X\n", cdt_type);
     
     size = serialize_datatype(cdt_type, &str);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type %s:0x%X Message from Module %d", type, cdt_type, msg->fd);
-    
     /* TODO: !! We need to figure out how to deal with a string that is longer than one
      * message can hold.  For now we are going to return error. */
-    /* TODO: There has to be a more efficient way to do this, too. */
     if(size > (int)(MSG_DATA_SIZE - 4)) {
         result = ERR_2BIG;
     } else if(size < 0) {

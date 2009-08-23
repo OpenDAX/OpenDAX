@@ -907,11 +907,7 @@ serialize_datatype(tag_type type, char **str)
     if(cdt_index < 0 || cdt_index >= _datatype_index) {
         return ERR_ARG;
     }
-    /* Check that the type has been finalized */
-    if( !(_datatypes[cdt_index].flags & CDT_FLAGS_FINAL)) {
-        *str = NULL;
-        return ERR_INUSE;
-    }
+
     /* The first thing we do is figure out how big it
      * will all be. */
     size = strlen(_datatypes[cdt_index].name);

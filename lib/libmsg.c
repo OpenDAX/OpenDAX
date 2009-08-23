@@ -719,10 +719,10 @@ dax_cdt_get(tag_type cdt_type, char *name)
     
     size = MSG_DATA_SIZE;
     result = _message_recv(MSG_CDT_GET, buff, &size, 1);
-    //--printf("_message_recv() returned %d\n", result);
+    //--printf("dax_cdt_get() - _message_recv() returned %d\n", result);
     if(result == 0) {
         type = stom_udint(*((tag_type *)buff));
-        //--printf("0x%X : %s\n", type, &(buff[4]));
+        //--printf("dax_cdt_get() - 0x%X : %s\n", type, &(buff[4]));
         result = add_cdt_to_cache(type, &(buff[4]));
     }
     return result;
