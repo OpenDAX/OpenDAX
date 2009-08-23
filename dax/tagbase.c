@@ -99,11 +99,7 @@ _checktype(tag_type type)
     /* NOTE: This will only work as long as we don't allow CDT's to be deleted */
     index = CDT_TO_INDEX(type);
     if( index >= 0 && index < _datatype_index) {
-        if( _datatypes[index].flags & CDT_FLAGS_FINAL ) {
-            return 0;
-        } else {
-            return ERR_INUSE;
-        }
+        return 0;
     }
     return ERR_NOTFOUND;
 }
@@ -310,7 +306,7 @@ tag_add(char *name, tag_type type, unsigned int count)
     if(count == 0)
         return ERR_ARG;
 
-    //--printf("tag_add() called with name = %s, type = 0x%X, count = %d\n", name, type, count);
+    printf("tag_add() called with name = %s, type = 0x%X, count = %d\n", name, type, count);
     if(_tagcount >= _dbsize) {
         if(_database_grow()) {
             xerror("Failure to increae database size");
@@ -504,7 +500,7 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, size_t size)
 static void
 _cdt_member_destroy(cdt_member *member) {
     if(member->next != NULL) _cdt_member_destroy(member->next);
-    xfree(member->name);
+    if(member->name != NULL) xfree(member->name);
     xfree(member);
 }
 
@@ -547,7 +543,6 @@ cdt_create(char *str, int *error) {
     }
     cdt.members = NULL;
     
-    printf("NEW CDT - %s\n", name);
     while((member = strtok_r(NULL, ":", &last))) {
         result = cdt_append(&cdt, member);
         if(result) {
@@ -958,12 +953,13 @@ serialize_datatype(tag_type type, char **str)
 int
 type_size(tag_type type)
 {
-    int size = 0;
+    int size = 0, result;
     unsigned int pos = 0; /* Bit position within the data area */
     cdt_member *this;
 
-    if( _checktype(type) )
-        return ERR_ARG;
+    if( (result = _checktype(type)) ) {
+        return result;
+    }
     
     if(IS_CUSTOM(type)) {
         this = _datatypes[CDT_TO_INDEX(type)].members;
@@ -979,7 +975,9 @@ type_size(tag_type type)
                     pos++;
                 }
                 if(IS_CUSTOM(this->type)) {
-                    pos += (type_size(this->type) * this->count) * 8;
+                    result = type_size(this->type);
+                    assert(result > 0); /* The types within other types should be okay */
+                    pos += (result * this->count) * 8;
                 } else {
                     /* This gets the size in bits */
                     pos += TYPESIZE(this->type) * this->count;

@@ -17,28 +17,27 @@ pass = {"_Tag", "Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit
 
 
 --This test checks how members are added to datatypes
---We start by setting up the environment 
---[[
-test1 = cdt_create("Test1")
-test2 = cdt_create("Test2")
-test3 = cdt_create("Test3")
+--We start by setting up the environment
+members = {{"Int5", "INT", 5},     --10
+           {"Bool10", "BOOL", 10}, -- 2
+           {"Dint1", "DINT", 1},   -- 4
+           {"Dint3", "DINT", 3}}   --12
+                                   --28 Total
+test1 = cdt_create("Test1", members)
 
-cdt_add(test1, "Int5", "INT", 5)     --10
-cdt_add(test1, "Bool10", "BOOL", 10) -- 2
-cdt_add(test1, "Dint1", "DINT", 1)   -- 4
-cdt_add(test1, "Dint3", "DINT", 3)   --12
-cdt_finalize(test1)                 -- 28 Total
+members = {{"Int3", "INT", 3},     --  6
+           {"Test1", "Test1", 5}}  --140
+                                   --146 Total
+test2 = cdt_create("Test2", members)
 
-cdt_add(test2, "Int3", "INT", 3)     -- 6
-cdt_add(test2, "Test1", "Test1", 5)  --140
-cdt_finalize(test2)                 -- 146 Total
+members = {{"Int7", "INT", 7},      -- 14
+           {"Bool30", "BOOL", 30},  --  1
+           {"Bool32", "BOOL", 32},  --  1
+           {"Test1", "Test1", 1},   -- 28
+           {"Test2", "Test2", 2}}   --292
+                                    --336 Total
 
-cdt_add(test3, "Int7", "INT", 7)
-cdt_add(test3, "Bool30", "BOOL", 30)
-cdt_add(test3, "Bool32", "BOOL", 32)
-cdt_add(test3, "Test1", "Test1", 1)
-cdt_add(test3, "Test2", "Test2", 2)
-cdt_finalize(test3)
+test3 = cdt_create("Test3", members)
 
 tag_add("HandleBool1", "BOOL", 1)
 tag_add("HandleBool7", "BOOL", 7)
@@ -50,7 +49,6 @@ tag_add("HandleTest1", "Test1", 1)
 tag_add("HandleTest2", test2, 5)
 tag_add("HandleTest3", test3, 1)
 tag_add("HandleTest4", test3, 10)
---]]
 
 --Test that the handles returned are correct
 --Each tag entry contains...
@@ -108,4 +106,4 @@ tags = {{"HandleBool1",                 0,  0,  0, 1,  1,  "BOOL",   PASS},
                                         0,  600,0, 10, 2,  "BOOL",   PASS},
         {"NoTagName",                   0,  0,  0, 0,  0,  "Duh",    FAIL}}
         
---tag_handle_test(tags)
+tag_handle_test(tags)

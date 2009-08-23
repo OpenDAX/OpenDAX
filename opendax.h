@@ -260,6 +260,7 @@ const char *dax_type_to_string(tag_type type);
 dax_cdt *dax_cdt_new(char *name, int *error);
 int dax_cdt_member(dax_cdt *cdt, char *name, tag_type mem_type, unsigned int count);
 int dax_cdt_create(dax_cdt *cdt);
+void dax_cdt_free(dax_cdt *cdt);
 
 /* Custom Datatype Iterator */
 struct cdt_iter {

@@ -23,16 +23,19 @@
 #ifndef __DAXTEST_H
 #define __DAXTEST_H
 
-int tests_run(void);
-int tests_failed(void);
+#define PASS 0
+#define FAIL 1
+
+void test_start(void);
+void test_fail(void);
+int  tests_run(void);
+int  tests_failed(void);
 void add_test_functions(lua_State *L);
 
 int add_random_tags(int count, char *name);
 int tagtopass(const char *name);
 int tagtofail(const char *name);
-int cdt_recursion(void);
 
-
-int check_tag_events(void);
+//int check_tag_events(void);
 
 #endif /* !__DAXTEST_H */

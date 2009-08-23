@@ -398,9 +398,9 @@ msg_tag_add(dax_message *msg)
     type = *((u_int32_t *)&msg->data[0]);
     count = *((u_int32_t *)&msg->data[4]);
     
-    idx = tag_add(&msg->data[8], type, count);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[8], msg->fd, type, count);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d, index %d", &msg->data[8], msg->fd, type, count, idx);
+    idx = tag_add(&msg->data[8], type, count);
     
     if(idx >= 0) {
         _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_index), RESPONSE);
@@ -595,7 +595,7 @@ msg_cdt_create(dax_message *msg)
     
     msg->data[MSG_DATA_SIZE-1] = '\0'; /* Just to be safe */
     type = cdt_create(msg->data, &result);
-    xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message with name '%s'", msg->data);
+    xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message name = '%s' type = 0x%X", msg->data, type);
     //result = ERR_GENERIC;
     
     if(result < 0) { /* Send Error */

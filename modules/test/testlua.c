@@ -21,22 +21,7 @@
 
 #include <daxtest.h>
 
-/* These are to keep score */
-static int _tests_run = 0;
-static int _tests_failed = 0;
 
-/* Functions to keep the above from having to be extern global */
-int
-tests_run(void)
-{
-    return _tests_run;
-}
-
-int
-tests_failed(void)
-{
-    return _tests_failed;
-}
 
 /* Adds a certain number of randomly generated tags that start
  * with the given name.  
@@ -56,10 +41,10 @@ _add_random_tags(lua_State *L)
     }
     count = lua_tointeger(L, 1);
     name = (char *)lua_tostring(L, 2);
-    _tests_run++;
+    test_start();
     if(add_random_tags(count, name)) {
         dax_error("Failed add_random_tags(%d, %s)\n", count, name);
-        _tests_failed++;
+        test_fail();
     }
     return 0;
 }
@@ -80,13 +65,13 @@ _check_tagnames(lua_State *L)
     if(! lua_istable(L, 1) || ! lua_istable(L, 2)) {
         luaL_error(L, "both arguments to check_tagnames() should be tables");
     }
-    _tests_run++;
+    test_start();
     while(1) {
         lua_rawgeti(L, 1, n++);
         if((s = lua_tostring(L, -1)) == NULL) break;
         if(tagtofail(s)) {
             lua_pop(L, 1);
-            _tests_failed++;
+            test_fail();
             return -1;
         }
         lua_pop(L, 1);
@@ -98,7 +83,7 @@ _check_tagnames(lua_State *L)
         if((s = lua_tostring(L, -1)) == NULL) break;
         if(tagtopass(s)) {
             lua_pop(L, 1);
-            _tests_failed++;
+            test_fail();
             return -1;
         }
         lua_pop(L, 1);
@@ -114,70 +99,98 @@ _check_tagnames(lua_State *L)
 static int
 _cdt_create(lua_State *L)
 {
-    int result;
+    int count, n = 1, result;
+    dax_cdt *cdt;
+    char *name, *type, *cdt_name;
     
-    if(lua_gettop(L) != 1) {
+    if(lua_gettop(L) != 2) {
         luaL_error(L, "wrong number of arguments to cdt_create()");
     }
-    //result = dax_cdt_new((char *)lua_tostring(L, -1), NULL);
-assert(0); //--Assertion because of the above commented function
+    cdt_name = (char *)lua_tostring(L, 1);
+    cdt = dax_cdt_new(cdt_name, NULL);
     
-    if(result == 0) {
-        luaL_error(L, "Unable to create datatype %s", lua_tostring(L, -1));
-        return -1;
-    } else {
-        lua_pushinteger(L, result);
+    if(cdt == 0) {
+        luaL_error(L, "Unable to create datatype %s", lua_tostring(L, 1));
     }
+    
+    if(! lua_istable(L, 2) ) {
+        luaL_error(L, "should pass a table to tag_handle_test()");
+    }
+    
+    while(1) {
+        /* Get the table from the argument */
+        lua_rawgeti(L, 2, n++);
+        if(lua_isnil(L, -1)) break;
+        lua_rawgeti(L, 3, 1);
+        name = (char *)lua_tostring(L, -1);
+        lua_rawgeti(L, 3, 2);
+        type = (char *)lua_tostring(L, -1);
+        lua_rawgeti(L, 3, 3);
+        count = lua_tointeger(L, -1);
+        lua_pop(L, 4);
+        
+        result = dax_cdt_member(cdt, name, dax_string_to_type(type), count);
+        if(result) {
+            dax_cdt_free(cdt);
+            luaL_error(L, "Unable to add member %s", name);
+        }
+    }
+    result = dax_cdt_create(cdt);
+    if(result == 0) {
+        luaL_error(L, "Unable to create datatype %s", cdt_name);
+    }
+    
+    lua_pushinteger(L, result);
     return 1;
 }
 
 /* Cheesy wrapper for the dax_cdt_add() library function */
-static int
-_cdt_add(lua_State *L)
-{
-    int result;
-    tag_type mtype, ttype;
-    
-    if(lua_gettop(L) != 4) {
-        luaL_error(L, "wrong number of arguments to cdt_add()");
-    }
-    ttype = lua_tointeger(L, 1);
-
-    if(lua_isnumber(L, 3)) {
-        mtype = lua_tointeger(L, 3);
-    } else {
-        mtype = dax_string_to_type((char *)lua_tostring(L, 3));
-        if(mtype == 0) {
-            luaL_error(L, "Whoa, can't get type '%s'", (char *)lua_tostring(L, 3));
-        }
-    }
-    
-    //result = dax_cdt_member(ttype, (char *)lua_tostring(L, 2), mtype, lua_tointeger(L,4));
-    assert(0); //--Assertion because of the above commented function
-    if(result) {
-        luaL_error(L, "Unable to Add Member %s", lua_tostring(L, 2));
-        return -1;
-    }
-    return 0;
-}
-
-/* Cheesy wrapper for the dax_cdt_finalize() library function */
-static int
-_cdt_finalize(lua_State *L)
-{
-    int result;
-    tag_type type;
-    
-    if(lua_gettop(L) != 1) {
-        luaL_error(L, "wrong number of arguments to check_tagnames()");
-    }
-    type = lua_tointeger(L, 1);
-    result = dax_cdt_create(type);
-    if(result) {
-        luaL_error(L, "Ouch can't finalize 0x%X", type);
-    }
-    return 0;
-}
+//static int
+//_cdt_add(lua_State *L)
+//{
+//    int result;
+//    tag_type mtype, ttype;
+//    
+//    if(lua_gettop(L) != 4) {
+//        luaL_error(L, "wrong number of arguments to cdt_add()");
+//    }
+//    ttype = lua_tointeger(L, 1);
+//
+//    if(lua_isnumber(L, 3)) {
+//        mtype = lua_tointeger(L, 3);
+//    } else {
+//        mtype = dax_string_to_type((char *)lua_tostring(L, 3));
+//        if(mtype == 0) {
+//            luaL_error(L, "Whoa, can't get type '%s'", (char *)lua_tostring(L, 3));
+//        }
+//    }
+//    
+//    //result = dax_cdt_member(ttype, (char *)lua_tostring(L, 2), mtype, lua_tointeger(L,4));
+//    assert(0); //--Assertion because of the above commented function
+//    if(result) {
+//        luaL_error(L, "Unable to Add Member %s", lua_tostring(L, 2));
+//        return -1;
+//    }
+//    return 0;
+//}
+//
+///* Cheesy wrapper for the dax_cdt_finalize() library function */
+//static int
+//_cdt_finalize(lua_State *L)
+//{
+//    int result;
+//    tag_type type;
+//    
+//    if(lua_gettop(L) != 1) {
+//        luaL_error(L, "wrong number of arguments to check_tagnames()");
+//    }
+//    type = lua_tointeger(L, 1);
+//    result = dax_cdt_create(type);
+//    if(result) {
+//        luaL_error(L, "Ouch can't finalize 0x%X", type);
+//    }
+//    return 0;
+//}
 
 /* Cheesy wrapper for the dax_tag_add() library function */
 static int
@@ -218,7 +231,7 @@ _tag_handle_test(lua_State *L)
         luaL_error(L, "should pass a table to tag_handle_test()");
     }
     printf("Starting Tag Handle Test\n");
-    _tests_run++;
+    test_start();
     while(1) {
         lua_rawgeti(L, 1, n++);
         if(lua_isnil(L, -1)) break;
@@ -272,7 +285,7 @@ _tag_handle_test(lua_State *L)
         }
         lua_pop(L,9);        
     }
-    if(final) _tests_failed++;
+    if(final) test_fail();
     return final;
 }
 
@@ -283,11 +296,11 @@ add_test_functions(lua_State *L)
     lua_pushcfunction(L, _cdt_create);
     lua_setglobal(L, "cdt_create");
 
-    lua_pushcfunction(L, _cdt_add);
-    lua_setglobal(L, "cdt_add");
-
-    lua_pushcfunction(L, _cdt_finalize);
-    lua_setglobal(L, "cdt_finalize");
+//    lua_pushcfunction(L, _cdt_add);
+//    lua_setglobal(L, "cdt_add");
+//
+//    lua_pushcfunction(L, _cdt_finalize);
+//    lua_setglobal(L, "cdt_finalize");
 
     lua_pushcfunction(L, _tag_add);
     lua_setglobal(L, "tag_add");

@@ -22,7 +22,32 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
-#define TEST 1000
+/* These are to keep score */
+static int _tests_run = 0;
+static int _tests_failed = 0;
+
+void
+test_start(void) {
+    _tests_run++;
+}
+
+void
+test_fail(void) {
+    _tests_failed++;
+}
+
+int
+tests_run(void)
+{
+    return _tests_run;
+}
+
+int
+tests_failed(void)
+{
+    return _tests_failed;
+}
+
 
 /* TODO: Tests that need to be added....
  * Check that duplicate tags fail

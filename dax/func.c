@@ -35,7 +35,7 @@ static int _background = 0;
 /* Wrapper functions - Mostly system calls that need special handling */
 
 /* Wrapper for write.  This will block and retry until all the bytes
-   have been written or an error other than EINTR is returned */
+ * have been written or an error other than EINTR is returned */
 ssize_t
 xwrite(int fd, const void *buff, size_t nbyte)
 {

@@ -621,7 +621,7 @@ int
 dax_cdt_create(dax_cdt *cdt)
 {
     int size = 0, result;
-    tag_type type;
+    tag_type type = 0;
     cdt_member *this;
     char test[DAX_TAGNAME_SIZE + 1];
     char buff[MSG_DATA_SIZE], rbuff[10];
@@ -661,7 +661,7 @@ dax_cdt_create(dax_cdt *cdt)
         this = this->next;
     }
 
-    printf("%s\n", buff);
+    //--printf("dax_dt_create() %s\n", buff);
 
     result = _message_send(MSG_CDT_CREATE, buff, size);
     
@@ -674,12 +674,12 @@ dax_cdt_create(dax_cdt *cdt)
     //--printf("_message_recv() returned %d\n", result);
     if(result == 0) {
         type = stom_udint(*((tag_type *)rbuff));
-        //--printf("0x%X : %s\n", type, &(buff[4]));
+        //--printf("dax_cdt_create() 0x%X : %s\n", type, &(buff[4]));
         result = add_cdt_to_cache(type, buff);
-        free(cdt);
+        dax_cdt_free(cdt);
     }
     
-    return result;
+    return type;
 }
 
 /* This function retrieves the serialized string definition
