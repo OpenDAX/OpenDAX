@@ -82,7 +82,7 @@ int cache_tag_add(dax_tag *);
 
 int opt_get_msgtimeout(void);
 
-/* This is the custom datatype member definition.  The 
+/* This is the compound datatype member definition.  The 
  * members are represented as a linked list */
 struct cdt_member {
     char *name;

@@ -123,7 +123,7 @@ return pointer to cmd's userdata
 /* End New Interface */
 //--int mb_add_cmd(mb_port *,mb_cmd *);
 //--mb_cmd *mb_get_cmd(mb_port *, unsigned int);
-int mb_start_port(mb_port *);
+int mb_run_port(mb_port *);
 int mb_send_command(mb_port *, mb_cmd *);
 
 #endif

@@ -63,9 +63,9 @@ int main (int argc, const char * argv[]) {
        Bail if there is an error. */
     result = modbus_configure(argc, argv);
     
-//    if( dax_mod_register("modbus") ) {
-//        dax_fatal("Unable to connect to OpenDAX server!");
-//    }
+    if( dax_mod_register("modbus") ) {
+        dax_fatal("Unable to connect to OpenDAX server!");
+    }
     
     /* Set the input and output callbacks if we aren't going to the background */
     /* TODO: Configuration option for these??? */
@@ -80,7 +80,9 @@ int main (int argc, const char * argv[]) {
             mb_set_msgout_callback(config.ports[n], outdata);
             mb_set_msgin_callback(config.ports[n], indata);
             
-            mb_scan_port(config.ports[n]);
+            if( mb_scan_port(config.ports[n])==0) {
+                printf("Why didn't we send any commands???\n");
+            }
         }
         sleep(1);
     }

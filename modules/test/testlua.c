@@ -101,10 +101,11 @@ _cdt_create(lua_State *L)
 {
     int count, n = 1, result;
     dax_cdt *cdt;
-    char *name, *type, *cdt_name;
+    tag_type type;
+    char *name, *typename, *cdt_name;
     
     if(lua_gettop(L) != 2) {
-        luaL_error(L, "wrong number of arguments to cdt_create()");
+        luaL_error(L, "Wrong number of arguments to cdt_create()");
     }
     cdt_name = (char *)lua_tostring(L, 1);
     cdt = dax_cdt_new(cdt_name, NULL);
@@ -114,7 +115,7 @@ _cdt_create(lua_State *L)
     }
     
     if(! lua_istable(L, 2) ) {
-        luaL_error(L, "should pass a table to tag_handle_test()");
+        luaL_error(L, "Should pass a table to tag_handle_test()");
     }
     
     while(1) {
@@ -124,73 +125,26 @@ _cdt_create(lua_State *L)
         lua_rawgeti(L, 3, 1);
         name = (char *)lua_tostring(L, -1);
         lua_rawgeti(L, 3, 2);
-        type = (char *)lua_tostring(L, -1);
+        typename = (char *)lua_tostring(L, -1);
         lua_rawgeti(L, 3, 3);
         count = lua_tointeger(L, -1);
         lua_pop(L, 4);
         
-        result = dax_cdt_member(cdt, name, dax_string_to_type(type), count);
+        result = dax_cdt_member(cdt, name, dax_string_to_type(typename), count);
         if(result) {
             dax_cdt_free(cdt);
             luaL_error(L, "Unable to add member %s", name);
         }
     }
-    result = dax_cdt_create(cdt);
-    if(result == 0) {
+    result = dax_cdt_create(cdt, &type);
+    if(result) {
         luaL_error(L, "Unable to create datatype %s", cdt_name);
     }
     
-    lua_pushinteger(L, result);
+    lua_pushinteger(L, type);
     return 1;
 }
 
-/* Cheesy wrapper for the dax_cdt_add() library function */
-//static int
-//_cdt_add(lua_State *L)
-//{
-//    int result;
-//    tag_type mtype, ttype;
-//    
-//    if(lua_gettop(L) != 4) {
-//        luaL_error(L, "wrong number of arguments to cdt_add()");
-//    }
-//    ttype = lua_tointeger(L, 1);
-//
-//    if(lua_isnumber(L, 3)) {
-//        mtype = lua_tointeger(L, 3);
-//    } else {
-//        mtype = dax_string_to_type((char *)lua_tostring(L, 3));
-//        if(mtype == 0) {
-//            luaL_error(L, "Whoa, can't get type '%s'", (char *)lua_tostring(L, 3));
-//        }
-//    }
-//    
-//    //result = dax_cdt_member(ttype, (char *)lua_tostring(L, 2), mtype, lua_tointeger(L,4));
-//    assert(0); //--Assertion because of the above commented function
-//    if(result) {
-//        luaL_error(L, "Unable to Add Member %s", lua_tostring(L, 2));
-//        return -1;
-//    }
-//    return 0;
-//}
-//
-///* Cheesy wrapper for the dax_cdt_finalize() library function */
-//static int
-//_cdt_finalize(lua_State *L)
-//{
-//    int result;
-//    tag_type type;
-//    
-//    if(lua_gettop(L) != 1) {
-//        luaL_error(L, "wrong number of arguments to check_tagnames()");
-//    }
-//    type = lua_tointeger(L, 1);
-//    result = dax_cdt_create(type);
-//    if(result) {
-//        luaL_error(L, "Ouch can't finalize 0x%X", type);
-//    }
-//    return 0;
-//}
 
 /* Cheesy wrapper for the dax_tag_add() library function */
 static int

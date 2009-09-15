@@ -2,22 +2,18 @@
 
 -- Configuration file for OpenDAX Modbus module
 
-tablesize = 1500         -- Size of the datatable
-tagname = "modbus"       -- The tagname that will be used for the datatable
-
-verbosity = 10
-
 p = {}
 c = {}
 
-p.name = "SmokeDetectors"
+p.name = "RTUTest"
 p.enable = true       -- enable port for scanning
 p.devtype = "SERIAL"  -- device type SERIAL, NETWORK
 p.ipaddress = "0.0.0.0"
 p.socket = "TCP"      -- IP socket protocol to use TCP or UDP
 p.bindport = 502      -- TCP/UDP Port to use
-p.device = "/dev/ttyS0"
+--p.device = "/dev/ttyS0"
 --p.device = "/dev/tty.usbserial-FT3Q9XETA"
+p.device = "/dev/tty.usbserial"
 p.type = "MASTER"     -- modbus master
 p.protocol = "RTU"    -- RTU, ASCII, TCP
 p.slaveid = 1         -- modbus id if type is slave
@@ -60,7 +56,7 @@ if portid then
   c.length = 4
   c.index = 8
 
-  add_command(portid, c)
+  --add_command(portid, c)
         
   -- Read the configuration
   c.node = 1
@@ -71,7 +67,7 @@ if portid then
   c.index = 0
   c.interval = 5
 
-  add_command(portid, c)
+  --add_command(portid, c)
         
   c.node = 2
   c.fcode = 3
@@ -79,7 +75,7 @@ if portid then
   c.length = 12
   c.address = 30
 
-  add_command(portid, c)
+  --add_command(portid, c)
 
   -- Get the relay status'
   c.fcode = 1
@@ -88,7 +84,7 @@ if portid then
   c.address = 192
   c.interval = 1
 
-  add_command(portid, c)
+  --add_command(portid, c)
 
   -- Set the position of the relays
   c.method = "CHANGE"
@@ -97,7 +93,7 @@ if portid then
   for i = 0, 3 do
     c.register = i
     c.address = 196 + i
-    add_command(portid, c)
+    --add_command(portid, c)
   end
 
   -- Output Configuration
@@ -105,13 +101,13 @@ if portid then
   c.register = 7
   c.address = 15
 
-  add_command(portid, c)
+  --add_command(portid, c)
 
   -- Watchdog Timer
   c.register = 8
   c.address = 16
 
-  add_command(portid, c)
+  --add_command(portid, c)
 end
 
 p.name = "Gate"
@@ -120,7 +116,8 @@ p.bindport = 2001
 p.socket = "TCP"
 p.devtype = "NET"
 
-portid = add_port(p)
+--portid = add_port(p)
+portid = nil 
 
 if portid then
     -- These commands get the inputs

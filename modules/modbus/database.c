@@ -104,21 +104,21 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
         case 2:
         case 15:
             count = cdata->length;
-            //result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + cdata->length);
+            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + cdata->length);
             break;
         case 5:
             count = 1;
-            //result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + 1);
+            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + 1);
             break;
         case 3:
         case 4:
         case 16:
             count = cdata->length;
-            //result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + cdata->length);
+            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + cdata->length);
             break;
         case 6:
             count = 1;
-            //result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + 1);
+            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + 1);
             break;
         default:
             return;

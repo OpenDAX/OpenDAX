@@ -52,27 +52,27 @@ dax_set_debug_topic(u_int32_t topic)
 }
 
 /* Function for modules to set the debug message callback */
-int
+void
 dax_set_debug(void (*debug)(const char *format))
 {
     _dax_debug = debug;
-    return (int)_dax_debug;
+//--    return (long)_dax_debug;
 }
 
 /* Function for modules to set the error message callback */
-int
+void
 dax_set_error(void (*error)(const char *format))
 {
     _dax_error = error;
-    return (int)_dax_error;
+//--    return (int)_dax_error;
 }
 
 /* Function for modules to override the dax_log function */
-int
+void
 dax_set_log(void (*log)(const char *format))
 {
     _dax_log = log;
-    return (int)_dax_log;
+//--    return (int)_dax_log;
 }
 
 /* TODO: Make these function allocate the memory at run time so that

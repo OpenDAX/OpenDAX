@@ -24,7 +24,7 @@
 #include <mblib.h>
 #include <modbus.h>
 
-void masterRTUthread(mb_port *);
+void master_loop(mb_port *);
 
 /* Calculates the difference between the two times */
 inline unsigned long long
@@ -59,47 +59,37 @@ timediff(struct timeval oldtime,struct timeval newtime)
 //}
 
 
-/* Opens the port passed in m_port and starts the thread that
-   will handle the port */
+/* Opens the port passed in m_port and starts the loop that
+ * will handle the port */
 int
-mb_start_port(struct mb_port *m_port)
+mb_run_port(struct mb_port *m_port)
 {
-//    pthread_attr_t attr;
-//    
-//    /* If the port is not already open */
-//    if(!m_port->fd) {
-//        if(mb_open_port(m_port)) {
-//            DEBUGMSG2( "Unable to open port - %s", m_port->name);
-//            return -1;
-//        }
-//    }
-//    if(m_port->fd > 0) {
-//        /* Set up the thread attributes 
-//         * The thread is set up to be detached so that it's resources will
-//         * be deallocated automatically. */
-//        pthread_attr_init(&attr);
-//        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-//        
-//        if(m_port->type == MB_MASTER) {
-//            if(pthread_create(&m_port->thread, &attr, (void *)&masterRTUthread, (void *)m_port)) {
-//                dax_error( "Unable to start thread for port - %s", m_port->name);
-//                return -1;
-//            } else {
-//                dax_debug(3, "Started Thread for port - %s", m_port->name);
-//                return 0;
-//            }
-//        } else if(m_port->type == MB_SLAVE) {
-//            ; /* TODO: start slave thread */
-//        } else {
-//            dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
-//            return -1;
-//        }
-//        return 0;
-//    } else {
-//        dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
-//        return -1;
-//    }
-    return 0; //should never get here
+    /* If the port is not already open */
+    if(!m_port->fd) {
+        if(mb_open_port(m_port)) {
+            DEBUGMSG2( "Unable to open port - %s", m_port->name);
+            return -1;
+        }
+    }
+    if(m_port->fd > 0) {
+        /* Set up the thread attributes 
+         * The thread is set up to be detached so that it's resources will
+         * be deallocated automatically. */
+        
+        if(m_port->type == MB_MASTER) {
+            master_loop(m_port);
+        } else if(m_port->type == MB_SLAVE) {
+            ; /* TODO: start slave thread */
+        } else {
+            dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
+            return -1;
+        }
+        return 0;
+    } else {
+        dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
+        return -1;
+    }
+    return 0;
 }
 
 int
@@ -139,14 +129,11 @@ mb_scan_port(mb_port *mp)
 
 
 
-/* This is the primary thread for a Modbus RTU master.  It calls the functions
+/* This is the primary event loop for a Modbus master.  It calls the functions
    to send the request and recieve the responses.  It also takes care of the
    retries and the counters. */
-/* TODO: There needs to be a mechanism to bail out of here.  The mp->running should
-be set to 0 and the mp->fd closed.  This will cause the main while(1) loop to restart
-the port */
 void
-masterRTUthread(mb_port *mp)
+master_loop(mb_port *mp)
 {
     long time_spent;
     struct mb_cmd *mc;

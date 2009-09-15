@@ -45,7 +45,7 @@
 #define DAX_ULINT   0x0026
 #define DAX_LREAL   0x0036
 
-/* The highest order bit shows that it's a custom datatype */
+/* The highest order bit shows that it's a compound datatype */
 #define DAX_CUSTOM  0x80000000
 
 /* The size of the base datatypes are based on the lower 4 bits.  A
@@ -64,8 +64,9 @@
 #define LOG_FUNC    0x00000004  /* Function Entries */
 #define LOG_COMM    0x00000008  /* Communcations Milestones */
 #define LOG_MSG     0x00000010  /* Messages */
-#define LOG_CONFIG  0x00000020  /* Configurations */
-#define LOG_MODULE  0x00000040  /* Module Milestones */
+#define LOG_MSGERR  0x00000020  /* Errors returned to Modules */
+#define LOG_CONFIG  0x00000040  /* Configurations */
+#define LOG_MODULE  0x00000080  /* Module Milestones */
 #define LOG_OBSCURE 0x80000000  /* Used to increase the verbosity of the other topics */
 
 /* Macro to get the size of the datatype */
@@ -92,6 +93,7 @@
 #define ERR_ARBITRARY -18 /* Arbitrary Argument */
 #define ERR_NOTNUMBER -19 /* Non Numeric Argument */
 #define ERR_EMPTY     -20 /* Empty */
+#define ERR_BADTYPE   -21 /* Bad Datatype */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE 		0x00 /* No Arguments */
@@ -130,7 +132,7 @@ typedef int tag_index;
 typedef unsigned int tag_type;
 
 struct Handle {
-    tag_index index;      /* The Index of the Tag */
+    tag_index index;     /* The Index of the Tag */
     int byte;            /* The byte offset where the data block starts */
     unsigned char bit;   /* The bit offset */
     int count;           /* The number of items represented by the handle */
@@ -143,7 +145,7 @@ typedef struct Handle Handle;
 /* This is a generic representation of a tag, it may or may
  * not actually represent how tags are stored. */
 struct dax_tag {
-    tag_index idx;         /* Unique tag index */
+    tag_index idx;        /* Unique tag index */
     tag_type type;        /* Tags data type */
     unsigned int count;   /* The number of items in the tag array */
     char name[DAX_TAGNAME_SIZE + 1];
@@ -153,7 +155,6 @@ typedef struct dax_tag dax_tag;
 
 /* These functions are for module configuration */
 int dax_init_config(char *name);
-/* is void* the right thing to do with the lua_State? */
 int dax_set_luafunction(int (*f)(void *L), char *name);
 int dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *defvalue);
 int dax_configure(int argc, char **argv, int flags);
@@ -172,9 +173,9 @@ void dax_set_debug_topic(u_int32_t);
  * uses some functions for error messaging and this allows the module to deal
  * with these messages how it sees fit.  These would normally not be used and
  * when these callbacks are not set the default messaging is used. */
-int dax_set_debug(void (*debug)(const char *msg));
-int dax_set_error(void (*error)(const char *msg));
-int dax_set_log(void (*log)(const char *msg));
+void dax_set_debug(void (*debug)(const char *msg));
+void dax_set_error(void (*error)(const char *msg));
+void dax_set_log(void (*log)(const char *msg));
 
 /* These are the functions that a module should actually call to log
  * a message or log and exit. These are the functions that are basically
@@ -259,7 +260,7 @@ const char *dax_type_to_string(tag_type type);
 /* TODO: This could be improved. It really needs to be atomic */
 dax_cdt *dax_cdt_new(char *name, int *error);
 int dax_cdt_member(dax_cdt *cdt, char *name, tag_type mem_type, unsigned int count);
-int dax_cdt_create(dax_cdt *cdt);
+int dax_cdt_create(dax_cdt *cdt, tag_type *type);
 void dax_cdt_free(dax_cdt *cdt);
 
 /* Custom Datatype Iterator */

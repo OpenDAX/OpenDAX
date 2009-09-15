@@ -106,8 +106,6 @@ int tag_mask_write(tag_index handle, int offset, void *data, void *mask, size_t 
 
 /* Custom DataType functions */
 tag_type cdt_create(char *str, int *error);
-int cdt_append(datatype *cdt, char *str);
-//int cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count);
 unsigned int cdt_get_type(char *name);
 char *cdt_get_name(unsigned int type);
 int type_size(tag_type type);

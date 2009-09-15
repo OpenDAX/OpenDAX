@@ -56,9 +56,13 @@ _get_serial_config(lua_State *L, mb_port *p)
     short parity;
     int result;
 
+    if(!lua_istable(L, -1)) {
+        luaL_error(L, "_get_serial_config() the top of the Lua stack is not a table");
+    }
+  
     lua_getfield(L, -1, "device");
     device = (char *)lua_tostring(L, -1);
-    if(string == NULL) {
+    if(device == NULL) {
         luaL_error(L, "No device given for serial port %s", mb_get_name(p));
     }
     
@@ -400,9 +404,9 @@ _add_command(lua_State *L)
     
     lua_getfield(L, -2, "enable");
     if(lua_toboolean(L, -1)) {
-        mb_disable_cmd(c);    
+        mb_enable_cmd(c);    
     } else {
-        mb_enable_cmd(c);
+        mb_disable_cmd(c);
     }
     lua_pop(L, 2);
     

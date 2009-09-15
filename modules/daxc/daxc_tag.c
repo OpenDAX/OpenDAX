@@ -299,7 +299,7 @@ tag_read(char **tokens)
     if(result == 0) {
         if(IS_CUSTOM(handle.type)) {
             /* Print Custom Stuff Here */
-            printf("Can't print custom types yet\n");
+            printf("Can't print compound types yet\n");
         } else {
             for(n = 0; n < handle.count; n++) {
                 dax_to_string(handle.type, buff, n);
@@ -394,14 +394,14 @@ tag_write(char **tokens, int tcount)
     return result;
 }
 
-/* adds a custom datatype to the server.
+/* adds a compound datatype to the server.
  * Usage:
  * >cdt typename mem1name mem1type mem1count mem2name mem2type mem2count ...
  */
 int
 cdt_add(char **tokens, int tcount)
 {
-    tag_type type;
+    dax_cdt *type;
     tag_type memtype;
     int count, n;
     int result;
@@ -410,8 +410,8 @@ cdt_add(char **tokens, int tcount)
         fprintf(stderr, "ERROR: Wrong number of arguments\n");
         return ERR_ARG;
     }
-    //--type = dax_cdt_new(tokens[0], &result);
-    assert(0); //--Assertion because of the above commented function
+    type = dax_cdt_new(tokens[0], &result);
+    //assert(0); //--Assertion because of the above commented function
     if(type == 0) {
         fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
         return result;
@@ -419,14 +419,17 @@ cdt_add(char **tokens, int tcount)
     for(n = 1; n < tcount - 2; n += 3) {
         memtype = dax_string_to_type(tokens[n+1]);
         count = strtol(tokens[n+2], NULL, 0);
-        //result = dax_cdt_member(type, tokens[n], memtype, count);
-        assert(0); //--Assertion because of the above commented function
+        result = dax_cdt_member(type, tokens[n], memtype, count);
+        //assert(0); //--Assertion because of the above commented function
         if(result) {
             fprintf(stderr, "ERROR: Unable to add member %s\n", tokens[n]);
         }
     }
-    dax_cdt_create(type);
-        
+  
+    result = dax_cdt_create(type, NULL);
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
+    }
     return 0;
 }
 
@@ -454,7 +457,6 @@ list_types(char **tokens)
         dax_cdt_iter(0, NULL, _print_cdt_callback);
     } else {
         type = dax_string_to_type(tokens[0]);
-        //--printf("%s", tokens[0]);
         dax_cdt_iter(type, &type, _print_cdt_callback);
     }
     return 0;

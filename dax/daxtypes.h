@@ -52,9 +52,9 @@ typedef struct dax_Module {
     struct dax_Module *next, *prev;
 } dax_module;
 
-/* These are the custom datatype definitions. */
+/* These are the compound datatype definitions. */
 
-/* This is the custom datatype member definition.  The 
+/* This is the compound datatype member definition.  The 
  * members are represented as a linked list */
 struct cdt_member {
     char *name;

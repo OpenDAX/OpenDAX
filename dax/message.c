@@ -79,9 +79,14 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
     char buff[DAX_MSGMAX];
     
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
-    if(response == RESPONSE)   ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
-    else if(response == ERROR) ((u_int32_t *)buff)[1] = htonl(command | MSG_ERROR);
-    else                       ((u_int32_t *)buff)[1] = htonl(command);         
+    if(response == RESPONSE) {
+        ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
+    } else if(response == ERROR) {
+        xlog(LOG_MSGERR, "Returning Error %d to Module", htonl(command | MSG_ERROR));
+        ((u_int32_t *)buff)[1] = htonl(command | MSG_ERROR);
+    } else {
+        ((u_int32_t *)buff)[1] = htonl(command);         
+    }
     /* Bounds check so we don't seg fault */
     if(size > (DAX_MSGMAX - MSG_HDR_SIZE)) {
         return ERR_2BIG;
@@ -591,12 +596,11 @@ int
 msg_cdt_create(dax_message *msg)
 {
     int result;
-    unsigned int type;
+    tag_type type;
     
     msg->data[MSG_DATA_SIZE-1] = '\0'; /* Just to be safe */
     type = cdt_create(msg->data, &result);
     xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message name = '%s' type = 0x%X", msg->data, type);
-    //result = ERR_GENERIC;
     
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_CDT_CREATE, &result, 0, ERROR);    

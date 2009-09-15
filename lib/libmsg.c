@@ -320,8 +320,6 @@ dax_mod_unregister(void)
 
 /* Sends a message to dax to add a tag.  The payload is basically the
    tagname without the handle. */
-//--tag_index
-//--dax_tag_add(char *name, tag_type type, unsigned int count)
 
 int
 dax_tag_add(Handle *h, char *name, tag_type type, int count)
@@ -618,10 +616,10 @@ dax_event_get(int id)
  * datatype can be. If the desription string is larger than can
  * be sent in one message this will fail. */
 int
-dax_cdt_create(dax_cdt *cdt)
+dax_cdt_create(dax_cdt *cdt, tag_type *type)
 {
     int size = 0, result;
-    tag_type type = 0;
+    //tag_type type = 0;
     cdt_member *this;
     char test[DAX_TAGNAME_SIZE + 1];
     char buff[MSG_DATA_SIZE], rbuff[10];
@@ -666,20 +664,21 @@ dax_cdt_create(dax_cdt *cdt)
     result = _message_send(MSG_CDT_CREATE, buff, size);
     
     if(result) { 
-        return ERR_MSG_SEND;
+        return result;
     }
     
     size = 10;
     result = _message_recv(MSG_CDT_CREATE, rbuff, &size, 1);
     //--printf("_message_recv() returned %d\n", result);
     if(result == 0) {
-        type = stom_udint(*((tag_type *)rbuff));
-        //--printf("dax_cdt_create() 0x%X : %s\n", type, &(buff[4]));
-        result = add_cdt_to_cache(type, buff);
+        if(type != NULL) {
+            *type = stom_udint(*((tag_type *)rbuff));
+        }
+        //--printf("dax_cdt_create() 0x%X : %s\n", *type, &(buff[4]));
+        result = add_cdt_to_cache(*type, buff);
         dax_cdt_free(cdt);
     }
-    
-    return type;
+    return result;
 }
 
 /* This function retrieves the serialized string definition
@@ -702,8 +701,9 @@ dax_cdt_get(tag_type cdt_type, char *name)
     size = sizeof(tag_type);
     if(name != NULL) {
         buff[0] = CDT_GET_NAME;
-        size = strlen(name);
-        memcpy(&(buff[1]), name, size); /* Pass the cdt name in this subcommand */
+        size = strlen(name) + 1;
+        strncpy(&(buff[1]), name, size); /* Pass the cdt name in this subcommand */
+        //--memcpy(&(buff[1]), name, size); /* Pass the cdt name in this subcommand */
         size++; /* Add one for the sub command */
     } else {
         buff[0] = CDT_GET_TYPE;  /* Put the subcommand in the first byte */

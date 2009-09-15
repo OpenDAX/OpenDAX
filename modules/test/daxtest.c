@@ -56,24 +56,27 @@ int static
 tag_read_write_test(void)
 {
     tag_index index;
+    int result;
     Handle handle;
     tag_type type;
+    dax_cdt *cdt;
     dax_int write_data[32], read_data[32];
+    
     index = dax_tag_add(&handle, "TestReadTagInt", DAX_INT, 32);
     
     dax_tag_handle(&handle, "TestReadTagInt", 32);
     
-    write_data[0] = 0x5555;
+    write_data[0] = 0x4321;
     dax_write_tag(handle, write_data);
     dax_read_tag(handle, read_data);
     
     printf("read_data[0] = 0x%X\n", read_data[0]);
     
-    //--type = dax_cdt_new("TestCDT", NULL);
-    //--dax_cdt_member(type, "TheDint", DAX_DINT, 1);
-    //--dax_cdt_member(type, "TheInt", DAX_INT, 2);
-    //dax_cdt_finalize(type);
-    assert(0); //--Assertion because of the above commented function
+    cdt = dax_cdt_new("TestCDT", NULL);
+    dax_cdt_member(cdt, "TheDint", DAX_DINT, 1);
+    dax_cdt_member(cdt, "TheInt", DAX_INT, 2);
+    result = dax_cdt_create(cdt, &type);
+    if(result) return result;
     
     dax_tag_add(&handle, "TestCDTRead", type, 1);
     dax_tag_handle(&handle, "TestCDTRead.TheInt[1]", 1);
@@ -141,7 +144,7 @@ main(int argc,char *argv[])
     get_status_tag_test();
     /* TODO: Check the corner conditions of the tag reading and writing.
      * Offset, size vs. tag size etc. */
-    //tag_read_write_test();
+    tag_read_write_test();
 
     printf("Starting Temporary CDT Test\n");
     dax_cdt *test_cdt;
@@ -154,7 +157,7 @@ main(int argc,char *argv[])
     if(result) printf("Problem Adding Member2\n");
     result = dax_cdt_member(test_cdt, "Member3", DAX_DINT, 1);
     if(result) printf("Problem Adding Member3\n");
-    dax_cdt_create(test_cdt);
+    dax_cdt_create(test_cdt, NULL);
     
     /* TEST TO DO
         Tag Read / Write Test

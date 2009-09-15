@@ -328,8 +328,7 @@ tag_type
 dax_string_to_type(char *type)
 {
     int result, n;
-    //--printf("dax_string_to_type() - Looking for type %s\n", type);
-    //--usleep(500000);
+
     if(type == NULL) return 0;
     if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
     if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
@@ -678,7 +677,7 @@ getout:
     return result;
 }
 
-/* This is the custom datatype iterator.  If type is a datatype then this
+/* This is the compound datatype iterator.  If type is a datatype then this
  * function iterates over each member of the datatype and calls 'callback'
  * with the cdt_iter structure and passes back the udata pointer as well.
  * If type is 0 then it iterates over the list of datatypes.  In this case
@@ -702,7 +701,6 @@ dax_cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter, void *))
                 iter.name = dt->name;
                 iter.type = CDT_TO_TYPE(index);
                 iter.count = iter.byte = iter.bit = 0;
-                printf("Iterating type %s\n", iter.name);
                 callback(iter, udata);
             }
             index++;

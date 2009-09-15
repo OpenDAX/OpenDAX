@@ -196,7 +196,7 @@ fetch_tag(lua_State *L, char *tagname)
     if(buff == NULL) {
         luaL_error(L, "Unable to allocate buffer size = %d", size);
     }
-    //--result = dax_read_tag(tag.idx, 0, buff, tag.count, tag.type);
+    //result = dax_read_tag(tag.idx, 0, buff, tag.count, tag.type);
     assert(0); /* This assert is because we have comented out the tag reading */
     
     if(result) {
@@ -327,10 +327,10 @@ send_tag(lua_State *L, char *tagname)
 }
 
 /* Sets a given tag to the given value.  Two arguments...
-    First argument is the string or handle for the dax_tag
-    Second argument is the value to set the tag too.
-    Raises an error on failure
-*/
+ * First argument is the string for the dax_tag
+ * Second argument is the value to set the tag too.
+ * Raises an error on failure
+ */
 static int
 _dax_write(lua_State *L)
 {
@@ -413,8 +413,10 @@ _register_tag(lua_State *L)
     return 0;
 }
 
-/* Adds a static definition to the *globals list.
-   Takes two arguments, script name, static name */
+/* Adds a static definition to the *globals list.  A Static
+ * variable is one that will live between calls to the script
+ * but that are not written back to the OpenDAX server.
+ * The function takes two arguments, script name, static variable name */
 /* TODO: should this be allowed in a normal script?  I guess
  I don't want any limits but couldn't the scriptname be assumed
  if run from a normal script or given if meant for another script? */
@@ -437,7 +439,63 @@ _register_static(lua_State *L)
     return 0;    
 }
     
-
+/* Wrapper function for the cdt creation functions */
+/* The Lua function should be passed two arguments.  The
+ * first is the name of the datatype and the second is
+ * a table of tables that represent all the members of the
+ * compound datatype.  It should be formatted like this...
+ * members = {{"Name", "DataType", count},
+ *            {"AnotherNmae", "DataType", count}} */
+static int
+_cdt_create(lua_State *L)
+{
+    int count, n = 1, result;
+    dax_cdt *cdt;
+    char *name, *type, *cdt_name;
+    
+    if(lua_gettop(L) != 2) {
+        luaL_error(L, "Wrong number of arguments to cdt_create()");
+    }
+    cdt_name = (char *)lua_tostring(L, 1);
+    cdt = dax_cdt_new(cdt_name, NULL);
+    
+    if(cdt == 0) {
+        luaL_error(L, "Unable to create datatype %s", lua_tostring(L, 1));
+    }
+    
+    if(! lua_istable(L, 2) ) {
+        luaL_error(L, "Should pass a table to tag_handle_test()");
+    }
+    
+    while(1) {
+        /* Get the table from the argument */
+        lua_rawgeti(L, 2, n++);
+        if(lua_isnil(L, -1)) break;
+        lua_rawgeti(L, 3, 1);
+        name = (char *)lua_tostring(L, -1);
+        lua_rawgeti(L, 3, 2);
+        type = (char *)lua_tostring(L, -1);
+        lua_rawgeti(L, 3, 3);
+        count = lua_tointeger(L, -1);
+        lua_pop(L, 4);
+        
+        result = dax_cdt_member(cdt, name, dax_string_to_type(type), count);
+        if(result) {
+            dax_cdt_free(cdt);
+            luaL_error(L, "Unable to add member %s", name);
+        }
+    }
+    pthread_mutex_lock(&daxmutex);
+    result = dax_cdt_create(cdt, NULL);
+    pthread_mutex_unlock(&daxmutex);
+    
+    if(result) {
+        luaL_error(L, "Unable to create datatype %s", cdt_name);
+    }
+    
+    lua_pushinteger(L, result);
+    return 1;
+}
 
 /* TODO: Stuff to add.
  * give the scripts a way to enable and disable each other
@@ -462,6 +520,9 @@ setup_interpreter(lua_State *L)
     
     lua_pushcfunction(L, _register_static);
     lua_setglobal(L, "register_static");
+    
+    lua_pushcfunction(L, _cdt_create);
+    lua_setglobal(L, "dax_cdt_create");
     
     /* register the libraries that we need*/
     luaopen_base(L);
