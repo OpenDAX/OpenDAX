@@ -73,10 +73,10 @@ _message_recv(int command, void *payload, int *size, int response)
     while( index < msg_size || index < MSG_HDR_SIZE) {
         result = read(_sfd, &buff[index], DAX_MSGMAX);
         /*****TESTING STUFF******/
-        //printf("M-read returned %d\n", result);
-        //for(done = 0; done < result; done ++) {
-        //    printf("0x%02X[%c] " , (unsigned char)buff[done], (unsigned char)buff[done]);
-        //} printf("\n");
+//        printf("M-read returned %d\n", result);
+//        for(done = 0; done < result; done ++) {
+//            printf("0x%02X[%c] " , (unsigned char)buff[done], (unsigned char)buff[done]);
+//        } printf("\n");
         
         if(result < 0) {
             if(errno == EWOULDBLOCK) {
@@ -669,7 +669,7 @@ dax_cdt_create(dax_cdt *cdt, tag_type *type)
     
     size = 10;
     result = _message_recv(MSG_CDT_CREATE, rbuff, &size, 1);
-    //--printf("_message_recv() returned %d\n", result);
+    
     if(result == 0) {
         if(type != NULL) {
             *type = stom_udint(*((tag_type *)rbuff));

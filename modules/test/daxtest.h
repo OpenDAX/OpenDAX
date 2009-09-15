@@ -33,9 +33,5 @@ int  tests_failed(void);
 void add_test_functions(lua_State *L);
 
 int add_random_tags(int count, char *name);
-int tagtopass(const char *name);
-int tagtofail(const char *name);
-
-//int check_tag_events(void);
 
 #endif /* !__DAXTEST_H */

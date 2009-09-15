@@ -82,7 +82,7 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
     if(response == RESPONSE) {
         ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
     } else if(response == ERROR) {
-        xlog(LOG_MSGERR, "Returning Error %d to Module", htonl(command | MSG_ERROR));
+        xlog(LOG_MSGERR, "Returning Error %d to Module", *(int *)payload);
         ((u_int32_t *)buff)[1] = htonl(command | MSG_ERROR);
     } else {
         ((u_int32_t *)buff)[1] = htonl(command);         
@@ -603,7 +603,7 @@ msg_cdt_create(dax_message *msg)
     xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message name = '%s' type = 0x%X", msg->data, type);
     
     if(result < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_CDT_CREATE, &result, 0, ERROR);    
+        _message_send(msg->fd, MSG_CDT_CREATE, &result, sizeof(int), ERROR);    
     } else {
         _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(tag_type), RESPONSE);
     }

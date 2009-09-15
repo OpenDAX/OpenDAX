@@ -18,6 +18,14 @@
  *  Main source code file for the OpenDAX API regression test module
  */
 
+/* The way the test modules works is by calling a Lua script (usually called
+ * daxtest.lua) that in turn calls the run_test() function repeatedly for each
+ * test that is desired.  These tests are represented by individual Lua scripts
+ * for each test.  If these scripts raise an error the test is considered to
+ * have failed.  Otherwise it is assumed that the test passes.  The C code in
+ * this module is limited to what is needed to attach to the OpenDAX server and
+ * handle all the messages.
+ */
 #include <daxtest.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
@@ -48,59 +56,6 @@ tests_failed(void)
     return _tests_failed;
 }
 
-
-/* TODO: Tests that need to be added....
- * Check that duplicate tags fail
- */
-int static
-tag_read_write_test(void)
-{
-    tag_index index;
-    int result;
-    Handle handle;
-    tag_type type;
-    dax_cdt *cdt;
-    dax_int write_data[32], read_data[32];
-    
-    index = dax_tag_add(&handle, "TestReadTagInt", DAX_INT, 32);
-    
-    dax_tag_handle(&handle, "TestReadTagInt", 32);
-    
-    write_data[0] = 0x4321;
-    dax_write_tag(handle, write_data);
-    dax_read_tag(handle, read_data);
-    
-    printf("read_data[0] = 0x%X\n", read_data[0]);
-    
-    cdt = dax_cdt_new("TestCDT", NULL);
-    dax_cdt_member(cdt, "TheDint", DAX_DINT, 1);
-    dax_cdt_member(cdt, "TheInt", DAX_INT, 2);
-    result = dax_cdt_create(cdt, &type);
-    if(result) return result;
-    
-    dax_tag_add(&handle, "TestCDTRead", type, 1);
-    dax_tag_handle(&handle, "TestCDTRead.TheInt[1]", 1);
-    write_data[1] = 444;
-    dax_write_tag(handle, &write_data[1]);
-    dax_read_tag(handle, &read_data[1]);
-    printf("read_data[1] = %d\n", read_data[1]);
-    
-    
-    return 0;
-}
-
-static int
-get_status_tag_test(void)
-{
-    Handle handle;
-    int result;
-    
-    result = dax_tag_handle(&handle, "_status", 0);
-    if(result != 0) {
-        printf("Get _status handle test failed\n");
-    }
-    return result;
-}
 
 int
 main(int argc,char *argv[])
@@ -138,43 +93,7 @@ main(int argc,char *argv[])
         return ERR_GENERIC;
     }
     
-    /* That will do it for the real LUA tests.  The following code is just
-     * temporary code for testing along with new development */
-           
-    get_status_tag_test();
-    /* TODO: Check the corner conditions of the tag reading and writing.
-     * Offset, size vs. tag size etc. */
-    tag_read_write_test();
-
-    printf("Starting Temporary CDT Test\n");
-    dax_cdt *test_cdt;
-    test_cdt = dax_cdt_new("TestCDT", NULL);
-    result = dax_cdt_member(test_cdt, "Member1", DAX_DINT, 1);
-    if(result) printf("Problem Adding Member1\n");
-    result = dax_cdt_member(test_cdt, "Member1", DAX_DINT, 1);
-    if(result) printf("This was supposed to fail\n");
-    result = dax_cdt_member(test_cdt, "Member2", DAX_DINT, 1);
-    if(result) printf("Problem Adding Member2\n");
-    result = dax_cdt_member(test_cdt, "Member3", DAX_DINT, 1);
-    if(result) printf("Problem Adding Member3\n");
-    dax_cdt_create(test_cdt, NULL);
-    
-    /* TEST TO DO
-        Tag Read / Write Test
-    */
-    
-#ifdef DKFOOEIT74YEJKIOUWERHLVKSJDHIUHFEW
-    if(check_tag_events()) {
-        dax_log("Tag Event Test - FAILED");
-        tests_failed++;
-    } else {
-        dax_log("Tag Event Test - PASSED");
-    }
-    
-#endif    
-    dax_debug(LOG_MAJOR, "OpenDAX Test Finished, %d tests run, %d tests failed",
-              tests_run(), tests_failed());
-    //sleep(5);
+    printf("OpenDAX Test Finished, %d tests run, %d tests failed\n", tests_run(), tests_failed());
     dax_mod_unregister();
     
     return 0;

@@ -21,6 +21,36 @@
 
 #include <daxtest.h>
 
+/* This function runs a test script.  If the script raises an 
+ * error this function increments the fail count.  It returns
+ * nothing */
+static int
+_run_test(lua_State *L)
+{
+    char *script, *desc;
+    
+    if(lua_gettop(L) != 2) {
+        luaL_error(L, "Wrong number of arguments to run_test()");
+    }
+    
+    script = (char *)lua_tostring(L, -2);
+    desc = (char *)lua_tostring(L, -1);
+    test_start();
+    printf("Starting - %s\n", desc);
+        
+    /* load and run the test script */
+    if(luaL_loadfile(L, script)) {
+        /* Here the error is allowed to propagate up and kill the whole thing */
+        dax_error("Problem loading script - %s", lua_tostring(L, -1));
+    }
+    if(lua_pcall(L, 0, 0, 0)) {
+        test_fail();
+        printf("FAILED - %s\n", desc);
+    } else {
+        printf("PASSED - %s\n", desc);
+    }
+    return 0;
+}
 
 
 /* Adds a certain number of randomly generated tags that start
@@ -41,56 +71,12 @@ _add_random_tags(lua_State *L)
     }
     count = lua_tointeger(L, 1);
     name = (char *)lua_tostring(L, 2);
-    test_start();
     if(add_random_tags(count, name)) {
-        dax_error("Failed add_random_tags(%d, %s)\n", count, name);
-        test_fail();
+        luaL_error(L, "Failed add_random_tags(%d, %s)\n", count, name);
     }
     return 0;
 }
 
-/* Checks that tagnames that should fail do so and that
- * tagnames that are supposed to pass are added.
- * Lua Call : check_tagnames(string[] tags_to_fail, string[] tags_to_pass) 
- * the string[]'s should be integer indexed arrays. */
-static int
-_check_tagnames(lua_State *L)
-{
-    const char *s;
-    int n = 1;
-    
-    if(lua_gettop(L) != 2) {
-        luaL_error(L, "wrong number of arguments to check_tagnames()");
-    }
-    if(! lua_istable(L, 1) || ! lua_istable(L, 2)) {
-        luaL_error(L, "both arguments to check_tagnames() should be tables");
-    }
-    test_start();
-    while(1) {
-        lua_rawgeti(L, 1, n++);
-        if((s = lua_tostring(L, -1)) == NULL) break;
-        if(tagtofail(s)) {
-            lua_pop(L, 1);
-            test_fail();
-            return -1;
-        }
-        lua_pop(L, 1);
-    }
-    
-    n = 1;
-    while(1) {
-        lua_rawgeti(L, 2, n++);
-        if((s = lua_tostring(L, -1)) == NULL) break;
-        if(tagtopass(s)) {
-            lua_pop(L, 1);
-            test_fail();
-            return -1;
-        }
-        lua_pop(L, 1);
-    }
-    
-    return 0;
-}
 
 /* Cheesy wrapper for the dax_cdt_create() library function */
 /* Right now this isn't a test but it probably should be.  There
@@ -161,87 +147,158 @@ _tag_add(lua_State *L)
     } else {
         type = dax_string_to_type((char *)lua_tostring(L, 2));
         if(type == 0) {
-            luaL_error(L, "Whoa, can't get type '%s'", (char *)lua_tostring(L, 2));      
+            luaL_error(L, "Can't get type '%s'", (char *)lua_tostring(L, 2));      
         }
     }
 
-    result = dax_tag_add(NULL, (char *)lua_tostring(L,1), type, lua_tointeger(L,3));
+    result = dax_tag_add(NULL, (char *)lua_tostring(L,1), type, lua_tointeger(L, 3));
+    if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
     return 0;
+}
+
+static int
+_handle_test(lua_State *L)
+{
+    Handle h;
+    int final = 0;
+    const char *name, *type;
+    int count, result, byte, bit, rcount, size, test;
+    
+    if(lua_gettop(L) != 8) {
+        luaL_error(L, "wrong number of arguments to tag_handle_test()");
+    }
+    name = lua_tostring(L, 1);
+    count = lua_tointeger(L, 2);
+    byte = lua_tointeger(L, 3);
+    bit = lua_tointeger(L, 4);
+    rcount = lua_tointeger(L, 5);
+    size = lua_tointeger(L, 6);
+    type = lua_tostring(L, 7);
+    test = lua_tointeger(L, 8);
+    
+    result = dax_tag_handle(&h, (char *)name, count);
+    if(test == FAIL && result == 0) { /* We should fail */
+        printf("Handle Test: %s : %d Should have Failed\n", name, count);
+        final = 1;
+    } else if(test == PASS) {
+        if(result) {
+            printf("Handle Test: dax_tag_handle failed with code %d\n", result);
+            final = 1;
+        } else { 
+            if(h.byte != byte) {
+                printf("Handle Test: %s : %d - Byte offset does not match (%d != %d)\n", name, count, h.byte, byte);
+                final = 1;
+            }
+            if(h.bit != bit) {
+                printf("Handle Test: %s : %d - Bit offset does not match (%d != %d)\n", name, count, h.bit, bit);
+                final = 1;
+            }
+            if(h.count != rcount) {
+                printf("Handle Test: %s : %d - Item count does not match (%d != %d)\n", name, count, h.count, rcount);
+                final = 1;
+            }
+            if(h.size != size) {
+                printf("Handle Test: %s : %d - Size does not match (%d != %d)\n", name, count, h.size, size);
+                final = 1;
+            }
+            if(h.type != dax_string_to_type((char *)type)) {
+                printf("Handle Test: %s : %d - Datatype does not match\n", name, count);
+                final = 1;
+            }
+        }
+    }
+    lua_pop(L,8);        
+
+    if(final) {
+        luaL_error(L, "Handle Test Failed");
+    }
+    return 0;
+}
+
+/*** LAZY PROGRAMMER TESTS ***********************************
+ * This is a temporary place for development of tests.  It puts
+ * these tests within the normal testing framework but allows
+ * a developer a way to test new library or server features without
+ * having to create a formal test.
+ *************************************************************/
+
+int static
+tag_read_write_test(void)
+{
+    tag_index index;
+    int result;
+    Handle handle;
+    tag_type type;
+    dax_cdt *cdt;
+    dax_int write_data[32], read_data[32];
+    
+    index = dax_tag_add(&handle, "TestReadTagInt", DAX_INT, 32);
+    
+    result = dax_tag_handle(&handle, "TestReadTagInt", 32);
+    assert(result == 0);
+    
+    write_data[0] = 0x4321;
+    dax_write_tag(handle, write_data);
+    dax_read_tag(handle, read_data);
+    
+    printf("read_data[0] = 0x%X\n", read_data[0]);
+    
+    cdt = dax_cdt_new("TestCDT", NULL);
+    dax_cdt_member(cdt, "TheDint", DAX_DINT, 1);
+    dax_cdt_member(cdt, "TheInt", DAX_INT, 2);
+    result = dax_cdt_create(cdt, &type);
+    if(result) {
+        printf("Unable to Create TestCDT\n");
+        return result;
+    }
+    
+    dax_tag_add(&handle, "TestCDTRead", type, 1);
+    dax_tag_handle(&handle, "TestCDTRead.TheInt[1]", 1);
+    write_data[1] = 444;
+    dax_write_tag(handle, &write_data[1]);
+    dax_read_tag(handle, &read_data[1]);
+    printf("read_data[1] = %d\n", read_data[1]);
+    
+    
+    return 0;
+}
+
+static int
+get_status_tag_test(void)
+{
+    Handle handle;
+    //dax_tag tag;
+    int result;
+    
+    result = dax_tag_handle(&handle, "_status", 0);
+    //result = dax_tag_byname(&tag, "_status");
+    if(result != 0) {
+        printf("Get _status handle test failed\n");
+    }
+    return result;
 }
 
 
 static int
-_tag_handle_test(lua_State *L)
+_lazy_test(lua_State *L)
 {
-    Handle h;
-    int n = 1, final = 0;
-    const char *name, *type;
-    int count, result, byte, bit, rcount, size, test;
+    int result;
     
-    if(lua_gettop(L) != 1) {
-        luaL_error(L, "wrong number of arguments to tag_handle_test()");
+    result = get_status_tag_test();
+    if(result) {
+        luaL_error(L, "Get Status Tag Test returned %d", result);
     }
-    if(! lua_istable(L, 1) ) {
-        luaL_error(L, "should pass a table to tag_handle_test()");
+
+    /* TODO: Check the corner conditions of the tag reading and writing.
+     * Offset, size vs. tag size etc. */
+    result = tag_read_write_test();
+    if(result) {
+        luaL_error(L, "Tag Read/Write Test returned %d", result);
     }
-    printf("Starting Tag Handle Test\n");
-    test_start();
-    while(1) {
-        lua_rawgeti(L, 1, n++);
-        if(lua_isnil(L, -1)) break;
-        lua_rawgeti(L, 2, 1);
-        name = lua_tostring(L, -1);
-        lua_rawgeti(L, 2, 2);
-        count = lua_tointeger(L, -1);
-        lua_rawgeti(L, 2, 3);
-        byte = lua_tointeger(L, -1);
-        lua_rawgeti(L, 2, 4);
-        bit = lua_tointeger(L, -1);
-        lua_rawgeti(L, 2, 5);
-        rcount = lua_tointeger(L, -1);
-        lua_rawgeti(L, 2, 6);
-        size = lua_tointeger(L, -1);
-        lua_rawgeti(L, 2, 7);
-        type = lua_tostring(L, -1);
-        lua_rawgeti(L, 2, 8);
-        test = lua_tointeger(L, -1);
-        
-        result = dax_tag_handle(&h, (char *)name, count);
-        if(test == 1 && result == 0) { /* We should fail */
-            printf("Handle Test: %s : %d Should have Failed\n", name, count);
-            final = 1;
-        } else if(test == 0) {
-            if(result) {
-                printf("Handle Test: dax_tag_handle failed with code %d\n", result);
-                final = 1;
-            } else { 
-                if(h.byte != byte) {
-                    printf("Handle Test: %s : %d - Byte offset does not match (%d != %d)\n", name, count, h.byte, byte);
-                    final = 1;
-                }
-                if(h.bit != bit) {
-                    printf("Handle Test: %s : %d - Bit offset does not match (%d != %d)\n", name, count, h.bit, bit);
-                    final = 1;
-                }
-                if(h.count != rcount) {
-                    printf("Handle Test: %s : %d - Item count does not match (%d != %d)\n", name, count, h.count, rcount);
-                    final = 1;
-                }
-                if(h.size != size) {
-                    printf("Handle Test: %s : %d - Size does not match (%d != %d)\n", name, count, h.size, size);
-                    final = 1;
-                }
-                if(h.type != dax_string_to_type((char *)type)) {
-                    printf("Handle Test: %s : %d - Datatype does not match\n", name, count);
-                    final = 1;
-                }
-            }
-        }
-        lua_pop(L,9);        
-    }
-    if(final) test_fail();
-    return final;
+    return 0;
 }
+
+/**END OF LAZY PROGRAMMER TESTS**************************************/
 
 /* Adds the functions to the Lua State */
 void
@@ -250,24 +307,20 @@ add_test_functions(lua_State *L)
     lua_pushcfunction(L, _cdt_create);
     lua_setglobal(L, "cdt_create");
 
-//    lua_pushcfunction(L, _cdt_add);
-//    lua_setglobal(L, "cdt_add");
-//
-//    lua_pushcfunction(L, _cdt_finalize);
-//    lua_setglobal(L, "cdt_finalize");
-
+    lua_pushcfunction(L, _run_test);
+    lua_setglobal(L, "run_test");
+    
     lua_pushcfunction(L, _tag_add);
     lua_setglobal(L, "tag_add");
 
     lua_pushcfunction(L, _add_random_tags);
     lua_setglobal(L, "add_random_tags");
 
-    lua_pushcfunction(L, _check_tagnames);
-    lua_setglobal(L, "check_tagnames");
-
-    lua_pushcfunction(L, _tag_handle_test);
-    lua_setglobal(L, "tag_handle_test");
+    lua_pushcfunction(L, _handle_test);
+    lua_setglobal(L, "handle_test");
     
+    lua_pushcfunction(L, _lazy_test);
+    lua_setglobal(L, "lazy_test");
     
     luaopen_base(L);
     luaopen_table(L);
