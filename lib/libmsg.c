@@ -73,7 +73,7 @@ _message_recv(int command, void *payload, int *size, int response)
     while( index < msg_size || index < MSG_HDR_SIZE) {
         result = read(_sfd, &buff[index], DAX_MSGMAX);
         /*****TESTING STUFF******/
-//        printf("M-read returned %d\n", result);
+//        printf("_message_recv() returned %d\n", result);
 //        for(done = 0; done < result; done ++) {
 //            printf("0x%02X[%c] " , (unsigned char)buff[done], (unsigned char)buff[done]);
 //        } printf("\n");
@@ -405,7 +405,7 @@ dax_tag_byname(dax_tag *tag, char *name)
         if(result) {
             dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
             free(buff);
-            return ERR_MSG_RECV;
+            return result;
         }
         tag->idx = stom_dint( *((int *)&buff[0]) );
         tag->type = stom_udint(*((u_int32_t *)&buff[4]));

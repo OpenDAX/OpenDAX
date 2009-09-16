@@ -156,6 +156,30 @@ _tag_add(lua_State *L)
     return 0;
 }
 
+/* Wrapper for the two tag retrieving functions */
+static int
+_tag_get(lua_State *L)
+{
+    int result;
+    dax_tag tag;
+
+    if(lua_isnumber(L, 1)) {
+        printf("Calling dax_tag_byindex(%d)\n", (tag_index)lua_tointeger(L, 1));
+        result = dax_tag_byindex(&tag, (tag_index)lua_tointeger(L, 1));
+    } else {
+        printf("Calling dax_tag_byname(%s)\n", (char *)lua_tostring(L, 1));
+        result = dax_tag_byname(&tag, (char *)lua_tostring(L, 1));
+    }
+    if(result != 0) {
+        printf("result = %d\n", result);
+        luaL_error(L, "Can't get tag '%s'", (char *)lua_tostring(L, 2));      
+    }
+    lua_pushstring(L, tag.name);
+    lua_pushstring(L, dax_type_to_string(tag.type));
+    lua_pushinteger(L, tag.count);
+    return 3;
+}
+
 static int
 _handle_test(lua_State *L)
 {
@@ -258,24 +282,8 @@ tag_read_write_test(void)
     dax_write_tag(handle, &write_data[1]);
     dax_read_tag(handle, &read_data[1]);
     printf("read_data[1] = %d\n", read_data[1]);
-    
-    
+       
     return 0;
-}
-
-static int
-get_status_tag_test(void)
-{
-    Handle handle;
-    //dax_tag tag;
-    int result;
-    
-    result = dax_tag_handle(&handle, "_status", 0);
-    //result = dax_tag_byname(&tag, "_status");
-    if(result != 0) {
-        printf("Get _status handle test failed\n");
-    }
-    return result;
 }
 
 
@@ -284,11 +292,6 @@ _lazy_test(lua_State *L)
 {
     int result;
     
-    result = get_status_tag_test();
-    if(result) {
-        luaL_error(L, "Get Status Tag Test returned %d", result);
-    }
-
     /* TODO: Check the corner conditions of the tag reading and writing.
      * Offset, size vs. tag size etc. */
     result = tag_read_write_test();
@@ -312,6 +315,9 @@ add_test_functions(lua_State *L)
     
     lua_pushcfunction(L, _tag_add);
     lua_setglobal(L, "tag_add");
+
+    lua_pushcfunction(L, _tag_get);
+    lua_setglobal(L, "tag_get");
 
     lua_pushcfunction(L, _add_random_tags);
     lua_setglobal(L, "add_random_tags");

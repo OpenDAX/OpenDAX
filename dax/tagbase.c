@@ -143,15 +143,15 @@ _get_by_name(char *name)
     int i, min, max, try;
     
     min = 0;
-    max = _tagcount;
+    max = _tagcount - 1;
     
-    while(min < max) {
-        try = (min + max) / 2;
+    while(min <= max) {
+        try = min + ((max - min) / 2);
         i = strcmp(name, _index[try].name);
         if(i > 0) {
             min = try + 1;
         } else if(i < 0) {
-            max = try;
+            max = try - 1;
         } else {
             return _index[try].tag_idx;
         }
@@ -223,13 +223,13 @@ _add_index(char *name, int index)
         min = 0;
         max = _tagcount - 1;
         
-        while(min < max) {
-            try = (min + max) / 2;
+        while(min <= max) {
+            try = min + ((max - min) / 2);
             i = strcmp(name, _index[try].name);
             if(i > 0) {
                 min = try + 1;
             } else if(i < 0) {
-                max = try;
+                max = try - 1;
             } else {
                 /* It can't really get here because duplicates were checked in add_tag()
                  * before this function was called */
@@ -244,6 +244,11 @@ _add_index(char *name, int index)
     /* The name pointer in the __index and the __db point to the same string */
     _index[n].name = temp;
     _db[index].name = temp;
+    
+    /**** TESTING STUFF ******/
+//    for(n=0;n<_tagcount;n++) {
+//        printf("_index[%d] = %s\n", n, _index[n].name);
+//    }
     return 0;
 }
 
