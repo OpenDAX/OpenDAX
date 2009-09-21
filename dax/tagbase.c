@@ -105,7 +105,7 @@ _checktype(tag_type type)
  * be big trouble if the index is out of bounds.
  * This will also return 0 when the tag has been deleted
  * which is designated by zero type and zero count */
-static inline size_t
+static inline int
 _get_tag_size(tag_index idx)
 {
     if(_db[idx].type == DAX_BOOL)
@@ -437,7 +437,7 @@ tag_get_index(int index, dax_tag *tag)
  * return 0 on success and some negative number on failure.
  */
 int
-tag_read(tag_index idx, int offset, void *data, size_t size)
+tag_read(tag_index idx, int offset, void *data, int size)
 {
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
@@ -454,8 +454,9 @@ tag_read(tag_index idx, int offset, void *data, size_t size)
 
 /* This function writes data to the _db just like the above function reads it */
 int
-tag_write(tag_index idx, int offset, void *data, size_t size)
+tag_write(tag_index idx, int offset, void *data, int size)
 {
+    int n;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
@@ -466,12 +467,15 @@ tag_write(tag_index idx, int offset, void *data, size_t size)
     }
     /* Copy the data into the right place. */
     memcpy(&(_db[idx].data[offset]), data, size);
+    for(n = 0;n < size; n++) {
+        printf("[0x%2X]\n", _db[idx].data[offset + n]);
+    }
     return 0;
 }
 
 /* Writes the data to the tagbase but only if the corresponding mask bit is set */
 int
-tag_mask_write(tag_index idx, int offset, void *data, void *mask, size_t size)
+tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
 {
     char *db, *newdata, *newmask;
     int n;

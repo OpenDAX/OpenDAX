@@ -428,6 +428,7 @@ _write_format(tag_type type, int count, void *data, int offset)
     cdt_member *this = NULL;
     
     newdata = (char *)data + offset;
+
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
         dtype = get_cdt_pointer(type, NULL);
@@ -503,7 +504,6 @@ _write_format(tag_type type, int count, void *data, int offset)
                 break;
         }
     }
-
     return 0;
 }
 

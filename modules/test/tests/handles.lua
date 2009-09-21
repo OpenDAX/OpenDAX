@@ -32,6 +32,7 @@ tag_add("HandleBool8", "BOOL", 8)
 tag_add("HandleBool9", "BOOL", 9)
 tag_add("HandleBool33", "BOOL", 33)
 tag_add("HandleInt", "INT", 2)
+tag_add("HandleInt32", "INT", 32)
 tag_add("HandleTest1", "Test1", 1)
 tag_add("HandleTest2", test2, 5)
 tag_add("HandleTest3", test3, 1)
@@ -69,6 +70,11 @@ handle_test("HandleBool33[3]",             9,  0,  3, 9,  2,  "BOOL",   PASS)
 handle_test("HandleBool33[3a]",            1,  0,  0, 0,  0,  "BOOL",   FAIL)
 handle_test("HandleInt[1]",                1,  2,  0, 1,  2,  "INT",    PASS)
 handle_test("HandleInt",                   0,  0,  0, 2,  4,  "INT",    PASS)
+--Have not decided on how this should act.  Should it fail or should it return
+-- a handle to the first item in the array.  For now it ignores the count and
+-- returns a handle to the entire array.
+--handle_test("HandleInt",                   1,  0,  0, 1,  2,  "INT",    PASS)
+--handle_test("HandleInt32",                 1,  0,  0, 1,  2,  "INT",    PASS)
 handle_test("HandleInt[2]",                1,  0,  0, 0,  0,  "INT",    FAIL)
 handle_test("HandleInt[2]",                5,  0,  0, 0,  0,  "INT",    FAIL)
 handle_test("HandleTest1",                 0,  0,  0, 1,  28, "Test1",  PASS)
@@ -92,4 +98,4 @@ handle_test("HandleTest2[0].Test1[1].Bool10",
 handle_test("HandleTest2[4].Test1[0].Bool10", 
                                            0,  600,0, 10, 2,  "BOOL",   PASS)
 handle_test("NoTagName",                   0,  0,  0, 0,  0,  "Duh",    FAIL)
-
+handle_test("",                            0,  0,  0, 0,  0,  "Yup",    FAIL)

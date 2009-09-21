@@ -100,9 +100,9 @@ int tag_del(char *name);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
 
-int tag_read(tag_index handle, int offset, void *data, size_t size);
-int tag_write(tag_index handle, int offset, void *data, size_t size);
-int tag_mask_write(tag_index handle, int offset, void *data, void *mask, size_t size);
+int tag_read(tag_index handle, int offset, void *data, int size);
+int tag_write(tag_index handle, int offset, void *data, int size);
+int tag_mask_write(tag_index handle, int offset, void *data, void *mask, int size);
 
 /* Custom DataType functions */
 tag_type cdt_create(char *str, int *error);

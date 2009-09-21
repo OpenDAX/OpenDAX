@@ -473,18 +473,17 @@ int
 msg_tag_read(dax_message *msg)
 {
     char data[MSG_DATA_SIZE];
-    tag_index handle;
+    tag_index index;
     int result, offset;
-    size_t size;
-    
-    handle = *((tag_index *)&msg->data[0]);
+    int size;
+     
+    index = *((tag_index *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
-    size = *((size_t *)&msg->data[8]);
+    size = *((int *)&msg->data[8]);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
+    xlog(LOG_MSG | LOG_OBSCURE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, index, offset, size);
     
-    result = tag_read(handle, offset, &data, size);
-    
+    result = tag_read(index, offset, &data, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_READ, &result, sizeof(result), ERROR);
     } else {

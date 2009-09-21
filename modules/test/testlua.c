@@ -164,14 +164,11 @@ _tag_get(lua_State *L)
     dax_tag tag;
 
     if(lua_isnumber(L, 1)) {
-        printf("Calling dax_tag_byindex(%d)\n", (tag_index)lua_tointeger(L, 1));
         result = dax_tag_byindex(&tag, (tag_index)lua_tointeger(L, 1));
     } else {
-        printf("Calling dax_tag_byname(%s)\n", (char *)lua_tostring(L, 1));
         result = dax_tag_byname(&tag, (char *)lua_tostring(L, 1));
     }
     if(result != 0) {
-        printf("result = %d\n", result);
         luaL_error(L, "Can't get tag '%s'", (char *)lua_tostring(L, 2));      
     }
     lua_pushstring(L, tag.name);
@@ -239,12 +236,12 @@ _handle_test(lua_State *L)
     return 0;
 }
 
-/*** LAZY PROGRAMMER TESTS ***********************************
+/*** LAZY PROGRAMMER TESTS *****************************************
  * This is a temporary place for development of tests.  It puts
  * these tests within the normal testing framework but allows
  * a developer a way to test new library or server features without
  * having to create a formal test.
- *************************************************************/
+ *******************************************************************/
 
 int static
 tag_read_write_test(void)
@@ -258,8 +255,10 @@ tag_read_write_test(void)
     
     index = dax_tag_add(&handle, "TestReadTagInt", DAX_INT, 32);
     
-    result = dax_tag_handle(&handle, "TestReadTagInt", 32);
+    result = dax_tag_handle(&handle, "TestReadTagInt[0]", 1);
     assert(result == 0);
+    
+    printf("handle.idx = %d, handle.count = %d, handle.size = %d\n", handle.index, handle.count, handle.size);
     
     write_data[0] = 0x4321;
     dax_write_tag(handle, write_data);
