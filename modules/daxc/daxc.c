@@ -139,6 +139,7 @@ runcmd(char *instr)
     /* Now that we know how many tokens we can allocate the array 
      * We get one more than needed so that we can add the NULL */
     tokens = malloc(sizeof(char *) * tcount+1);
+    
     if(tokens == NULL) {
         fprintf(stderr, "ERROR: Unable to allocate memory\n");
         free(temp);
@@ -174,16 +175,16 @@ runcmd(char *instr)
         result = tag_write(&tokens[1], tcount-1);
     } else if( !strncasecmp(tokens[0], "cdt", 3)) {
         result = cdt_add(&tokens[1], tcount -1);
-    } else if( !strncasecmp(tokens[0], "mod", 3)) {
-        printf("Haven't done 'mod' yet!\n");
-    } else if( !strcasecmp(tokens[0],"db")) {
-        if(tokens[1] == NULL) fprintf(stderr, "ERROR: Missing Subcommand\n");
-        else if( !strcasecmp(tokens[1], "read")) result = db_read();
-    //  else if( !strcasecmp(tokens[1], "readbit")) result = db_read_bit();
-        else if( !strcasecmp(tokens[1], "write")) result = db_write();
-        else if( !strcasecmp(tokens[1], "format")) result = db_format();
-        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tokens[0]);
-        
+//    } else if( !strncasecmp(tokens[0], "mod", 3)) {
+//        printf("Haven't done 'mod' yet!\n");
+//    } else if( !strcasecmp(tokens[0],"db")) {
+//        if(tokens[1] == NULL) fprintf(stderr, "ERROR: Missing Subcommand\n");
+//        else if( !strcasecmp(tokens[1], "read")) result = db_read();
+//    //  else if( !strcasecmp(tokens[1], "readbit")) result = db_read_bit();
+//        else if( !strcasecmp(tokens[1], "write")) result = db_write();
+//        else if( !strcasecmp(tokens[1], "format")) result = db_format();
+//        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tokens[0]);
+//        
     } else if( !strcasecmp(tokens[0],"msg")) {
         printf("Haven't done 'msg' yet!\n");    
     /* TODO: Really should work on the help command */

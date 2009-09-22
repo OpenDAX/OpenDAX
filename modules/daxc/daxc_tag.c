@@ -264,29 +264,33 @@ string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
     }
 }
 
-static int
-_get_tag_handle(Handle *h, char **tokens)
-{    
-    if(tokens[0]) {
-        /* Just for grins */
-        return dax_tag_handle(h, tokens[0], 0);
-    } else {
-        fprintf(stderr, "ERROR: No Tagname or index given\n");
-        return ERR_NOTFOUND;
-    }
-}
 
+/* This is the tag read function.  One or two parameters can be given. The
+ * first parameter is the tagname and the second if given is the number of
+ * points to be returned */
 int
 tag_read(char **tokens)
 {
     Handle handle;
-    int result, n;
+    int result, n, count = 0;
+    char *name;
     void *buff;
+
+    if(tokens[0]) {
+        name = tokens[0];
+        if(tokens[1]) {
+            count = (int)strtoul(tokens[1], NULL, 0);
+        }
+    } else {
+        fprintf(stderr, "ERROR: No Tagname Given\n");
+        return ERR_NOTFOUND;
+    }
     
-    result = _get_tag_handle(&handle, tokens);
-    if(result < 0) {
-        fprintf(stderr, "ERROR: Unable to find tag - %s\n", tokens[0]);
-        return result;
+    result = dax_tag_handle(&handle, name, count);
+    if(result) {
+        /* TODO: More descriptive error messages here based on result */
+        fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+        return ERR_ARG;
     }
     
     buff = malloc(handle.size);
@@ -299,12 +303,14 @@ tag_read(char **tokens)
     if(result == 0) {
         if(IS_CUSTOM(handle.type)) {
             /* Print Custom Stuff Here */
-            printf("Can't print compound types yet\n");
+            fprintf(stderr, "ERROR: Given Tagname is a compound data type\n");
         } else {
             for(n = 0; n < handle.count; n++) {
                 dax_to_string(handle.type, buff, n);
             }
         }
+    } else {
+        fprintf(stderr, "ERROR: Unable to Read Tag %s\n", tokens[0]);
     }
     free(buff);
     return result;
@@ -312,87 +318,130 @@ tag_read(char **tokens)
 
 
 int
-tag_write(char **tokens, int tcount)
-{
-    char name[DAX_TAGNAME_SIZE+ 1 ];
-    tag_index handle;
-    int index = -1, result, points, next, n;
-    size_t size;
-    dax_tag tag;
+tag_write(char **tokens, int tcount) {
+    Handle handle;
+    int result, n, points;
+    char *name;
     void *buff;
     
     if(tokens[0]) {
-        /* If token is numeric then it's a handle that's being passed */
-        if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
-            handle = strtol(tokens[0], NULL, 0);
-            result = dax_tag_byindex(&tag, handle);
-            if(result) {
-                fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
-                return 1;
-            }
-        /* otherwise the token is a tagname */
-        } else {
-            if(dax_tag_parse(tokens[0], name, &index) || dax_tag_byname(&tag, name)) {
-                fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
-                return 1;
-            } else {
-                handle = tag.idx;
-            }
-        }
-        /* If we have not found an index by this point then... */
-        if(index < 0) {
-            if( tokens[1][0] == 'i' || tokens[1][0] == 'I' ) {
-                if(tokens[2] != NULL) {
-                    index = strtol(tokens[2], NULL, 0);
-                    points = tcount - 3;
-                    next = 3;
-                } else {
-                    fprintf(stderr, "ERROR: Missing Index\n");
-                    return 1;
-                }
-            } else {
-                index = 0;
-                points = tcount - 1;
-                next = 1;
-            }
-        } else {
-            points = tcount - 1;
-            next = 1;
-        }
+        name = tokens[0];
     } else {
-        fprintf(stderr, "ERROR: No Tagname or handle given\n");
-        return 1;
+        fprintf(stderr, "ERROR: No Tagname Given\n");
+        return ERR_NOTFOUND;
     }
-    /* Get the smaller value */
-    if(tag.count < points) {
-        points = tag.count;
-        /* Should I print a warning??? */
+    /* TODO: Should probably get a count based on how many tokens we have */ 
+    result = dax_tag_handle(&handle, name, 0);
+    if(result) {
+        /* TODO: More descriptive error messages here based on result */
+        fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+        return ERR_ARG;
     }
-    
-    if(tag.type == DAX_BOOL) size = points / 8 + 1;
-    else                     size = (TYPESIZE(tag.type) / 8) * points;
-    
-    buff = malloc(size);
-    if(!buff) {
+     
+    buff = malloc(handle.size);
+    bzero(buff, handle.size);
+    if(buff == NULL) {
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
         return ERR_ALLOC;
     }
-    /* TODO: I might want to add the ability to skip points with a '-'
-     * I'd have to search for any '-' and then use dax_mask_tag() instead. */
-    for(n = 0; n < points; n++) {
-        string_to_dax(tokens[next + n], tag.type, buff, NULL, n);
-    }
-    //--result = dax_write_tag(handle, index, buff, points, tag.type);
-    assert(0); /* This is because we have commented out the above write function */
-    if(result) {
-        fprintf(stderr, "ERROR: Problem writing data to opendax\n");
-    }
     
-    /**** Get data here *****/
-    //printf("Tag Write Command handle = %d, index = %d, points = %d\n", handle, index, points);
+    points = tcount - 1;
+    if(handle.count < points) {
+        points = handle.count;
+    }
+    for(n = 0; n < points; n++) {
+        string_to_dax(tokens[n + 1], handle.type, buff, NULL, n);
+    }
+    result = dax_write_tag(handle, buff);
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to Write to tag %s\n", name);
+    }
     free(buff);
-    return result;
+    return 0;
 }
+
+//int
+//tag_write(char **tokens, int tcount)
+//{
+//    char name[DAX_TAGNAME_SIZE+ 1 ];
+//    tag_index handle;
+//    int index = -1, result, points, next, n;
+//    size_t size;
+//    dax_tag tag;
+//    void *buff;
+//    
+//    if(tokens[0]) {
+//        /* If token is numeric then it's a handle that's being passed */
+//        if(tokens[0][0] >= '0' && tokens[0][0] <= '9') {
+//            handle = strtol(tokens[0], NULL, 0);
+//            result = dax_tag_byindex(&tag, handle);
+//            if(result) {
+//                fprintf(stderr, "ERROR: No Tag at Handle: %d\n", handle);
+//                return 1;
+//            }
+//        /* otherwise the token is a tagname */
+//        } else {
+//            if(dax_tag_parse(tokens[0], name, &index) || dax_tag_byname(&tag, name)) {
+//                fprintf(stderr, "ERROR: Bad Tagname Given - %s\n", tokens[0]);
+//                return 1;
+//            } else {
+//                handle = tag.idx;
+//            }
+//        }
+//        /* If we have not found an index by this point then... */
+//        if(index < 0) {
+//            if( tokens[1][0] == 'i' || tokens[1][0] == 'I' ) {
+//                if(tokens[2] != NULL) {
+//                    index = strtol(tokens[2], NULL, 0);
+//                    points = tcount - 3;
+//                    next = 3;
+//                } else {
+//                    fprintf(stderr, "ERROR: Missing Index\n");
+//                    return 1;
+//                }
+//            } else {
+//                index = 0;
+//                points = tcount - 1;
+//                next = 1;
+//            }
+//        } else {
+//            points = tcount - 1;
+//            next = 1;
+//        }
+//    } else {
+//        fprintf(stderr, "ERROR: No Tagname or handle given\n");
+//        return 1;
+//    }
+//    /* Get the smaller value */
+//    if(tag.count < points) {
+//        points = tag.count;
+//        /* Should I print a warning??? */
+//    }
+//    
+//    if(tag.type == DAX_BOOL) size = points / 8 + 1;
+//    else                     size = (TYPESIZE(tag.type) / 8) * points;
+//    
+//    buff = malloc(size);
+//    if(!buff) {
+//        fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
+//        return ERR_ALLOC;
+//    }
+//    /* TODO: I might want to add the ability to skip points with a '-'
+//     * I'd have to search for any '-' and then use dax_mask_tag() instead. */
+//    for(n = 0; n < points; n++) {
+//        string_to_dax(tokens[next + n], tag.type, buff, NULL, n);
+//    }
+//    //--result = dax_write_tag(handle, index, buff, points, tag.type);
+//    assert(0); /* This is because we have commented out the above write function */
+//    if(result) {
+//        fprintf(stderr, "ERROR: Problem writing data to opendax\n");
+//    }
+//    
+//    /**** Get data here *****/
+//    //printf("Tag Write Command handle = %d, index = %d, points = %d\n", handle, index, points);
+//    free(buff);
+//    return result;
+//}
 
 /* adds a compound datatype to the server.
  * Usage:
