@@ -316,7 +316,9 @@ tag_read(char **tokens)
     return result;
 }
 
-
+/* This is the tag write function.  It is pretty lame at the moment.  It
+ * takes a tagname as the first argument and then as many arguments after that
+ * as needed to represent the data to add.*/
 int
 tag_write(char **tokens, int tcount) {
     Handle handle;
@@ -349,6 +351,9 @@ tag_write(char **tokens, int tcount) {
     if(handle.count < points) {
         points = handle.count;
     }
+    /* TODO: I might want to add the ability to skip points with a '-'
+     * I'd have to search for any '-' and then use dax_mask_tag() instead. */
+
     for(n = 0; n < points; n++) {
         string_to_dax(tokens[n + 1], handle.type, buff, NULL, n);
     }

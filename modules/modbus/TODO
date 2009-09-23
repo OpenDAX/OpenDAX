@@ -29,8 +29,8 @@ Try to get rid of the extern Config, configuration structure.
 TEST TEST TEST - Probably should get my hands on some radios and I eventually need
 to get some hardware handshaking kinda stuff going.
 
-Add a diagnostic menu system that works through STDIN / STDOUT so that daxc or the
-command line could be used to debug and test the module.  This would be a good feature
-for most all of the I/O modules.  This would even let modules diagnose each other and
-could lead to a diagnostic module that can watch the health of all the others through
-some common interface.
+Add some kind of diagnostic taging or messaging.
+
+Need to be able to create and send a command dynamically at runtime too.
+
+Finish separating the Modbus protocol stuff into it's own library.

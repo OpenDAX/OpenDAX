@@ -124,6 +124,7 @@ AC_CONFIG_FILES([Makefile
                  lib/Makefile
                  modules/Makefile
                  modules/modbus/Makefile
+                 modules/modbus/lib/Makefile
                  modules/daxc/Makefile
                  modules/daxlua/Makefile
                  modules/test/Makefile])

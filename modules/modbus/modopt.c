@@ -21,7 +21,7 @@
 #include <common.h>
 #include <modopt.h>
 #include <database.h>
-#include <modbus.h>
+#include <lib/modbus.h>
 #include <opendax.h>
 
 #include <stdio.h>

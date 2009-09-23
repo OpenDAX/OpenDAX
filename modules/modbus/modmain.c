@@ -27,7 +27,7 @@
 #include <pthread.h>
 #include <dax/func.h>
 #include <modopt.h>
-#include <modbus.h>
+#include <lib/modbus.h>
 
 extern struct Config config;
 

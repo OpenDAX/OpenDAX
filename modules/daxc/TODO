@@ -1,35 +1,12 @@
-Commands...
+Fix tag_write() function to use the number of items passed in the command to determine
+how many need to be passed.  The problem with this is that the user may pass more than
+can be stored in the tag.  Then the count would have to default to the lower of the two
+numbers and the rest of the items typed in the command to be ignored.
 
-  DAX status
-  DAX stop
-  DAX reload
+Might also allow for '-' to be used to skip a value.  IOW if a user wanted to change the
+second and fourth item in an array they could use a command like...
+daxc>write TagName[1] 21 - 22
+Actually that looks a lot like math so maybe I need to pick another character but it's
+the same idea.
 
-  TAG add x x x
-x TAG list x x
-x TAG set x x x x
-x TAG get x x x x
-
-  MOD add x x x x
-  MOD list x x
-  MOD start x
-  MOD stop x
-  MOD status x
-  MOD connect x  <connect to STDIN / STDOUT with dax CL>
-
-  DB list x x x
-x DB read x x 
-x DB readbit x x
-  DB write x x ...
-  DB writebit x x ...
-  DB writemask x x ... mask x x ... ?? Not sure on this one
-
-x MSG send x x
-
-Obviously not all of this has been done in the DAX itself yet.
-
-Need to have a way to store the "mode" of the client so that TAG, DAX, MOD etc would not
-have to be retyped everytime.  If DB was typed alone on the command line the it would go
-into DB mode and the prompt would change to daxc:DB>.  Then only READ and WRITE would have
-to be typed.  Maybe I should also adjust the command detection to use the least number of
-letters that would be necessary to denote a command, like the old Cisco OS.
-
+Much testing needs to be done.

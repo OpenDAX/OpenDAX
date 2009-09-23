@@ -25,7 +25,7 @@
 #include <common.h>
 #include <opendax.h>
 #include <modopt.h>
-#include <modbus.h>
+#include <lib/modbus.h>
 
 //int dt_add_tag(Handle *h, char *name, int index, int function, int length);
 //int dt_add_tag(mb_cmd *c, char *name, int index, int function, int length);

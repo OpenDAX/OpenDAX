@@ -19,7 +19,7 @@
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
 
-#include <modbus.h>
+#include <lib/modbus.h>
 
 
 //#ifndef DEFAULT_PID

@@ -4,3 +4,17 @@ _status tag can be written to by modules.  This should be read only.
 
 Allow 'nice' levels to be set for modules
 
+Separate out the dax/lua functions (ie. creating/reading/writing tags, etc).
+
+It would be nice if the libdax library functions were reentrant.  At least they should allow
+for more than one connection from one module.  Right now there is static/global data in the
+library that keeps this from being possible.  This should be encapsulated into an object that
+can be passed back to the module.
+
+The modbus functions need to be placed in thier own library.  All communications modules should
+separate out the particulars of the communications into a separate library.  This makes the
+program more useful to people even if they don't need the full functionality of the system.
+This could also be said of other parts of the system like, ladder logic interpretation, svg
+animation etc.
+
+Much more testing needs to be done.

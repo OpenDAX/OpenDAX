@@ -1,8 +1,8 @@
 This file lists the tests that need to be added so that we don't forget.
 
-All manner of Custom Datatype tests need to be done.  Testing for recursive includes of member is very important.
-Bad things will happen if we allow one datatype to incude itself.  This is more difficult because a datatype can
-be included in a type that includes another datatype that causes the recursion.  This needs to be tested well.
+Still need a read/write test to make sure that data gets transfered back and forth
+to the server correctly.  It needs to test all the different datatypes, corner cases
+for arrays and CDTs.
 
 Test that a very large amount of data will transfer correctly.  Enough that multiple messages will be required.
 

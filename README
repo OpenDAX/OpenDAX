@@ -39,14 +39,6 @@ play sounds when programs already exist to do the job.  Besides this makes
 OpenDAX a good *nix program since it allows modular software to be used
 in applications that the original designers never envisioned.
 
-The DAX should have a native messaging interfae where modules can send 
-messages to one another or to the central system.  I suspect that the vast
-majority of the library interfaces to the central system will be implemented
-with this messaging infrastructure.  There is no need to reinvent the wheel
-here as the underlying operating system should have all of the facilities
-that we need to handle message queues.  We just need to figure out how
-we will implement it.
-
 One feature that the system will need that may be quite difficult is 
 redundancy.  If the system is truely distributed then it should be capable of
 losing network nodes and remain in control.  This is probably going to be
@@ -81,6 +73,12 @@ to be distributed in source code.  This is probably okay for the vast
 majority of the projects out there but we need to consider the end client 
 (the guy that owns the equipment we control) or we will find ourselves 
 with a piece of software and no market.
+
+Also the application developer need not be a C programmer.  Very few
+control system integrators come up from a computer science background.
+Most come from an instrument / electrical background and can learn to
+configure systems and write logic, but asking them to be low level
+C programmers is asking too much, and they will go elsewhere.
 
 The Free Software Foundation has many good resources to read regarding 
 these kinds of issues and it would be beneficial for all users of this 
