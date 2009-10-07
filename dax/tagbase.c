@@ -456,7 +456,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
 int
 tag_write(tag_index idx, int offset, void *data, int size)
 {
-    int n;
+    //int n;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
@@ -467,9 +467,9 @@ tag_write(tag_index idx, int offset, void *data, int size)
     }
     /* Copy the data into the right place. */
     memcpy(&(_db[idx].data[offset]), data, size);
-    for(n = 0;n < size; n++) {
-        printf("[0x%2X]\n", _db[idx].data[offset + n]);
-    }
+    //for(n = 0;n < size; n++) {
+    //    printf("[0x%2X]\n", _db[idx].data[offset + n]);
+    //}
     return 0;
 }
 

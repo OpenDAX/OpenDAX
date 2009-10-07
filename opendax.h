@@ -114,7 +114,7 @@
 
 /* typedefs to the basic DAX_? datatypes */
 typedef u_int8_t   dax_byte;
-typedef u_int8_t   dax_sint;
+typedef int8_t     dax_sint;
 typedef u_int16_t  dax_word;
 typedef int16_t    dax_int;
 typedef u_int16_t  dax_uint;
@@ -205,9 +205,9 @@ int dax_tag_byindex(dax_tag *tag, tag_index index);
  * items, that we want. */
 int dax_tag_handle(Handle *h, char *str, int count);
 
-/* Retrieves the tagname and index from the form of Tagname[i] */
-/* TODO: dax_tag_parse should probably be deprecated */
-int dax_tag_parse(char *name, char *tagname, int *index);
+/* Returns the size of the datatype in bytes */
+int dax_get_typesize(tag_type type);
+
 
 /* The following functions are for reading and writing data.  These 
  * are generic functions and are used by other functions within the
@@ -240,9 +240,6 @@ int dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size);
 int dax_read_tag(Handle handle, void *data);
 int dax_write_tag(Handle handle, void *data);
 int dax_mask_tag(Handle handle, void *data, void *mask);
-//--int dax_read_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
-//--int dax_write_tag(tag_idx_t idx, int index, void *data, int count, unsigned int type);
-//--int dax_mask_tag(tag_idx_t idx, int index, void *data, void *mask, int count, unsigned int type);
 
 /* Event control functions */
 int dax_event_add(char *tag, int count);
@@ -257,7 +254,6 @@ tag_type dax_string_to_type(char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
 const char *dax_type_to_string(tag_type type);
 
-/* TODO: This could be improved. It really needs to be atomic */
 dax_cdt *dax_cdt_new(char *name, int *error);
 int dax_cdt_member(dax_cdt *cdt, char *name, tag_type mem_type, unsigned int count);
 int dax_cdt_create(dax_cdt *cdt, tag_type *type);

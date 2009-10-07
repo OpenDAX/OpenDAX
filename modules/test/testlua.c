@@ -45,6 +45,7 @@ _run_test(lua_State *L)
     }
     if(lua_pcall(L, 0, 0, 0)) {
         test_fail();
+        printf("%s\n", lua_tostring(L, -1));
         printf("FAILED - %s\n", desc);
     } else {
         printf("PASSED - %s\n", desc);
@@ -177,6 +178,105 @@ _tag_get(lua_State *L)
     return 3;
 }
 
+
+/* These are the main data transfer functions.  These are wrappers for
+ * the dax_read/write/mask function. */
+static int
+_tag_read(lua_State *L) {
+    char *name;
+    int count, result;
+    Handle h;
+    void *data;
+    
+    if(lua_gettop(L) != 2) {
+        luaL_error(L, "Wrong number of arguments passed to tag_read()");
+    }
+    name = (char *)lua_tostring(L, 1);
+    count = lua_tointeger(L, 2);
+    result = dax_tag_handle(&h, name, count);
+    if(result) {
+        luaL_error(L, "dax_tag_handle() returned %d", result);
+    }
+    
+    data = malloc(h.size);
+    if(data == NULL) {
+        luaL_error(L, "tag_read() unable to allocate data area");
+    }
+    result = dax_read_tag(h, data);
+    if(result) {
+        free(data);
+        luaL_error(L, "dax_read_tag() returned %d", result);
+    }
+    /* This function figures all the tag data out and pushes the right
+     * thing onto the top of the Lua stack */
+    send_tag_to_lua(L, h, data);
+    
+    free(data);
+    return 1;
+}
+
+static int
+_tag_write(lua_State *L) {
+    char *name;
+    char q = 0;
+    int count, result, n;
+    Handle h;
+    void *data, *mask;
+    
+    if(lua_gettop(L) != 2) {
+        luaL_error(L, "Wrong number of arguments passed to tag_write()");
+    }
+    name = (char *)lua_tostring(L, 1);
+    count = lua_tointeger(L, 2);
+    result = dax_tag_handle(&h, name, count);
+    if(result) {
+        luaL_error(L, "dax_tag_handle() returned %d", result);
+    }
+    
+    data = malloc(h.size);
+    if(data == NULL) {
+        luaL_error(L, "tag_write() unable to allocate data area");
+    }
+
+    mask = malloc(h.size);
+    if(mask == NULL) {
+        free(data);
+        luaL_error(L, "tag_write() unable to allocate mask memory");
+    }
+    bzero(mask, h.size);
+    
+    get_tag_from_lua(L, h, data, mask);
+    
+    /* This checks the mask to determine which function to use
+     * to write the data to the server */
+    for(n = 0; n < h.size && q == 0; n++) {
+        if( ((unsigned char *)mask)[n] != 0xFF) {
+            q = 1;
+        }
+    }
+    if(q) {
+        printf("_tag_write() - Using the mask call\n");
+        result = dax_mask_tag(h, data, mask);
+    } else {
+        printf("_tag_write() - Using the write call\n");
+        result = dax_write_tag(h, data);
+    }
+    
+    if(result) {
+        free(data);
+        free(mask);
+        luaL_error(L, "dax_read_tag() returned %d", result);
+    }
+
+    free(data);
+    free(mask);
+    return 1;
+}
+
+
+/* This test is used to determine if the dax_tag_handle() will return
+ * the correct information in the tag handle.  The function takes 8
+ * arguments.  See the handles.lua script for details. */
 static int
 _handle_test(lua_State *L)
 {
@@ -186,7 +286,7 @@ _handle_test(lua_State *L)
     int count, result, byte, bit, rcount, size, test;
     
     if(lua_gettop(L) != 8) {
-        luaL_error(L, "wrong number of arguments to tag_handle_test()");
+        luaL_error(L, "wrong number of arguments to handle_test()");
     }
     name = lua_tostring(L, 1);
     count = lua_tointeger(L, 2);
@@ -243,60 +343,49 @@ _handle_test(lua_State *L)
  * having to create a formal test.
  *******************************************************************/
 
-int static
-tag_read_write_test(void)
-{
-    tag_index index;
-    int result;
-    Handle handle;
-    tag_type type;
-    dax_cdt *cdt;
-    dax_int write_data[32], read_data[32];
-    
-    index = dax_tag_add(&handle, "TestReadTagInt", DAX_INT, 32);
-    
-    result = dax_tag_handle(&handle, "TestReadTagInt[0]", 1);
-    assert(result == 0);
-    
-    printf("handle.idx = %d, handle.count = %d, handle.size = %d\n", handle.index, handle.count, handle.size);
-    
-    write_data[0] = 0x4321;
-    dax_write_tag(handle, write_data);
-    dax_read_tag(handle, read_data);
-    
-    printf("read_data[0] = 0x%X\n", read_data[0]);
-    
-    cdt = dax_cdt_new("TestCDT", NULL);
-    dax_cdt_member(cdt, "TheDint", DAX_DINT, 1);
-    dax_cdt_member(cdt, "TheInt", DAX_INT, 2);
-    result = dax_cdt_create(cdt, &type);
-    if(result) {
-        printf("Unable to Create TestCDT\n");
-        return result;
-    }
-    
-    dax_tag_add(&handle, "TestCDTRead", type, 1);
-    dax_tag_handle(&handle, "TestCDTRead.TheInt[1]", 1);
-    write_data[1] = 444;
-    dax_write_tag(handle, &write_data[1]);
-    dax_read_tag(handle, &read_data[1]);
-    printf("read_data[1] = %d\n", read_data[1]);
-       
-    return 0;
-}
+
 
 
 static int
 _lazy_test(lua_State *L)
 {
-    int result;
+    int result, n;
+    Handle h;
+    unsigned char *data, *mask;
+    unsigned char *newdata, *newmask;
     
-    /* TODO: Check the corner conditions of the tag reading and writing.
-     * Offset, size vs. tag size etc. */
-    result = tag_read_write_test();
+    result = dax_tag_handle(&h, "LazyTag", 0);
     if(result) {
-        luaL_error(L, "Tag Read/Write Test returned %d", result);
+        luaL_error(L, "Problem getting handle for LazyTag = %d", result);
     }
+    
+    data = malloc(h.size);
+    mask = malloc(h.size);
+    bzero(mask, h.size);
+    
+    *((int *)data) = 1;
+    *((dax_dint *)(data + 2)) = 2;
+    *((dax_udint *)(data + 6)) = 3;
+    
+    dax_write_tag(h, data);
+    
+    *((dax_dint *)(data + 2)) = 5;
+    *((dax_dint *)(mask + 2)) = 0xFFFFFFFF;
+    
+    dax_mask_tag(h, data, mask);
+    free(data); free(mask);
+    
+    dax_tag_handle(&h, "LazyArray", 0);
+    for(n = 0; n < 10; n++) {
+        newdata = data + n * dax_get_typesize(h.type);
+        
+        *((int *)newdata) = n * 10 + 1;
+        *((dax_dint *)(newdata + 2)) = n * 10 + 2;
+        *((dax_udint *)(newdata + 6)) = n * 10 + 3;
+    }
+    
+    dax_write_tag(h, data);
+    
     return 0;
 }
 
@@ -317,7 +406,13 @@ add_test_functions(lua_State *L)
 
     lua_pushcfunction(L, _tag_get);
     lua_setglobal(L, "tag_get");
-
+    
+    lua_pushcfunction(L, _tag_read);
+    lua_setglobal(L, "tag_read");
+    
+    lua_pushcfunction(L, _tag_write);
+    lua_setglobal(L, "tag_write");
+    
     lua_pushcfunction(L, _add_random_tags);
     lua_setglobal(L, "add_random_tags");
 

@@ -103,7 +103,7 @@ _add_member_to_cache(int index, char *desc) {
 
 /* Calculate the size (in bytes) of the datatype */
 int
-get_typesize(tag_type type)
+dax_get_typesize(tag_type type)
 {
     int size = 0;
     unsigned int pos = 0; /* Bit position within the data area */
@@ -126,7 +126,7 @@ get_typesize(tag_type type)
                     pos++;
                 }
                 if(IS_CUSTOM(this->type)) {
-                    pos += (get_typesize(this->type) * this->count) * 8;
+                    pos += (dax_get_typesize(this->type) * this->count) * 8;
                 } else {
                     /* This gets the size in bits */
                     pos += TYPESIZE(this->type) * this->count;
@@ -594,7 +594,7 @@ dax_tag_handle(Handle *h, char *str, int count)
                         if(this->type == DAX_BOOL) {
                             list[n].byte += (this->count - 1)/8 + 1;
                         } else {
-                            list[n].byte += get_typesize(this->type) * this->count;
+                            list[n].byte += dax_get_typesize(this->type) * this->count;
                         }
                     } else { /* When we find it */
                         list[n].type = this->type;
@@ -629,7 +629,7 @@ dax_tag_handle(Handle *h, char *str, int count)
                 list[n].byte += list[n].index / 8;
                 list[n].bit += list[n].index % 8;
             } else {
-                list[n].byte += get_typesize(list[n].type) * list[n].index;
+                list[n].byte += dax_get_typesize(list[n].type) * list[n].index;
                 list[n].bit += 0;
             } 
         }
@@ -665,7 +665,7 @@ dax_tag_handle(Handle *h, char *str, int count)
     if(list[n].type == DAX_BOOL) {
         h->size = (h->count - 1)/8 + 1;
     } else {
-        h->size = get_typesize(list[n].type) * h->count;
+        h->size = dax_get_typesize(list[n].type) * h->count;
     }
     
 getout:
@@ -736,7 +736,7 @@ dax_cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter, void *))
                     }
                 } else { /* Not this->type == DAX_BOOL */
                     bit = 0;
-                    byte += get_typesize(this->type) * this->count;
+                    byte += dax_get_typesize(this->type) * this->count;
                 }
             }
             this = this->next;

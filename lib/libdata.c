@@ -240,7 +240,7 @@ _read_format(tag_type type, int count, void *data, int offset)
             result = _read_format(this->type, this->count, data, pos);
             if(result) return result;
             if(IS_CUSTOM(this->type)) {
-                pos += (get_typesize(this->type) * this->count);
+                pos += (dax_get_typesize(this->type) * this->count);
             } else {
                 /* This gets the size in bits */
                 pos += TYPESIZE(this->type) * this->count / 8;
@@ -419,6 +419,9 @@ dax_read_tag(Handle handle, void *data)
 //}
 //
 
+/* This reformats the information in *data to prepare it to be written
+ * to the server by changing the byte ordering and number format if
+ * necessary to match the server */
 static inline int
 _write_format(tag_type type, int count, void *data, int offset)
 {
@@ -442,7 +445,7 @@ _write_format(tag_type type, int count, void *data, int offset)
             result = _write_format(this->type, this->count, newdata, pos);
             if(result) return result;
             if(IS_CUSTOM(this->type)) {
-                pos += (get_typesize(this->type) * this->count);
+                pos += (dax_get_typesize(this->type) * this->count);
             } else {
                 /* This gets the size in bits */
                 pos += TYPESIZE(this->type) * this->count / 8;
@@ -508,7 +511,6 @@ _write_format(tag_type type, int count, void *data, int offset)
 }
 
 
-
 int
 dax_write_tag(Handle handle, void *data)
 {
@@ -528,20 +530,14 @@ dax_write_tag(Handle handle, void *data)
             mask[i / 8] |= (1 << (i % 8));
             i++;
         }
-    } else {
-        result =  _write_format(handle.type, handle.count, data, 0);
-    }
-    if(result) return result;
-    if(handle.type == DAX_BOOL && handle.bit > 0) {
         result = dax_mask(handle.index, handle.byte, data, mask, handle.size);
         free(mask);
-    } else {    
+    } else {
+        result =  _write_format(handle.type, handle.count, data, 0);
+        if(result) return result;
         result = dax_write(handle.index, handle.byte, data, handle.size);
     }
     return result;
-
-    
-    return 0;
 }
 
 //int
@@ -636,10 +632,32 @@ dax_write_tag(Handle handle, void *data)
 
 
 int
-dax_mask_tag(Handle handle, void *data, void*mask)
+dax_mask_tag(Handle handle, void *data, void *mask)
 {
+    int i, n, result = 0;
+    char *newmask = NULL;
     
-    return 0;
+    if(handle.type == DAX_BOOL && handle.bit > 0) {
+        newmask = malloc(handle.size);
+        if(newmask == NULL) return ERR_ALLOC;
+        bzero(newmask, handle.size);
+            
+        i = handle.bit % 8;
+        for(n = 0; n < handle.count; n++) {
+            if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
+                ((char *)data)[i / 8] |= (1 << (i % 8));
+                newmask[i / 8] |= (1 << (i % 8));
+            }
+            i++;
+        }
+        result = dax_mask(handle.index, handle.byte, data, newmask, handle.size);
+        free(newmask);
+    } else {
+        result =  _write_format(handle.type, handle.count, data, 0);
+        if(result) return result;
+        result = dax_mask(handle.index, handle.byte, data, mask, handle.size);
+    }
+    return result;
 }
 
 //int

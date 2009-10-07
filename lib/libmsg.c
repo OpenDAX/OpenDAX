@@ -358,7 +358,7 @@ dax_tag_add(Handle *h, char *name, tag_type type, int count)
             h->bit = 0;
             h->type = type;
             h->count = count;
-            h->size = count * get_typesize(type);
+            h->size = count * dax_get_typesize(type);
         }
         strcpy(tag.name, name);
         tag.idx = *(tag_index *)buff;
@@ -539,6 +539,7 @@ dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size)
     size_t n, count, m_size, sendsize;
     char buff[MSG_DATA_SIZE];
     int result;
+    //int apple;
     
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle.*/
@@ -555,7 +556,9 @@ dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size)
         *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
         memcpy(&buff[8], data + (m_size * n), sendsize);
         memcpy(&buff[8 + sendsize], mask + (m_size * n), sendsize);
-        
+        //for(apple = 0; apple < size; apple++) {
+        //    printf("data [0x%X] mask [0x%X]\n", ((char *)data)[apple], ((char *)mask)[apple]);
+        //}
         result = _message_send(MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(tag_index) + sizeof(int));
         if(result) return result;
         result = _message_recv(MSG_TAG_MWRITE, buff, 0, 1);
