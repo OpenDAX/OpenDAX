@@ -94,6 +94,7 @@ struct iter_udata {
     lua_State *L;
     void *data;
     void *mask;
+    int error;
 };
 
 /* This function figures out what type of data the tag is and translates
@@ -233,6 +234,8 @@ send_tag_to_lua(lua_State *L, Handle h, void *data)
     } 
 }
 
+/* Here begin the tag writing functions.  */
+
 /* Takes the Lua value at the top of the stack, converts it and places it
  * in the proper place in data.  The mask is set as well.  */
 static inline void
@@ -260,7 +263,6 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             break;
         case DAX_INT:
             x = lua_tointeger(L, -1);
-            printf("Writing INT = %ld\n", x);
             ((dax_int *)data)[index] = x;
             ((dax_int *)mask)[index] = 0xFFFF;
             break;
@@ -268,19 +270,17 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
         case DAX_UDINT:
         case DAX_TIME:
             x = lua_tointeger(L, -1);
-            printf("Writing UDINT = %ld\n", x);
             ((dax_udint *)data)[index] = x;
             ((dax_udint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_DINT:
             x = lua_tointeger(L, -1);
-            printf("Writing DINT = %ld\n", x);
             ((dax_dint *)data)[index] = x;
             ((dax_dint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_REAL:
             ((dax_real *)data)[index] = (dax_real)lua_tonumber(L, -1);
-            ((dax_real *)mask)[index] = 0xFFFFFFFF;
+            ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_LWORD:
         case DAX_ULINT:
@@ -295,7 +295,7 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             break;
         case DAX_LREAL:
             ((dax_lreal *)data)[index] = lua_tonumber(L, -1);
-            ((dax_lreal *)mask)[index] = DAX_64_ONES;
+            ((u_int64_t *)mask)[index] = DAX_64_ONES;
             break;
     }
 }
@@ -311,10 +311,8 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
     if(tag.count > 1) { /* The tag is an array */
         /* Check that the second parameter is a table */
         if( ! lua_istable(L, -1) ) {
-            /* This is a little clumsy */
-            free(data);
-            free(mask);
-            luaL_error(L, "Table needed to set - %s", tag.name);
+            lua_pushfstring(L, "Table needed to set - %s", tag.name);
+            return -1;
         }
         /* We're just searching for indexes in the table.  Anything
          other than numerical indexes in the table don't count */
@@ -356,6 +354,9 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
     return 0;
 }
 
+/* This is the recursive callback function that is passed to
+ * dax_cdt_iter() to handle the compound data types.  If the
+ * type has nested cdt's then this function will call itself */
 void
 write_callback(cdt_iter member, void *udata)
 {
@@ -364,48 +365,120 @@ write_callback(cdt_iter member, void *udata)
     lua_State *L = ((struct iter_udata *)udata)->L;
     unsigned char *data = ((struct iter_udata *)udata)->data;
     unsigned char *mask = ((struct iter_udata *)udata)->mask;
-    int offset, n;
-
+    int offset, n, result = 0;
+    
     if(IS_CUSTOM(member.type)) {
         newdata.L = L;
+        newdata.error = 0;
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
                 offset = member.byte + (n * dax_get_typesize(member.type));
                 newdata.data = (char *)data + offset;
                 newdata.mask = (char *)mask + offset;
-                dax_cdt_iter(member.type, &newdata , write_callback);
+                lua_rawgeti(L, -1, n+1);
+                if(! lua_isnil(L, -1)) {
+                    if( ! lua_istable(L, -1) ) {
+                        lua_pushfstring(L, "Table needed to set - %s", member.name);
+                        ((struct iter_udata *)udata)->error = -1;
+                        return;
+                    }
+                    dax_cdt_iter(member.type, &newdata , write_callback);
+                }
+                lua_pop(L, 1);
+                if(newdata.error) {
+                    ((struct iter_udata *)udata)->error = newdata.error;
+                    return;
+                }
             }
         } else {
             newdata.data = (char *)data + member.byte;
             newdata.mask = (char *)mask + member.byte;
-            dax_cdt_iter(member.type, &newdata, write_callback);
+            lua_pushstring(L, member.name);
+            lua_rawget(L, -2);
+            if(! lua_isnil(L, -1)) {
+                if( ! lua_istable(L, -1) ) {
+                    lua_pushfstring(L, "Table needed to set - %s", member.name);
+                    ((struct iter_udata *)udata)->error = -1;
+                    return;
+                }
+                dax_cdt_iter(member.type, &newdata, write_callback);
+            }
+            lua_pop(L, 1);
+            if(newdata.error) {
+                ((struct iter_udata *)udata)->error = newdata.error;
+                return;
+            }
         }
     } else {
         lua_pushstring(L, member.name);
         lua_rawget(L, -2);
         if(! lua_isnil(L, -1)) {
-            _pop_base_datatype(L, member, data + member.byte, mask + member.byte);
+            result = _pop_base_datatype(L, member, data + member.byte, mask + member.byte);
         }
         lua_pop(L, 1);
     }
+    if(result) {
+        ((struct iter_udata *)udata)->error = result;
+    }
 }
 
-void
+/* This function takes care of the top level of the tag.  If the tag
+ * is a simple base datatype tag then the _pop_base_datatype() function
+ * is called directly and write is complete.  If the tag is a compound
+ * datatype then the top level is taken care of and then it's turned
+ * over to the recursive write_callback() function through the
+ * cdt iterator. */
+int
 get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
     cdt_iter tag;
     struct iter_udata udata;
-    
-    udata.L = L;
-    udata.data = data;
-    udata.mask = mask;
+    int n, offset;
     
     if(IS_CUSTOM(h.type)) {
-        dax_cdt_iter(h.type, &udata, write_callback);
+        udata.L = L;
+        udata.error = 0;
+        if(h.count > 1) {
+            for(n = 0; n < h.count; n++) {
+                offset = n * dax_get_typesize(h.type);
+                udata.data = (char *)data + offset;
+                udata.mask = (char *)mask + offset;
+                if( ! lua_istable(L, -1) ) {
+                    lua_pushfstring(L, "Table needed to set - %s", tag.name);
+                    return -1;
+                }
+                lua_rawgeti(L, -1, n+1);
+                if(! lua_isnil(L, -1)) {
+                    if( ! lua_istable(L, -1) ) {
+                        lua_pushstring(L, "Table needed to set tag");
+                        return -1;
+                    }
+                    dax_cdt_iter(h.type, &udata , write_callback);
+                }
+                lua_pop(L, 1);
+                if(udata.error) {
+                    return udata.error;
+                }
+            }
+        } else {
+            udata.data = data;
+            udata.mask = mask;
+            if(! lua_isnil(L, -1)) {
+                if( ! lua_istable(L, -1) ) {
+                    lua_pushstring(L, "Table needed to set Tag");
+                    return -1;
+                }
+                dax_cdt_iter(h.type, &udata, write_callback);
+            }
+            if(udata.error) {
+                return udata.error;
+            }
+        }
     } else {
         tag.count = h.count;
         tag.type = h.type;
         tag.byte = 0;
         tag.bit = 0;
-        _pop_base_datatype(L, tag, data, mask);
-    } 
+        return _pop_base_datatype(L, tag, data, mask);
+    }
+    return 0;
 }

@@ -245,7 +245,12 @@ _tag_write(lua_State *L) {
     }
     bzero(mask, h.size);
     
-    get_tag_from_lua(L, h, data, mask);
+    result = get_tag_from_lua(L, h, data, mask);
+    if(result) {
+        free(data);
+        free(mask);
+        lua_error(L); /* The error message should already be on top of the stack */
+    }
     
     /* This checks the mask to determine which function to use
      * to write the data to the server */
@@ -352,7 +357,7 @@ _lazy_test(lua_State *L)
     int result, n;
     Handle h;
     unsigned char *data, *mask;
-    unsigned char *newdata, *newmask;
+    unsigned char *newdata;
     
     result = dax_tag_handle(&h, "LazyTag", 0);
     if(result) {

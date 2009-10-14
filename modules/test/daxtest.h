@@ -34,7 +34,7 @@ void add_test_functions(lua_State *L);
 
 int add_random_tags(int count, char *name);
 void send_tag_to_lua(lua_State *L, Handle h, void* data);
-void get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask);
+int get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask);
 
 
 #endif /* !__DAXTEST_H */
