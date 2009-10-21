@@ -169,11 +169,11 @@ _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
         if(tag.count > 1) { /* We need to return a table */
             lua_createtable(L, tag.count, 0);
             for(n = 0; n < tag.count ; n++) {
-                _read_to_stack(L, tag.type, data + (TYPESIZE(tag.type) / 8) * n);
+                _read_to_stack(L, tag.type, data + tag.byte + (TYPESIZE(tag.type) / 8) * n);
                 lua_rawseti(L, -2, n + 1); /* Lua likes 1 indexed arrays */
             }
         } else { /* It's a single value */
-            _read_to_stack(L, tag.type, data);
+            _read_to_stack(L, tag.type, data + tag.byte);
         }
     }
 }
@@ -187,27 +187,32 @@ read_callback(cdt_iter member, void *udata)
     lua_State *L = ((struct iter_udata *)udata)->L;
     unsigned char *data = ((struct iter_udata *)udata)->data;
     int offset, n;
+    struct iter_udata newdata;
 
+    lua_pushstring(L, member.name);
+            
     if(IS_CUSTOM(member.type)) {
+        lua_newtable(L);
+        newdata.L = L;
+        newdata.mask = NULL;
+        newdata.error = 0;
+        
         if(member.count > 1) {
-            lua_newtable(L);
-            lua_pushstring(L, member.name);
             for(n = 0;n < member.count; n++) {
                 lua_newtable(L);
                 offset = member.byte + (n * dax_get_typesize(member.type));
-                dax_cdt_iter(member.type, data + offset , read_callback);
-                lua_rawseti(L, -1, n + 1);
+                newdata.data = data + offset;
+                dax_cdt_iter(member.type, &newdata , read_callback);
+                lua_rawseti(L, -2, n + 1);
             }
-            lua_rawset(L, -3);
         } else {
-            lua_newtable(L);
-            lua_pushstring(L, member.name);
-            dax_cdt_iter(member.type, data + member.byte, read_callback);
-            lua_rawset(L, -3);
+            newdata.data = data + member.byte;
+            dax_cdt_iter(member.type, &newdata, read_callback);
         }
     } else {
         _push_base_datatype(L, member, data);
     }
+    lua_rawset(L, -3);
 }
 
 /* This is the top level function for taking the data that is is in *data,
@@ -218,13 +223,27 @@ send_tag_to_lua(lua_State *L, Handle h, void *data)
 {
     cdt_iter tag;
     struct iter_udata udata;
+    int offset, n;
     
     udata.L = L;
     udata.data = data;
     udata.mask = NULL;
-    
+    udata.error = 0;
+
     if(IS_CUSTOM(h.type)) {
-        dax_cdt_iter(h.type, &udata, read_callback);
+        lua_newtable(L);
+        
+        if(h.count > 1) {
+            for(n = 0; n < h.count; n++) {
+                lua_newtable(L);    
+                offset = n * dax_get_typesize(h.type);
+                udata.data = (char *)data + offset;
+                dax_cdt_iter(h.type, &udata, read_callback);
+                lua_rawseti(L, -2, n+1);
+            }
+        } else {
+            dax_cdt_iter(h.type, &udata, read_callback);
+        }
     } else {
         tag.count = h.count;
         tag.type = h.type;
@@ -318,9 +337,7 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
          other than numerical indexes in the table don't count */
         for(n = 0; n < tag.count; n++) {
             lua_rawgeti(L, -1, n + 1);
-            if(lua_isnil(L, -1)) {
-                lua_pop(L, 1); /* Better pop that nil off the stack */
-            } else { /* Ok we have something let's deal with it */
+            if(! lua_isnil(L, -1)) {
                 if(tag.type == DAX_BOOL) {
                     /* Handle the boolean */
                     bit = n + tag.bit;
@@ -370,14 +387,22 @@ write_callback(cdt_iter member, void *udata)
     if(IS_CUSTOM(member.type)) {
         newdata.L = L;
         newdata.error = 0;
+        lua_pushstring(L, member.name);
+        lua_rawget(L, -2);
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
                 offset = member.byte + (n * dax_get_typesize(member.type));
                 newdata.data = (char *)data + offset;
                 newdata.mask = (char *)mask + offset;
+                if( ! lua_istable(L, -1) ) {
+                    lua_pushfstring(L, "Table needed to set - %s", member.name);
+                    ((struct iter_udata *)udata)->error = -1;
+                    return;
+                }
                 lua_rawgeti(L, -1, n+1);
                 if(! lua_isnil(L, -1)) {
                     if( ! lua_istable(L, -1) ) {
+                        lua_pop(L, 1);
                         lua_pushfstring(L, "Table needed to set - %s", member.name);
                         ((struct iter_udata *)udata)->error = -1;
                         return;
@@ -393,8 +418,6 @@ write_callback(cdt_iter member, void *udata)
         } else {
             newdata.data = (char *)data + member.byte;
             newdata.mask = (char *)mask + member.byte;
-            lua_pushstring(L, member.name);
-            lua_rawget(L, -2);
             if(! lua_isnil(L, -1)) {
                 if( ! lua_istable(L, -1) ) {
                     lua_pushfstring(L, "Table needed to set - %s", member.name);
@@ -403,12 +426,12 @@ write_callback(cdt_iter member, void *udata)
                 }
                 dax_cdt_iter(member.type, &newdata, write_callback);
             }
-            lua_pop(L, 1);
             if(newdata.error) {
                 ((struct iter_udata *)udata)->error = newdata.error;
                 return;
             }
         }
+        lua_pop(L, 1);
     } else {
         lua_pushstring(L, member.name);
         lua_rawget(L, -2);
@@ -449,6 +472,7 @@ get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
                 lua_rawgeti(L, -1, n+1);
                 if(! lua_isnil(L, -1)) {
                     if( ! lua_istable(L, -1) ) {
+                        lua_pop(L, 1);
                         lua_pushstring(L, "Table needed to set tag");
                         return -1;
                     }

@@ -260,10 +260,8 @@ _tag_write(lua_State *L) {
         }
     }
     if(q) {
-        printf("_tag_write() - Using the mask call\n");
         result = dax_mask_tag(h, data, mask);
     } else {
-        printf("_tag_write() - Using the write call\n");
         result = dax_write_tag(h, data);
     }
     

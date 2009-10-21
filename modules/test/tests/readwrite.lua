@@ -1,6 +1,24 @@
 --These tests are to make sure that we are reading and writing data to
 --and from the server correctly.
 
+function print_table(table, indent)
+  local indentstr = ""
+
+  for n=0,indent-1 do
+    indentstr = indentstr .. " "
+  end
+
+  for t,v in pairs(table) do
+    if type(v)=="table" then
+      print(indentstr .. t)
+      print_table(v, indent+2)
+    else
+      print(indentstr .. t .." = " .. tostring(v))
+    end
+  end
+end
+
+
 function CheckArray(name, x, count)
   tag_write(name, x)
   
@@ -12,7 +30,7 @@ function CheckArray(name, x, count)
     end
   end
 end
-    
+
 
 --We start by creating tags of every kind of base datatype.
 
@@ -103,8 +121,8 @@ tag_add("RWTestSimpleArray", test1, 10)
 
 
 members2 = {{"Real",       "REAL",          1},
-            {"Int",        "INT",          10},
-            {"RealArray",  "REAL",         10},
+            {"IntArray",   "INT",          10},
+           -- {"RealArray",  "REAL",         10},
             {"Test",       "RWTestSimple",  1},
             {"TestArray",  "RWTestSimple", 10},
             {"Dint",       "DINT",          1}}
@@ -114,6 +132,9 @@ test2 = cdt_create("RWTest", members2)
 tag_add("RWTest", test2, 1)
 tag_add("RWTestArray", test2, 11)
 
+tag_write("RWTestINT", 56)
+print(tag_read("RWTestINT", 0))
+
 x = {}
 
 x.Int = 123
@@ -121,6 +142,20 @@ x.Dint = 456
 x.Udint = 789
 
 --tag_write("RWTestSimple", x)
+
+--[[
+y = tag_read("RWTestSimple", 0)
+
+print(y)
+print(y.Int)
+print(y.Dint)
+print(y.Udint)
+
+if x.Int ~= y.Int then error("x.Int ~= y.Int") end
+if x.Dint ~= y.Dint then error("x.Dint ~= y.Dint") end
+if x.Udint ~= y.Udint then error("x.Udint ~= y.Udint") end
+
+--]]
 
 x = {}
 x.Int = 12
@@ -136,27 +171,64 @@ for n=1,10 do
   x[n].Udint = n * 10 +3
 end
 
---tag_write("RWTestSimpleArray", x)
+tag_write("RWTestSimpleArray", x)
+y = tag_read("RWTestSimpleArray", 0)
+
+for n=1,10 do
+  print("RWTestSimpleArray[" .. n .. "].Int = " .. tostring(y[n].Int))
+  print("RWTestSimpleArray[" .. n .. "].Dint = " .. tostring(y[n].Dint))
+  print("RWTestSimpleArray[" .. n .. "].Udint = " .. tostring(y[n].Udint))
+end
 
 x = {}
 
-x.Test = {}
-
-x.Test.Int = 333
 x.Real = 3.141592
+x.IntArray = {}
+x.IntArray[1] = 111
+x.IntArray[2] = 222
+
+x.Test = {}
+x.Test.Int = 123
+x.Test.Dint = 234
+x.Test.Udint = 345
+
 x.TestArray = {}
-x.TestArray[1] = {}
-x.TestArray[1].Int = 444
-x.TestArray[3].Int = 555
-x.Int = {}
-x.Int[1] = 111
+
+for n=1,10 do
+  x.TestArray[n] = {}
+  x.TestArray[n].Int = n*100 + n*10 + n
+  x.TestArray[n].Dint = (n*100 + n*10 + n) * -1
+  x.TestArray[n].Udint = n*1000 + n*100 + n*10 + n
+end
 
 tag_write("RWTest", x)
 
-x = {}
+y = tag_read("RWTest", 0)
 
+print("PRINTING TABLE")
+print_table(y, 0)
+print("DONE WITH THAT")
 
+print("y.Real = " .. y.Real)
 
+print(".IntArray[]")
+for n=1,10 do
+  print(tostring(x.IntArray[n]).." = "..tostring(y.IntArray[n]))
+end
+
+print(".Test.Int")
+print(tostring(x.Test.Int).." = "..tostring(y.Test.Int))
+print(".Test.Dint")
+print(tostring(x.Test.Dint).." = "..tostring(y.Test.Dint))
+print(".Test.Udint")
+print(tostring(x.Test.Udint).." = "..tostring(y.Test.Udint))
+
+print(".TestArray[].Int")
+for n=1,10 do
+  print(tostring(n))
+  print("x.TestArray["..n.."].Int = "..tostring(x.TestArray[n].Int))
+  print("y.TestArray["..n.."].Int = "..tostring(y.TestArray[n].Int))
+end
 
 --y = tag_read("RWTestSimple", 0)
 

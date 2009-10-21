@@ -692,7 +692,7 @@ dax_cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter, void *))
     int byte = 0;
     int bit = 0;
     int index = 0;
-    
+                    
     if(type == 0) { /* iterate through the custom types */
         dt = get_cdt_pointer(CDT_TO_TYPE(index), &result);
         
