@@ -163,7 +163,7 @@ dax_to_string(tag_type type, void *buff, int index)
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
         case DAX_BOOL:
-            if((0x01 << index % 8) & ((int8_t *)buff)[index / 8]) {
+            if((0x01 << index % 8) & ((u_int8_t *)buff)[index / 8]) {
                 printf("1\n");
             } else {
                 printf("0\n");
@@ -214,11 +214,13 @@ string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
         case DAX_BOOL:
             temp = strtol(val, NULL, 0);
             if(temp == 0) {
-                ((int8_t *)buff)[index / 8] &= ~(0x01 << index % 8);
+                ((u_int8_t *)buff)[index / 8] &= ~(0x01 << index % 8);
             } else {
-                ((int8_t *)buff)[index / 8] |= (0x01 << index % 8);
+                ((u_int8_t *)buff)[index / 8] |= (0x01 << index % 8);
             }
-            /* TODO: set mask??? */
+            if(mask) {
+                ((u_int8_t *)mask)[index / 8] |= (0x01 << index % 8);
+            }
             break;
         case DAX_BYTE:
         case DAX_SINT:
@@ -324,7 +326,7 @@ tag_write(char **tokens, int tcount) {
     Handle handle;
     int result, n, points;
     char *name;
-    void *buff;
+    void *buff, *mask;
     
     if(tokens[0]) {
         name = tokens[0];
@@ -341,11 +343,15 @@ tag_write(char **tokens, int tcount) {
     }
      
     buff = malloc(handle.size);
-    bzero(buff, handle.size);
-    if(buff == NULL) {
+    mask = malloc(handle.size);
+    if(buff == NULL || mask == NULL) {
+        if(buff) free(buff);
+        if(mask) free(mask);
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
         return ERR_ALLOC;
     }
+    bzero(buff, handle.size);
+    bzero(mask, handle.size);
     
     points = tcount - 1;
     if(handle.count < points) {
@@ -355,13 +361,14 @@ tag_write(char **tokens, int tcount) {
      * I'd have to search for any '-' and then use dax_mask_tag() instead. */
 
     for(n = 0; n < points; n++) {
-        string_to_dax(tokens[n + 1], handle.type, buff, NULL, n);
+        string_to_dax(tokens[n + 1], handle.type, buff, mask, n);
     }
-    result = dax_write_tag(handle, buff);
+    result = dax_mask_tag(handle, buff, mask);
     if(result) {
         fprintf(stderr, "ERROR: Unable to Write to tag %s\n", name);
     }
     free(buff);
+    free(mask);
     return 0;
 }
 
@@ -465,7 +472,7 @@ cdt_add(char **tokens, int tcount)
         return ERR_ARG;
     }
     type = dax_cdt_new(tokens[0], &result);
-    //assert(0); //--Assertion because of the above commented function
+    
     if(type == 0) {
         fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
         return result;
@@ -474,7 +481,7 @@ cdt_add(char **tokens, int tcount)
         memtype = dax_string_to_type(tokens[n+1]);
         count = strtol(tokens[n+2], NULL, 0);
         result = dax_cdt_member(type, tokens[n], memtype, count);
-        //assert(0); //--Assertion because of the above commented function
+    
         if(result) {
             fprintf(stderr, "ERROR: Unable to add member %s\n", tokens[n]);
         }

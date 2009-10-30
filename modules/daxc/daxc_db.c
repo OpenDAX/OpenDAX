@@ -23,13 +23,60 @@
 #include <daxc.h>
 #include <ctype.h>
 
-#define FMT_HEX 0x00
-#define FMT_DEC 0x01
+#define FMT_HEX  0x00
+#define FMT_DEC  0x01
 #define FMT_CHAR 0x02
 
-static int format;
-static int width = 8;
-static int dsize = 8;
+//static int format;
+static int width = 4;
+//static int dsize = 8;
+
+int
+db_read(char **tokens)
+{
+    Handle h;
+    int result, n;
+    unsigned char *buff;
+    
+    if(tokens == NULL) {
+        fprintf(stderr, "ERROR: No Tag Given\n");
+        return ERR_ARG;
+    }
+    if(tokens[0][0] == '/') {
+        fprintf(stderr, "TODO: We'll do formatting later\n");
+        return ERR_GENERIC;
+    }
+    result = dax_tag_handle(&h, tokens[0], 0);
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to retrieve handle for tag %s\n", tokens[0]);
+        return result;
+    }
+    buff = malloc(sizeof(unsigned char) * h.size);
+    result = dax_read_tag(h, buff);
+    if(result) {
+        free(buff);
+        fprintf(stderr, "ERROR: Unable to read tag data for tag %s\n", tokens[0]);
+        return result;
+    }
+    printf("Index:        %d\n", h.index);
+    printf("Type:         %s\n", dax_type_to_string(h.type));
+    printf("Byte Offset:  %d\n", h.byte);
+    printf("Bit Offset:   %d\n", h.bit);
+    printf("Count:        %d\n", h.count);
+    printf("Size:         %d\n\n", h.size);
+   
+    for(n = 0; n < h.size; n++) {
+        /* TODO: Add formatting */
+        printf("[0x%02X] ", buff[n]);
+        if((n+1) % width == 0) printf("\n");
+    }
+    if(n % width) printf("\n");
+    printf("\n");
+    free(buff);
+    return 0;
+}
+
+#ifdef KDIE887897EKIKJNVKDILW
 
 /* Examples:
    DB READ tagname / handle [count]
@@ -241,3 +288,4 @@ int db_format(void) {
     }
     return 0;
 }
+#endif

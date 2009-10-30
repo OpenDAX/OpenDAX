@@ -34,6 +34,6 @@ int list_types(char **tokens);
 
 /* DB commands (DataBase) */
 int db_read_bit(void);
-int db_read(void);
+int db_read(char **tokens);
 int db_write(void);
 int db_format(void);

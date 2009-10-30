@@ -177,7 +177,8 @@ runcmd(char *instr)
         result = cdt_add(&tokens[1], tcount -1);
 //    } else if( !strncasecmp(tokens[0], "mod", 3)) {
 //        printf("Haven't done 'mod' yet!\n");
-//    } else if( !strcasecmp(tokens[0],"db")) {
+    } else if( !strcasecmp(tokens[0],"db")) {
+        result = db_read(&tokens[1]);
 //        if(tokens[1] == NULL) fprintf(stderr, "ERROR: Missing Subcommand\n");
 //        else if( !strcasecmp(tokens[1], "read")) result = db_read();
 //    //  else if( !strcasecmp(tokens[1], "readbit")) result = db_read_bit();
