@@ -540,7 +540,8 @@ _parse_next_member(tag_type lasttype, Handle *h, char *str, int count)
             if(this->type == DAX_BOOL) {
                 h->byte += index / 8;
                 h->bit = index % 8;
-                h->size = (count - 1) / 8 + 1;
+                /* Two bits across the byte boundry require two bytes */
+                h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
                 h->count = count;
             } else {
                 size = dax_get_typesize(this->type);
@@ -553,7 +554,7 @@ _parse_next_member(tag_type lasttype, Handle *h, char *str, int count)
             if(count > this->count) return ERR_2BIG;
             if(count == 0) count = this->count;
             if(this->type == DAX_BOOL) {
-                h->size = (count - 1)/ 8 + 1;
+                h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
                 h->count = count;
             } else {
                 size = dax_get_typesize(this->type);
@@ -590,7 +591,6 @@ _dax_tag_handle(Handle *h, char *str, int strlen, int count)
     if(result) return ERR_NOTFOUND;
     h->index = tag.idx; /* This index is the database index */
     
-    //--printf("%s\n", tagname);
     if(nextname) {
         if(!IS_CUSTOM(tag.type)) {
             dax_error("Tag %s, has no member %s", tagname, nextname);
@@ -610,13 +610,12 @@ _dax_tag_handle(Handle *h, char *str, int strlen, int count)
     } else {
         h->type = tag.type;
         if(index != ERR_NOTFOUND){
-            //--printf("Working....index = %d, count = %d, tag.count = %d\n", index, count, tag.count);
             if(count == 0 ) count = 1;
             if((index + count) > tag.count ) return ERR_2BIG;
             if(tag.type == DAX_BOOL) {
                 h->byte = index / 8;
                 h->bit = index % 8;
-                h->size = (count - 1) / 8 + 1;
+                h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
                 h->count = count;
             } else {
                 size = dax_get_typesize(tag.type);
@@ -631,7 +630,7 @@ _dax_tag_handle(Handle *h, char *str, int strlen, int count)
             if(tag.type == DAX_BOOL) {
                 h->byte = 0;
                 h->bit = 0;
-                h->size = (count - 1)/ 8 + 1;
+                h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
                 h->count = count;
             } else {
                 size = dax_get_typesize(tag.type);
@@ -662,268 +661,6 @@ dax_tag_handle(Handle *h, char *str, int count)
     return result;
 }
 
-#ifdef WOCNDJ4579SMCHHYEY /* Just a big giant comment block */
-
-#define STATE_NAME     0x01
-#define STATE_INDEX    0x02
-#define STATE_IDLE     0x03
-#define STATE_NEXT     0x04
-#define STATE_FINISHED 0x00
-
-#define TEST_SIZE 10
-
-typedef struct {
-    char name[DAX_TAGNAME_SIZE + 1];
-    int index;
-    tag_type type;
-    int count;
-    int byte;
-    int bit;
-} _member_def;
-
-
-static int
-_parse_tagname(_member_def *list, char *str, int count)
-{
-    int n = 0, i = 0, j = 0, idx = 0;
-    int state = STATE_NAME;
-    char name[DAX_TAGNAME_SIZE + 1];
-    char test[TEST_SIZE];
-    int index = 0;
-    
-    /* Initialize the list */
-    for(n = 0; n < count; n++) {
-        list[n].name[0] = '\0';
-        list[n].index = -1;    
-    }
-    n = 0;
-    
-    while(str[n] != '\0' && state) {
-        if(state == STATE_NAME) {          /* We start with tag searching state */
-            if(str[n] == '[') {
-                state = STATE_INDEX;      /* If we find a '[' switch to finding index */
-            } else if(str[n] == '.') {
-                state = STATE_NEXT;      /* If we find a '.' switch to the next name */
-            } else {  /* Otherwise write the character to the tagname */
-                if(n > DAX_TAGNAME_SIZE) { /* Check size */
-                    return ERR_2BIG;
-                }
-                name[j++] = str[n];
-                name[j] = '\0'; /* Just to make sure we have a NULL end */
-            }
-            if(str[n+1] == '\0') state = STATE_FINISHED;
-            if(state != STATE_NAME) { /* If we have found the end of the tagname */
-                strncpy(list[idx].name, name, DAX_TAGNAME_SIZE);
-            }
-        } else if(state == STATE_INDEX) { /* In this state we get the index */
-            if(str[n] == '\0') {
-                return ERR_PARSE;
-            } else if(i > TEST_SIZE) {
-                return ERR_2BIG;
-            } else if(str[n] == ']') { /* get the index from the string */
-                test[i] = '\0';
-                list[idx].index = (int)strtol(test, NULL, 10);
-                state = STATE_IDLE; /* This is so we'll go through the loop again */
-            } else if(!isdigit(str[n])) { /* Only Positive Integers are allowed */
-                return ERR_NOTNUMBER;
-            } else {
-                if(i>=TEST_SIZE) { /* Too big for string */
-                    return ERR_ARG;
-                }
-                test[i++] = str[n]; /* Add another character to the test string */
-                test[i] = '\0';
-            }
-        } else if(state == STATE_NEXT) {
-            idx++;
-            i = j = 0;
-            if(idx >= count) {
-                return ERR_PARSE;
-            }
-            n--; /* Because this causes us one extra pass through the loop */
-            state = STATE_NAME;
-            
-        /* We should only be idle for one character.  The only characters that
-         * should follow the index are a '.' or the ending NULL.  If it's the
-         * NULL we shouldn't ever get here.  If it's not the '.' then it's an error */
-        } else if(state == STATE_IDLE) {
-            if(str[n] == '.') {
-                state = STATE_NEXT;
-            } else {
-                return ERR_ARG;
-            }
-        }
-        n++;
-    }
-    /* Zero length tagname no good */
-    if(n == 0) return ERR_TAG_BAD;
-    
-    /* Test the index that we found */
-    if(index < 0) {
-        return ERR_ARG;
-    }
-
-    return 0;
-}
-
-/* This function is used to determine a handle to the tag data area given
- * by the string.  It is a state machine of sorts.  It starts out looking for
- * the tagname itself.  Once it finds the end of the tagname it will either
- * have to find an index between brackets [] or a sub member following a '.'
- * It adds up all the indexes, makes sure that they are all within the bounds
- * of the tag and the datatype and then returns zero if successful and an
- * error code otherwise.
- */
-
-int
-dax_tag_handle(Handle *h, char *str, int count)
-{
-    int n = 0;
-    int cnt = 1;
-    int result, index;
-    _member_def *list = NULL;
-    dax_tag tag;
-    cdt_member *this;
-    tag_type type;
-    
-    /* TEST TEST TEST */
-    //--printf("Getting Handle for '%s' with count = %d\n", str, count);
-       
-    /* Count the number of '.'s to figure out the size of the list */
-    while(str[n] != '\0') {
-        if(str[n] == '.') {
-            cnt++;
-        }
-        n++;
-    }
-    list = malloc(sizeof(_member_def) * cnt);
-    if(list == NULL) {
-        return ERR_ALLOC;
-    }
-    
-    /* parse the given string into tokens and place in list */
-    result = _parse_tagname(list, str, cnt);
-    if(result) goto getout;
-    /* At this point 'list' should be populated with all the members of the 
-     * tag string.  Now we fill in the datatypes and the byte offsets */
-    
-    /* First PASS - Fill in all the bytes and bits for each member */
-    for(n = 0; n < cnt; n++) {
-        list[n].byte = list[n].bit = 0;
-        
-        if(n == 0) { /* This should be the tagname */
-            result = dax_tag_byname(&tag, list[0].name);
-            if(result) goto getout;
-            list[n].type = tag.type;  
-            list[n].count = tag.count;
-        } else { /* all the members of the tag */
-            type = list[n-1].type; /* We are looking inside the last members type */
-            if(IS_CUSTOM(type)) { /* Get the new members datatype */
-                /* We do this just to make sure that our type is in the cache */
-                if(dax_type_to_string(type) == NULL) {
-                    result = ERR_ARG;
-                    goto getout;
-                }
-                /* If we make it this far then our type should work */
-                index = CDT_TO_INDEX(type);
-                this = _datatypes[index].members;
-            
-                while(this != NULL) {
-                    /* Start by adding all the bytes of the members before the
-                     * one we are looking for */
-                    if(strcasecmp(list[n].name, this->name)) {
-                        if(this->type == DAX_BOOL) {
-                            //list[n].byte += (this->count - 1)/8 - 1;
-                            list[n].bit += this->count;
-                            if(list[n].bit > 7) {
-                                list[n].byte += (list[n].bit -1)/8 + 1;
-                                list[n].bit %= 8;
-                            }
-                            //list[n].byte += (this->count - 1)/8 + 1;
-                        } else {
-                            list[n].byte += dax_get_typesize(this->type) * this->count;
-                            list[n].bit = 0;
-                        }
-                    } else { /* When we find it */
-                        list[n].type = this->type;
-                        list[n].count = this->count;
-                        if(list[n].index >= 0 && list[n].index >= this->count) {
-                            result = ERR_2BIG;
-                            goto getout;
-                        }
-                        break;
-                    }
-                    this = this->next;
-                } /* while(this != NULL */
-                if(this == NULL ) {
-                    result = ERR_NOTFOUND;
-                    goto getout;
-                }
-            } else {
-                result = ERR_ARG; /* Datatype of previous member is not custom */
-                goto getout;
-            } /* if(IS_CUSTOM) */
-        } /* if(first item in list) */
-        /* The only time that we are allowed to leave the index off of a data member
-         * in the tagname string is if the count of the type (or tag) is 1 or if we are
-         * the last one in the list, in which case we'll return for the whole array */
-        if(list[n].count > 1 && list[n].index < 0 && n != cnt-1) {
-            result = ERR_ARBITRARY;
-            goto getout;
-        }
-        
-        if(list[n].index >= 0) {
-            if(list[n].type == DAX_BOOL) {
-                list[n].byte += list[n].index / 8;
-                list[n].bit += list[n].index % 8;
-            } else {
-                list[n].byte += dax_get_typesize(list[n].type) * list[n].index;
-                list[n].bit = 0;
-            } 
-        }
-        printf("list[%d]: .name = %s :.index = %d :.type = %s :.count = %d :.byte = %d :.bit = %d\n", 
-                n, list[n].name, list[n].index, dax_type_to_string(list[n].type), list[n].count, list[n].byte, list[n].bit);
-    
-    } /* First Pass for() loop */
-    
-    /* Now the second pass where we put it all together */
-    h->byte = 0;
-    for(n = 0; n < cnt; n++) {
-        h->byte += list[n].byte;
-    }
-    n = cnt-1; /* Set to the last item in the list */
-    
-    h->index = tag.idx;
-    h->bit = list[n].bit;
-    h->type = list[n].type;
-    if(list[n].index == -1) {
-        h->count = list[n].count;
-    } else {
-        if((list[n].index + count) > list[n].count) {
-            result = ERR_2BIG;
-            goto getout;
-        } else {
-            if(count <= 0) {
-                h->count = 1;
-            } else {
-                h->count = count;
-            }
-        }
-    }
-    if(list[n].type == DAX_BOOL) {
-        h->size = (h->count - 1)/8 + 1;
-    } else {
-        h->size = dax_get_typesize(list[n].type) * h->count;
-    }
-    
-getout:
-    free(list);
-    if(result) {
-        //--printf("Exiting with error %d\n", result);
-        bzero(h, sizeof(*h));
-    }
-    return result;
-}
-#endif
 
 /* This is the compound datatype iterator.  If type is a datatype then this
  * function iterates over each member of the datatype and calls 'callback'

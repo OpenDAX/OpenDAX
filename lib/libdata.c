@@ -322,7 +322,7 @@ dax_read_tag(Handle handle, void *data)
     if(handle.type == DAX_BOOL && handle.bit > 0) {
         i = handle.bit;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << i % 8) & ((char *)data)[i / 8] ) {
+            if( (0x01 << (i % 8)) & ((char *)data)[i / 8] ) {
                 ((char *)data)[n / 8] |= (1 << (n % 8));
             }
             i++;
@@ -515,22 +515,28 @@ int
 dax_write_tag(Handle handle, void *data)
 {
     int i, n, result = 0;
-    char *mask = NULL;
+    u_int8_t *mask, *newdata;
     
     if(handle.type == DAX_BOOL && handle.bit > 0) {
         mask = malloc(handle.size);
         if(mask == NULL) return ERR_ALLOC;
+        newdata = malloc(handle.size);
+        if(newdata == NULL) {
+            free(mask);
+            return ERR_ALLOC;
+        }
         bzero(mask, handle.size);
+        bzero(newdata, handle.size);
             
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
-                ((char *)data)[i / 8] |= (1 << (i % 8));
+            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
+                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
             }
             mask[i / 8] |= (1 << (i % 8));
             i++;
         }
-        result = dax_mask(handle.index, handle.byte, data, mask, handle.size);
+        result = dax_mask(handle.index, handle.byte, newdata, mask, handle.size);
         free(mask);
     } else {
         result =  _write_format(handle.type, handle.count, data, 0);
@@ -635,23 +641,30 @@ int
 dax_mask_tag(Handle handle, void *data, void *mask)
 {
     int i, n, result = 0;
-    char *newmask = NULL;
+    unsigned char *newmask = NULL, *newdata;
     
     if(handle.type == DAX_BOOL && handle.bit > 0) {
         newmask = malloc(handle.size);
         if(newmask == NULL) return ERR_ALLOC;
+        newdata = malloc(handle.size);
+        if(newdata == NULL) {
+            free(newmask);
+            return ERR_ALLOC;
+        }
         bzero(newmask, handle.size);
+        bzero(newdata, handle.size);
             
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << n % 8) & ((char *)data)[n / 8] ) {
-                ((char *)data)[i / 8] |= (1 << (i % 8));
-                newmask[i / 8] |= (1 << (i % 8));
+            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
+                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
             }
+            newmask[i / 8] |= (1 << (i % 8));
             i++;
         }
-        result = dax_mask(handle.index, handle.byte, data, newmask, handle.size);
+        result = dax_mask(handle.index, handle.byte, newdata, newmask, handle.size);
         free(newmask);
+        free(newdata);
     } else {
         result =  _write_format(handle.type, handle.count, data, 0);
         if(result) return result;
