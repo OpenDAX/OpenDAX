@@ -12,7 +12,7 @@ function print_table(table, indent)
 
   for t,v in pairs(table) do
     if type(v)=="table" then
-      print(indentstr .. t)
+      --print(indentstr .. t)
       print_table(v, indent+2)
     else
       print(indentstr .. t .." = " .. tostring(v))
@@ -20,13 +20,12 @@ function print_table(table, indent)
   end
 end
 
-
 --This takes the numbers in the array 'tests' and writes them to tag 'name'
 --one at a time and then reads them back and compares to make sure that it
 --was read back correctly.
 function CheckSingle(name, tests)
   for t,v in ipairs(tests) do
-    print("Checking " .. name .. " = " .. v)
+    --print("Checking " .. name .. " = " .. v)
     tag_write(name, v)
     y = tag_read(name, 0)
     if y ~= v then error(name .. " Problem " .. y .." ~= " .. v) end
@@ -46,6 +45,19 @@ function CheckArray(name, x)
   end
 end
 
+--This function cycles through the output table and compares the values
+--that it finds there with the values in the input table if they exist
+--If all the values match it returns true otherwise false
+function compare_tables(input, output)
+  for t,v in ipairs(output) do
+    if input[t] ~= nil then
+      if type(v) =="table" then
+        compare_tables(input[t], v)
+      else
+        print(t .. " = " .. tostring(v))
+    end
+  end
+end
 
 --We start by creating tags of every kind of base datatype.
 
@@ -248,6 +260,7 @@ CheckArrays()
 
 --This is where we start to read / write custom datatype tags
 
+
 members = {{"Int",   "INT",   1},
            {"Bool",  "BOOL",  1},
            {"reBool", "BOOL", 1},
@@ -303,6 +316,8 @@ x.triBool = true
 
 tag_write("RWTestSimple", x)
 y = tag_read("RWTestSimple", 0)
+
+compare_tables(x,y)
 
 print_table(y,0)
 
