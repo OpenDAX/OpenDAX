@@ -311,22 +311,28 @@ int
 dax_read_tag(Handle handle, void *data)
 {
     int result, n, i;
+    u_int8_t *newdata;
     
     result = dax_read(handle.index, handle.byte, data, handle.size);
     if(result) return result;
-
+    
     /* The only time that the bit index should be greater than 0 is if
      * the tag datatype is BOOL.  If not the bytes should be aligned.
      * If there is a bit index then we need to 'realign' the bits so that
      * the bits that the handle point to start at the top of the *data buffer */
     if(handle.type == DAX_BOOL && handle.bit > 0) {
         i = handle.bit;
+        newdata = malloc(handle.size);
+        if(newdata == NULL) return ERR_ALLOC;
+        bzero(newdata, handle.size);
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (i % 8)) & ((char *)data)[i / 8] ) {
-                ((char *)data)[n / 8] |= (1 << (n % 8));
+            if( (0x01 << (i % 8)) & ((u_int8_t *)data)[i / 8] ) {
+                ((u_int8_t *)newdata)[n / 8] |= (1 << (n % 8));
             }
             i++;
         }
+        memcpy(data, newdata, handle.size);
+        free(newdata);
     } else {
         return _read_format(handle.type, handle.count, data, 0);
     }
@@ -537,6 +543,7 @@ dax_write_tag(Handle handle, void *data)
             i++;
         }
         result = dax_mask(handle.index, handle.byte, newdata, mask, handle.size);
+        free(newdata);
         free(mask);
     } else {
         result =  _write_format(handle.type, handle.count, data, 0);

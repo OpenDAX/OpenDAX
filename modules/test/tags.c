@@ -146,14 +146,16 @@ _read_to_stack(lua_State *L, tag_type type, void *buff)
 static void
 _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
 {
-    int n;
+    int n, bit;
+    
     /* We have to treat Booleans differently */
     if(tag.type == DAX_BOOL) {
         /* Check to see if it's an array */
         if(tag.count > 1 ) {
             lua_createtable(L, tag.count, 0);
             for(n = 0; n < tag.count ; n++) {
-                if(((u_int8_t *)data)[n/8] & (1 << n%8)) { /* If *buff bit is set */
+                bit = n + tag.bit;
+                if(((u_int8_t *)data)[bit/8] & (1 << (bit % 8))) { /* If *buff bit is set */
                     lua_pushboolean(L, 1);
                 } else {  /* If the bit in the buffer is not set */
                     lua_pushboolean(L, 0);
@@ -161,19 +163,22 @@ _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
                 lua_rawseti(L, -2, n + 1);
             }
         } else {
-            lua_pushboolean(L, ((char *)data)[0]);
+            if(((u_int8_t *)data)[tag.bit/8] & (1 << (tag.bit % 8))) { /* If *buff bit is set */
+                lua_pushboolean(L, 1);
+            } else {  /* If the bit in the buffer is not set */
+                lua_pushboolean(L, 0);
+            }
         }
-        /* Not a boolean */
-    } else {
+    } else { /* Not a boolean */
         /* Push the data up to the lua interpreter stack */
         if(tag.count > 1) { /* We need to return a table */
             lua_createtable(L, tag.count, 0);
             for(n = 0; n < tag.count ; n++) {
-                _read_to_stack(L, tag.type, data + tag.byte + (TYPESIZE(tag.type) / 8) * n);
+                _read_to_stack(L, tag.type, data + (TYPESIZE(tag.type) / 8) * n);
                 lua_rawseti(L, -2, n + 1); /* Lua likes 1 indexed arrays */
             }
         } else { /* It's a single value */
-            _read_to_stack(L, tag.type, data + tag.byte);
+            _read_to_stack(L, tag.type, data);
         }
     }
 }
@@ -210,7 +215,7 @@ read_callback(cdt_iter member, void *udata)
             dax_cdt_iter(member.type, &newdata, read_callback);
         }
     } else {
-        _push_base_datatype(L, member, data);
+        _push_base_datatype(L, member, data + member.byte);
     }
     lua_rawset(L, -3);
 }
@@ -327,6 +332,7 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
 {
     int n, bit;
     
+    //printf("_pop_base_datatype() called with *data = %p\n", data);
     if(tag.count > 1) { /* The tag is an array */
         /* Check that the second parameter is a table */
         if( ! lua_istable(L, -1) ) {
@@ -357,13 +363,20 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
     } else { /* Retrieved tag is a single point */
         if(tag.type == DAX_BOOL) {
             bit = tag.bit;
+//            printf("tag.bit = %d \n", tag.bit);
+//            printf("Before Data[%d] = 0x%X\n", bit/8, ((u_int8_t *)data)[bit/8]);
+//            printf("Before Mask[%d] = 0x%X\n", bit/8, ((u_int8_t *)mask)[bit/8]);
             if(lua_toboolean(L, -1)) {
+//                printf("set to TRUE\n");
                 ((u_int8_t *)data)[bit/8] |= (1 << (bit % 8));
             } else {  /* If the bit in the buffer is not set */
+//                printf("set to FALSE\n");
                 ((u_int8_t *)data)[bit/8] &= ~(1 << (bit % 8));
             }
             ((u_int8_t *)mask)[bit/8] |= (1 << (bit % 8));
-       
+//            printf("After Data[%d] = 0x%X\n", bit/8, ((u_int8_t *)data)[bit/8]);
+//            printf("After Mask[%d] = 0x%X\n", bit/8, ((u_int8_t *)mask)[bit/8]);
+            
         } else {
             _write_from_stack(L, tag.type, data, mask, 0);
         }

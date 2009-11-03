@@ -26,6 +26,14 @@ members = {{"Int7", "INT", 7},      -- 14
 
 test3 = cdt_create("Test3", members)
 
+members = {{"Int", "INT", 1},
+           {"Bool",  "BOOL",  1},
+           {"reBool", "BOOL", 1},
+           {"triBool", "BOOL",1},
+           {"Dint",  "DINT",  1}}
+ 
+ test4 = cdt_create("Test4", members)
+
 tag_add("HandleBool1", "BOOL", 1)
 tag_add("HandleBool7", "BOOL", 7)
 tag_add("HandleBool8", "BOOL", 8)
@@ -37,6 +45,7 @@ tag_add("HandleTest1", "Test1", 1)
 tag_add("HandleTest2", test2, 5)
 tag_add("HandleTest3", test3, 1)
 tag_add("HandleTest4", test3, 10)
+tag_add("HandleTestIV", test4, 1)
 
 --Test that the handles returned are correct
 --Each tag entry contains...
@@ -53,6 +62,7 @@ tag_add("HandleTest4", test3, 10)
 --Otherwise the returned handle values must match those given
 --  or the test will fail.
 --           NAME                          N   B   b  c   s   TYPE      TEST  --
+---[[
 handle_test("HandleBool1",                 0,  0,  0, 1,  1,  "BOOL",   PASS)
 handle_test("HandleBool7",                 0,  0,  0, 7,  1,  "BOOL",   PASS)
 handle_test("HandleBool7[2]",              4,  0,  2, 4,  1,  "BOOL",   PASS)
@@ -65,16 +75,14 @@ handle_test("HandleBool9",                 0,  0,  0, 9,  2,  "BOOL",   PASS)
 handle_test("HandleBool9[8]",              0,  1,  0, 1,  1,  "BOOL",   PASS)
 handle_test("HandleBool33",                0,  0,  0, 33, 5,  "BOOL",   PASS)
 handle_test("HandleBool33[7]",             1,  0,  7, 1,  1,  "BOOL",   PASS)
-handle_test("HandleBool33[3]",             8,  0,  3, 8,  1,  "BOOL",   PASS)
+--handle_test("HandleBool33[3]",             8,  0,  3, 8,  1,  "BOOL",   PASS)
+handle_test("HandleBool33[3]",             8,  0,  3, 8,  2,  "BOOL",   PASS)
 handle_test("HandleBool33[3]",             9,  0,  3, 9,  2,  "BOOL",   PASS)
 handle_test("HandleBool33[3a]",            1,  0,  0, 0,  0,  "BOOL",   FAIL)
 handle_test("HandleInt[1]",                1,  2,  0, 1,  2,  "INT",    PASS)
 handle_test("HandleInt",                   0,  0,  0, 2,  4,  "INT",    PASS)
---Have not decided on how this should act.  Should it fail or should it return
--- a handle to the first item in the array.  For now it ignores the count and
--- returns a handle to the entire array.
---handle_test("HandleInt",                   1,  0,  0, 1,  2,  "INT",    PASS)
---handle_test("HandleInt32",                 1,  0,  0, 1,  2,  "INT",    PASS)
+handle_test("HandleInt",                   1,  0,  0, 1,  2,  "INT",    PASS)
+handle_test("HandleInt32",                 1,  0,  0, 1,  2,  "INT",    PASS)
 handle_test("HandleInt[2]",                1,  0,  0, 0,  0,  "INT",    FAIL)
 handle_test("HandleInt[2]",                5,  0,  0, 0,  0,  "INT",    FAIL)
 handle_test("HandleTest1",                 0,  0,  0, 1,  28, "Test1",  PASS)
@@ -88,7 +96,8 @@ handle_test("HandleTest2[0].Test1[2]",     1,  62, 0, 1,  28, "Test1",  PASS)
 handle_test("HandleTest2[0].Test1[1]",     2,  34, 0, 2,  56, "Test1",  PASS)
 handle_test("HandleTest2[0].Test1[4]",     1,  118,0, 1,  28, "Test1",  PASS)
 handle_test("HandleTest2[0].Test1[1]",     5,  32, 0, 1,  28, "Test1",  FAIL)
-handle_test("HandleTest2[1].Test1",        1,  152,0, 5,  140,"Test1",  PASS)
+--]]
+handle_test("HandleTest2[1].Test1",        0,  152,0, 5,  140,"Test1",  PASS)
 handle_test("HandleTest2[0].Test1[0].Bool10[4]",
                                            1,  16, 4, 1,  1,  "BOOL",   PASS)
 handle_test("HandleTest2[0].Test1[0].Bool10", 
@@ -97,5 +106,11 @@ handle_test("HandleTest2[0].Test1[1].Bool10",
                                            0,  44, 0, 10, 2,  "BOOL",   PASS)
 handle_test("HandleTest2[4].Test1[0].Bool10", 
                                            0,  600,0, 10, 2,  "BOOL",   PASS)
+handle_test("HandleTest2[0].NotAMember",   0,  0,  0, 0,  0,  "Yup",    FAIL)
 handle_test("NoTagName",                   0,  0,  0, 0,  0,  "Duh",    FAIL)
 handle_test("",                            0,  0,  0, 0,  0,  "Yup",    FAIL)
+handle_test("HandleTestIV.Bool",           0,  2,  0, 1,  1,  "BOOL",   PASS)
+handle_test("HandleTestIV.reBool",         0,  2,  1, 1,  1,  "BOOL",   PASS)
+handle_test("HandleTestIV.triBool",        0,  2,  2, 1,  1,  "BOOL",   PASS)
+
+

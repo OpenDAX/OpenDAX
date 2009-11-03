@@ -193,16 +193,26 @@ _tag_read(lua_State *L) {
     }
     name = (char *)lua_tostring(L, 1);
     count = lua_tointeger(L, 2);
+//    printf("_tag_read() Getting Handle for %s with count of %d\n", name, count);
+
     result = dax_tag_handle(&h, name, count);
     if(result) {
         luaL_error(L, "dax_tag_handle() returned %d", result);
     }
+//    printf("h.index = %d\n", h.index);
+//    printf("h.byte = %d\n", h.byte);
+//    printf("h.bit = %d\n", h.bit);
+//    printf("h.size = %d\n", h.size);
+//    printf("h.count = %d\n", h.count);
+//    printf("h.type = %s\n", dax_type_to_string(h.type));
     
     data = malloc(h.size);
     if(data == NULL) {
         luaL_error(L, "tag_read() unable to allocate data area");
     }
+    
     result = dax_read_tag(h, data);
+
     if(result) {
         free(data);
         luaL_error(L, "dax_read_tag() returned %d", result);
@@ -219,7 +229,7 @@ static int
 _tag_write(lua_State *L) {
     char *name;
     char q = 0;
-    int count, result, n;
+    int result, n;
     Handle h;
     void *data, *mask;
     
@@ -227,8 +237,14 @@ _tag_write(lua_State *L) {
         luaL_error(L, "Wrong number of arguments passed to tag_write()");
     }
     name = (char *)lua_tostring(L, 1);
-    count = lua_tointeger(L, 2);
-    result = dax_tag_handle(&h, name, count);
+    //printf("Getting Handle for %s\n", name);
+    result = dax_tag_handle(&h, name, 0);
+//    printf("h.index = %d\n", h.index);
+//    printf("h.byte = %d\n", h.byte);
+//    printf("h.bit = %d\n", h.bit);
+//    printf("h.size = %d\n", h.size);
+//    printf("h.count = %d\n", h.count);
+//    printf("h.type = %s\n", dax_type_to_string(h.type));
     if(result) {
         luaL_error(L, "dax_tag_handle() returned %d", result);
     }
@@ -254,21 +270,25 @@ _tag_write(lua_State *L) {
     
     /* This checks the mask to determine which function to use
      * to write the data to the server */
+    /* TODO: Might want to scan through and find the beginning and end of
+     * any changed data and send less through the socket.  */
     for(n = 0; n < h.size && q == 0; n++) {
         if( ((unsigned char *)mask)[n] != 0xFF) {
             q = 1;
         }
     }
     if(q) {
+        //printf("call dax_mask_tag()\n");
         result = dax_mask_tag(h, data, mask);
     } else {
+        //printf("call dax_write_tag()\n");
         result = dax_write_tag(h, data);
     }
     
     if(result) {
         free(data);
         free(mask);
-        luaL_error(L, "dax_read_tag() returned %d", result);
+        luaL_error(L, "dax_write/mask_tag() returned %d", result);
     }
 
     free(data);
@@ -331,7 +351,7 @@ _handle_test(lua_State *L)
             }
         }
     }
-    lua_pop(L,8);        
+    lua_pop(L, 8);        
 
     if(final) {
         luaL_error(L, "Handle Test Failed");

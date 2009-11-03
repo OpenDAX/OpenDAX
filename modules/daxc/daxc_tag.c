@@ -163,7 +163,7 @@ dax_to_string(tag_type type, void *buff, int index)
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
         case DAX_BOOL:
-            if((0x01 << index % 8) & ((u_int8_t *)buff)[index / 8]) {
+            if((0x01 << (index % 8)) & ((u_int8_t *)buff)[index / 8]) {
                 printf("1\n");
             } else {
                 printf("0\n");
@@ -210,16 +210,17 @@ static void
 string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
 {   
     long temp;
+    
     switch (type) {
         case DAX_BOOL:
             temp = strtol(val, NULL, 0);
             if(temp == 0) {
-                ((u_int8_t *)buff)[index / 8] &= ~(0x01 << index % 8);
+                ((u_int8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
             } else {
-                ((u_int8_t *)buff)[index / 8] |= (0x01 << index % 8);
+                ((u_int8_t *)buff)[index / 8] |= (0x01 << (index % 8));
             }
             if(mask) {
-                ((u_int8_t *)mask)[index / 8] |= (0x01 << index % 8);
+                ((u_int8_t *)mask)[index / 8] |= (0x01 << (index % 8));
             }
             break;
         case DAX_BYTE:
@@ -294,6 +295,13 @@ tag_read(char **tokens)
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
         return ERR_ARG;
     }
+    printf("h.index = %d\n", handle.index);
+    printf("h.byte = %d\n", handle.byte);
+    printf("h.bit = %d\n", handle.bit);
+    printf("h.size = %d\n", handle.size);
+    printf("h.count = %d\n", handle.count);
+    printf("h.type = %s\n", dax_type_to_string(handle.type));
+
     
     buff = malloc(handle.size);
     if(buff == NULL) {
@@ -341,7 +349,8 @@ tag_write(char **tokens, int tcount) {
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
         return ERR_ARG;
     }
-     
+
+    
     buff = malloc(handle.size);
     mask = malloc(handle.size);
     if(buff == NULL || mask == NULL) {
@@ -363,6 +372,7 @@ tag_write(char **tokens, int tcount) {
     for(n = 0; n < points; n++) {
         string_to_dax(tokens[n + 1], handle.type, buff, mask, n);
     }
+    /* TODO: Check if the mask is all 1s and if so just use the dax_write_tag() function */
     result = dax_mask_tag(handle, buff, mask);
     if(result) {
         fprintf(stderr, "ERROR: Unable to Write to tag %s\n", name);
