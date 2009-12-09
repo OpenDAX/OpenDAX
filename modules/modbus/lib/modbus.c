@@ -81,12 +81,12 @@ mb_run_port(struct mb_port *m_port)
         } else if(m_port->type == MB_SLAVE) {
             ; /* TODO: start slave thread */
         } else {
-            dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
+            //dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
             return -1;
         }
         return 0;
     } else {
-        dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
+        //dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
         return -1;
     }
     return 0;

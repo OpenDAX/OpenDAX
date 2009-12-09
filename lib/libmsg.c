@@ -678,7 +678,7 @@ dax_cdt_create(dax_cdt *cdt, tag_type *type)
             *type = stom_udint(*((tag_type *)rbuff));
         }
         //--printf("dax_cdt_create() 0x%X : %s\n", *type, &(buff[4]));
-        result = add_cdt_to_cache(*type, buff);
+        result = add_cdt_to_cache(stom_udint(*((tag_type *)rbuff)), buff);
         dax_cdt_free(cdt);
     }
     return result;

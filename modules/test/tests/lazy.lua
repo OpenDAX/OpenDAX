@@ -12,6 +12,5 @@ test1 = cdt_create("LazySimple", members)
 tag_add("LazyTag", "LazySimple", 1)
 tag_add("LazyArray", "LazySimple", 10)
 
-
 lazy_test()
 

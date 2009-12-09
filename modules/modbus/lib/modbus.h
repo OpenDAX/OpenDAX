@@ -74,28 +74,34 @@
 typedef struct mb_port mb_port;
 typedef struct mb_cmd  mb_cmd;
 
-/* New Interface */
-
+/* Create a New Modbus Port with the given name */
 mb_port *mb_new_port(const char *name);
+/* Frees the memory allocated with mb_new_port() */
 void mb_destroy_port(mb_port *port);
+/* Port Configuration Functions */
 int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
 int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid);
-const char *mb_get_name(mb_port *port);
-int mb_open_port(mb_port *port);
-int mb_close_port(mb_port *port);
 int mb_set_register_size(mb_port *port, int reg, int size);
 int mb_set_frame_time(mb_port *port, int frame);
 int mb_set_delay_time(mb_port *port, int delay);
 int mb_set_scan_rate(mb_port *port, int rate);
 int mb_set_timeout(mb_port *port, int timeout);
 int mb_set_retries(mb_port *port, int retries);
-unsigned char mb_get_type(mb_port *port);
 
+unsigned char mb_get_type(mb_port *port);
+const char *mb_get_name(mb_port *port);
+
+int mb_open_port(mb_port *port);
+int mb_close_port(mb_port *port);
+
+/* Set callback functions that are called anytime data is read or written over the port */
 void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,u_int8_t *,unsigned int));
 void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsigned int));
 
+/* Create a new command and add it to the port */
 mb_cmd *mb_new_cmd(mb_port *port);
+/* Free the memory allocated with mb_new_cmd() */
 void mb_destroy_cmd(mb_cmd *cmd);
 void mb_disable_cmd(mb_cmd *cmd);
 void mb_enable_cmd(mb_cmd *cmd);

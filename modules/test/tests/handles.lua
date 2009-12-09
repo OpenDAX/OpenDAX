@@ -62,7 +62,6 @@ tag_add("HandleTestIV", test4, 1)
 --Otherwise the returned handle values must match those given
 --  or the test will fail.
 --           NAME                          N   B   b  c   s   TYPE      TEST  --
----[[
 handle_test("HandleBool1",                 0,  0,  0, 1,  1,  "BOOL",   PASS)
 handle_test("HandleBool7",                 0,  0,  0, 7,  1,  "BOOL",   PASS)
 handle_test("HandleBool7[2]",              4,  0,  2, 4,  1,  "BOOL",   PASS)
@@ -75,7 +74,6 @@ handle_test("HandleBool9",                 0,  0,  0, 9,  2,  "BOOL",   PASS)
 handle_test("HandleBool9[8]",              0,  1,  0, 1,  1,  "BOOL",   PASS)
 handle_test("HandleBool33",                0,  0,  0, 33, 5,  "BOOL",   PASS)
 handle_test("HandleBool33[7]",             1,  0,  7, 1,  1,  "BOOL",   PASS)
---handle_test("HandleBool33[3]",             8,  0,  3, 8,  1,  "BOOL",   PASS)
 handle_test("HandleBool33[3]",             8,  0,  3, 8,  2,  "BOOL",   PASS)
 handle_test("HandleBool33[3]",             9,  0,  3, 9,  2,  "BOOL",   PASS)
 handle_test("HandleBool33[3a]",            1,  0,  0, 0,  0,  "BOOL",   FAIL)
@@ -96,7 +94,6 @@ handle_test("HandleTest2[0].Test1[2]",     1,  62, 0, 1,  28, "Test1",  PASS)
 handle_test("HandleTest2[0].Test1[1]",     2,  34, 0, 2,  56, "Test1",  PASS)
 handle_test("HandleTest2[0].Test1[4]",     1,  118,0, 1,  28, "Test1",  PASS)
 handle_test("HandleTest2[0].Test1[1]",     5,  32, 0, 1,  28, "Test1",  FAIL)
---]]
 handle_test("HandleTest2[1].Test1",        0,  152,0, 5,  140,"Test1",  PASS)
 handle_test("HandleTest2[0].Test1[0].Bool10[4]",
                                            1,  16, 4, 1,  1,  "BOOL",   PASS)

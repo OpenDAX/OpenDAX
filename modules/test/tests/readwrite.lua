@@ -1,6 +1,10 @@
 --These tests are to make sure that we are reading and writing data to
 --and from the server correctly.
 
+--The tests are broken into functions so that when something fails it can be
+--isolated to make debugging easier.  The functions are all called at the very
+--end of the file.
+
 --Recursive function for printing an entire table to the screen
 --  Used for debugging only, not really needed for the test
 function print_table(table, indent)
@@ -12,7 +16,7 @@ function print_table(table, indent)
 
   for t,v in pairs(table) do
     if type(v)=="table" then
-      --print(indentstr .. t)
+      print(indentstr .. t)
       print_table(v, indent+2)
     else
       print(indentstr .. t .." = " .. tostring(v))
@@ -48,19 +52,28 @@ end
 --This function cycles through the output table and compares the values
 --that it finds there with the values in the input table if they exist
 --If all the values match it returns true otherwise false
+--This function falls apart if the values are floating point
 function compare_tables(input, output)
-  for t,v in ipairs(output) do
+  local t, v, result
+
+  for t,v in pairs(output) do
+    --print("input." .. t .. " = " .. tostring(input[t]) .. " output." .. t .. " = " .. tostring(output[t]))
     if input[t] ~= nil then
       if type(v) =="table" then
-        compare_tables(input[t], v)
+        if compare_tables(input[t], v) == false then return false end
       else
-        print(t .. " = " .. tostring(v))
+      --TODO: Need to see if it's a REAL and change the comparison
+        if input[t] ~= v then 
+          print("input[" .. t .. "] ~= " .. tostring(v))
+          return false 
+        end
+      end
     end
   end
+  return true
 end
 
 --We start by creating tags of every kind of base datatype.
-
 types = {"BOOL", "BYTE", "SINT", "WORD", "INT", "UINT", "DWORD", "DINT", 
          "UDINT", "TIME", "REAL", "LWORD", "LINT", "ULINT", "LREAL"}
 
@@ -134,7 +147,7 @@ function CheckSingles()
     end
 end
 
-
+--This checks the base datatype array tags
 function CheckArrays()
     --Now we check writing arrays of base datatypes
     x = {}
@@ -255,12 +268,8 @@ function CheckArrays()
     end
 end
 
-CheckSingles()
-CheckArrays()
 
---This is where we start to read / write custom datatype tags
-
-
+--This is where we start to read / write custom datatype tags\
 members = {{"Int",   "INT",   1},
            {"Bool",  "BOOL",  1},
            {"reBool", "BOOL", 1},
@@ -274,9 +283,8 @@ tag_add("RWTestSimple", test1, 1)
 tag_add("RWTestSimpleArray", test1, 10)
 
 
-members2 = {{"Real",       "REAL",          1},
+members2 = {{"Udint",      "UDINT",         1},
             {"IntArray",   "INT",          10},
-            {"RealArray",  "REAL",         10},
             {"Test",       "RWTestSimple",  1},
             {"TestArray",  "RWTestSimple", 10},
             {"Dint",       "DINT",          1}}
@@ -286,177 +294,275 @@ test2 = cdt_create("RWTest", members2)
 tag_add("RWTest", test2, 1)
 tag_add("RWTestArray", test2, 11)
 
-
-print("STARTING CDT TEST")
-x = {}
-
-x.Int = 123
-x.Bool = true
-x.reBool = false
-x.triBool = true
-x.Dint = 456
-x.Udint = 789
-
-
-tag_write("RWTestSimple", x)
-y = tag_read("RWTestSimple", 0)
-
-print_table(y,0)
-
-
-if x.Int ~= y.Int then error("x.Int ~= y.Int") end
-if x.Bool ~= y.Bool then error("x.Bool ~= y.Bool") end
-if x.reBool ~= y.reBool then error("x.reBool ~= y.reBool") end
-if x.Dint ~= y.Dint then error("x.Dint ~= y.Dint") end
-if x.Udint ~= y.Udint then error("x.Udint ~= y.Udint") end
-
-x.Bool = true
-x.reBool = true
-x.triBool = true
-
-tag_write("RWTestSimple", x)
-y = tag_read("RWTestSimple", 0)
-
-compare_tables(x,y)
-
-print_table(y,0)
-
-if x.Int ~= y.Int then error("x.Int ~= y.Int") end
-if x.Bool ~= y.Bool then error("x.Bool ~= y.Bool") end
-if x.reBool ~= y.reBool then error("x.reBool ~= y.reBool") end
-if x.Dint ~= y.Dint then error("x.Dint ~= y.Dint") end
-if x.Udint ~= y.Udint then error("x.Udint ~= y.Udint") end
-
-tag_write("RWTestSimple.Bool", true)
-y = tag_read("RWTestSimple.Bool", 0)
-if y == false then error("Why ain't it true") end
-
-tag_write("RWTestSimple.Bool", false)
-y = tag_read("RWTestSimple.Bool", 0)
-if y == true then error("Why ain't it false") end
-
-
-print("TESTING, TESTING, TESTING")
---x = true
----tag_write("RWTestSimple.Bool", x)
----tag_write("RWTestSimple.reBool", x)
----tag_write("RWTestSimple.triBool", x)
-
-x = {}
-x.Bool = true
-x.reBool = false
-x.triBool = true
-
-tag_write("RWTestSimple", x)
-
-
---y = tag_read("RWTestSimple", 0)
---if y.Bool ~= true then error ("No Match on RWTestSimple.Bool") end
---if y.reBool ~= true then error ("No Match on RWTestSimple.reBool") end
---if y.triBool ~= true then error ("No Match on RWTestSimple.triBool") end
-
-tag_write("RWTestSimple.Bool", false)
-tag_write("RWTestSimple.reBool", true)
-tag_write("RWTestSimple.triBool", false)
-
-y = tag_read("RWTestSimple", 0)
-if y.Bool ~= false then error ("No Match on RWTestSimple.Bool") end
-if y.reBool ~= true then error ("No Match on RWTestSimple.reBool") end
-if y.triBool ~= false then error ("No Match on RWTestSimple.triBool") end
-
-
-
---]]
-
-x = {}
-x.Int = 12
-
---tag_write("RWTestSimple", x)
-
-x = {}
-
-for n=1,10 do
-  x[n] = {}
-  x[n].Int = n * 10 +1
-  x[n].Dint = n * 10 +2
-  x[n].Udint = n * 10 +3
+--This function runs through the checks of RWTestSimple.
+function CheckSimpleCDT()
+    s = "RWTestSimple"
+    x = {}
+    
+    x.Int = 123
+    x.Bool = true
+    x.reBool = false
+    x.triBool = true
+    x.Dint = 456
+    x.Udint = 789
+    
+    tag_write(s, x)
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
+    
+    
+    x.Bool = true
+    x.reBool = true
+    x.triBool = true
+    
+    tag_write(s, x)
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
+    
+    x.Int = 3333
+    x.Dint = 44444
+    tag_write(s, x)
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
+    
+    
+    --This tests the reading and writing of individual bits
+    s = "RWTestSimple.Bool"
+    v = true
+    tag_write(s, v)
+    y = tag_read(s, 0)
+    if y ~= v then error(s .. " Should be " .. tostring(v)) end
+    
+    v = false
+    tag_write(s, v)
+    y = tag_read(s, 0)
+    if y ~= v then error(s .. " Should be " .. tostring(v)) end
+    
+    s = "RWTestSimple.reBool"
+    v = true
+    tag_write(s, v)
+    y = tag_read(s, 0)
+    if y ~= v then error(s .. " Should be " .. tostring(v)) end
+    
+    v = false
+    tag_write(s, v)
+    y = tag_read(s, 0)
+    if y ~= v then error(s .. " Should be " .. tostring(v)) end
+    
+    s = "RWTestSimple.triBool"
+    v = true
+    tag_write(s, v)
+    y = tag_read(s, 0)
+    if y ~= v then error(s .. " Should be " .. tostring(v)) end
+    
+    v = false
+    tag_write(s, v)
+    y = tag_read(s, 0)
+    if y ~= v then error(s .. " Should be " .. tostring(v)) end
 end
 
-tag_write("RWTestSimpleArray", x)
-y = tag_read("RWTestSimpleArray", 0)
+function CheckSimpleCDTArray()
+    x = {}
+    
+    for n=1,10 do
+      x[n] = {}
+      x[n].Int = n * 10 +1
+      x[n].Dint = n * 10 +2
+      x[n].Udint = n * 10 +3
+      if x[n].Int % 4 == 0 then
+         x[n].Bool = false
+         x[n].reBool = false
+         x[n].triBool = false
+      elseif x[n].Int % 4 == 1 then
+         x[n].Bool = true
+         x[n].reBool = false
+         x[n].triBool = false
+      elseif x[n].Int % 4 == 2 then
+         x[n].Bool = true
+         x[n].reBool = false
+         x[n].triBool = true
+      else
+         x[n].Bool = false
+         x[n].reBool = true
+         x[n].triBool = false
+      end      
+    end
+    
+    s = "RWTestSimpleArray"
+    tag_write(s, x)
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
 
---[[
-for n=1,10 do
-  print("RWTestSimpleArray[" .. n .. "].Int = " .. tostring(y[n].Int))
-  print("RWTestSimpleArray[" .. n .. "].Dint = " .. tostring(y[n].Dint))
-  print("RWTestSimpleArray[" .. n .. "].Udint = " .. tostring(y[n].Udint))
-end
---]]
-
-x = {}
-
-x.Real = 3.141592
-x.IntArray = {}
-x.IntArray[1] = 111
-x.IntArray[2] = 222
-
-x.Test = {}
-x.Test.Int = 123
-x.Test.Dint = 234
-x.Test.Udint = 345
-
-x.TestArray = {}
-
-for n=1,10 do
-  x.TestArray[n] = {}
-  x.TestArray[n].Int = n*100 + n*10 + n
-  x.TestArray[n].Dint = (n*100 + n*10 + n) * -1
-  x.TestArray[n].Udint = n*1000 + n*100 + n*10 + n
-end
-
-tag_write("RWTest", x)
-
-y = tag_read("RWTest", 0)
-
-
---[[
-print("PRINTING TABLE")
-print_table(y, 0)
-print("DONE WITH THAT")
-
-print("y.Real = " .. y.Real)
-
-print(".IntArray[]")
-for n=1,10 do
-  print(tostring(x.IntArray[n]).." = "..tostring(y.IntArray[n]))
+    x = {}
+    x[2] = {}
+    x[2].Dint = 3333
+    tag_write(s, x)
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
+    
 end
 
-print(".Test.Int")
-print(tostring(x.Test.Int).." = "..tostring(y.Test.Int))
-print(".Test.Dint")
-print(tostring(x.Test.Dint).." = "..tostring(y.Test.Dint))
-print(".Test.Udint")
-print(tostring(x.Test.Udint).." = "..tostring(y.Test.Udint))
+--This checks the second set of tags that have CDTs nested within one another
+function CheckComplexCDT() 
+    x = {}
+    
+    x.Dint = 31415
+    x.IntArray = {}
+    x.IntArray[1] = 111
+    x.IntArray[2] = 222
+    
+    x.Test = {}
+    x.Test.Int = 123
+    x.Test.Dint = 234
+    x.Test.Udint = 345
+    x.Test.Bool = true
+    x.Test.reBool = false
+    x.Test.triBool = true
+    
+    x.TestArray = {}
+    
+    for n=1,10 do
+      x.TestArray[n] = {}
+      x.TestArray[n].Int = n*100 + n*10 + n
+      x.TestArray[n].Dint = (n*100 + n*10 + n) * -1
+      x.TestArray[n].Udint = n*1000 + n*100 + n*10 + n
+      if x.TestArray[n].Int % 4 == 0 then
+         x.TestArray[n].Bool = false
+         x.TestArray[n].reBool = false
+         x.TestArray[n].triBool = false
+      elseif x.TestArray[n].Int % 4 == 1 then
+         x.TestArray[n].Bool = true
+         x.TestArray[n].reBool = false
+         x.TestArray[n].triBool = false
+      elseif x.TestArray[n].Int % 4 == 2 then
+         x.TestArray[n].Bool = true
+         x.TestArray[n].reBool = false
+         x.TestArray[n].triBool = true
+      else
+         x.TestArray[n].Bool = false
+         x.TestArray[n].reBool = true
+         x.TestArray[n].triBool = false
+      end      
 
-print(".TestArray[].Int")
-for n=1,10 do
-  print(tostring(n))
-  print("x.TestArray["..n.."].Int = "..tostring(x.TestArray[n].Int))
-  print("y.TestArray["..n.."].Int = "..tostring(y.TestArray[n].Int))
+    end
+    
+    s = "RWTest"
+    tag_write(s, x)  
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
+    
+    x.TestArray[3].Bool = true
+    x.TestArray[3].reBool = true
+    x.TestArray[3].triBool = true
+    
+    tag_write(s, x)  
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
+    
+    s = "RWTest.TestArray[4].Int"
+    v = 8675
+    tag_write(s, v)
+    y = tag_read(s,0)
+    if y ~= v then error("Single Tag Read Failed for " .. s) end
+    
+    s = "RWTest.TestArray[6].Bool"
+    v = false
+    tag_write(s, v)
+    y = tag_read(s,0)
+    if y ~= v then error("Single Tag Read Failed for " .. s) end
+    
+    v = true
+    tag_write(s, v)
+    y = tag_read(s,0)
+    if y ~= v then error("Single Tag Read Failed for " .. s) end
+    
+    s = "RWTest.TestArray[7].reBool"
+    v = false
+    tag_write(s, v)
+    y = tag_read(s,0)
+    if y ~= v then error("Single Tag Read Failed for " .. s) end
+    
+    v = true
+    tag_write(s, v)
+    y = tag_read(s,0)
+    if y ~= v then error("Single Tag Read Failed for " .. s) end
+    
+    s = "RWTest.TestArray[0].triBool"
+    v = false
+    tag_write(s, v)
+    y = tag_read(s,0)
+    if y ~= v then error("Single Tag Read Failed for " .. s) end
+    
+    v = true
+    tag_write(s, v)
+    y = tag_read(s,0)
+    if y ~= v then error("Single Tag Read Failed for " .. s) end
+        
 end
---]]
-
---y = tag_read("RWTestSimple", 0)
-
---print(y.Int)
-
---tag_write("RWTestSimple.Int", 222)
---print(tag_read("RWTestSimple.Int", 0))
 
 
---[[
-TODO:  Need to check for arrays within the datatypes, check for compound datatypes that contain
-other compound datatypes as well as arrays of compound datatypes.  Also need to deal with things
-that should make it fail, like missing members in the Lua variable as well as correctly named
-members that are not tables when they should be or that are tables when they should not be.
---]]
+function CreateRWTestTable(n)
+    local x
+    x = {}
+    
+    x.Dint = 31415
+    x.IntArray = {}
+    x.IntArray[1] = 111
+    x.IntArray[2] = 222
+    
+    x.Test = {}
+    x.Test.Int = 123
+    x.Test.Dint = 234
+    x.Test.Udint = 345
+    x.Test.Bool = true
+    x.Test.reBool = false
+    x.Test.triBool = true
+    
+    x.TestArray = {}
+    
+    for n=1,10 do
+      x.TestArray[n] = {}
+      x.TestArray[n].Int = n*100 + n*10 + n
+      x.TestArray[n].Dint = (n*100 + n*10 + n) * -1
+      x.TestArray[n].Udint = n*1000 + n*100 + n*10 + n
+      if x.TestArray[n].Int % 4 == 0 then
+         x.TestArray[n].Bool = false
+         x.TestArray[n].reBool = false
+         x.TestArray[n].triBool = false
+      elseif x.TestArray[n].Int % 4 == 1 then
+         x.TestArray[n].Bool = true
+         x.TestArray[n].reBool = false
+         x.TestArray[n].triBool = false
+      elseif x.TestArray[n].Int % 4 == 2 then
+         x.TestArray[n].Bool = true
+         x.TestArray[n].reBool = false
+         x.TestArray[n].triBool = true
+      else
+         x.TestArray[n].Bool = false
+         x.TestArray[n].reBool = true
+         x.TestArray[n].triBool = false
+      end      
+    end
+    return x
+end
+
+function CheckComplexCDTArray()
+    local i
+    x={}
+    for i=1,11 do
+      x[i] = CreateRWTestTable(i)
+    end
+
+    s = "RWTestArray"
+    tag_write(s, x)  
+    y = tag_read(s, 0)
+    if compare_tables(x,y) ~= true then error("Table Compare Failed") end
+
+end
+
+CheckSingles()
+CheckArrays()
+CheckSimpleCDT()
+CheckSimpleCDTArray()
+CheckComplexCDT()
+CheckComplexCDTArray()

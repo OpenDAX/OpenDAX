@@ -21,19 +21,11 @@
 #ifndef __DATABASE_H
 #define __DATABASE_H
 
-//--The modbus protocol stuff should be independant of the OpenDAX stuff
 #include <common.h>
 #include <opendax.h>
 #include <modopt.h>
 #include <lib/modbus.h>
 
-//int dt_add_tag(Handle *h, char *name, int index, int function, int length);
-//int dt_add_tag(mb_cmd *c, char *name, int index, int function, int length);
 void setup_command(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize);
-
-//int dt_getwords(tag_index handle, int index, void *data, int length);
-//int dt_setwords(tag_index handle, int index, void *data, int length);
-//int dt_getbits(tag_index handle, int index, void *data, int length);
-//int dt_setbits(tag_index handle, int index, void *data, int length);
 
 #endif

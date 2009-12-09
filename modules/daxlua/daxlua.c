@@ -53,8 +53,8 @@ lua_init(void)
 }
 
 /* Looks into the list of tags in the script and reads those tags
-   from the server.  Then makes these tags global Lua variables
-   to the script */
+ * from the server.  Then makes these tags global Lua variables
+ * to the script */
 static inline int
 _register_globals(lua_State *L, script_t *s)
 {
@@ -64,17 +64,17 @@ _register_globals(lua_State *L, script_t *s)
     
     pthread_mutex_lock(&daxmutex);
     while(this != NULL) {
-        if(this->mode & MODE_READ) {
-            if(fetch_tag(L, this->name)) {
-                pthread_mutex_unlock(&daxmutex);
-                return -1;
-            } else {
-                lua_setglobal(L, this->name);
-            }
-        } else if(this->mode & MODE_STATIC && this->ref != LUA_NOREF) {
-            lua_rawgeti(L, LUA_REGISTRYINDEX, this->ref);
-            lua_setglobal(L, this->name);
-        }
+//        if(this->mode & MODE_READ) {
+//            if(fetch_tag(L, this->handle)) {
+//                pthread_mutex_unlock(&daxmutex);
+//                return -1;
+//            } else {
+//                lua_setglobal(L, this->name);
+//            }
+//        } else if(this->mode & MODE_STATIC && this->ref != LUA_NOREF) {
+//            lua_rawgeti(L, LUA_REGISTRYINDEX, this->ref);
+//            lua_setglobal(L, this->name);
+//        }
         this = this->next;
     }
     
@@ -120,11 +120,11 @@ _send_globals(lua_State*L, script_t *s)
         if(this->mode & MODE_WRITE) {
             lua_getglobal(L, this->name);
             
-            if(send_tag(L, this->name)) {
-                pthread_mutex_unlock(&daxmutex);
-                return -1;
-            }
-            lua_pop(L, 1);
+//            if(send_tag(L, this->handle)) {
+//                pthread_mutex_unlock(&daxmutex);
+//                return -1;
+//            }
+//            lua_pop(L, 1);
         } else if(this->mode & MODE_STATIC) {
             lua_getglobal(L, this->name);
             if(this->ref == LUA_NOREF) {

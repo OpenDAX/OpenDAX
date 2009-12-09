@@ -202,7 +202,8 @@ mb_new_port(const char *name)
     mport = (mb_port *)malloc(sizeof(mb_port));
     if(mport != NULL) {
         initport(mport);
-        /* If this fails we'll just ignore it for now since the name isn't really all that important */
+        /* If this fails we'll just ignore it for now since
+         * the name isn't really all that important */
         if(name != NULL) {
             mport->name = strdup(name);
         }
@@ -414,6 +415,7 @@ mb_set_register_size(mb_port *port, int reg, int size)
 
 /* This sets the msgout callback function.  The given function will receive the bytes
  * that are actually being sent by the modbus functions. */
+/* TODO: I know better than to have callbacks without user data */
 void
 mb_set_msgout_callback(mb_port *mp, void (*outfunc)(mb_port *,u_int8_t *,unsigned int))
 {

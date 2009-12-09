@@ -4,7 +4,7 @@
 root="/Users/phil/svn/opendax/branches/0.2/modules/daxlua/"
 
 --init is the script that is run once when the program launches
-init = root.."init.lua"
+initscrip = root.."init.lua"
 
 verbosity = 10 --needs to change to the new way
 

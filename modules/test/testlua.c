@@ -366,9 +366,6 @@ _handle_test(lua_State *L)
  * having to create a formal test.
  *******************************************************************/
 
-
-
-
 static int
 _lazy_test(lua_State *L)
 {
