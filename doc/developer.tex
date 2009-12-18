@@ -1,11 +1,18 @@
-\documentclass[letterpaper,10pt]{report}
+\documentclass[10pt,letterpaper]{report}
 
-\usepackage[latin1]{inputenc}
-\usepackage[english]{babel}
-\usepackage{fontenc}
-\usepackage{graphicx}
+\usepackage[american]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage[dvips]{graphicx}
+\usepackage{float}
 
-\title{OpenDAX Module Developer's Manual}
+\setlength\parskip{10pt}
+\setcounter{secnumdepth}{3}
+
+\title{OpenDAX Developer's Manual}
 \date{July 15, 2008}
 \author{Phil Birkelbach}
 
@@ -20,35 +27,178 @@ All Rights Reserved
 \end{flushleft}
 
 \end{titlepage}
-\chapter*{Introduction}
+\tableofcontents
+\newpage
+
+\chapter{Introduction}
 OpenDAX is an open source, modular, data acquisition and control system. It is licensed under the GPL (GNU General Public License) and therefore is completely free to use and modify.
 
-This document is to help a new developer learn how to develop modules for OpenDAX as well as function as a reference document for experienced module developers.
-
-Modules are the heart and soul of any OpenDAX application.  They handle all of communication to the outside world, the logic and any storage or logging functions that are implemented.  What do we mean by OpenDAX application.  Well, it would be the OpenDAX system as a whole.  It could be something as simple as home automation system that has an Insteon\textregistered module to control the lights and a human interface module with a couple of graphics showing the floorplan of the house.  An OpenDAX application could be something as complex as a multi-plant control system that was in control of thousands of end devices and included a several hundred window HMI, historical logging, event logging and remote control.  It could be anything in between and may even be something that we haven't thought of yet.  That is the beauty of having most of the functionality in modules, it leaves the application developer free to be creative in how the system is built.
-
-\section*{OpenDAX Basics}
-Before we get started, it would be good to discuss how OpenDAX works.
-
-\section*{Build Environment}
+This document a tutorial for a new developer to learn how to develop modules for OpenDAX as well as a reference for experienced module developers.
 
 
-\chapter*{Module Configuration}
-\section*{Setting Attributes}
-\section*{Setting Callbacks}
-\section*{Writing Lua Functions}
-\section*{Running the Configuration}
 
-\chapter*{Module Registration}
+%----Don't know why I have this paragraph.
+%What do we mean by OpenDAX application?  Well, it would be the OpenDAX system as a whole.  It could be something as simple as home automation system that has an %Insteon\textregistered module to control the lights with a couple of graphics showing the floorplan of the house.  It could also be something as complex as a plant %control system with thousands of end devices.  It could be anything in between and may even be something that we haven't thought of yet.  That's the beauty of a %modular system, it leaves the application developer free to be creative.
 
-\chapter*{Dealing with Tags}
+\section{OpenDAX Basics}
+Before we get started, it would be good to discuss how OpenDAX works.  OpenDAX is made up of three main parts, the server, the libary and the modules.
 
-\chapter*{Handling Events}
+The OpenDAX server is the heart and soul of the OpenDAX system.  It sits at the center of the OpenDAX universe and coordinates all of the data and communication of the system.  The libdax library is abstracts the communication interface to the modules and the modules are where all the work is done.
 
-\chapter*{Messaging to Other Modules}
+If the server is the heart and soal of the OpenDAX application then modules are the arms and legs.  Modules do all of the work.  They are separate processes that may or may not be started by the server at run time.  Modern operating systems do a great job of managing processes and the OpenDAX developers didn't see any need to reinvent that wheel.  
 
-\chapter*{Shell Modules}
+Modules handle all of interface to the outside world.  The application logic, any storage or logging functions and the human interface are all handled by modules.  The modules all communicate to the OpenDAX server through an API that is exposed in the libdax library.  The libdax library API is what the OpenDAX module developer will see of OpenDAX.
+
+The low level communications to the OpenDAX server takes place through a BSD Socket interface.  There is no requirement that the module be running on the same machine as the server.  The entire application can be distributed however the application developer desires.  If the module is on the same machine, it can communicate to the server via UNIX Domain Socket.  If the module is on a remote host then it will have to use a TCP Socket.  The UNIX Domain sockets are considerably faster than TCP since they are really nothing more than a memory copy within the kernel.
+
+The exact nature of the communication is subject to change at this point so I won't go into that in too much detail here.  Right now there are two sockets that are created for each module.  The primary socket allows the module to send and recieve data to the server, the second socket is used for asynchronous event reporting.  These mechanisms may change if we can come up with a better way to handle this.
+
+At some point in the future we hope to implement some server-to-server communication that might facilitate redundancy or an even better ability to distribute the system.  Right now there is only one server in any application and all the modules communicate to that single server.  Each module can only communicate to one server at this point but that should change soon.
+
+Modules can be started by the OpenDAX server or by any other means that the operating system has for starting processes (i.e. shell prompt, scripts etc).  If the module is to be started by the server there are a few advantages.  First the server will know if the module dies for some reason because the operating system will send it a signal.  This allows the server to restart the module or alert the user that a part of the system is down.  Another advantage to having the module be a child process of the server is that the server would have access to the stdin, stdout and stderr file descriptors and could redirect the I/O from the module in interesting ways.  This feature allows programs that were never meant to be OpenDAX modules to be used with and controlled by OpenDAX.  This feature isn't fully implemented yet but it should be very soon.
+
+The server contains the tag database.  A tag is the atomic unit of data in the system.  These tags are analogous to variables in a programming language.  There are many different data types in OpenDAX and the user or module programmer can create compound datatypes that are collections of other types.  Compound data types are similar to a structure in C.  We will discuss compound data types later in this text.
+
+The tag database contains the names of these tags, their data type, the actual real time value and can send events when tag data changes.  It is the central store house of information in OpenDAX.  Different modules work with tags in different ways.  For instance, the Modbus module reads data from one or more Modbus devices and stores that information in tags within the server.  The tags are arrays of type UINT or BOOL\footnote{UINT is an unsigned 16 bit data type, BOOL is a single bit data type} depending on the command.  The names of these tags are a configurable parameter of the Modbus module.  If and HMI or Logic module need the information from the Modbus module they would read these tags to get it.
+
+The server also contains information about the currently running modules.  Modules must register with the server when they are started before the server will answer any queries by the module.  This registration step is how the module and the server learn what they need to learn about each other to properly communicate.  Once registered the server can keep track of that module through the file descriptor of the socket that the connection is made on.  This information can be made available to other modules that may need it.
+
+\section{Setting up the Build Environment}
+The build environment for developing modules is pretty simple.  If you have installed OpenDAX then you should have everything that you need to compile and run OpenDAX modules.  For help installing the OpenDAX system see the \textit{OpenDAX User Manual}. It is a typical straight forward build using the autotools package.  Installation should be as easy as...
+
+\begin{verbatim}
+./configure
+make
+sudo make install
+\end{verbatim}
+
+If these commands succeed then you should have the library installed in a typical place (usually /usr/local/lib) and the \textit{opendax.h} header file should be in a place where your compiler can find it (usually /usr/local/include).  For writing a module in C this should be all that you need.  If you have problems with the installation, see the \textit{OpenDAX User Manual}, it has much more detailed information on what is needed to get OpenDAX up and running on your system.
+
+Theoretically any C compiler can be used to build modules for OpenDAX, but we have been using GCC for the main development.
+
+At some point we intend to include Lua and Python bindings for the libdax library so that modules can be written in those two languages.  The Lua bindings will come first because that language is already integrated into most of OpenDAX's workings, so most of that code is already written.  It just needs to be organized and separated into it's own library for use in the Lua bindings.  Python should prove to be a fairly simple translation of the Lua code once that day comes.
+
+\chapter{Module Configuration}
+
+There are three methods for the module to recieve configuration information.  The main \textit{opendax.conf} contains configuration information for the server as well as any configuration that is common to all the modules on the local host machine.  Each module may have it's own configuration file that can be read and each module can receive configuration information passed as command line arguments.
+
+There is a priority of between these configurations.  If a configuration attribute is present on the command line it will take precedence over that same attribute given in either of the configuration files.  Likewise if an attribute exists in both of the configuration files then the module specific file will take priority.  This gives us a way to set up global default parameters for all modules such as IP address and communication port of the server in the \textit{opendax.conf} file.  Then if any of the global data needs to be different for any given module, that information can be changed in the module specific file.  Further, if the information needs to be different for any given invocation of the module that can be passed on the command line.
+
+Configuration is made up of attributes.  An example of an attribute would be the name of the local unix domain socket that the module should use to communicate to the server.  The attribute name might be \texttt{socketname} and the value \texttt{/tmp/opendax}\footnote{In fact these are the defaults for the local socket configuration}.  There are many attributes that are built into the system that will always need to be configured.  These are necessary for the basic functionality.  The \texttt{socketname} attribute is just one example.  The module developer can add as many attributes as are needed for configuring the functionality of the given module.  The libdax library contains interfaces to help the module developer with all of this.
+
+If the configuration data is more complex than simply assigning a value to an attribute the is a callback function mechanism built into the configuration system.  The configuration files in OpenDAX are nothing more than Lua scripts.  The libdax library gives the module programmer the ability to create functions that can be called from the script.  These functions are programmed in the module code just like any other Lua extension function.  The full description of how to write Lua extension functions is beyond the scope of this book, but we will give some simple examples that would help with basic configuration.
+\section{Setting Attributes}
+\section{Creating Callbacks}
+\section{Writing Lua Functions}
+\section{Running the Configuration}
+
+\chapter{Module Registration}
+
+\chapter{Dealing with Tags}
+
+\chapter{Handling Events}
+
+\chapter{Messaging to Other Modules}
+
+\chapter{Shell Modules}
 Shell Modules are called that because they are processes that are normally started from the command line shell.  These modules could be anything from an mp3 player to a database client.  They could be just about any program that can be started fromthe shell prompt.  They obviously don't have any "normal" OpenDAX functionality.  OpenDAX allows thier use by letting other modules gain access to the shell modules STDIN, STDOUT and STDERR file descriptors.  Text can be sent from other modules to these shell modules and controlled as though that text was being typed on the command line.  This allows OpenDAX to easily add functionality found in other programs and perhaps not reinvent too many wheels.
 
+\appendix
+\chapter{Codebase Descriptions}
+This section describes the different files and directories that are part of the OpenDAX core program (the server and the library).  This is meant as a rough overview to get a feel for how the code is laid out.  It is not meant to be an exhaustive reference.  For that you'll just have to go take a look at the latest code in the repository.  As a module developer you may not need to use any of this information, but since OpenDAX is such a young program there will still be plenty of bugs to work out of the core system, and this list may help somebody to get into the core code and help out with debugging or development of the server or library.
 
+/config.h
+
+This file is generated by ./configure and contains the architecture dependent defines that tell us things like what functions are available and what header files we need to install. I'm actually checking for quite a few functions that I don't really do anthing about if they are missing. As incompatibilities come up these will have to be dealt with.
+
+/common.h
+
+This header includes config.h as well as some other headers that are popular. It also has some definitions and macros that will be used throughout the system. This file should be included in just about every source code file in the system.
+
+/opendax.h
+
+This is the header that describes the public interface to the OpenDAX library. It contains declarations for all of the public library functions as well as the precompiler definitions for the datatypes, error codes, configuration flags etc. This file should be included by all modules that will link to the library, and is included in most of the source code files in the rest of the system too. This should be the only header file from this distribution that would need to be included in any module code. If there are others then we did something wrong in the interface.
+
+/dax
+
+The dax directory contains the source for the OpenDAX server.
+
+/dax/daxtypes.h
+
+This contains the private type definitions that are used internally by the server. These definitions should not be used by any module or the library.
+
+/dax/libcommon.h
+
+This file contains type definitions that are common between the library and the server. It should be included in the server and the libary source.
+
+/dax/func.c
+
+Contains a few generic functions for common operations like memory allocation and such.
+
+/dax/module.c
+
+Contains the code for the module handling system in the server. Operations such as starting and stopping modules as well as module registration and any other operation that involves modules should be in this file. The module.h header contains the public interface definitions for the functions in this file.
+
+/dax/message.c
+
+This file contains the functions that handle the module<->server messaging. Very little actual work gets done here other than sending and receiving data on the sockets and determining which functions in other files should be called.
+
+/dax/buffer.c
+
+Contains buffering code for the messaging subsystem. The messaging system writes the data from each socket into these buffers until it figures out that it has an entire message from one of the modules then it calls the function to deal with that message.
+
+/dax/options.c
+
+Contains the code for reading the configuraiton from the configuration file and the command line.
+
+/dax/opendax.c
+
+Contains main() and the other functions necessary to start the server and spawn the threads that do all the work. It all starts here.
+
+/dax/tagbase.c
+
+The storage and maipulation of all the real time tag information is contained within this file. For now the custom datatype handling code is also in here but this may get moved to it's own file.
+
+/lib
+
+The lib directory contains the source for the library. We use libtool to sort out the compatability issues associated with the way different systems handle shared libraries. If no shared libary system will work then libtool makes this a static library.
+
+/lib/libdax.h
+
+This header file contains all of the private definitions, macros and declarations that are needed throughout the library code but are not needed in the server or the modules.
+
+/lib/libfunc.c
+
+Contains some generic functions that are useful throughout.
+
+/lib/libmsg.c
+
+This is all the messaging code for the library. There are functions in this file for sending and retrieving messages and determining what to do with them. The functions here closely resemble functions in /dax/message.c and typically changes in one of thse files requires changes in the other. Between the two of them they define the
+communications protocol.
+
+/lib/data.c
+
+This file deals with library side of the tag data. It is probably not named well and may change. The functions here resemble functions that are in /dax/tagname.c
+
+/lib/libconv.c
+
+This file contains the functions for making sure that the data formatting is the same as the server. The way that OpenDAX handles different byte ordering and data formating between architectures over the networkis that the server stores the data in whatever way the server wants and the library is responsible for determining if the data needs to be converted and how. This file contains the code for that.
+
+/lib/libcdt.c
+
+OpenDAX allows the creation of custom datatypes. This file contains the code to handle all of that.
+
+/lib/libopt.c
+
+Contains the functions for configuring the module. The entire configuration system of OpenDAX uses Lua as the configuration programming language. The modules can be configured by either the main opendax.conf file, their own configuration file, the command line or any combination of the above. There are also some configuration options that are common between modules. This file contains the code to handle all of that.
+
+/modules
+
+This directory contains the module code. We will not discuss the module details here.
+
+/etc
+
+The sample configuration files are located here.
+
+\chapter{Library API Reference}
 \end{document}
