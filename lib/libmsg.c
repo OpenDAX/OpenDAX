@@ -351,6 +351,7 @@ dax_tag_add(Handle *h, char *name, tag_type type, int count)
     
     size = 4; /* we just need the handle */
     result = _message_recv(MSG_TAG_ADD, buff, &size, 1);
+
     if(result == 0) {
         if(h != NULL) {
             h->index = *(tag_index *)buff;
@@ -365,10 +366,11 @@ dax_tag_add(Handle *h, char *name, tag_type type, int count)
         tag.type = type;
         tag.count = count;
         cache_tag_add(&tag);
-        return 0;
-    } else {
-        return result;
     }
+//        return 0;
+//    } else {
+    return result;
+//    }
 }
 
 
