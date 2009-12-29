@@ -295,13 +295,14 @@ tag_read(char **tokens)
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
         return ERR_ARG;
     }
+    /* --- just for debugging
     printf("h.index = %d\n", handle.index);
     printf("h.byte = %d\n", handle.byte);
     printf("h.bit = %d\n", handle.bit);
     printf("h.size = %d\n", handle.size);
     printf("h.count = %d\n", handle.count);
     printf("h.type = %s\n", dax_type_to_string(handle.type));
-
+    */
     
     buff = malloc(handle.size);
     if(buff == NULL) {

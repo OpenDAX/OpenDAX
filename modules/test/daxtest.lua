@@ -9,5 +9,6 @@ run_test("tests/tagname.lua", "Tagname Addition Test")
 run_test("tests/handles.lua", "Tag Handle Retrieval Test")
 run_test("tests/status.lua", "Status Retrieve test")
 run_test("tests/readwrite.lua", "Read / Write Test")
+run_test("tests/typefail.lua", "Type Fail Test")
 run_test("tests/lazy.lua", "Lazy Programmer Test")
 

@@ -76,7 +76,9 @@ _cdt_create(lua_State *L)
         count = lua_tointeger(L, -1);
         lua_pop(L, 4);
         
+        pthread_mutex_lock(&daxmutex);
         result = dax_cdt_member(cdt, name, dax_string_to_type(type), count);
+        pthread_mutex_unlock(&daxmutex);
         if(result) {
             dax_cdt_free(cdt);
             luaL_error(L, "Unable to add member %s", name);
@@ -105,8 +107,9 @@ _cdt_create(lua_State *L)
 static int
 _dax_tag_add(lua_State *L)
 {
-    char *name, *type;
+    char *name, *datatype;
     int count;
+    tag_type type;
     tag_index result;
     Handle h;
     if(lua_gettop(L) != 3) {
@@ -114,23 +117,27 @@ _dax_tag_add(lua_State *L)
         return 1;
     }
     name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
-    type = (char *)lua_tostring(L, 2); /* Get the datatype from the Lua stack */
+    datatype = (char *)lua_tostring(L, 2); /* Get the datatype from the Lua stack */
     count = (int)lua_tonumber(L, 3);   /* Get the count from the Lua stack */
     
-    if(name == NULL || type == NULL || count <=0) {
-        lua_pushnumber(L, -1.0);
-        return 1;
+    if(name == NULL || datatype == NULL || count <=0) {
+        luaL_error(L, "Bad argument passed to dax_tag_add()");
     }
     
     pthread_mutex_lock(&daxmutex);
-    result = dax_tag_add(&h, name, dax_string_to_type(type), count);
+    type = dax_string_to_type(datatype);
+    if(type == 0) {
+        pthread_mutex_unlock(&daxmutex);
+        luaL_error(L, "Unrecognized datatype %s\n", datatype);
+    }
+    result = dax_tag_add(&h, name, type, count);
+    printf("dax_tag_add() returned %d\n", result);
     pthread_mutex_unlock(&daxmutex);
     
     if( result == 0 ) {
         lua_pushnumber(L, (double)h.index);
     } else {
         luaL_error(L, "Unable to Create Tag %s", name);
-        //lua_pushnumber(L, -1.0);
     }
     return 1;
 }
@@ -151,26 +158,31 @@ _dax_read(lua_State *L) {
     }
     name = (char *)lua_tostring(L, 1);
     count = lua_tointeger(L, 2);
-
+    
+    pthread_mutex_lock(&daxmutex);
     result = dax_tag_handle(&h, name, count);
     if(result) {
+        pthread_mutex_unlock(&daxmutex);
         luaL_error(L, "dax_tag_handle() returned %d", result);
     }
     data = malloc(h.size);
     if(data == NULL) {
+        pthread_mutex_unlock(&daxmutex);
         luaL_error(L, "tag_read() unable to allocate data area");
     }
     
     result = dax_read_tag(h, data);
-
+    
     if(result) {
+        pthread_mutex_unlock(&daxmutex);
         free(data);
         luaL_error(L, "dax_read_tag() returned %d", result);
     }
     /* This function figures all the tag data out and pushes the right
      * thing onto the top of the Lua stack */
     tag_dax_to_lua(L, h, data);
-    
+    pthread_mutex_unlock(&daxmutex);
+
     free(data);
     return 1;
 }
@@ -187,18 +199,22 @@ _dax_write(lua_State *L) {
         luaL_error(L, "Wrong number of arguments passed to tag_write()");
     }
     name = (char *)lua_tostring(L, 1);
+    pthread_mutex_lock(&daxmutex);
     result = dax_tag_handle(&h, name, 0);
     if(result) {
+        pthread_mutex_unlock(&daxmutex);
         luaL_error(L, "dax_tag_handle() returned %d", result);
     }
     
     data = malloc(h.size);
     if(data == NULL) {
+        pthread_mutex_unlock(&daxmutex);
         luaL_error(L, "tag_write() unable to allocate data area");
     }
 
     mask = malloc(h.size);
     if(mask == NULL) {
+        pthread_mutex_unlock(&daxmutex);
         free(data);
         luaL_error(L, "tag_write() unable to allocate mask memory");
     }
@@ -206,6 +222,7 @@ _dax_write(lua_State *L) {
     
     result = tag_lua_to_dax(L, h, data, mask);
     if(result) {
+        pthread_mutex_unlock(&daxmutex);
         free(data);
         free(mask);
         lua_error(L); /* The error message should already be on top of the stack */
@@ -225,6 +242,7 @@ _dax_write(lua_State *L) {
     } else {
         result = dax_write_tag(h, data);
     }
+    pthread_mutex_unlock(&daxmutex);
     
     if(result) {
         free(data);
@@ -772,12 +790,33 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
 //            break;
 //    }
 //}
-//
-///* This function finds the tag given by *tagname, get's the data from
-//   the server and puts the result on the top of the Lua stack. */
-//int
-//fetch_tag(lua_State *L, char *tagname)
-//{
+
+/* This function finds the tag given by *tagname, get's the data from
+   the server and puts the result on the top of the Lua stack. */
+int
+fetch_tag(lua_State *L, Handle h)
+{
+    int result;
+    void *data;
+    
+    data = malloc(h.size);
+    if(data == NULL) {
+        return ERR_ALLOC;
+    }
+    
+    result = dax_read_tag(h, data);
+
+    if(result) {
+        free(data);
+        return result;
+    }
+    /* This function figures all the tag data out and pushes the right
+     * thing onto the top of the Lua stack */
+    tag_dax_to_lua(L, h, data);
+    
+    free(data);   
+    return 0;
+}
 //    dax_tag tag;
 //    int size, n, result;
 //    void *buff;
@@ -836,7 +875,7 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
 //    free(buff);
 //    return 0;
 //}
-//
+
 ///* Gets the value(s) of the tag.  Accepts one argument, the tagname
 //and returns the value requested or raises an error on failure */
 //static int
@@ -856,12 +895,60 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
 //    return 1; /* return number of retvals */
 //}
 //
-//
-///* This function reads the variable from the top of the Lua stack
-//   and sends it to the opendax tag given by *tagname */
-//int
-//send_tag(lua_State *L, char *tagname)
-//{
+
+/* This function reads the variable from the top of the Lua stack
+   and sends it to the opendax tag given by *tagname */
+int
+send_tag(lua_State *L, Handle h)
+{
+    int result, n;
+    char q = 0;
+    void *mask, *data;
+    
+    data = malloc(h.size);
+    if(data == NULL) {
+        luaL_error(L, "tag_write() unable to allocate data area");
+    }
+
+    mask = malloc(h.size);
+    if(mask == NULL) {
+        free(data);
+        luaL_error(L, "tag_write() unable to allocate mask memory");
+    }
+    bzero(mask, h.size);
+    
+    result = tag_lua_to_dax(L, h, data, mask);
+    if(result) {
+        free(data);
+        free(mask);
+        return result;
+    }
+    
+    /* This checks the mask to determine which function to use
+     * to write the data to the server */
+    /* TODO: Might want to scan through and find the beginning and end of
+     * any changed data and send less through the socket.  */
+    for(n = 0; n < h.size && q == 0; n++) {
+        if( ((unsigned char *)mask)[n] != 0xFF) {
+            q = 1;
+        }
+    }
+    if(q) {
+        result = dax_mask_tag(h, data, mask);
+    } else {
+        result = dax_write_tag(h, data);
+    }
+    
+    if(result) {
+        free(data);
+        free(mask);
+        return result;
+    }
+
+    free(data);
+    free(mask);
+    return 0;
+}
 //    dax_tag tag;
 //    int size, n;
 //    void *buff, *mask;
@@ -924,7 +1011,7 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
 //    }
 //    return 0;
 //}
-//
+
 ///* Sets a given tag to the given value.  Two arguments...
 // * First argument is the string for the dax_tag
 // * Second argument is the value to set the tag too.
@@ -954,6 +1041,14 @@ _add_global(char *script, char *varname, unsigned char mode)
 {
     global_t *glo;
     script_t *scr;
+    Handle h;
+    int result;
+    
+    /* This would indicate that it's a dax tag */
+    if(mode != MODE_STATIC) {
+        result = dax_tag_handle(&h, varname, 0);
+        if(result) return result;
+    }
     
     scr = get_script_name(script);
     if(scr == NULL) return -1;
@@ -963,10 +1058,11 @@ _add_global(char *script, char *varname, unsigned char mode)
         glo->name = strdup( varname );
         glo->mode = mode;
         glo->ref = LUA_NOREF;
+        glo->handle = h;
         glo->next = scr->globals;
         scr->globals = glo;
     } else {
-        return -1;
+        return ERR_ALLOC;
     }
     return 0;
 }
@@ -978,6 +1074,7 @@ _add_global(char *script, char *varname, unsigned char mode)
 /* TODO: should this be allowed in a normal script?  I guess
    I don't want any limits but couldn't the scriptname be assumed
    if run from a normal script or given if meant for another script? */
+/* TODO: Should we add the ability to remove these from the list? */
 static int
 _register_tag(lua_State *L)
 {
@@ -991,11 +1088,11 @@ _register_tag(lua_State *L)
     }
     varname = (char *)lua_tostring(L, 2);
     if(varname == NULL) {
-        luaL_error(L, "Variable name argument not supplied");
+        luaL_error(L, "Tag name argument not supplied");
     }
     modestring = (char *)lua_tostring(L, 3);
     if(modestring == NULL) {
-        luaL_error(L, "Mode string arguemtn not supplied");
+        luaL_error(L, "Mode string argument not supplied");
     }
     for(n = 0; modestring[n] != '\0'; n++) {
         if(modestring[n] == 'r' || modestring[n] == 'R') {

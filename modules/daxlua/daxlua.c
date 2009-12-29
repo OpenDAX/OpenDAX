@@ -56,7 +56,7 @@ lua_init(void)
  * from the server.  Then makes these tags global Lua variables
  * to the script */
 static inline int
-_register_globals(lua_State *L, script_t *s)
+_receive_globals(lua_State *L, script_t *s)
 {
     global_t *this;
     
@@ -64,17 +64,17 @@ _register_globals(lua_State *L, script_t *s)
     
     pthread_mutex_lock(&daxmutex);
     while(this != NULL) {
-//        if(this->mode & MODE_READ) {
-//            if(fetch_tag(L, this->handle)) {
-//                pthread_mutex_unlock(&daxmutex);
-//                return -1;
-//            } else {
-//                lua_setglobal(L, this->name);
-//            }
-//        } else if(this->mode & MODE_STATIC && this->ref != LUA_NOREF) {
-//            lua_rawgeti(L, LUA_REGISTRYINDEX, this->ref);
-//            lua_setglobal(L, this->name);
-//        }
+        if(this->mode & MODE_READ) {
+            if(fetch_tag(L, this->handle)) {
+                pthread_mutex_unlock(&daxmutex);
+                return -1;
+            } else {
+                lua_setglobal(L, this->name);
+            }
+        } else if(this->mode & MODE_STATIC && this->ref != LUA_NOREF) {
+            lua_rawgeti(L, LUA_REGISTRYINDEX, this->ref);
+            lua_setglobal(L, this->name);
+        }
         this = this->next;
     }
     
@@ -120,11 +120,11 @@ _send_globals(lua_State*L, script_t *s)
         if(this->mode & MODE_WRITE) {
             lua_getglobal(L, this->name);
             
-//            if(send_tag(L, this->handle)) {
-//                pthread_mutex_unlock(&daxmutex);
-//                return -1;
-//            }
-//            lua_pop(L, 1);
+            if(send_tag(L, this->handle)) {
+                pthread_mutex_unlock(&daxmutex);
+                return -1;
+            }
+            lua_pop(L, 1);
         } else if(this->mode & MODE_STATIC) {
             lua_getglobal(L, this->name);
             if(this->ref == LUA_NOREF) {
@@ -174,7 +174,7 @@ lua_script_thread(script_t *s)
             lua_rawgeti(L, LUA_REGISTRYINDEX, func_ref);
             
             /* Get the configured tags and set the globals for the script */
-            if(_register_globals(L, s)) {
+            if(_receive_globals(L, s)) {
                 dax_error("Unable to find all the global tags\n");
             } else {
                 /* Run the script that is on the top of the stack */
@@ -252,13 +252,6 @@ main(int argc, char *argv[])
 {
     struct sigaction sa;
     
-    /* Set up the signal handlers */
-    memset (&sa,0,sizeof(struct sigaction));
-    sa.sa_handler=&quit_signal;
-    sigaction (SIGQUIT,&sa,NULL);
-    sigaction (SIGINT,&sa,NULL);
-    sigaction (SIGTERM,&sa,NULL);
-    /* TODO: How 'bout a SIGHUP to restart the module */
     
     daxlua_init();
     
@@ -278,10 +271,19 @@ main(int argc, char *argv[])
     /* Run the initialization script */
     if(lua_init()) {
         dax_fatal("Init Script \'%s\' failed to run properly", get_init());
+    } else {
+        /* Start all the script threads */
+        start_all_threads();
     }
     
-    /* Start all the script threads */
-    start_all_threads();
+    /* Set up the signal handlers */
+    memset (&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = &quit_signal;
+    sigaction (SIGQUIT, &sa, NULL);
+    sigaction (SIGINT, &sa, NULL);
+    sigaction (SIGTERM, &sa, NULL);
+    /* TODO: How 'bout a SIGHUP to restart the module */
+    
     
     while(1) {
         /* TODO: Probably should replace with a condition variable? */

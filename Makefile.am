@@ -11,6 +11,7 @@ EXTRA_DIST = common.h \
 			 config/mkinstalldirs \
 			 modules/test/daxtest.lua \
 			 modules/test/tests/* \
+			 modules/daxlua/*.lua \
 			 etc/*.conf.sample 
 
 include_HEADERS = opendax.h

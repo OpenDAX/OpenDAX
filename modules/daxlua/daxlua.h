@@ -77,8 +77,8 @@ int get_verbosity(void);
 /* luaif.c - Lua Interface functions */
 int daxlua_init(void);
 int setup_interpreter(lua_State *L);
-//int fetch_tag(lua_State *L, char *tagname);
-//int send_tag(lua_State *L, char *tagname);
+int fetch_tag(lua_State *L, Handle h);
+int send_tag(lua_State *L, Handle h);
 void tag_dax_to_lua(lua_State *L, Handle h, void* data);
 int tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask);
 
