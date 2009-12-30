@@ -27,6 +27,7 @@
 #include <pthread.h>
 #include <dax/func.h>
 #include <modopt.h>
+#include <database.h>
 #include <lib/modbus.h>
 
 extern struct Config config;
@@ -39,11 +40,19 @@ static void getout(int);
 void outdata(mb_port *,u_int8_t *,unsigned int);
 void indata(mb_port *,u_int8_t *,unsigned int);
 
-int main (int argc, const char * argv[]) {
+/* Silly wrapper for calling the mb_run_port() function
+ * Might add some housekeeping stuff later */
+static void
+_port_thread(void *port) {
+    mb_run_port((mb_port *)port);
+}
+
+int
+main (int argc, const char * argv[]) {
     int result, n;
-    //--mb_port *mp;
-    //--mb_cmd *mc;
     struct sigaction sa;
+    pthread_attr_t attr;
+
     
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
@@ -63,69 +72,43 @@ int main (int argc, const char * argv[]) {
        Bail if there is an error. */
     result = modbus_configure(argc, argv);
     
+    result = init_database();
+    if(result) {
+        dax_fatal("Unable to initialize the database!");
+    }
+    
     if( dax_mod_register("modbus") ) {
         dax_fatal("Unable to connect to OpenDAX server!");
     }
     
-    /* Set the input and output callbacks if we aren't going to the background */
-    /* TODO: Configuration option for these??? */
-    printf("Port Count = %d\n", config.portcount);
+    config.threads = malloc(sizeof(pthread_t) * config.portcount);
+    if(config.threads == NULL) {
+        dax_fatal("Unable to allocate memory for port threads!");
+    }
+    
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
     for(n = 0; n < config.portcount; n++) {
-        mb_open_port(config.ports[n]);
+        mb_set_msgout_callback(config.ports[n], outdata);
+        mb_set_msgin_callback(config.ports[n], indata);
+        printf("Starting Thread for port - %s",mb_get_name(config.ports[n]));
+        if(pthread_create(&config.threads[n], &attr, (void *)&_port_thread, (void *)config.ports[n])) {
+            dax_error( "Unable to start thread for port - %s", mb_get_name(config.ports[n]));
+        } else {
+            dax_debug(LOG_MAJOR, "Started Thread for port - %s", mb_get_name(config.ports[n]));
+        }
     }
     
     while(1) {
-        for(n = 0; n < config.portcount; n++) {
-            printf("Running Port %d\n", n);
-            mb_set_msgout_callback(config.ports[n], outdata);
-            mb_set_msgin_callback(config.ports[n], indata);
-            
-            if( mb_scan_port(config.ports[n])==0) {
-                printf("Why didn't we send any commands???\n");
-            }
-        }
-        sleep(1);
+        sleep(10);
+        /*TODO: May need to do some kind of housekeeping here */
     }
+    
     for(n = 0; n < config.portcount; n++) {
         mb_close_port(config.ports[n]);
     }
 
-    //        mc = config.ports[n].commands;
-//        while(mc != NULL) {
-//            //-- *** This ain't gonna work.  Creating tags should be done during configuration */
-//            result = dt_add_tag(&(mc->handle), mc->tagname, mc->index, mc->function, mc->length);
-//            /* TODO: for now if we can't add the tag we'll keep the handle at zero.  The database
-//             * routines won't read or write if the handle is zero.  We should do more */
-//            if(result) ;
-//            if(mc->idx < 0) {
-//                mc->idx = 0;
-//            }
-//            mc = mc->next; /* get next command from the linked list */
-//        }
-//    }
-    
-//    while(1) { /* Infinite loop, threads are doing all the work.*/
-//        /* Starts the port threads if they are not running */
-//        for(n=0; n < config.portcount; n++) {
-//            mp = config.ports[n];
-//            if(!mp->running && !mp->inhibit) {
-//                if(mb_start_port(mp) < 0) { /* If the port fails to open */
-//                    mp->inhibit = 1; /* then don't try to open it anymore */
-//                    mp->inhibit_temp = 0; /* reset the inhibit timer */
-//                }
-//            } else if(mp->inhibit && mp->inhibit_time) {
-//                mp->inhibit_temp++;
-//                if(mp->inhibit_temp >= mp->inhibit_time) {
-//                    mp->inhibit = 0;
-//                    mp->inhibit_temp = 0;
-//                }
-//            }
-///* TODO: The inhibition above could be tied to a timer or counter so that it would only be tried
-//every so often instead of being inhibited completely.  This would make it possible for the program to
-//recover from a USB serial port being pulled and then replaced or a device server going offline. */
-//        }
-//        sleep(1);
-//    }            
     return 0;
 }
 
@@ -183,6 +166,7 @@ void
 outdata(mb_port *mp, u_int8_t *buff, unsigned int len)
 {
    int n;
+   printf("%s:", mb_get_name(mp));
    for(n = 0; n < len; n++) {
        printf("(%X)", buff[n]);
    }
@@ -193,6 +177,7 @@ void
 indata(mb_port *mp, u_int8_t *buff, unsigned int len)
 {
    int n;
+   printf("%s:", mb_get_name(mp));
    for(n = 0; n < len; n++) {
        printf("[%X]",buff[n]);
    }

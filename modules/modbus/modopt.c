@@ -208,7 +208,7 @@ _add_port(lua_State *L)
     mb_port *p;
     mb_port **newports;
     char *string, *name;
-    int slaveid, tmp;
+    int slaveid, tmp, maxfailures, inhibit;
     unsigned char devtype, protocol, type, enable; 
     
     if(!lua_istable(L, -1)) {
@@ -335,11 +335,13 @@ _add_port(lua_State *L)
 //    if(p->retries == 0) p->timeout = 1;
 //    if(p->retries > MAX_RETRIES) p->retries = MAX_RETRIES;
 //    
-//    lua_getfield(L, -6, "inhibit");
-//    p->inhibit_time = (unsigned int)lua_tonumber(L, -1);
-//    
-//    lua_getfield(L, -7, "maxattempts");
-//    p->maxattempts = (unsigned int)lua_tonumber(L, -1);
+    lua_getfield(L, -1, "inhibit");
+    inhibit = (unsigned int)lua_tonumber(L, -1);
+    
+    lua_getfield(L, -2, "maxfailures");
+    maxfailures = (unsigned int)lua_tonumber(L, -1);
+    lua_pop(L, 2);
+    mb_set_maxfailures(p, maxfailures, inhibit);
     
 //    lua_pop(L, 7);
     /* The lua script gets the index +1 */
@@ -491,14 +493,17 @@ modbus_configure(int argc, const char *argv[])
 static void
 printconfig(void)
 {
-//    int n,i;
+    int n;
 //    struct mb_cmd *mc;
     printf("\n----------mbd Configuration-----------\n\n");
 //    printf("Configuration File: %s\n", config.configfile);
 //    printf("Table Size: %d\n", config.tablesize);
 //    printf("Maximum Ports: %d\n", config.maxports);
 //    printf("\n");
-//    for(n=0; n<config.portcount; n++) {
+    for(n=0; n<config.portcount; n++) {
+        mb_print_portconfig(stderr, config.ports[n]);
+    }
+        
 //        if(config.ports[n].devtype == MB_NETWORK) {
 //            printf("Port[%d] %s %s:%d\n",n,config.ports[n].name,
 //                                             config.ports[n].ipaddress,

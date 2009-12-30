@@ -17,35 +17,36 @@
  */
 
 #include <database.h>
+#include <pthread.h>
+
+static pthread_mutex_t dax_mutex;
+
+/* This initializes all the data that we need to deal with for the database */
+int
+init_database(void) {
+    fprintf(stderr, "Initializing Database\n");
+    pthread_mutex_init(&dax_mutex, NULL);
+    return 0;
+}
 
 /* These are the callbacks that get assigned to each command */
 static void
 _write_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
-    int n;
-    
-    printf("_write_data");
-    for(n = 0; n < datasize; n++)
-        printf("[0x%X] ", data[n]);
-    printf("\n");
-    
     /* It really should be this easy if we have done everything right up to here */
+    pthread_mutex_lock(&dax_mutex);
     dax_write_tag(*((Handle *)userdata), data);
+    pthread_mutex_unlock(&dax_mutex);
 }
 
 
 static void
 _read_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
-    int n;
-    
     /* It really should be this easy if we have done everything right up to here */
+    pthread_mutex_lock(&dax_mutex);
     dax_read_tag(*((Handle *)userdata), data);
-
-    printf("_read_data");
-    for(n = 0; n < datasize; n++)
-        printf("[0x%X] ", data[n]);
-    printf("\n");
+    pthread_mutex_unlock(&dax_mutex);
 }
 
 

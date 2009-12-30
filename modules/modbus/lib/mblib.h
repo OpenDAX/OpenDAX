@@ -50,10 +50,6 @@
 #include <sys/time.h>
 
 #include <modbus.h>
-//--Do I really want to have this dependency???
-//--#include <pthread.h>
-
-//--#include <database.h>
 
 #ifdef __BIG_ENDIAN__ /* PPC Endianness */
 # define __MB_BIG_ENDIAN
@@ -82,12 +78,8 @@
 /* Device Port Types */
 #define MB_SERIAL  0
 #define MB_NETWORK 1
-/* Extra Protocol bit /// May not be needed */
-//#define MB_LAN   8 /* OR this with RTU or ASCII to get TCP/IP socket passthru */
 
-//#define ALIAS_LENGTH 33
-//#define ALIAS_COUNT 64
-
+/* Internal struct that defines a single Modbus(tm) Port */
 struct mb_port {
     char *name;               /* Port name if needed : Maybe we don't need this */
     char *device;             /* device filename of the serial port */
@@ -123,8 +115,6 @@ struct mb_port {
     struct mb_cmd *commands;  /* Linked list of Modbus commands */
     int fd;                   /* File descriptor to the port */
     int dienow;
-    //--pthread_t thread;
-    //--pthread_mutex_t port_mutex;  /* Port Mutex */
     unsigned int attempt;        /* Attempt counter */
     unsigned char running;       /* Flag to indicate the port is running */
     unsigned char inhibit;       /* When set the port will not be started */

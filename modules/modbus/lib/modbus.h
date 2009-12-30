@@ -21,6 +21,7 @@
 #ifndef __MODBUS_H
 #define __MODBUS_H
 
+#include <stdio.h>
 #include <sys/types.h>
 
 /* Port Types */
@@ -52,6 +53,8 @@
 #define MB_ERR_PORTTYPE   -7      /* Bad port type - Master/Slave */
 #define MB_ERR_PROTOCOL   -8      /* Bad protocol - RTU/ASCII/TCP */
 #define MB_ERR_FUNCTION   -9      /* Bad Function Code Given */
+#define MB_ERR_OPEN       -10     /* Failure to Open Port */
+#define MB_ERR_PORTFAIL   -11     /* Major Port Failure */
 
 /* Modbus Errors */
 #define ME_EXCEPTION      0x80;
@@ -88,6 +91,7 @@ int mb_set_delay_time(mb_port *port, int delay);
 int mb_set_scan_rate(mb_port *port, int rate);
 int mb_set_timeout(mb_port *port, int timeout);
 int mb_set_retries(mb_port *port, int retries);
+int mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit);
 
 unsigned char mb_get_type(mb_port *port);
 const char *mb_get_name(mb_port *port);
@@ -131,5 +135,8 @@ return pointer to cmd's userdata
 //--mb_cmd *mb_get_cmd(mb_port *, unsigned int);
 int mb_run_port(mb_port *);
 int mb_send_command(mb_port *, mb_cmd *);
+
+void mb_print_portconfig(FILE *fd, mb_port *mp);
+
 
 #endif

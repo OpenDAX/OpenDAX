@@ -18,13 +18,11 @@
  * Source code file that contains all of the modbus protocol stuff.
  */
 
-//--#include <database.h>
-
 
 #include <mblib.h>
 #include <modbus.h>
 
-void master_loop(mb_port *);
+int master_loop(mb_port *);
 
 /* Calculates the difference between the two times */
 inline unsigned long long
@@ -33,30 +31,6 @@ timediff(struct timeval oldtime,struct timeval newtime)
     return (newtime.tv_sec - oldtime.tv_sec) * 1000 + 
            (newtime.tv_usec / 1000)-(oldtime.tv_usec / 1000);
 };
-
-
-
-/* Finds the modbus master command indexed by cmd.  Returns a pointer
- * to the command when found and NULL on error. */
-/* TODO: Replace with an iterator */
-//mb_cmd *
-//mb_get_cmd(struct mb_port *mp, unsigned int cmd)
-//{
-//    mb_cmd *node;
-//    unsigned int n = 0;
-//    if(mp == NULL) return NULL;
-//    
-//    if(mp->commands == NULL) {
-//        node = NULL;
-//    } else { 
-//        node = mp->commands;
-//        do {
-//            if(n++ == cmd) return node;
-//            node = node->next;
-//        } while(node != NULL);
-//    }
-//    return node;
-//}
 
 
 /* Opens the port passed in m_port and starts the loop that
@@ -68,7 +42,7 @@ mb_run_port(struct mb_port *m_port)
     if(!m_port->fd) {
         if(mb_open_port(m_port)) {
             DEBUGMSG2( "Unable to open port - %s", m_port->name);
-            return -1;
+            return MB_ERR_OPEN;
         }
     }
     if(m_port->fd > 0) {
@@ -77,17 +51,18 @@ mb_run_port(struct mb_port *m_port)
          * be deallocated automatically. */
         
         if(m_port->type == MB_MASTER) {
-            master_loop(m_port);
+            printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
+            return master_loop(m_port);
         } else if(m_port->type == MB_SLAVE) {
             ; /* TODO: start slave thread */
         } else {
-            //dax_error( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
-            return -1;
+            //DEBUGMSG2( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
+            return MB_ERR_PORTTYPE;
         }
         return 0;
     } else {
-        //dax_error( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
-        return -1;
+        printf( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
+        return MB_ERR_OPEN;
     }
     return 0;
 }
@@ -132,20 +107,22 @@ mb_scan_port(mb_port *mp)
 /* This is the primary event loop for a Modbus master.  It calls the functions
    to send the request and recieve the responses.  It also takes care of the
    retries and the counters. */
-void
+int
 master_loop(mb_port *mp)
 {
     long time_spent;
+    int result;
     struct mb_cmd *mc;
     struct timeval start, end;
     unsigned char bail = 0;
     
     mp->running = 1; /* Tells the world that we are going */
     mp->attempt = 0;
+    mp->dienow = 0;
     /* If enable goes negative we bail at the next scan */
-    while(mp->enable != 0 && !bail) {
+    while(1) {
         gettimeofday(&start, NULL);
-        if(mp->enable) { /* If enable=0 then pause for the scanrate and try again. */
+        if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
             while(mc != NULL && !bail) {
                 /* Only if the command is enabled and the interval counter is over */
@@ -153,11 +130,10 @@ master_loop(mb_port *mp)
                     mc->icount = 0;
                     if(mp->maxattempts) {
                         mp->attempt++;
-                        DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
+                        //DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
                     }
                     if( mb_send_command(mp, mc) > 0 )
                         mp->attempt = 0; /* Good response, reset counter */
-                    
                     if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
                         bail = 1;
                         mp->inhibit_temp = 0;
@@ -167,6 +143,17 @@ master_loop(mb_port *mp)
                 if(mp->delay > 0) usleep(mp->delay * 1000);
                 mc = mc->next; /* get next command from the linked list */
             } /* End of while for sending commands */
+        }
+        if(mp->inhibit) {
+            bail = 0;
+            mb_close_port(mp);
+            if(mp->inhibit_time) {
+                sleep(mp->inhibit_time);
+                result = mb_open_port(mp);
+                if(result == 0) mp->inhibit = 0;
+            } else {
+                return MB_ERR_PORTFAIL;
+            }    
         }
         /* This calculates the length of time that it took to send the messages on this port
            and then subtracts that time from the port's scanrate and calls usleep to hold
@@ -178,14 +165,10 @@ master_loop(mb_port *mp)
             usleep((mp->scanrate - time_spent) * 1000);
     }
     /* Close the port */
-    
-    //--if(close(mp->fd)) {
-        //dax_error("Could not close port");
-    //--}
-    //dax_error("Too Many Errors: Shutting down port - %s", mp->name);
-    mp->fd = 0;
+    mb_close_port(mp); 
     mp->dienow = 0;
     mp->running = 0;
+    return MB_ERR_PORTFAIL; 
 }
 
 /* This function formulates and sends the modbus master request */
@@ -209,10 +192,7 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
             length = 6;
             break;
         case 5:
-            //--temp = dt_getbit(cmd->handle, cmd->index);
             temp = *cmd->data;
-            //--result = dt_getbits(cmd->idx, cmd->index, &temp, 1);
-            //--printf("...getbits returned 0x%X for index %d\n", temp, cmd->index);
             if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc) || !cmd->firstrun ) {
                 COPYWORD(&buff[2], &cmd->m_register);
                 if(temp) buff[4] = 0xff;
@@ -227,8 +207,6 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
             }
             break;
         case 6:
-            //--temp = dt_getword(cmd->address);
-            //--result = dt_getwords(cmd->idx, cmd->index, &temp, 1);
             temp = *cmd->data;
             /* TODO: Error Check result */
             /* If the command is contiunous go, if conditional then 
@@ -332,7 +310,7 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
     int n;
     //--u_int16_t *data;
     
-    DEBUGMSG2("handleresponse() - Function Code = %d", cmd->function);
+    //DEBUGMSG2("handleresponse() - Function Code = %d", cmd->function);
     cmd->responses++;
     if(buff[1] >= 0x80) 
         return buff[2];
@@ -344,26 +322,18 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
     switch (cmd->function) {
         case 1:
         case 2:
-            //--dt_setbits(cmd->address, &buff[3], cmd->length);
-            //--result = dt_setbits(cmd->idx, cmd->index, &buff[3], cmd->length);
             memcpy(cmd->data, &buff[3], buff[2]);
             break;
         case 3:
         case 4:
-            //--data = malloc(buff[2] / 2);
-            //--if(data == NULL) return ERR_ALLOC;
             /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
             for(n = 0; n < (buff[2] / 2); n++) {
                 COPYWORD(&((u_int16_t *)cmd->data)[n], &buff[(n * 2) + 3]);
             }
-            //--if(dt_setword(cmd->address + n, temp)) return -1;
-            //--result = dt_setwords(cmd->idx, cmd->index, data, cmd->length);
-            //--free(data);
             break;
         case 5:
         case 6:
             COPYWORD(cmd->data, &buff[2]);
-            //if(dt_setword(cmd->address,temp)) return -1;
             break;
         default:
             break;
@@ -404,18 +374,13 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
         mc->pre_send(mc, mc->userdata, mc->data, mc->datasize);
     }
     do { /* retry loop */
-//        pthread_mutex_lock(&mp->port_mutex); /* Lock the port */
-                
 		result = sendrequest(mp, mc);
 		if(result > 0) {
 			msglen = getresponse(buff, mp);
-//		    pthread_mutex_unlock(&mp->port_mutex);
         } else if(result == 0) {
             /* Should be 0 when a conditional command simply doesn't run */
-//            pthread_mutex_unlock(&mp->port_mutex);
             return result;
         } else {
-//            pthread_mutex_unlock(&mp->port_mutex);
             return -1;
         }
         

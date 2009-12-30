@@ -39,14 +39,9 @@
 #define NETWORK_PORT 2
 
 struct Config {
-    //char *pidfile;
-    //char *configfile;
-    //char *tagname;
-    //int verbosity;
-    //u_int8_t daemonize;
-    //unsigned int tablesize;
     int portcount;   /* Number of ports that are assigned */
     int portsize;    /* Number of ports that are allocated */
+    pthread_t *threads; /* The port threads */
     mb_port **ports; /* Pointer to an array of ports */
 };
 

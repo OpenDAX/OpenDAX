@@ -27,7 +27,8 @@ initport(mb_port *p)
 {
     p->name = NULL;
     p->device = NULL;
-    p->enable = 0;
+    p->fd = 0;
+    p->enable = 1;
     p->type = 0; 
     p->protocol = 0;
     p->devtype = MB_SERIAL;
@@ -388,6 +389,14 @@ mb_set_retries(mb_port *port, int retries)
     return 0;    
 }
 
+int
+mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit)
+{
+    port->maxattempts = maxfailures;
+    port->inhibit_time = inhibit;
+    return 0;
+}
+
 unsigned char
 mb_get_type(mb_port *port)
 {
@@ -458,3 +467,69 @@ add_cmd(mb_port *p, mb_cmd *mc)
     return 0;
 }
     
+/****************************/
+/*  Debugging Functions     */
+/****************************/
+
+/* This function is used for debugging purposes.  It could be used
+ * to print the port configuration to a file as well. */
+void
+mb_print_portconfig(FILE *fd, mb_port *mp)
+{
+    int i;
+    mb_cmd *mc;
+    
+    fprintf(fd, "Port %s\n", mp->name);
+    /* Serial Port Specific Configuration */
+    if(mp->devtype == MB_SERIAL) {
+        fprintf(fd, "Serial Port: %s %d:%d:", mp->device, mp->baudrate, mp->databits);
+        if(mp->parity == MB_EVEN) fprintf(fd, "E:");
+        else if(mp->parity == MB_ODD) fprintf(fd, "O:");
+        else if(mp->parity == MB_NONE) fprintf(fd, "N:");
+        else fprintf(fd, "*:");
+        fprintf(fd, "%d\n", mp->stopbits);
+    /* Network Port Specific Configuration */
+    } else if(mp->devtype == MB_NETWORK) {
+        fprintf(fd, "Network Port %s:%d\n", mp->ipaddress, mp->bindport);
+    }
+    fprintf(fd, "Port Type: ");
+    if(mp->protocol == MB_RTU) fprintf(fd, "RTU - ");
+    else if(mp->protocol == MB_ASCII) fprintf(fd, "ASCII - ");
+    else if(mp->protocol == MB_TCP) fprintf(fd, "TCP - ");
+    else fprintf(fd, "* - ");
+    
+    if(mp->devtype == MB_SERIAL) {
+        if(mp->type == MB_MASTER) fprintf(fd, "Master");
+        else if(mp->type == MB_SLAVE) fprintf(fd, "Slave");
+        else fprintf(fd, "*");
+    } else if(mp->devtype == MB_NETWORK) {
+        if(mp->type == MB_CLIENT) fprintf(fd, "Client");
+        else if(mp->type == MB_SERVER) fprintf(fd, "Server");
+        else fprintf(fd, "*");
+    } else {
+        fprintf(fd, "Unknown Type");
+    }
+    fprintf(fd, "\n");
+    fprintf(fd, "Intercommand delay: %d mSec\n", mp->delay);
+    fprintf(fd, "Interbyte Timeout: %d mSec\n", mp->frame);
+    fprintf(fd, "Retries: %d\n", mp->retries);
+    fprintf(fd, "Scan Rate: %d mSec\n", mp->scanrate);
+    fprintf(fd, "Timeout: %d mSec\n", mp->timeout);
+    fprintf(fd, "Max Failures: %d\n", mp->maxattempts);
+    fprintf(fd, "Inhibit Time: %d Seconds\n", mp->inhibit_time);
+        
+    mc = mp->commands;
+    if(mc == NULL) fprintf(fd, "No commands configured for this port\n");
+    else {
+        fprintf(fd, "  Cmd  Node  FC Register Len\n");
+        i = 0;
+        while(mc != NULL) {
+            fprintf(fd, " %4d  %4d  %2d %5d   %3d\n",i++,mc->node,
+                                                  mc->function,
+                                                  mc->m_register,
+                                                  mc->length);
+            mc = mc->next;
+        }
+    }
+    fprintf(fd, "\n");
+}
