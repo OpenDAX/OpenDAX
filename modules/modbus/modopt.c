@@ -39,9 +39,8 @@ struct Config config;
 static void
 _init_config(void)
 {
-    
     config.portcount = 0;
-    config.portsize = 0;
+    config.portsize = 1;
     config.ports = NULL;
 }
 
@@ -218,6 +217,7 @@ _add_port(lua_State *L)
     /* This logic allocates the port array if it does not already exist */
     if(config.ports == NULL) {
         config.ports = malloc(sizeof(mb_port *) * DEFAULT_PORTS);
+        config.portsize = DEFAULT_PORTS;
         if(config.ports == NULL) {
             dax_fatal("Unable to allocate port array");
         }
@@ -494,38 +494,10 @@ static void
 printconfig(void)
 {
     int n;
-//    struct mb_cmd *mc;
-    printf("\n----------mbd Configuration-----------\n\n");
-//    printf("Configuration File: %s\n", config.configfile);
-//    printf("Table Size: %d\n", config.tablesize);
-//    printf("Maximum Ports: %d\n", config.maxports);
-//    printf("\n");
+
+    fprintf(stderr, "\n----------Modbus Configuration-----------\n\n");
     for(n=0; n<config.portcount; n++) {
         mb_print_portconfig(stderr, config.ports[n]);
     }
         
-//        if(config.ports[n].devtype == MB_NETWORK) {
-//            printf("Port[%d] %s %s:%d\n",n,config.ports[n].name,
-//                                             config.ports[n].ipaddress,
-//                                             config.ports[n].bindport);
-//        } else {
-//            printf("Port[%d] %s %s %d,%d,%d,%d\n",n,config.ports[n].name,
-//                                             config.ports[n].device,
-//                                             config.ports[n].baudrate,
-//                                             config.ports[n].databits,
-//                                             config.ports[n].parity,
-//                                             config.ports[n].stopbits);
-//        }
-//        mc = config.ports[n].commands;
-//        i = 0;
-//        while(mc != NULL) {
-//            printf(" Command[%d] %d %d %d %d %s %d\n",i++,mc->node,
-//                                                  mc->function,
-//                                                  mc->m_register,
-//                                                  mc->length,
-//                                                  mc->tagname,
-//                                                  mc->index);
-//            mc = mc->next;
-//        }
-//    }
 }
