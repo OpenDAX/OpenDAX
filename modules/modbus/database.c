@@ -92,7 +92,10 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
             result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + 1);
             break;
         default:
-            return;
+            assert(0);
+    }
+    if(result) {
+        dax_error("Unable to create tag %s", cdata->tagname);
     }
     
     snprintf(tagname, DAX_TAGNAME_SIZE + 20, "%s[%d]", cdata->tagname, cdata->index);
@@ -100,17 +103,21 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
     mb_set_userdata(c, NULL); /* Just so we know */
            
     result = dax_tag_handle(h, tagname, count);
-
-    if(result == 0) {
-        /* Since h is allocated with a single malloc call we don't have to free
-         * it because it will be freed when the command is destroyed */
-        mb_set_userdata(c, h);
+    /* Since h is allocated with a single malloc call we don't have to free
+     * it because it will be freed when the command is destroyed.
+     * We want to make sure and set the userdata anyway or we'll get a segfault */
+    mb_set_userdata(c, h);
+    
+    if(result) {
+        dax_error("Unable to get handle for tag %s, %d", tagname, count);
+        dax_error("dax_tag_handle() returned %d", result);
+        mb_disable_cmd(c);
     }
     mb_pre_send_callback(c, NULL);
     if(mb_is_write_cmd(c)) {
         mb_pre_send_callback(c, _read_data);
         /* Since this is a pre call we go ahead and call the function here */
-        _read_data(c, userdata, data, datasize);
+        _read_data(c, h, data, datasize);
     } else if(mb_is_read_cmd(c)) {
         mb_post_send_callback(c, _write_data);
     }

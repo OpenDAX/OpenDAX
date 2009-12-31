@@ -44,7 +44,9 @@ void indata(mb_port *,u_int8_t *,unsigned int);
  * Might add some housekeeping stuff later */
 static void
 _port_thread(void *port) {
-    mb_run_port((mb_port *)port);
+    int result;
+    result = mb_run_port((mb_port *)port);
+    dax_fatal("This Shouldn't Exit Here!");
 }
 
 int

@@ -119,6 +119,7 @@ master_loop(mb_port *mp)
     mp->running = 1; /* Tells the world that we are going */
     mp->attempt = 0;
     mp->dienow = 0;
+   
     /* If enable goes negative we bail at the next scan */
     while(1) {
         gettimeofday(&start, NULL);
@@ -372,6 +373,8 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     
     if(mc->pre_send != NULL) {
         mc->pre_send(mc, mc->userdata, mc->data, mc->datasize);
+        /* This is in case the pre_send() callback disables the command */
+        if(mc->enable == 0) return 0;
     }
     do { /* retry loop */
 		result = sendrequest(mp, mc);
