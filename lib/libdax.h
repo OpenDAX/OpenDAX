@@ -79,6 +79,7 @@ int init_tag_cache(void);
 int check_cache_index(tag_index, dax_tag *);
 int check_cache_name(char *, dax_tag *);
 int cache_tag_add(dax_tag *);
+int cache_tag_del(char *);
 
 int opt_get_msgtimeout(void);
 

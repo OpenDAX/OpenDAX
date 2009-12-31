@@ -171,6 +171,7 @@ check_cache_name(char *name, dax_tag *tag)
     return 0;
 }
 
+
 /* Adds a tag to the cache */
 int
 cache_tag_add(dax_tag *tag)
@@ -212,6 +213,49 @@ cache_tag_add(dax_tag *tag)
     
     return 0;
 }
+
+/* This function deletes the tag in the cache given by 'tagname'
+ * It returns 0 on success and ERR_NOTFOUND if the tag is not in the cache */
+int
+cache_tag_del(char *tagname) {
+    tag_cnode *this;
+    
+    /* Search for the tag */
+    if(_cache_head != NULL) {
+        this = _cache_head;
+    } else {
+        return ERR_NOTFOUND;
+    }
+    if( strcmp(_cache_head->name, tagname) ) {
+        this = this->next;
+        
+        while(this != _cache_head && strcmp(this->name, tagname)) {
+            this = this->next;
+        }
+        if(this == _cache_head) {
+            return ERR_NOTFOUND;
+        }
+    }
+    
+    /* If we get this far the tag was found and 'this' should point to
+     * the tag we want to delete */ 
+    if(this->next == this) { /* Last module */
+        _cache_head = NULL;
+    } else {
+        /* disconnect module */
+        (this->next)->prev = this->prev;
+        (this->prev)->next = this->next;
+        /* don't want current to be pointing to the one we are deleting */
+        if(_cache_head == this) {
+            _cache_head = this->next;
+        }
+    }
+    _cache_count--;
+    /* free allocated memory */
+    free(this);
+    return 0;
+}
+
 
 /* Type specific reading and writing functions.  These should be the most common
  * methods to read and write tags to the sever.*/

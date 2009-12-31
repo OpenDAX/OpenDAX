@@ -365,12 +365,11 @@ dax_tag_add(Handle *h, char *name, tag_type type, int count)
         tag.idx = *(tag_index *)buff;
         tag.type = type;
         tag.count = count;
+        /* Just in case this call modifies the tag */
+        cache_tag_del(name);
         cache_tag_add(&tag);
     }
-//        return 0;
-//    } else {
     return result;
-//    }
 }
 
 
