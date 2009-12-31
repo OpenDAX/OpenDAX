@@ -40,29 +40,21 @@ mb_run_port(struct mb_port *m_port)
 {
     /* If the port is not already open */
     if(!m_port->fd) {
-        if(mb_open_port(m_port)) {
-            DEBUGMSG2( "Unable to open port - %s", m_port->name);
-            return MB_ERR_OPEN;
-        }
+        mb_open_port(m_port);
     }
-    if(m_port->fd > 0) {
-        /* Set up the thread attributes 
-         * The thread is set up to be detached so that it's resources will
-         * be deallocated automatically. */
-        
-        if(m_port->type == MB_MASTER) {
-            printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
-            return master_loop(m_port);
-        } else if(m_port->type == MB_SLAVE) {
-            ; /* TODO: start slave thread */
-        } else {
-            //DEBUGMSG2( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
-            return MB_ERR_PORTTYPE;
-        }
-        return 0;
+    /* If the port is still not open then we inhibit the port and
+     * let the _loop() functions deal with it */
+    if(m_port->fd == 0) {
+        m_port->inhibit = 1;
+    }
+    if(m_port->type == MB_MASTER) {
+        printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
+        return master_loop(m_port);
+    } else if(m_port->type == MB_SLAVE) {
+        ; /* TODO: start slave thread */
     } else {
-        printf( "Unable to open IP Port: %s [%s:%d]", m_port->name, m_port->ipaddress, m_port->bindport);
-        return MB_ERR_OPEN;
+        //DEBUGMSG2( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
+        return MB_ERR_PORTTYPE;
     }
     return 0;
 }
@@ -83,7 +75,6 @@ mb_scan_port(mb_port *mp)
                 mp->attempt++;
                 DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
             }
-/* TODO: Need to check the actual return value and act appropriately */
             result = mb_send_command(mp, mc);
             if( result > 0 ) {
                 mp->attempt = 0; /* Good response, reset counter */
@@ -209,7 +200,6 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
             break;
         case 6:
             temp = *cmd->data;
-            /* TODO: Error Check result */
             /* If the command is contiunous go, if conditional then 
              check the last checksum against the current datatable[] */
             if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
@@ -221,7 +211,8 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
             } else {
                 return 0;
             }
-            default:
+        /* TODO: Add the rest of the function codes */
+        default:
             break;
     }
     crc = crc16(buff, length);
