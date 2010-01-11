@@ -191,6 +191,7 @@ readconfigfile(void)
     lua_pushcfunction(L, _add_module);
     lua_setglobal(L, "add_module");
     
+    luaopen_base(L);
     
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {

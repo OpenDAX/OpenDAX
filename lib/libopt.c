@@ -348,7 +348,7 @@ _get_lua_globals(lua_State *L, int type) {
 }
 
 /* This function tries to open the main configuration file,
- * typically opendax.h and run it. */
+ * typically opendax.conf and run it. */
 static inline int
 _main_config_file(void) {
 	int length, result = 0;
@@ -368,6 +368,9 @@ _main_config_file(void) {
     /* We don't open any librarires because we don't really want any
      * function calls in the configuration file.  It's just for
      * setting a few globals. */
+    
+    /* register the libraries that we need*/
+    luaopen_base(L);
     
     /* load and run the configuration file */
     if(luaL_loadfile(L, cfile)  || lua_pcall(L, 0, 0, 0)) {
@@ -406,6 +409,7 @@ _mod_config_file(void) {
             return ERR_ALLOC;
         }
 	}
+    luaopen_base(__L);
 	    
     /* load and run the configuration file */
     if(luaL_loadfile(__L, cfile)  || lua_pcall(__L, 0, 0, 0)) {
