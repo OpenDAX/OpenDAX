@@ -254,7 +254,7 @@ msg_receive(void)
     struct timeval tm;
     struct sockaddr_un addr;
     int result, fd, n;
-    socklen_t len;
+    socklen_t len = 0;
     
     FD_ZERO(&tmpset);
     FD_COPY(&_fdset, &tmpset);
