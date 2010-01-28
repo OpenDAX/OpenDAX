@@ -11,4 +11,11 @@ tag_read("TagModifyTest", 8)
 tag_add("TagModifyTest", "INT", 12)
 tag_read("TagModifyTest[8]", 4)
 
+tag_add("TagModifyBool", "BOOL", 4)
+tag_write("TagModifyBool[1]", 1)
+
+tag_add("TagModifyBool", "BOOL", 8)
+tag_write("TagModifyBool[5]", 1)
+
+tag_add("TagModifyBool", "BOOL", 12)
 

@@ -22,6 +22,10 @@
 
 #include <modbus.h>
 #include <mblib.h>
+#define _XOPEN_SOURCE
+#include <unistd.h>
+#undef _XOPEN_SOURCE
+
 
 /* CRC table straight from the modbus spec */
 static unsigned char aCRCHi[] = {

@@ -364,7 +364,7 @@ dax_read_tag(Handle handle, void *data)
      * the tag datatype is BOOL.  If not the bytes should be aligned.
      * If there is a bit index then we need to 'realign' the bits so that
      * the bits that the handle point to start at the top of the *data buffer */
-    if(handle.type == DAX_BOOL && handle.bit > 0) {
+    if(handle.type == DAX_BOOL) {
         i = handle.bit;
         newdata = malloc(handle.size);
         if(newdata == NULL) return ERR_ALLOC;

@@ -161,7 +161,7 @@ static inline int
 _get_slave_config(lua_State *L, mb_port *p)
 {
     unsigned int size;
-    int result;
+    int result = 0;
     dax_error("Slave functionality is not yet implemented");
     
     //--lua_getfield(L, -1, "holdreg");
