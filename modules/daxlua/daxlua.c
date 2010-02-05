@@ -36,13 +36,13 @@ lua_init(void)
 {
     lua_State *L;
     
-    dax_debug(LOG_MAJOR, "Starting init script - %s", get_init());
+    dax_debug(ds, LOG_MAJOR, "Starting init script - %s", get_init());
     /* Create a lua interpreter object */
     L = luaL_newstate();
     setup_interpreter(L);    
     /* load and compile the file */
     if(luaL_loadfile(L, get_init()) || lua_pcall(L, 0, 0, 0) ) {
-        dax_error("Error Running Init Script - %s", lua_tostring(L, -1));
+        dax_error(ds, "Error Running Init Script - %s", lua_tostring(L, -1));
         return 1;
     }
     

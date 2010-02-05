@@ -153,18 +153,22 @@ struct dax_tag {
 
 typedef struct dax_tag dax_tag;
 
+typedef struct dax_state dax_state;
+
 /* These functions are for module configuration */
-int dax_init_config(char *name);
-int dax_set_luafunction(int (*f)(void *L), char *name);
-int dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *defvalue);
-int dax_configure(int argc, char **argv, int flags);
-char *dax_get_attr(char *name);
-int dax_set_attr(char *name, char *value);
-int dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value));
-int dax_free_config(void);
+dax_state *dax_init(char *name);
+int dax_init_config(dax_state *ds, char *name);
+int dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name);
+int dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int flags, char *defvalue);
+int dax_configure(dax_state *ds, int argc, char **argv, int flags);
+char *dax_get_attr(dax_state *ds, char *name);
+int dax_set_attr(dax_state *ds, char *name, char *value);
+int dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, char *value));
+int dax_free_config(dax_state *ds);
+int dax_free(dax_state *ds);
 
 void dax_set_verbosity(int); /* TODO: This should be deleted eventually */
-void dax_set_debug_topic(u_int32_t);
+void dax_set_debug_topic(dax_state *ds, u_int32_t);
 
 
 /* These functions accept a function pointer to functions that would
@@ -173,40 +177,40 @@ void dax_set_debug_topic(u_int32_t);
  * uses some functions for error messaging and this allows the module to deal
  * with these messages how it sees fit.  These would normally not be used and
  * when these callbacks are not set the default messaging is used. */
-void dax_set_debug(void (*debug)(const char *msg));
-void dax_set_error(void (*error)(const char *msg));
-void dax_set_log(void (*log)(const char *msg));
+void dax_set_debug(dax_state *ds, void (*debug)(const char *msg));
+void dax_set_error(dax_state *ds, void (*error)(const char *msg));
+void dax_set_log(dax_state *ds, void (*log)(const char *msg));
 
 /* These are the functions that a module should actually call to log
  * a message or log and exit. These are the functions that are basically
  * overridden by the above _set functions.  The reason for the complexity
  * is that these functions are also used internally by the library and
  * this keeps everything consistent. */
-void dax_debug(int topic, const char *format, ...);
-void dax_error(const char *format, ...);
-void dax_log(const char *format, ...);
-void dax_fatal(const char *format, ...);
+void dax_debug(dax_state *ds, int topic, const char *format, ...);
+void dax_error(dax_state *ds, const char *format, ...);
+void dax_log(dax_state *ds, const char *format, ...);
+void dax_fatal(dax_state *ds, const char *format, ...);
 
 /* Only registered modules will get responses from the server */
-int dax_mod_register(char *);   /* Registers the Module with the server */
-int dax_mod_unregister(void);   /* Unregister the Module with the server */
+int dax_mod_register(dax_state *, char *);   /* Registers the Module with the server */
+int dax_mod_unregister(dax_state *ds);       /* Unregister the Module with the server */
 
 /* Adds a tag to the opendax server database. */
-int dax_tag_add(Handle *h, char *name, tag_type type, int count);
+int dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count);
 
 /* Get tag by name, will not decode members and subscripts */
-int dax_tag_byname(dax_tag *tag, char *name);
+int dax_tag_byname(dax_state *ds, dax_tag *tag, char *name);
 /* Get tag by index */
-int dax_tag_byindex(dax_tag *tag, tag_index index);
+int dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index index);
 
 /* The handle is a complete description of where in the tagbase the
  * data that we wish to retrieve is located.  This can be used in place
  * of a tagname string such as "Tag1.member1[5]".  Count is the number of
  * items, that we want. */
-int dax_tag_handle(Handle *h, char *str, int count);
+int dax_tag_handle(dax_state *ds, Handle *h, char *str, int count);
 
 /* Returns the size of the datatype in bytes */
-int dax_get_typesize(tag_type type);
+int dax_get_typesize(dax_state *ds, tag_type type);
 
 
 /* The following functions are for reading and writing data.  These 
@@ -217,11 +221,11 @@ int dax_get_typesize(tag_type type);
  * may go away. */
 
 /* simple untyped tag reading function */
-int dax_read(tag_index idx, int offset, void *data, size_t size);
+int dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size);
 /* simple untyped tag writing function */
-int dax_write(tag_index idx, int offset, void *data, size_t size);
+int dax_write(dax_state *ds, tag_index idx, int offset, void *data, size_t size);
 /* simple untyped masked tag write */
-int dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size);
+int dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_t size);
 
 /* These are the bread and butter tag handling functions.  The functions
  * understand the type of tag being written and take care of all the
@@ -237,26 +241,26 @@ int dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size);
  * count is the number of items in the tag to read/write.  The mask is
  * a binary mask that only allows data through where bits are high.
  * type is the tag type. */
-int dax_read_tag(Handle handle, void *data);
-int dax_write_tag(Handle handle, void *data);
-int dax_mask_tag(Handle handle, void *data, void *mask);
+int dax_read_tag(dax_state *ds, Handle handle, void *data);
+int dax_write_tag(dax_state *ds, Handle handle, void *data);
+int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 
 /* Event control functions */
-int dax_event_add(char *tag, int count);
-int dax_event_del(int id);
-int dax_event_get(int id);
+int dax_event_add(dax_state *ds, char *tag, int count);
+int dax_event_del(dax_state *ds, int id);
+int dax_event_get(dax_state *ds, int id);
 
 /* Custom Datatype Functions */
 typedef struct datatype dax_cdt;
 
 /* Get the datatype from a string */
-tag_type dax_string_to_type(char *type);
+tag_type dax_string_to_type(dax_state *ds, char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
-const char *dax_type_to_string(tag_type type);
+const char *dax_type_to_string(dax_state *ds, tag_type type);
 
 dax_cdt *dax_cdt_new(char *name, int *error);
-int dax_cdt_member(dax_cdt *cdt, char *name, tag_type mem_type, unsigned int count);
-int dax_cdt_create(dax_cdt *cdt, tag_type *type);
+int dax_cdt_member(dax_state *ds, dax_cdt *cdt, char *name, tag_type mem_type, unsigned int count);
+int dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type);
 void dax_cdt_free(dax_cdt *cdt);
 
 /* Custom Datatype Iterator */
@@ -270,6 +274,6 @@ struct cdt_iter {
 
 typedef struct cdt_iter cdt_iter;
 
-int dax_cdt_iter(tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
+int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
 
 #endif /* !__OPENDAX_H */

@@ -25,7 +25,7 @@
 #include <signal.h>
 
 //static int _verbosity = 0;
-static int _logflags = 0;
+//static int _logflags = 0;
 
 /* These functions handle the logging and error callback function */
 
@@ -45,15 +45,15 @@ static void (*_dax_log)(const char *output) = NULL;
 //}
 
 void
-dax_set_debug_topic(u_int32_t topic)
+dax_set_debug_topic(dax_state *ds, u_int32_t topic)
 {
-    _logflags = topic;
-    dax_debug(LOG_MAJOR, "Log Topics Set to %d", _logflags);
+    ds->logflags = topic;
+    dax_debug(ds, LOG_MAJOR, "Log Topics Set to %d", ds->logflags);
 }
 
 /* Function for modules to set the debug message callback */
 void
-dax_set_debug(void (*debug)(const char *format))
+dax_set_debug(dax_state *ds, void (*debug)(const char *format))
 {
     _dax_debug = debug;
 //--    return (long)_dax_debug;
@@ -61,7 +61,7 @@ dax_set_debug(void (*debug)(const char *format))
 
 /* Function for modules to set the error message callback */
 void
-dax_set_error(void (*error)(const char *format))
+dax_set_error(dax_state *ds, void (*error)(const char *format))
 {
     _dax_error = error;
 //--    return (int)_dax_error;
@@ -69,7 +69,7 @@ dax_set_error(void (*error)(const char *format))
 
 /* Function for modules to override the dax_log function */
 void
-dax_set_log(void (*log)(const char *format))
+dax_set_log(dax_state *ds, void (*log)(const char *format))
 {
     _dax_log = log;
 //--    return (int)_dax_log;
@@ -85,13 +85,13 @@ dax_set_log(void (*log)(const char *format))
  * If the level is lower than the global _verbosity level then it will
  * print the message.  Otherwise do nothing */
 void
-dax_debug(int level, const char *format, ...)
+dax_debug(dax_state *ds, int level, const char *format, ...)
 {
     char output[DEBUG_STRING_SIZE];
     va_list val;
     
     /* check if the callback has been set and _verbosity is set high enough */
-    if(level & _logflags) {
+    if(level & ds->logflags) {
         va_start(val, format);
         if(_dax_debug) {
             vsnprintf(output, DEBUG_STRING_SIZE, format, val);
@@ -107,7 +107,7 @@ dax_debug(int level, const char *format, ...)
 /* Prints an error message if the callback has been set otherwise
    sends the string to stderr. */
 void
-dax_error(const char *format, ...)
+dax_error(dax_state *ds, const char *format, ...)
 {
     char output[DEBUG_STRING_SIZE];
     va_list val;
@@ -128,7 +128,7 @@ dax_error(const char *format, ...)
 /* TODO: At some point this may send a message to opendax right
    now it either calls the callback or if none is given prints to stdout */
 void
-dax_log(const char *format, ...)
+dax_log(dax_state *ds, const char *format, ...)
 {
     char output[DEBUG_STRING_SIZE];
     va_list val;
@@ -145,7 +145,7 @@ dax_log(const char *format, ...)
 }
 
 void
-dax_fatal(const char *format, ...)
+dax_fatal(dax_state *ds, const char *format, ...)
 {
     char output[DEBUG_STRING_SIZE];
     va_list val;

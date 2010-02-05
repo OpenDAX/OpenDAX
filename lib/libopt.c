@@ -24,52 +24,43 @@
 #include <getopt.h>
 #include <ctype.h>
 
-typedef struct OptAttr {
-    char *name;
-    char *longopt;
-    char shortopt;
-    char *defvalue;
-    char *value;
-    int flags;
-    int (*callback)(char *name, char *value);
-    struct OptAttr *next;
-} optattr;
-    
-static optattr *_attr_head = NULL;
-static lua_State *__L;
-static char *_modulename;
-static int _msgtimeout;
+
+//Globals are moved to the dax_state structure    
+//static optattr *_attr_head = NULL;
+//static lua_State *__L;
+//static char *_modulename;
+//static int _msgtimeout;
 
 /* Initialize the module configuration */
 int
-dax_init_config(char *name)
+dax_init_config(dax_state *ds, char *name)
 {
 	int result = 0;
 	int flags;
-	
-	__L = luaL_newstate();
-	if(__L == NULL) {
+
+	ds->L = luaL_newstate();
+	if(ds->L == NULL) {
 		return ERR_ALLOC;
 	} else {
-        __L = lua_open();
+        ds->L = lua_open();
 	}
 	/* This sets up the configuration that is common to all modules */
 	flags = CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF | CFG_ARG_REQUIRED;
-	result += dax_add_attribute("socketname","socketname", 'S', flags, "/tmp/opendax");
-	result += dax_add_attribute("serverip", "serverip", 'I', flags, "127.0.0.1");
-	result += dax_add_attribute("serverport", "serverport", 'P', flags, "7777");
-	result += dax_add_attribute("server", "server", 's', flags, "LOCAL");
-	result += dax_add_attribute("debugtopic", "topic", 'T', flags, "MAJOR");
-	result += dax_add_attribute("name", "name", 'N', flags, name);
-	result += dax_add_attribute("cachesize", "cachesize", 'z', flags, "8");
-	result += dax_add_attribute("msgtimeout", "msgtimeout", 'o', flags, DEFAULT_TIMEOUT);
+	result += dax_add_attribute(ds, "socketname","socketname", 'S', flags, "/tmp/opendax");
+	result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
+	result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
+	result += dax_add_attribute(ds, "server", "server", 's', flags, "LOCAL");
+	result += dax_add_attribute(ds, "debugtopic", "topic", 'T', flags, "MAJOR");
+	result += dax_add_attribute(ds, "name", "name", 'N', flags, name);
+	result += dax_add_attribute(ds, "cachesize", "cachesize", 'z', flags, "8");
+	result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'o', flags, DEFAULT_TIMEOUT);
 
 	flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
-	result += dax_add_attribute("config", "config", 'C', flags, NULL);
-	result += dax_add_attribute("confdir", "confdir", 'c', flags, ETC_DIR);
-	//result += dax_add_attribute("", "", '', flags, "");
+	result += dax_add_attribute(ds, "config", "config", 'C', flags, NULL);
+	result += dax_add_attribute(ds, "confdir", "confdir", 'c', flags, ETC_DIR);
+	//result += dax_add_attribute(ds, "", "", '', flags, "");
 
-	_modulename = strdup(name);
+	ds->modulename = strdup(name);
 
 	if(result) {
 		return ERR_GENERIC;
@@ -81,10 +72,10 @@ dax_init_config(char *name)
 /* Allows the module developer to add their own function for
  * the Lua configuration file */
 int
-dax_set_luafunction(int (*f)(void *L), char *name)
+dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name)
 {
-	lua_pushcfunction(__L, (int (*)(lua_State *))f);
-    lua_setglobal(__L, name);
+	lua_pushcfunction(ds->L, (int (*)(lua_State *))f);
+    lua_setglobal(ds->L, name);
     return 0;
 }
 
@@ -111,11 +102,11 @@ _validate_name(char *name)
 
 /* Check the attributes symbols, returns 0 on success or an error code */
 static int
-_check_attr(char *name, char *longopt, char shortopt)
+_check_attr(dax_state *ds, char *name, char *longopt, char shortopt)
 {
 	optattr *this;
 	
-	this = _attr_head;
+	this = ds->attr_head;
     
 	if(_validate_name(name) || _validate_name(longopt)) {
 	    return ERR_ARG;
@@ -138,13 +129,13 @@ _check_attr(char *name, char *longopt, char shortopt)
 }
 
 int
-dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *defvalue)
+dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int flags, char *defvalue)
 {
     optattr *newattr;
     int result;
     
     /* Check for bad symbols */
-    if( (result = _check_attr(name, longopt, shortopt)) ) {
+    if( (result = _check_attr(ds, name, longopt, shortopt)) ) {
     	return ERR_DUPL;
     }
     if(name == NULL) return ERR_ARG;
@@ -172,8 +163,8 @@ dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *def
     }
     
     /* We'll just stick it in the top */
-    newattr->next = _attr_head; 
-    _attr_head = newattr;
+    newattr->next = ds->attr_head; 
+    ds->attr_head = newattr;
     return 0;
 }
 
@@ -181,10 +172,10 @@ dax_add_attribute(char *name, char *longopt, char shortopt, int flags, char *def
  * configuration when the attribute given by 'name' is found
  * in the command line argument or in the configuration file. */
 int
-dax_attr_callback(char *name, int (*attr_callback)(char *name, char *value)) {
+dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, char *value)) {
 	optattr *this;
 	
-	this = _attr_head;
+	this = ds->attr_head;
 	
 	while(this != NULL) {
 		if( ! strcmp(this->name, name) ){
@@ -217,7 +208,7 @@ _set_attr(optattr *attr, char *value) {
 /* Compare the attribute list to the command line arguments
  * and sets the values appropriately */
 static inline int
-_parse_commandline(int argc, char **argv) {
+_parse_commandline(dax_state *ds, int argc, char **argv) {
 	int attr_count = 0, o_count = 0;
 	int attr_index = 0, o_index = 0, ch, index;
 	char *shortopts;
@@ -227,7 +218,7 @@ _parse_commandline(int argc, char **argv) {
 	/* This loop counts the attribute list and the size of the 
 	 * string that we'll need or the short opts so that we know
 	 * how much memory to allocate. */
-	this = _attr_head;
+	this = ds->attr_head;
 	while(this != NULL) {
 		attr_count++;
 		if(this->shortopt != '\0') {
@@ -251,7 +242,7 @@ _parse_commandline(int argc, char **argv) {
 	
 	/* This loop assigns the option structure and strings
 	 * from the attribute list */
-	this = _attr_head;
+	this = ds->attr_head;
 	while(this != NULL) {
 		/* If it's not supposed to be on the command line then
 		 * we have no use for it here */
@@ -285,7 +276,7 @@ _parse_commandline(int argc, char **argv) {
 	while(ch != -1) {
 		ch = getopt_long(argc, (char * const *)argv, shortopts, options, &index);
 		if(ch > 0) {
-		    this = _attr_head;
+		    this = ds->attr_head;
 			while(this != NULL) {
 				if(this->shortopt == ch) {
 				    _set_attr(this, optarg);
@@ -294,7 +285,7 @@ _parse_commandline(int argc, char **argv) {
 				this = this->next;
 			}
 		} else if(ch == 0) {
-		    this = _attr_head;
+		    this = ds->attr_head;
             while(this != NULL) {
                 if(!strcasecmp(this->longopt, options[index].name)) {
                     _set_attr(this, optarg);
@@ -313,26 +304,26 @@ _parse_commandline(int argc, char **argv) {
  * script that is passed by *L.  type indicates whether it's
  * the module configuration or the main opendax.conf */
 static int
-_get_lua_globals(lua_State *L, int type) {
+_get_lua_globals(dax_state *ds, int type) {
     optattr *this;
     const char *s;
     
-    this = _attr_head;
+    this = ds->attr_head;
     
     while(this != NULL) {
         /* If the value has not already been set and we
          * are actually looking for the attribute in this
          * configuration file */
         if((this->flags & type)) {
-            lua_getglobal(L, this->name);
-            if(lua_isboolean(L, -1)) {
-                if(lua_toboolean(L, -1)) {
+            lua_getglobal(ds->L, this->name);
+            if(lua_isboolean(ds->L, -1)) {
+                if(lua_toboolean(ds->L, -1)) {
                     s = "true";
                 } else {
                     s = "false";    
                 }
             } else {
-                s = lua_tostring(L, -1);
+                s = lua_tostring(ds->L, -1);
             }
             if(s) {
                 /* We only set the value if it has not already been set */
@@ -340,7 +331,7 @@ _get_lua_globals(lua_State *L, int type) {
                     _set_attr(this, (char *)s);
                 }
             }
-            lua_pop(L, 1);
+            lua_pop(ds->L, 1);
         }
         this = this->next;
     }
@@ -350,12 +341,12 @@ _get_lua_globals(lua_State *L, int type) {
 /* This function tries to open the main configuration file,
  * typically opendax.conf and run it. */
 static inline int
-_main_config_file(void) {
+_main_config_file(dax_state *ds) {
 	int length, result = 0;
 	char *cfile, *cdir;
 	lua_State *L;
 	
-	cdir = dax_get_attr("confdir");
+	cdir = dax_get_attr(ds, "confdir");
 	length = strlen(cdir) + strlen("/opendax.conf") + 1;
 	cfile = malloc(sizeof(char) * length);
 	if(cfile) {
@@ -374,11 +365,11 @@ _main_config_file(void) {
     
     /* load and run the configuration file */
     if(luaL_loadfile(L, cfile)  || lua_pcall(L, 0, 0, 0)) {
-        dax_error("Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_error(ds, "Problem executing configuration file - %s", lua_tostring(L, -1));
         result = ERR_GENERIC;
     } else {
         /* tell lua to push these variables onto the stack */
-        _get_lua_globals(L, CFG_DAXCONF);
+        _get_lua_globals(ds, CFG_DAXCONF);
     }
     
     free(cfile);
@@ -388,35 +379,35 @@ _main_config_file(void) {
 /* This function tries to open the module specific configuration
  * file and run it. */
 static inline int
-_mod_config_file(void) {
+_mod_config_file(dax_state *ds) {
 	int length;
 	char *cfile, *cdir;
 	
 	/* This gets the default configuration file name
 	 * We add 2 for the NULL character and the '/' */
-	cfile = dax_get_attr("config");
+	cfile = dax_get_attr(ds, "config");
 	//--printf("dax_get_attr(\"config\") returned %s\n", cfile);
 	if(cfile == NULL) { 
 	    /* No configuration file in the attribute list then we'll
 	     * build the path from the default config directory and 
 	     * the module name that was passed to dax_init_config() */
-        cdir = dax_get_attr("confdir");
-	    length = strlen(cdir) + strlen(_modulename) + strlen("/.conf") + 1;
+        cdir = dax_get_attr(ds, "confdir");
+	    length = strlen(cdir) + strlen(ds->modulename) + strlen("/.conf") + 1;
         cfile = malloc(sizeof(char) * length);
         if(cfile) {
-            sprintf(cfile, "%s/%s.conf", cdir, _modulename);
+            sprintf(cfile, "%s/%s.conf", cdir, ds->modulename);
         } else {
             return ERR_ALLOC;
         }
 	}
-    luaopen_base(__L);
+    luaopen_base(ds->L);
 	    
     /* load and run the configuration file */
-    if(luaL_loadfile(__L, cfile)  || lua_pcall(__L, 0, 0, 0)) {
-        dax_error("Problem executing configuration file - %s", lua_tostring(__L, -1));
+    if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
+        dax_error(ds, "Problem executing configuration file - %s", lua_tostring(ds->L, -1));
         return ERR_GENERIC;
     } else {
-        _get_lua_globals(__L, CFG_MODCONF);
+        _get_lua_globals(ds, CFG_MODCONF);
     }
     
     free(cfile);
@@ -426,11 +417,11 @@ _mod_config_file(void) {
 /* This loops through all the configuration attributes and sets
  * them to the defaults if the value is still NULL */
 static inline int
-_set_defaults(void)
+_set_defaults(dax_state *ds)
 {
     optattr *this;
-		
-    this = _attr_head;
+
+    this = ds->attr_head;
 
     while(this != NULL) {
         if(this->value == NULL) {
@@ -447,11 +438,11 @@ _set_defaults(void)
 
 /* Just for testing */
 static inline void
-_print_config(void)
+_print_config(dax_state *ds)
 {
     optattr *this;
         
-    this = _attr_head;
+    this = ds->attr_head;
 
     /* This loop checks that none of the symbols have already been used. */
     while(this != NULL) {
@@ -469,11 +460,11 @@ _print_config(void)
  * the libary would need so that the user can free the configuration at
  * any time. */
 static int
-_verify_config(void)
+_verify_config(dax_state *ds)
 {
-    _msgtimeout = strtol(dax_get_attr("msgtimeout"), NULL, 0);
-    if(_msgtimeout < MIN_TIMEOUT || _msgtimeout > MAX_TIMEOUT) {
-        _msgtimeout = strtol(DEFAULT_TIMEOUT, NULL, 0);
+    ds->msgtimeout = strtol(dax_get_attr(ds, "msgtimeout"), NULL, 0);
+    if(ds->msgtimeout < MIN_TIMEOUT || ds->msgtimeout > MAX_TIMEOUT) {
+        ds->msgtimeout = strtol(DEFAULT_TIMEOUT, NULL, 0);
     }
 //    if(inet_pton(AF_INET, dax_get_attr("serverip"), NULL)) != 1) {
 //        dax_error("serverip not set properly.  Going with default.");
@@ -483,35 +474,35 @@ _verify_config(void)
 
 /* Executes the configuration routines */
 int
-dax_configure(int argc, char **argv, int flags)
+dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {
-	if(_modulename == NULL) {
+	if(ds->modulename == NULL) {
 		return ERR_NO_INIT;
 	}
 	if(flags & CFG_CMDLINE)
-		_parse_commandline(argc, argv);
+		_parse_commandline(ds, argc, argv);
 	/* This sets the confdir parameter to ETC_DIR if it
 	 * has not already been set on the command line */
-	if(dax_get_attr("confdir") == NULL) {
-	    dax_set_attr("confdir", ETC_DIR);
+	if(dax_get_attr(ds, "confdir") == NULL) {
+	    dax_set_attr(ds, "confdir", ETC_DIR);
 	}
 	
 	if(flags & CFG_MODCONF)
-        _mod_config_file();
+        _mod_config_file(ds);
     if(flags & CFG_DAXCONF)
-        _main_config_file();
+        _main_config_file(ds);
         
-    _set_defaults();
-    //--_print_config();
-    return _verify_config();
+    _set_defaults(ds);
+    //--_print_config(ds);
+    return _verify_config(ds);
 }
 
 /* Returns the pointer to the requested attribute */
 char *
-dax_get_attr(char *name) {
+dax_get_attr(dax_state *ds, char *name) {
 	optattr *this;
 	
-	this = _attr_head;
+	this = ds->attr_head;
 	while(this != NULL) {
 		if(!strcmp(this->name, name)) {
 			return this->value;
@@ -526,11 +517,11 @@ dax_get_attr(char *name) {
  * but this is easier and it's only configuration. If value
  * is NULL the attribute will be set to its default. */
 int
-dax_set_attr(char *name, char *value)
+dax_set_attr(dax_state *ds, char *name, char *value)
 {
     optattr *this;
     
-    this = _attr_head;
+    this = ds->attr_head;
     while(this != NULL) {
         if(!strcmp(this->name, name)) {
             if(this->value != NULL) free(this->value);
@@ -548,14 +539,14 @@ dax_set_attr(char *name, char *value)
 
 /* Frees the data in the configuration linked list */
 int
-dax_free_config(void)
+dax_free_config(dax_state *ds)
 {
     /* TODO: Write dax_free_config */
     return 0;
 }
 
 int
-opt_get_msgtimeout(void)
+opt_get_msgtimeout(dax_state *ds)
 {
-    return _msgtimeout;
+    return ds->msgtimeout;
 }

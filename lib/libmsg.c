@@ -28,15 +28,15 @@
 #include <math.h>
 
 
-static int _sfd;   /* Server's File Descriptor */
-static int _afd;   /* Asynchronous File Descriptor */
-static unsigned int _reformat; /* Flags to show how to reformat the incoming data */
+//static int _sfd;   /* Server's File Descriptor */
+//static int _afd;   /* Asynchronous File Descriptor */
+//static unsigned int _reformat; /* Flags to show how to reformat the incoming data */
 
 /* These are the generic message functions.  They simply send the message of
  * the type given by command, attach the payload.  The payloads size should be
  * given in bytes */
 static int
-_message_send(int command, void *payload, size_t size)
+_message_send(dax_state *ds, int command, void *payload, size_t size)
 {
     int result;
     char buff[DAX_MSGMAX];
@@ -48,11 +48,11 @@ _message_send(int command, void *payload, size_t size)
     //--printf("M - Message send, size = %d\n", ntohl(((u_int32_t *)buff)[0]));
     /* TODO: We need to set some kind of timeout here.  This could block
        forever if something goes wrong.  It may be a signal or something too. */
-    result = write(_sfd, buff, size + MSG_HDR_SIZE);
+    result = write(ds->sfd, buff, size + MSG_HDR_SIZE);
     
     if(result < 0) {
     /* TODO: Should we handle the case when this returns due to a signal */
-        dax_error("_message_send: %s", strerror(errno));
+        dax_error(ds, "_message_send: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
     return 0;
@@ -64,14 +64,14 @@ _message_send(int command, void *payload, size_t size)
    happen if the server puts a message in the queue after we send a request but
    before we retrieve the result. */
 static int
-_message_recv(int command, void *payload, int *size, int response)
+_message_recv(dax_state *ds, int command, void *payload, int *size, int response)
 {
     char buff[DAX_MSGMAX];
     int index, done, msg_size, result;
     done = index = msg_size = 0;
     
     while( index < msg_size || index < MSG_HDR_SIZE) {
-        result = read(_sfd, &buff[index], DAX_MSGMAX);
+        result = read(ds->sfd, &buff[index], DAX_MSGMAX);
         /*****TESTING STUFF******/
 //        printf("_message_recv() returned %d\n", result);
 //        for(done = 0; done < result; done ++) {
@@ -80,10 +80,10 @@ _message_recv(int command, void *payload, int *size, int response)
         
         if(result < 0) {
             if(errno == EWOULDBLOCK) {
-                dax_debug(LOG_COMM, "_message_recv Timed out");
+                dax_debug(ds, LOG_COMM, "_message_recv Timed out");
                 return ERR_TIMEOUT;
             } else {
-                dax_debug(LOG_COMM, "_message_recv failed: %s", strerror(errno));
+                dax_debug(ds, LOG_COMM, "_message_recv failed: %s", strerror(errno));
                 return ERR_MSG_RECV;
             }
         } else if(result == 0) {
@@ -96,7 +96,7 @@ _message_recv(int command, void *payload, int *size, int response)
         if(index >= MSG_HDR_SIZE) {
             msg_size = ntohl(*(u_int32_t *)buff);
             if(msg_size > DAX_MSGMAX) {
-                dax_debug(LOG_COMM, "_message_recv message size is too big");
+                dax_debug(ds, LOG_COMM, "_message_recv message size is too big");
                 return ERR_MSG_BAD;
             }
         }
@@ -129,57 +129,57 @@ _message_recv(int command, void *payload, int *size, int response)
  * returns a positive file descriptor on sucess and a negative error
  * code on failure. */
 static int
-_get_connection(void)
+_get_connection(dax_state *ds)
 {
     int fd, len;
     struct sockaddr_un addr_un;
     struct sockaddr_in addr_in;
     struct timeval tv;
     
-    if( ! strcasecmp("local", dax_get_attr("server") )) {
+    if( ! strcasecmp("local", dax_get_attr(ds, "server") )) {
         //printf("...... Connecting to local socket - %s\n", dax_get_attr("socketname"));
         /* create a UNIX domain stream socket */
         if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-            dax_error("Unable to create local socket - %s", strerror(errno));
+            dax_error(ds, "Unable to create local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         }
         /* fill socket address structure with our address */
         memset(&addr_un, 0, sizeof(addr_un));
         addr_un.sun_family = AF_UNIX;
-        strncpy(addr_un.sun_path, dax_get_attr("socketname"), sizeof(addr_un.sun_path));
+        strncpy(addr_un.sun_path, dax_get_attr(ds, "socketname"), sizeof(addr_un.sun_path));
 
         len = offsetof(struct sockaddr_un, sun_path) + strlen(addr_un.sun_path);
         if (connect(fd, (struct sockaddr *)&addr_un, len) < 0) {
-            dax_error("Unable to connect to local socket - %s", strerror(errno));
+            dax_error(ds, "Unable to connect to local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
-            dax_debug(LOG_COMM, "Connected to Local Server fd = %d", fd);
+            dax_debug(ds, LOG_COMM, "Connected to Local Server fd = %d", fd);
         }
     } else { /* We are supposed to connect over the network */
         //printf("...... Connecting over the network\n");
         /* create an IPv4 TCP socket */
         if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            dax_error("Unable to create remote socket - %s", strerror(errno));
+            dax_error(ds, "Unable to create remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         }
         memset(&addr_in, 0, sizeof(addr_in));
         addr_in.sin_family = AF_INET;
-        addr_in.sin_port = htons(strtol(dax_get_attr("serverport"), NULL, 0));
-        inet_pton(AF_INET, dax_get_attr("serverip"), &addr_in.sin_addr);
+        addr_in.sin_port = htons(strtol(dax_get_attr(ds, "serverport"), NULL, 0));
+        inet_pton(AF_INET, dax_get_attr(ds, "serverip"), &addr_in.sin_addr);
         
         if (connect(fd, (struct sockaddr *)&addr_in, sizeof(addr_in)) < 0) {
-            dax_error("Unable to connect to remote socket - %s", strerror(errno));
+            dax_error(ds, "Unable to connect to remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
-            dax_debug(LOG_COMM, "Connected to Network Server fd = %d", fd);
+            dax_debug(ds, LOG_COMM, "Connected to Network Server fd = %d", fd);
         }
     }
-    tv.tv_sec = opt_get_msgtimeout() / 1000;
-    tv.tv_usec = (opt_get_msgtimeout() % 1000) * 1000;
+    tv.tv_sec = opt_get_msgtimeout(ds) / 1000;
+    tv.tv_usec = (opt_get_msgtimeout(ds) % 1000) * 1000;
     
     len = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     if(len) {
-        dax_error("Problem setting socket timeout - s", strerror(errno));
+        dax_error(ds, "Problem setting socket timeout - s", strerror(errno));
     }
     return fd;
      
@@ -188,7 +188,7 @@ _get_connection(void)
 #define REG_HDR_SIZE 8
 
 static int
-_mod_register(char *name)
+_mod_register(dax_state *ds, char *name)
 {
     int result, len;
     char buff[DAX_MSGMAX];
@@ -206,10 +206,10 @@ _mod_register(char *name)
     *((u_int32_t *)&buff[4]) = htonl(REGISTER_SYNC);  /* registration flags */
     strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
     
-    if((result = _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE + len)))
+    if((result = _message_send(ds, MSG_MOD_REG, buff, REG_HDR_SIZE + len)))
         return result;
     len = DAX_MSGMAX;
-    if((result = _message_recv(MSG_MOD_REG, buff, &len, 1)))
+    if((result = _message_recv(ds, MSG_MOD_REG, buff, &len, 1)))
         return result;
     /* Here we check to see if the data that we got in the registration message is in the same
        format as we use here on the client module. This should be offloaded to a separate
@@ -220,25 +220,25 @@ _mod_register(char *name)
         (*((u_int64_t *)&buff[6]) != REG_TEST_LINT)) {   
         /* TODO: right now this is just to show error.  We need to determine if we can
            get the right data from the server by some means. */
-        _reformat = REF_INT_SWAP;
+        ds->reformat = REF_INT_SWAP;
     } else {
-        _reformat = 0;
+        ds->reformat = 0; /* this is redunant, already done in dax_init() */
     }
     /* There has got to be a better way to compare that we are getting good floating point numbers */
     if( fabs(*((float *)&buff[14]) - REG_TEST_REAL) / REG_TEST_REAL   > 0.0000001 || 
         fabs(*((double *)&buff[18]) - REG_TEST_LREAL) / REG_TEST_REAL > 0.0000001) {   
-        _reformat |= REF_FLT_SWAP;
+        ds->reformat |= REF_FLT_SWAP;
     }
     /* TODO: Need to store my name somewhere ??? */
     /* TODO: returning _reformat is only good until we figure out how to reformat the
      * messages. Then we should return 0.  Right now since there isn't any reformating
      * of messages being done we consider it an error and return that so that the module
      * won't try to communicate */
-    return _reformat;
+    return ds->reformat;
 }
 
 static int
-_event_register(void)
+_event_register(dax_state *ds)
 {
     int result, len, tmpfd;
     char buff[DAX_MSGMAX];
@@ -248,16 +248,16 @@ _event_register(void)
     
     /* This is to trick the _message_send into sending on the new connection
      * instead of the existing one. */
-    tmpfd = _sfd;
-    _sfd = _afd;
+    tmpfd = ds->sfd;
+    ds->sfd = ds->afd;
     /* For registration we pack the data no matter what */
-    if((result = _message_send(MSG_MOD_REG, buff, REG_HDR_SIZE))) {
-        _sfd = tmpfd;
+    if((result = _message_send(ds, MSG_MOD_REG, buff, REG_HDR_SIZE))) {
+        ds->sfd = tmpfd;
         return result;
     }
     len = DAX_MSGMAX;
-    result = _message_recv(MSG_MOD_REG, buff, &len, 1);
-    _sfd = tmpfd;
+    result = _message_recv(ds, MSG_MOD_REG, buff, &len, 1);
+    ds->sfd = tmpfd;
     return result;
 }
 
@@ -265,55 +265,55 @@ _event_register(void)
  * to the server.  *name is the name that we want to give our 
  * module */
 int
-dax_mod_register(char *name)
+dax_mod_register(dax_state *ds, char *name)
 {
     int fd, result;
     
-    dax_debug(LOG_COMM, "Sending registration for name - %s", name);
+    dax_debug(ds, LOG_COMM, "Sending registration for name - %s", name);
     
     /* This is the connection that we used for all the functional
      * request / response messages. */
-    fd = _get_connection();
+    fd = _get_connection(ds);
     if(fd > 0) {
-        _sfd = fd;
+        ds->sfd = fd;
     } else {
         return fd;
     }
     
-    result = _mod_register(name);
+    result = _mod_register(ds, name);
     if(result) return result;
     
     /* This will be the event connection.  This socket recieves
      * asynchronous messages that are generated in the server */
-    fd = _get_connection();
+    fd = _get_connection(ds);
     if(fd > 0) {
-        _afd = fd;
+        ds->afd = fd;
     } else {
         return fd;
     }
-    result = _event_register(); 
+    result = _event_register(ds); 
     if(result) return result;
-    init_tag_cache();
+    init_tag_cache(ds);
     
     return 0;
 }
 
 int
-dax_mod_unregister(void)
+dax_mod_unregister(dax_state *ds)
 {
     int len, result = -1;
     
     
-    if(_sfd) {
-        result = _message_send(MSG_MOD_REG, NULL, 0);
+    if(ds->sfd) {
+        result = _message_send(ds, MSG_MOD_REG, NULL, 0);
         if(! result ) {
             len = 0;
-            result = _message_recv(MSG_MOD_REG, NULL, &len, 1);
+            result = _message_recv(ds, MSG_MOD_REG, NULL, &len, 1);
         }
-        close(_sfd);
-        _sfd = 0;
-        close(_afd);
-        _afd = 0;
+        close(ds->sfd);
+        ds->sfd = 0;
+        close(ds->afd);
+        ds->afd = 0;
     }
     return result;
 }
@@ -322,7 +322,7 @@ dax_mod_unregister(void)
    tagname without the handle. */
 
 int
-dax_tag_add(Handle *h, char *name, tag_type type, int count)
+dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count)
 {
     int size, result;
     dax_tag tag;
@@ -344,13 +344,13 @@ dax_tag_add(Handle *h, char *name, tag_type type, int count)
         return ERR_TAG_BAD;
     }
     
-    result = _message_send(MSG_TAG_ADD, buff, size);
+    result = _message_send(ds, MSG_TAG_ADD, buff, size);
     if(result) { 
         return ERR_MSG_SEND;
     }
     
     size = 4; /* we just need the handle */
-    result = _message_recv(MSG_TAG_ADD, buff, &size, 1);
+    result = _message_recv(ds, MSG_TAG_ADD, buff, &size, 1);
 
     if(result == 0) {
         if(h != NULL) {
@@ -359,15 +359,15 @@ dax_tag_add(Handle *h, char *name, tag_type type, int count)
             h->bit = 0;
             h->type = type;
             h->count = count;
-            h->size = count * dax_get_typesize(type);
+            h->size = count * dax_get_typesize(ds, type);
         }
         strcpy(tag.name, name);
         tag.idx = *(tag_index *)buff;
         tag.type = type;
         tag.count = count;
         /* Just in case this call modifies the tag */
-        cache_tag_del(name);
-        cache_tag_add(&tag);
+        cache_tag_del(ds, name);
+        cache_tag_add(ds, &tag);
     }
     return result;
 }
@@ -377,7 +377,7 @@ dax_tag_add(Handle *h, char *name, tag_type type, int count)
 the custom data types going.  Returns zero on success. */
 /* TODO: Need to clean up this function.  There is stuff I don't think I want in here */ 
 int
-dax_tag_byname(dax_tag *tag, char *name)
+dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
 {
     int result, size;
     char *buff;
@@ -386,7 +386,7 @@ dax_tag_byname(dax_tag *tag, char *name)
     
     if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
     
-    if(check_cache_name(name, tag)) {
+    if(check_cache_name(ds, name, tag)) {
         /* We make buff big enough for the outgoing message and the incoming
            response message which would have 3 additional int32s */
         buff = malloc(size + 14);
@@ -394,17 +394,17 @@ dax_tag_byname(dax_tag *tag, char *name)
         buff[0] = TAG_GET_NAME;
         strcpy(&buff[1], name);
         /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
-        result = _message_send( MSG_TAG_GET, buff, size + 2);
+        result = _message_send(ds, MSG_TAG_GET, buff, size + 2);
         if(result) {
-            dax_error("Can't send MSG_TAG_GET message");
+            dax_error(ds, "Can't send MSG_TAG_GET message");
             free(buff);
             return result;
         }
         size += 14; /* This makes room for the type, count and handle */
         
-        result = _message_recv(MSG_TAG_GET, buff, &size, 1);
+        result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
-            dax_error("Problem receiving message MSG_TAG_GET : result = %d", result);
+            dax_error(ds, "Problem receiving message MSG_TAG_GET : result = %d", result);
             free(buff);
             return result;
         }
@@ -413,7 +413,7 @@ dax_tag_byname(dax_tag *tag, char *name)
         tag->count = stom_udint(*((u_int32_t *)&buff[8]));
         buff[size - 1] = '\0'; /* Just to make sure */
         strcpy(tag->name, &buff[12]);
-        cache_tag_add(tag);
+        cache_tag_add(ds, tag);
         free(buff);
     }
     return 0;
@@ -421,22 +421,22 @@ dax_tag_byname(dax_tag *tag, char *name)
 
 /* Retrieves the tag by handle.  */
 int
-dax_tag_byindex(dax_tag *tag, tag_index handle)
+dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
 {
     int result, size;
     char buff[DAX_TAGNAME_SIZE + 13];
     
-    if(check_cache_index(handle, tag)) {
+    if(check_cache_index(ds, handle, tag)) {
         buff[0] = TAG_GET_INDEX;
         *((tag_index *)&buff[1]) = handle;
-        result = _message_send(MSG_TAG_GET, buff, sizeof(tag_index) + 1);
+        result = _message_send(ds, MSG_TAG_GET, buff, sizeof(tag_index) + 1);
         if(result) {
-            dax_error("Can't send MSG_TAG_GET message");
+            dax_error(ds, "Can't send MSG_TAG_GET message");
             return result;
         }
         /* Maximum size of buffer, the 13 is the NULL plus three integers */
         size = DAX_TAGNAME_SIZE + 13;
-        result = _message_recv(MSG_TAG_GET, buff, &size, 1);
+        result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
             //dax_error("Unable to retrieve tag for handle %d", handle);
             return result;
@@ -447,7 +447,7 @@ dax_tag_byindex(dax_tag *tag, tag_index handle)
         buff[DAX_TAGNAME_SIZE + 12] = '\0'; /* Just to be safe */
         strcpy(tag->name, &buff[12]);
         /* Add the tag to the tag cache */
-        cache_tag_add(tag);
+        cache_tag_add(ds, tag);
     }
     return 0;
 }
@@ -462,7 +462,7 @@ dax_tag_byindex(dax_tag *tag, tag_index handle)
  * like it appears in the server.  It is up to the module to convert
  * the data to the module's number format. */
 int
-dax_read(tag_index idx, int offset, void *data, size_t size)
+dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
 {
     int n, count, m_size, sendsize;
     int result = 0;
@@ -482,11 +482,11 @@ dax_read(tag_index idx, int offset, void *data, size_t size)
         buff[1] = mtos_dint(offset + n * m_size);
         buff[2] = mtos_dint(sendsize);
         
-        result = _message_send(MSG_TAG_READ, (void *)buff, sizeof(buff));
+        result = _message_send(ds, MSG_TAG_READ, (void *)buff, sizeof(buff));
         if(result) {
             return result;
         }
-        result = _message_recv(MSG_TAG_READ, &((char *)data)[m_size * n], &sendsize, 1);
+        result = _message_recv(ds, MSG_TAG_READ, &((char *)data)[m_size * n], &sendsize, 1);
         
         if(result) {
             return result;
@@ -501,7 +501,7 @@ dax_read(tag_index idx, int offset, void *data, size_t size)
  * offset into the data area of the tag.
  */
 int
-dax_write(tag_index idx, int offset, void *data, size_t size)
+dax_write(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
 {
     size_t n, count, m_size, sendsize;
     int result;
@@ -524,9 +524,9 @@ dax_write(tag_index idx, int offset, void *data, size_t size)
         *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
         memcpy(&buff[8], data + (m_size * n), sendsize);
         
-        result = _message_send(MSG_TAG_WRITE, buff, sendsize + sizeof(tag_index) + sizeof(int));
+        result = _message_send(ds, MSG_TAG_WRITE, buff, sendsize + sizeof(tag_index) + sizeof(int));
         if(result) return result;
-        result = _message_recv(MSG_TAG_WRITE, buff, 0, 1);
+        result = _message_recv(ds, MSG_TAG_WRITE, buff, 0, 1);
         if(result) return result;
     }
     return 0;
@@ -535,7 +535,7 @@ dax_write(tag_index idx, int offset, void *data, size_t size)
 /* Same as the dax_write() function except that only bits that are in *mask
  * will be changed. */
 int
-dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size)
+dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_t size)
 {
     size_t n, count, m_size, sendsize;
     char buff[MSG_DATA_SIZE];
@@ -560,9 +560,9 @@ dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size)
         //for(apple = 0; apple < size; apple++) {
         //    printf("data [0x%X] mask [0x%X]\n", ((char *)data)[apple], ((char *)mask)[apple]);
         //}
-        result = _message_send(MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(tag_index) + sizeof(int));
+        result = _message_send(ds, MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(tag_index) + sizeof(int));
         if(result) return result;
-        result = _message_recv(MSG_TAG_MWRITE, buff, 0, 1);
+        result = _message_recv(ds, MSG_TAG_MWRITE, buff, 0, 1);
         if(result) return result;
     }
     return 0;
@@ -572,7 +572,7 @@ dax_mask(tag_index idx, int offset, void *data, void *mask, size_t size)
    tags the event should effect. */
 /* TODO: The count is not actually implemented yet. */
 int
-dax_event_add(char *tagname, int count)
+dax_event_add(dax_state *ds, char *tagname, int count)
 {
     /*
     dax_tag tag;
@@ -592,10 +592,10 @@ dax_event_add(char *tagname, int count)
         msg.size = TYPESIZE(tag.type) / 8 * tag.count;
     }
     
-    if(_message_send( MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
+    if(_message_send(ds, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
         return ERR_MSG_SEND;
     } else {
-        test = _message_recv(MSG_EVNT_ADD, &result, &size, 1);
+        test = _message_recv(ds, MSG_EVNT_ADD, &result, &size, 1);
         if(test) return test;
     }       
     return result;
@@ -604,13 +604,13 @@ dax_event_add(char *tagname, int count)
 }
 
 int
-dax_event_del(int id)
+dax_event_del(dax_state *ds, int id)
 {
     return 0;
 }
 
 int
-dax_event_get(int id)
+dax_event_get(dax_state *ds, int id)
 {
     return 0;
 }
@@ -620,7 +620,7 @@ dax_event_get(int id)
  * datatype can be. If the desription string is larger than can
  * be sent in one message this will fail. */
 int
-dax_cdt_create(dax_cdt *cdt, tag_type *type)
+dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
 {
     int size = 0, result;
     //tag_type type = 0;
@@ -637,7 +637,7 @@ dax_cdt_create(dax_cdt *cdt, tag_type *type)
 
     while(this != NULL) {
         size += strlen(this->name);
-        size += strlen(dax_type_to_string(this->type));
+        size += strlen(dax_type_to_string(ds, this->type));
         snprintf(test, DAX_TAGNAME_SIZE + 1, "%d", this->count);
         size += strlen(test);
         size += 3; /* This is for the ':' and the two commas */
@@ -655,7 +655,7 @@ dax_cdt_create(dax_cdt *cdt, tag_type *type)
         strncat(buff, ":", size - 1);
         strncat(buff, this->name, size - 1);
         strncat(buff, ",", size);
-        strncat(buff, dax_type_to_string(this->type), size - 1);
+        strncat(buff, dax_type_to_string(ds, this->type), size - 1);
         strncat(buff, ",", size - 1);
         snprintf(test, DAX_TAGNAME_SIZE + 1, "%d", this->count);
         strncat(buff, test, size - 1);
@@ -665,21 +665,21 @@ dax_cdt_create(dax_cdt *cdt, tag_type *type)
 
     //--printf("dax_dt_create() %s\n", buff);
 
-    result = _message_send(MSG_CDT_CREATE, buff, size);
+    result = _message_send(ds, MSG_CDT_CREATE, buff, size);
     
     if(result) { 
         return result;
     }
     
     size = 10;
-    result = _message_recv(MSG_CDT_CREATE, rbuff, &size, 1);
+    result = _message_recv(ds, MSG_CDT_CREATE, rbuff, &size, 1);
     
     if(result == 0) {
         if(type != NULL) {
             *type = stom_udint(*((tag_type *)rbuff));
         }
         //--printf("dax_cdt_create() 0x%X : %s\n", *type, &(buff[4]));
-        result = add_cdt_to_cache(stom_udint(*((tag_type *)rbuff)), buff);
+        result = add_cdt_to_cache(ds, stom_udint(*((tag_type *)rbuff)), buff);
         dax_cdt_free(cdt);
     }
     return result;
@@ -696,7 +696,7 @@ dax_cdt_create(dax_cdt *cdt, tag_type *type)
  * the type is in the cache and can then be retrieved there.
  */
 int
-dax_cdt_get(tag_type cdt_type, char *name)
+dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
 {
     int result, size;
     char buff[MSG_DATA_SIZE];
@@ -715,19 +715,19 @@ dax_cdt_get(tag_type cdt_type, char *name)
         size = 5;
     }
     
-    result = _message_send(MSG_CDT_GET, buff, size);
+    result = _message_send(ds, MSG_CDT_GET, buff, size);
     
     if(result) { 
         return ERR_MSG_SEND;
     }
     
     size = MSG_DATA_SIZE;
-    result = _message_recv(MSG_CDT_GET, buff, &size, 1);
+    result = _message_recv(ds, MSG_CDT_GET, buff, &size, 1);
     //--printf("dax_cdt_get() - _message_recv() returned %d\n", result);
     if(result == 0) {
         type = stom_udint(*((tag_type *)buff));
         //--printf("dax_cdt_get() - 0x%X : %s\n", type, &(buff[4]));
-        result = add_cdt_to_cache(type, &(buff[4]));
+        result = add_cdt_to_cache(ds, type, &(buff[4]));
     }
     return result;
 }

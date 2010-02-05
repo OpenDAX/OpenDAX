@@ -26,6 +26,68 @@
 #include <common.h>
 #include <opendax.h>
 
+typedef struct OptAttr {
+    char *name;
+    char *longopt;
+    char shortopt;
+    char *defvalue;
+    char *value;
+    int flags;
+    int (*callback)(char *name, char *value);
+    struct OptAttr *next;
+} optattr;
+
+/* This is the structure for our tag cache */
+typedef struct Tag_Cnode {
+    tag_index idx;
+    unsigned int type;
+    unsigned int count;
+    struct Tag_Cnode *next;
+    struct Tag_Cnode *prev;
+    char name[DAX_TAGNAME_SIZE + 1];
+} tag_cnode;
+
+/* This is the compound datatype member definition.  The 
+ * members are represented as a linked list */
+struct cdt_member {
+    char *name;
+    tag_type type;
+    int count;
+    struct cdt_member *next;
+};
+
+typedef struct cdt_member cdt_member;
+
+/* This is the structure that represents the container for each
+ * datatype. */
+struct datatype{
+    char *name;
+    cdt_member *members;
+};
+
+typedef struct datatype datatype;
+
+/* This is the main dax_state structure that holds all the information
+   for one dax server connection */
+struct dax_state {
+    optattr* attr_head;
+    lua_State *L;
+    char* modulename;
+    int msgtimeout;
+    int sfd;   /* Server's File Descriptor */
+    int afd;   /* Asynchronous File Descriptor */
+    unsigned int reformat; /* Flags to show how to reformat the incoming data */
+    int logflags;
+    tag_cnode *cache_head; /* First node in the cache list */
+    int cache_limit;       /* Total number of nodes that we'll allocate */
+    int cache_count;       /* How many nodes we actually have */
+    datatype *datatypes;
+    unsigned int datatype_size;
+    void (*dax_debug)(const char *output);
+    void (*dax_error)(const char *output);
+    void (*dax_log)(const char *output);
+};
+
 //#ifndef TAG_CACHE_LIMIT
 //#  define TAG_CACHE_LIMIT "8"
 //#endif
@@ -75,36 +137,16 @@ dax_ulint stom_ulint(dax_ulint);
 dax_lreal stom_lreal(dax_lreal);
 
 /* These functions handle the tag cache */
-int init_tag_cache(void);
-int check_cache_index(tag_index, dax_tag *);
-int check_cache_name(char *, dax_tag *);
-int cache_tag_add(dax_tag *);
-int cache_tag_del(char *);
+int init_tag_cache(dax_state *ds);
+int check_cache_index(dax_state *, tag_index, dax_tag *);
+int check_cache_name(dax_state *, char *, dax_tag *);
+int cache_tag_add(dax_state *, dax_tag *);
+int cache_tag_del(dax_state *, char *);
 
-int opt_get_msgtimeout(void);
+int opt_get_msgtimeout(dax_state *);
 
-/* This is the compound datatype member definition.  The 
- * members are represented as a linked list */
-struct cdt_member {
-    char *name;
-    tag_type type;
-    int count;
-    struct cdt_member *next;
-};
-
-typedef struct cdt_member cdt_member;
-
-/* This is the structure that represents the container for each
- * datatype. */
-struct datatype{
-    char *name;
-    cdt_member *members;
-};
-
-typedef struct datatype datatype;
-
-datatype *get_cdt_pointer(tag_type, int *);
-int add_cdt_to_cache(tag_type type, char *typedesc);
-int dax_cdt_get(tag_type type, char *name);
+datatype *get_cdt_pointer(dax_state *, tag_type, int *);
+int add_cdt_to_cache(dax_state *, tag_type type, char *typedesc);
+int dax_cdt_get(dax_state *ds, tag_type type, char *name);
 
 #endif /* !__LIBDAX_H */
