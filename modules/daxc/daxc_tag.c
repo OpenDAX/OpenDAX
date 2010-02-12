@@ -21,12 +21,14 @@
 
 #include <daxc.h>
 
+extern dax_state *ds;
+
 static inline void
 show_tag(int n, dax_tag temp_tag)
 {
     /* Print the name */
     if( n >= 0 ) printf("[%3d] ", n);
-    printf("%-32s %s", temp_tag.name, dax_type_to_string(temp_tag.type));
+    printf("%-32s %s", temp_tag.name, dax_type_to_string(ds, temp_tag.type));
     /* Output the array size of it's greater than 1 */
     if(temp_tag.count > 1) {
         printf("[%d]", temp_tag.count);
@@ -51,7 +53,7 @@ tag_add(char **tokens)
     }
     
     if( tokens[1] ) {
-        type = dax_string_to_type(tokens[1]);
+        type = dax_string_to_type(ds, tokens[1]);
         if( type < 0 ) {
             fprintf(stderr, "ERROR: Invalid Type Given\n");
             return 1;
@@ -73,7 +75,7 @@ tag_add(char **tokens)
         return 1;
     }
     
-    result = dax_tag_add(&handle, tokens[0], type, count);
+    result = dax_tag_add(ds, &handle, tokens[0], type, count);
     if(result == 0) {
         printf("Tag Added at index %d\n", handle.index);
     } else {
@@ -110,7 +112,7 @@ list_tags(char **tokens)
         start = strtol(arg[0], &end_ptr, 0);
         /* If arg[0] is text then it's a tagname instead of an index */
         if(end_ptr == arg[0]) {
-            if( dax_tag_byname(&temp_tag, arg[0]) ) {
+            if( dax_tag_byname(ds, &temp_tag, arg[0]) ) {
                 printf("ERROR: Unknown Tagname %s\n", arg[0]);
                 return 1;
             } else {
@@ -123,7 +125,7 @@ list_tags(char **tokens)
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
                 for(n = start; n < (start + count); n++) {
-                    if(dax_tag_byindex(&temp_tag, n)) {
+                    if(dax_tag_byindex(ds, &temp_tag, n)) {
                         printf("No More Tags To List\n");
                         return 1;
                     } else {
@@ -133,7 +135,7 @@ list_tags(char **tokens)
             } else {
                 /* List the next 'start' amount of tags */
                 for(n = lastindex; n < (start + lastindex); n++) {
-                    if(dax_tag_byindex(&temp_tag, n)) {
+                    if(dax_tag_byindex(ds, &temp_tag, n)) {
                         printf("No More Tags To List\n");
                         lastindex = 0;
                         return 1;
@@ -147,7 +149,7 @@ list_tags(char **tokens)
     } else {
         /* List all tags */
         n = 0;
-        while( !dax_tag_byindex(&temp_tag, n) ) {
+        while( !dax_tag_byindex(ds, &temp_tag, n) ) {
             show_tag(n, temp_tag);
             n++;
         }
@@ -289,7 +291,7 @@ tag_read(char **tokens)
         return ERR_NOTFOUND;
     }
     
-    result = dax_tag_handle(&handle, name, count);
+    result = dax_tag_handle(ds, &handle, name, count);
     if(result) {
         /* TODO: More descriptive error messages here based on result */
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
@@ -310,7 +312,7 @@ tag_read(char **tokens)
         return ERR_ALLOC;
     }
     
-    result = dax_read_tag(handle, buff);
+    result = dax_read_tag(ds, handle, buff);
     if(result == 0) {
         if(IS_CUSTOM(handle.type)) {
             /* Print Custom Stuff Here */
@@ -344,7 +346,7 @@ tag_write(char **tokens, int tcount) {
         return ERR_NOTFOUND;
     }
     /* TODO: Should probably get a count based on how many tokens we have */ 
-    result = dax_tag_handle(&handle, name, 0);
+    result = dax_tag_handle(ds, &handle, name, 0);
     if(result) {
         /* TODO: More descriptive error messages here based on result */
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
@@ -374,7 +376,7 @@ tag_write(char **tokens, int tcount) {
         string_to_dax(tokens[n + 1], handle.type, buff, mask, n);
     }
     /* TODO: Check if the mask is all 1s and if so just use the dax_write_tag() function */
-    result = dax_mask_tag(handle, buff, mask);
+    result = dax_mask_tag(ds, handle, buff, mask);
     if(result) {
         fprintf(stderr, "ERROR: Unable to Write to tag %s\n", name);
     }
@@ -489,16 +491,16 @@ cdt_add(char **tokens, int tcount)
         return result;
     }
     for(n = 1; n < tcount - 2; n += 3) {
-        memtype = dax_string_to_type(tokens[n+1]);
+        memtype = dax_string_to_type(ds, tokens[n+1]);
         count = strtol(tokens[n+2], NULL, 0);
-        result = dax_cdt_member(type, tokens[n], memtype, count);
+        result = dax_cdt_member(ds, type, tokens[n], memtype, count);
     
         if(result) {
             fprintf(stderr, "ERROR: Unable to add member %s\n", tokens[n]);
         }
     }
   
-    result = dax_cdt_create(type, NULL);
+    result = dax_cdt_create(ds, type, NULL);
     if(result) {
         fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
     }
@@ -511,7 +513,7 @@ _print_cdt_callback(cdt_iter iter, void *udata)
     if(udata == NULL) {
         printf("%s\n", iter.name);
     } else {
-        printf("%-32s  %s", iter.name, dax_type_to_string(iter.type));
+        printf("%-32s  %s", iter.name, dax_type_to_string(ds, iter.type));
         if(iter.count > 0) {
             printf("[%d]", iter.count);
         }
@@ -526,10 +528,10 @@ list_types(char **tokens)
     tag_type type;
     
     if(tokens[0] == NULL) {
-        dax_cdt_iter(0, NULL, _print_cdt_callback);
+        dax_cdt_iter(ds, 0, NULL, _print_cdt_callback);
     } else {
-        type = dax_string_to_type(tokens[0]);
-        dax_cdt_iter(type, &type, _print_cdt_callback);
+        type = dax_string_to_type(ds, tokens[0]);
+        dax_cdt_iter(ds, type, &type, _print_cdt_callback);
     }
     return 0;
 }

@@ -31,6 +31,10 @@
 #include <lib/modbus.h>
 
 extern struct Config config;
+/* For now we'll keep ds as a global to simplify the code.  At some
+ * point when the luaif library is complete it'll be stored in the
+ * Lua_State Registry. */
+dax_state *ds;
 
 void catchsignal(int sig);
 void catchpipe(int sig);
@@ -46,7 +50,7 @@ static void
 _port_thread(void *port) {
     int result;
     result = mb_run_port((mb_port *)port);
-    dax_fatal("This Shouldn't Exit Here!");
+    dax_fatal(ds, "This Shouldn't Exit Here!");
 }
 
 int
@@ -68,24 +72,30 @@ main (int argc, const char * argv[]) {
     sa.sa_handler = &catchpipe;
     sigaction(SIGPIPE, &sa, NULL);
     
-    dax_set_debug_topic(-1);
-    dax_debug(LOG_MAJOR, "Modbus Starting");
+    ds = dax_init("daxlua");
+    if(ds == NULL) {
+        fprintf(stderr, "Unable to Allocate DaxState Object\n");
+        return ERR_ALLOC;
+    }
+    
+    dax_set_debug_topic(ds, -1);
+    dax_debug(ds, LOG_MAJOR, "Modbus Starting");
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
     result = modbus_configure(argc, argv);
     
     result = init_database();
     if(result) {
-        dax_fatal("Unable to initialize the database!");
+        dax_fatal(ds, "Unable to initialize the database!");
     }
     
-    if( dax_mod_register("modbus") ) {
-        dax_fatal("Unable to connect to OpenDAX server!");
+    if( dax_mod_register(ds, "modbus") ) {
+        dax_fatal(ds, "Unable to connect to OpenDAX server!");
     }
     
     config.threads = malloc(sizeof(pthread_t) * config.portcount);
     if(config.threads == NULL) {
-        dax_fatal("Unable to allocate memory for port threads!");
+        dax_fatal(ds, "Unable to allocate memory for port threads!");
     }
     
     pthread_attr_init(&attr);
@@ -96,9 +106,9 @@ main (int argc, const char * argv[]) {
         mb_set_msgin_callback(config.ports[n], indata);
         printf("Starting Thread for port - %s",mb_get_name(config.ports[n]));
         if(pthread_create(&config.threads[n], &attr, (void *)&_port_thread, (void *)config.ports[n])) {
-            dax_error( "Unable to start thread for port - %s", mb_get_name(config.ports[n]));
+            dax_error(ds, "Unable to start thread for port - %s", mb_get_name(config.ports[n]));
         } else {
-            dax_debug(LOG_MAJOR, "Started Thread for port - %s", mb_get_name(config.ports[n]));
+            dax_debug(ds, LOG_MAJOR, "Started Thread for port - %s", mb_get_name(config.ports[n]));
         }
     }
     
@@ -123,17 +133,17 @@ main (int argc, const char * argv[]) {
 * that are going to be caught by the program */
 void catchsignal(int sig) {
     if(sig == SIGHUP) {
-        dax_log("Should be Reconfiguring Now");
+        dax_log(ds, "Should be Reconfiguring Now");
         //--reconfigure();
     } else if(sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
-        dax_log("Exiting with signal %d", sig);
+        dax_log(ds, "Exiting with signal %d", sig);
         getout(0);
     } else if(sig == SIGCHLD) {
-        dax_log("Got SIGCHLD");
+        dax_log(ds, "Got SIGCHLD");
        /*There is probably some really cool child process handling stuff to do here
          but I don't quite know what to do yet. */
      } else if(sig == SIGUSR1) {
-        dax_log("Got SIGUSR1");
+        dax_log(ds, "Got SIGUSR1");
     }
 }
 
@@ -153,8 +163,8 @@ static void
 getout(int exitcode)
 {
     int n;
-    dax_debug(1, "Modbus Module Exiting");
-    dax_mod_unregister();
+    dax_debug(ds, 1, "Modbus Module Exiting");
+    dax_mod_unregister(ds);
     
     for(n = 0; n < config.portcount; n++) {
     /* TODO: Should probably stop the running threads here and then close the ports */

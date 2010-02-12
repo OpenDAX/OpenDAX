@@ -33,6 +33,7 @@
 /* These are to keep score */
 static int _tests_run = 0;
 static int _tests_failed = 0;
+dax_state *ds;
 
 void
 test_start(void) {
@@ -64,24 +65,29 @@ main(int argc,char *argv[])
     char *script;
     lua_State *L;
     
+    ds = dax_init("daxlua");
+    if(ds == NULL) {
+        fprintf(stderr, "Unable to Allocate DaxState Object\n");
+        return ERR_ALLOC;
+    }
     
-    dax_log("Starting module test");
-    dax_set_debug_topic(0xFFFF); /* This should get them all out there */
+    dax_log(ds, "Starting module test");
+    dax_set_debug_topic(ds, 0xFFFF); /* This should get them all out there */
         
-    dax_init_config("daxtest");
+    dax_init_config(ds, "daxtest");
     flags = CFG_CMDLINE | CFG_DAXCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute("exitonfail","exitonfail", 'x', flags, "0");
-    result += dax_add_attribute("testscript","testscript", 't', flags, "daxtest.lua");
+    result += dax_add_attribute(ds, "exitonfail","exitonfail", 'x', flags, "0");
+    result += dax_add_attribute(ds, "testscript","testscript", 't', flags, "daxtest.lua");
     
-    dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
     
-    if(dax_mod_register("daxtest"))
-        dax_fatal("Unable to register with the server");
+    if(dax_mod_register(ds, "daxtest"))
+        dax_fatal(ds, "Unable to register with the server");
     
-    script = dax_get_attr("testscript");
+    script = dax_get_attr(ds, "testscript");
 
     /* Free the configuration memory once we are done with it */
-    dax_free_config();
+    dax_free_config(ds);
 
     L = lua_open();
     /* This adds all of the Lua functions to the lua_State */
@@ -89,12 +95,12 @@ main(int argc,char *argv[])
     
     /* load and run the configuration file */
     if(luaL_loadfile(L, script)  || lua_pcall(L, 0, 0, 0)) {
-        dax_error("Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_error(ds, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return ERR_GENERIC;
     }
     
     printf("OpenDAX Test Finished, %d tests run, %d tests failed\n", tests_run(), tests_failed());
-    dax_mod_unregister();
+    dax_mod_unregister(ds);
     
     return 0;
 }

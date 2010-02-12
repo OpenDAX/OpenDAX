@@ -33,7 +33,9 @@ dax_init(char *name)
 
     ds->attr_head = NULL;
     ds->L = NULL;
-    ds->modulename = NULL;
+    ds->modulename = strdup(name);
+    if(ds->modulename == NULL) return NULL;
+    
     ds->msgtimeout = 0;
     ds->sfd = 0;       /* Server's File Descriptor */
     ds->afd = 0;       /* Asynchronous File Descriptor */
@@ -51,7 +53,7 @@ dax_init(char *name)
     ds->dax_error = NULL;
     ds->dax_log = NULL;
 
-    return 0;
+    return ds;
 }
 
 /* TODO: Program dax_free() function */

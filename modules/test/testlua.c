@@ -21,6 +21,8 @@
 
 #include <daxtest.h>
 
+extern dax_state *ds;
+
 /* This function runs a test script.  If the script raises an 
  * error this function increments the fail count.  It returns
  * nothing */
@@ -41,7 +43,7 @@ _run_test(lua_State *L)
     /* load and run the test script */
     if(luaL_loadfile(L, script)) {
         /* Here the error is allowed to propagate up and kill the whole thing */
-        dax_error("Problem loading script - %s", lua_tostring(L, -1));
+        dax_error(ds, "Problem loading script - %s", lua_tostring(L, -1));
     }
     if(lua_pcall(L, 0, 0, 0)) {
         test_fail();
@@ -117,13 +119,13 @@ _cdt_create(lua_State *L)
         count = lua_tointeger(L, -1);
         lua_pop(L, 4);
         
-        result = dax_cdt_member(cdt, name, dax_string_to_type(typename), count);
+        result = dax_cdt_member(ds, cdt, name, dax_string_to_type(ds, typename), count);
         if(result) {
             dax_cdt_free(cdt);
             luaL_error(L, "Unable to add member %s", name);
         }
     }
-    result = dax_cdt_create(cdt, &type);
+    result = dax_cdt_create(ds, cdt, &type);
     if(result) {
         luaL_error(L, "Unable to create datatype %s", cdt_name);
     }
@@ -146,13 +148,13 @@ _tag_add(lua_State *L)
     if(lua_isnumber(L, 2)) {
         type = lua_tointeger(L, 2);
     } else {
-        type = dax_string_to_type((char *)lua_tostring(L, 2));
+        type = dax_string_to_type(ds, (char *)lua_tostring(L, 2));
         if(type == 0) {
             luaL_error(L, "Can't get type '%s'", (char *)lua_tostring(L, 2));      
         }
     }
 
-    result = dax_tag_add(NULL, (char *)lua_tostring(L,1), type, lua_tointeger(L, 3));
+    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, lua_tointeger(L, 3));
     if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
     return 0;
 }
@@ -165,15 +167,15 @@ _tag_get(lua_State *L)
     dax_tag tag;
 
     if(lua_isnumber(L, 1)) {
-        result = dax_tag_byindex(&tag, (tag_index)lua_tointeger(L, 1));
+        result = dax_tag_byindex(ds, &tag, (tag_index)lua_tointeger(L, 1));
     } else {
-        result = dax_tag_byname(&tag, (char *)lua_tostring(L, 1));
+        result = dax_tag_byname(ds, &tag, (char *)lua_tostring(L, 1));
     }
     if(result != 0) {
         luaL_error(L, "Can't get tag '%s'", (char *)lua_tostring(L, 2));      
     }
     lua_pushstring(L, tag.name);
-    lua_pushstring(L, dax_type_to_string(tag.type));
+    lua_pushstring(L, dax_type_to_string(ds, tag.type));
     lua_pushinteger(L, tag.count);
     return 3;
 }
@@ -195,7 +197,7 @@ _tag_read(lua_State *L) {
     count = lua_tointeger(L, 2);
 //    printf("_tag_read() Getting Handle for %s with count of %d\n", name, count);
 
-    result = dax_tag_handle(&h, name, count);
+    result = dax_tag_handle(ds, &h, name, count);
     if(result) {
         luaL_error(L, "dax_tag_handle() returned %d", result);
     }
@@ -211,7 +213,7 @@ _tag_read(lua_State *L) {
         luaL_error(L, "tag_read() unable to allocate data area");
     }
     
-    result = dax_read_tag(h, data);
+    result = dax_read_tag(ds, h, data);
 
     if(result) {
         free(data);
@@ -238,7 +240,7 @@ _tag_write(lua_State *L) {
     }
     name = (char *)lua_tostring(L, 1);
     //printf("Getting Handle for %s\n", name);
-    result = dax_tag_handle(&h, name, 0);
+    result = dax_tag_handle(ds, &h, name, 0);
 //    printf("h.index = %d\n", h.index);
 //    printf("h.byte = %d\n", h.byte);
 //    printf("h.bit = %d\n", h.bit);
@@ -279,10 +281,10 @@ _tag_write(lua_State *L) {
     }
     if(q) {
         //printf("call dax_mask_tag()\n");
-        result = dax_mask_tag(h, data, mask);
+        result = dax_mask_tag(ds, h, data, mask);
     } else {
         //printf("call dax_write_tag()\n");
-        result = dax_write_tag(h, data);
+        result = dax_write_tag(ds, h, data);
     }
     
     if(result) {
@@ -320,7 +322,7 @@ _handle_test(lua_State *L)
     type = lua_tostring(L, 7);
     test = lua_tointeger(L, 8);
     
-    result = dax_tag_handle(&h, (char *)name, count);
+    result = dax_tag_handle(ds, &h, (char *)name, count);
     if(test == FAIL && result == 0) { /* We should fail */
         printf("Handle Test: %s : %d Should have Failed\n", name, count);
         final = 1;
@@ -345,7 +347,7 @@ _handle_test(lua_State *L)
                 printf("Handle Test: %s : %d - Size does not match (%d != %d)\n", name, count, h.size, size);
                 final = 1;
             }
-            if(h.type != dax_string_to_type((char *)type)) {
+            if(h.type != dax_string_to_type(ds, (char *)type)) {
                 printf("Handle Test: %s : %d - Datatype does not match\n", name, count);
                 final = 1;
             }
@@ -374,7 +376,7 @@ _lazy_test(lua_State *L)
     unsigned char *data, *mask;
     unsigned char *newdata;
     
-    result = dax_tag_handle(&h, "LazyTag", 0);
+    result = dax_tag_handle(ds, &h, "LazyTag", 0);
     if(result) {
         luaL_error(L, "Problem getting handle for LazyTag = %d", result);
     }
@@ -387,24 +389,24 @@ _lazy_test(lua_State *L)
     *((dax_dint *)(data + 2)) = 2;
     *((dax_udint *)(data + 6)) = 3;
     
-    dax_write_tag(h, data);
+    dax_write_tag(ds, h, data);
     
     *((dax_dint *)(data + 2)) = 5;
     *((dax_dint *)(mask + 2)) = 0xFFFFFFFF;
     
-    dax_mask_tag(h, data, mask);
+    dax_mask_tag(ds, h, data, mask);
     free(data); free(mask);
     
-    dax_tag_handle(&h, "LazyArray", 0);
+    dax_tag_handle(ds, &h, "LazyArray", 0);
     for(n = 0; n < 10; n++) {
-        newdata = data + n * dax_get_typesize(h.type);
+        newdata = data + n * dax_get_typesize(ds, h.type);
         
         *((int *)newdata) = n * 10 + 1;
         *((dax_dint *)(newdata + 2)) = n * 10 + 2;
         *((dax_udint *)(newdata + 6)) = n * 10 + 3;
     }
     
-    dax_write_tag(h, data);
+    dax_write_tag(ds, h, data);
     
     return 0;
 }

@@ -30,6 +30,7 @@ static char *initscript;
 static script_t *scripts = NULL;
 static int scripts_size = 0;
 static int scriptcount = 0;
+extern dax_state *ds;
 
 /* This function returns an index into the scripts[] array for
    the next unassigned script */
@@ -42,7 +43,7 @@ _get_new_script(void)
     if(scriptcount == 0) {
         scripts = malloc(sizeof(script_t) * NUM_SCRIPTS);
         if(scripts == NULL) {
-            dax_fatal("Cannot allocate memory for the scripts");
+            dax_fatal(ds, "Cannot allocate memory for the scripts");
         }
         scripts_size = NUM_SCRIPTS;
     } else if(scriptcount == scripts_size) {
@@ -50,7 +51,7 @@ _get_new_script(void)
         if(ns != NULL) {
             scripts = ns;
         } else {
-            dax_error("Failure to allocate additional scripts");
+            dax_error(ds, "Failure to allocate additional scripts");
             return -1;
         }
     }
@@ -130,20 +131,20 @@ configure(int argc, char *argv[])
 {
     int flags, result = 0;
     
-    dax_init_config("daxlua");
+    dax_init_config(ds, "daxlua");
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute("initscript", "initscript", 'i', flags, "init.lua");
+    result += dax_add_attribute(ds, "initscript", "initscript", 'i', flags, "init.lua");
     if(result) {
-        dax_fatal("Problem with the configuration");
+        dax_fatal(ds, "Problem with the configuration");
     }
     
-    dax_set_luafunction((void *)_add_script, "add_script");
+    dax_set_luafunction(ds, (void *)_add_script, "add_script");
     
-    dax_configure(argc, (char **)argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
 
-    initscript = strdup(dax_get_attr("initscript"));
+    initscript = strdup(dax_get_attr(ds, "initscript"));
     
-    dax_free_config();
+    dax_free_config(ds);
     
     return 0;
 }

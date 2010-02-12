@@ -1,6 +1,6 @@
 #!/bin/sh
 
-libtoolize --copy --force \
+glibtoolize --copy --force \
 && autoheader \
 && aclocal \
 && automake --gnu --copy --add-missing \

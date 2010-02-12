@@ -32,6 +32,7 @@ static void getout(int exitstatus);
 
 static int _quitsignal = 0;
 static char *history_file = NULL;
+dax_state *ds;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -47,29 +48,35 @@ int main(int argc,char *argv[]) {
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
     
-    dax_init_config("daxc");
-    flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
-    result += dax_add_attribute("execute","execute", 'x', flags, NULL);
-    result += dax_add_attribute("file","file", 'f', flags, NULL);
+    ds = dax_init("daxlua");
+    if(ds == NULL) {
+        fprintf(stderr, "Unable to Allocate DaxState Object\n");
+        return ERR_ALLOC;
+    }
     
-    dax_configure(argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+    dax_init_config(ds, "daxc");
+    flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
+    result += dax_add_attribute(ds, "execute","execute", 'x', flags, NULL);
+    result += dax_add_attribute(ds, "file","file", 'f', flags, NULL);
+    
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
     
     /* TODO: These have got to move to the configuration */
-    dax_set_debug_topic(0);
+    dax_set_debug_topic(ds, 0);
         
  /* Check for OpenDAX and register the module */
-    if( dax_mod_register("daxc") ) {
-        dax_fatal("Unable to find OpenDAX");
+    if( dax_mod_register(ds, "daxc") ) {
+        dax_fatal(ds, "Unable to find OpenDAX");
         getout(_quitsignal);
     }
     
-    command = dax_get_attr("execute");
+    command = dax_get_attr(ds, "execute");
     
     if(command) {
         if(runcmd(command)) getout(1);
     }
     
-    filename = dax_get_attr("filename");
+    filename = dax_get_attr(ds, "filename");
     if(filename) {
         printf("Gonna try to run file %s\n", filename);
     }
@@ -93,7 +100,7 @@ int main(int argc,char *argv[]) {
     }
     while(1) {
         if(_quitsignal) {
-            dax_debug(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
         
@@ -248,6 +255,6 @@ getout(int exitstatus)
         write_history(history_file);
         free(history_file);
     }
-    dax_mod_unregister();
+    dax_mod_unregister(ds);
     exit(exitstatus);
 }

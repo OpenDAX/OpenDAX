@@ -27,6 +27,7 @@
 #include <pthread.h>
 
 extern pthread_mutex_t daxmutex;
+extern dax_state *ds;
 
 int
 daxlua_init(void)
@@ -77,7 +78,7 @@ _cdt_create(lua_State *L)
         lua_pop(L, 4);
         
         pthread_mutex_lock(&daxmutex);
-        result = dax_cdt_member(cdt, name, dax_string_to_type(type), count);
+        result = dax_cdt_member(ds, cdt, name, dax_string_to_type(ds, type), count);
         pthread_mutex_unlock(&daxmutex);
         if(result) {
             dax_cdt_free(cdt);
@@ -85,7 +86,7 @@ _cdt_create(lua_State *L)
         }
     }
     pthread_mutex_lock(&daxmutex);
-    result = dax_cdt_create(cdt, NULL);
+    result = dax_cdt_create(ds, cdt, NULL);
     pthread_mutex_unlock(&daxmutex);
     
     if(result) {
@@ -125,12 +126,12 @@ _dax_tag_add(lua_State *L)
     }
     
     pthread_mutex_lock(&daxmutex);
-    type = dax_string_to_type(datatype);
+    type = dax_string_to_type(ds, datatype);
     if(type == 0) {
         pthread_mutex_unlock(&daxmutex);
         luaL_error(L, "Unrecognized datatype %s\n", datatype);
     }
-    result = dax_tag_add(&h, name, type, count);
+    result = dax_tag_add(ds, &h, name, type, count);
     printf("dax_tag_add() returned %d\n", result);
     pthread_mutex_unlock(&daxmutex);
     
@@ -160,7 +161,7 @@ _dax_read(lua_State *L) {
     count = lua_tointeger(L, 2);
     
     pthread_mutex_lock(&daxmutex);
-    result = dax_tag_handle(&h, name, count);
+    result = dax_tag_handle(ds, &h, name, count);
     if(result) {
         pthread_mutex_unlock(&daxmutex);
         luaL_error(L, "dax_tag_handle() returned %d", result);
@@ -171,7 +172,7 @@ _dax_read(lua_State *L) {
         luaL_error(L, "tag_read() unable to allocate data area");
     }
     
-    result = dax_read_tag(h, data);
+    result = dax_read_tag(ds, h, data);
     
     if(result) {
         pthread_mutex_unlock(&daxmutex);
@@ -200,7 +201,7 @@ _dax_write(lua_State *L) {
     }
     name = (char *)lua_tostring(L, 1);
     pthread_mutex_lock(&daxmutex);
-    result = dax_tag_handle(&h, name, 0);
+    result = dax_tag_handle(ds, &h, name, 0);
     if(result) {
         pthread_mutex_unlock(&daxmutex);
         luaL_error(L, "dax_tag_handle() returned %d", result);
@@ -238,9 +239,9 @@ _dax_write(lua_State *L) {
         }
     }
     if(q) {
-        result = dax_mask_tag(h, data, mask);
+        result = dax_mask_tag(ds, h, data, mask);
     } else {
-        result = dax_write_tag(h, data);
+        result = dax_write_tag(ds, h, data);
     }
     pthread_mutex_unlock(&daxmutex);
     
@@ -374,14 +375,14 @@ read_callback(cdt_iter member, void *udata)
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
                 lua_newtable(L);
-                offset = member.byte + (n * dax_get_typesize(member.type));
+                offset = member.byte + (n * dax_get_typesize(ds, member.type));
                 newdata.data = data + offset;
-                dax_cdt_iter(member.type, &newdata , read_callback);
+                dax_cdt_iter(ds, member.type, &newdata , read_callback);
                 lua_rawseti(L, -2, n + 1);
             }
         } else {
             newdata.data = data + member.byte;
-            dax_cdt_iter(member.type, &newdata, read_callback);
+            dax_cdt_iter(ds, member.type, &newdata, read_callback);
         }
     } else {
         _push_base_datatype(L, member, data + member.byte);
@@ -410,13 +411,13 @@ tag_dax_to_lua(lua_State *L, Handle h, void *data)
         if(h.count > 1) {
             for(n = 0; n < h.count; n++) {
                 lua_newtable(L);    
-                offset = n * dax_get_typesize(h.type);
+                offset = n * dax_get_typesize(ds, h.type);
                 udata.data = (char *)data + offset;
-                dax_cdt_iter(h.type, &udata, read_callback);
+                dax_cdt_iter(ds, h.type, &udata, read_callback);
                 lua_rawseti(L, -2, n+1);
             }
         } else {
-            dax_cdt_iter(h.type, &udata, read_callback);
+            dax_cdt_iter(ds, h.type, &udata, read_callback);
         }
     } else {
         tag.count = h.count;
@@ -572,7 +573,7 @@ write_callback(cdt_iter member, void *udata)
         lua_rawget(L, -2);
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
-                offset = member.byte + (n * dax_get_typesize(member.type));
+                offset = member.byte + (n * dax_get_typesize(ds, member.type));
                 newdata.data = (char *)data + offset;
                 newdata.mask = (char *)mask + offset;
                 if( ! lua_istable(L, -1) ) {
@@ -588,7 +589,7 @@ write_callback(cdt_iter member, void *udata)
                         ((struct iter_udata *)udata)->error = -1;
                         return;
                     }
-                    dax_cdt_iter(member.type, &newdata , write_callback);
+                    dax_cdt_iter(ds, member.type, &newdata , write_callback);
                 }
                 lua_pop(L, 1);
                 if(newdata.error) {
@@ -605,7 +606,7 @@ write_callback(cdt_iter member, void *udata)
                     ((struct iter_udata *)udata)->error = -1;
                     return;
                 }
-                dax_cdt_iter(member.type, &newdata, write_callback);
+                dax_cdt_iter(ds, member.type, &newdata, write_callback);
             }
             if(newdata.error) {
                 ((struct iter_udata *)udata)->error = newdata.error;
@@ -643,7 +644,7 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
         udata.error = 0;
         if(h.count > 1) {
             for(n = 0; n < h.count; n++) {
-                offset = n * dax_get_typesize(h.type);
+                offset = n * dax_get_typesize(ds, h.type);
                 udata.data = (char *)data + offset;
                 udata.mask = (char *)mask + offset;
                 if( ! lua_istable(L, -1) ) {
@@ -657,7 +658,7 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
                         lua_pushstring(L, "Table needed to set tag");
                         return -1;
                     }
-                    dax_cdt_iter(h.type, &udata , write_callback);
+                    dax_cdt_iter(ds, h.type, &udata , write_callback);
                 }
                 lua_pop(L, 1);
                 if(udata.error) {
@@ -672,7 +673,7 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
                     lua_pushstring(L, "Table needed to set Tag");
                     return -1;
                 }
-                dax_cdt_iter(h.type, &udata, write_callback);
+                dax_cdt_iter(ds, h.type, &udata, write_callback);
             }
             if(udata.error) {
                 return udata.error;
@@ -804,7 +805,7 @@ fetch_tag(lua_State *L, Handle h)
         return ERR_ALLOC;
     }
     
-    result = dax_read_tag(h, data);
+    result = dax_read_tag(ds, h, data);
 
     if(result) {
         free(data);
@@ -934,9 +935,9 @@ send_tag(lua_State *L, Handle h)
         }
     }
     if(q) {
-        result = dax_mask_tag(h, data, mask);
+        result = dax_mask_tag(ds, h, data, mask);
     } else {
-        result = dax_write_tag(h, data);
+        result = dax_write_tag(ds, h, data);
     }
     
     if(result) {
@@ -1046,7 +1047,7 @@ _add_global(char *script, char *varname, unsigned char mode)
     
     /* This would indicate that it's a dax tag */
     if(mode != MODE_STATIC) {
-        result = dax_tag_handle(&h, varname, 0);
+        result = dax_tag_handle(ds, &h, varname, 0);
         if(result) return result;
     }
     

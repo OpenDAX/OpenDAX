@@ -30,6 +30,7 @@
 //static int format;
 static int width = 4;
 //static int dsize = 8;
+extern dax_state *ds;
 
 int
 db_read(char **tokens)
@@ -46,20 +47,20 @@ db_read(char **tokens)
         fprintf(stderr, "TODO: We'll do formatting later\n");
         return ERR_GENERIC;
     }
-    result = dax_tag_handle(&h, tokens[0], 0);
+    result = dax_tag_handle(ds, &h, tokens[0], 0);
     if(result) {
         fprintf(stderr, "ERROR: Unable to retrieve handle for tag %s\n", tokens[0]);
         return result;
     }
     buff = malloc(sizeof(unsigned char) * h.size);
-    result = dax_read_tag(h, buff);
+    result = dax_read_tag(ds, h, buff);
     if(result) {
         free(buff);
         fprintf(stderr, "ERROR: Unable to read tag data for tag %s\n", tokens[0]);
         return result;
     }
     printf("Index:        %d\n", h.index);
-    printf("Type:         %s\n", dax_type_to_string(h.type));
+    printf("Type:         %s\n", dax_type_to_string(ds, h.type));
     printf("Byte Offset:  %d\n", h.byte);
     printf("Bit Offset:   %d\n", h.bit);
     printf("Count:        %d\n", h.count);

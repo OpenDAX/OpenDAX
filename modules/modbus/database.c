@@ -20,6 +20,7 @@
 #include <pthread.h>
 
 static pthread_mutex_t dax_mutex;
+extern dax_state *ds;
 
 /* This initializes all the data that we need to deal with for the database */
 int
@@ -35,7 +36,7 @@ _write_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
     /* It really should be this easy if we have done everything right up to here */
     pthread_mutex_lock(&dax_mutex);
-    dax_write_tag(*((Handle *)userdata), data);
+    dax_write_tag(ds, *((Handle *)userdata), data);
     pthread_mutex_unlock(&dax_mutex);
 }
 
@@ -45,7 +46,7 @@ _read_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
     /* It really should be this easy if we have done everything right up to here */
     pthread_mutex_lock(&dax_mutex);
-    dax_read_tag(*((Handle *)userdata), data);
+    dax_read_tag(ds, *((Handle *)userdata), data);
     pthread_mutex_unlock(&dax_mutex);
 }
 
@@ -75,42 +76,42 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
         case 2:
         case 15:
             count = cdata->length;
-            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + cdata->length);
+            result = dax_tag_add(ds, h, cdata->tagname, DAX_BOOL, cdata->index + cdata->length);
             break;
         case 5:
             count = 1;
-            result = dax_tag_add(h, cdata->tagname, DAX_BOOL, cdata->index + 1);
+            result = dax_tag_add(ds, h, cdata->tagname, DAX_BOOL, cdata->index + 1);
             break;
         case 3:
         case 4:
         case 16:
             count = cdata->length;
-            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + cdata->length);
+            result = dax_tag_add(ds, h, cdata->tagname, DAX_UINT, cdata->index + cdata->length);
             break;
         case 6:
             count = 1;
-            result = dax_tag_add(h, cdata->tagname, DAX_UINT, cdata->index + 1);
+            result = dax_tag_add(ds, h, cdata->tagname, DAX_UINT, cdata->index + 1);
             break;
         default:
             assert(0);
     }
     if(result) {
-        dax_error("Unable to create tag %s", cdata->tagname);
+        dax_error(ds, "Unable to create tag %s", cdata->tagname);
     }
     
     snprintf(tagname, DAX_TAGNAME_SIZE + 20, "%s[%d]", cdata->tagname, cdata->index);
     free(userdata); /* This offsets the malloc in _add_command() */
     mb_set_userdata(c, NULL); /* Just so we know */
            
-    result = dax_tag_handle(h, tagname, count);
+    result = dax_tag_handle(ds, h, tagname, count);
     /* Since h is allocated with a single malloc call we don't have to free
      * it because it will be freed when the command is destroyed.
      * We want to make sure and set the userdata anyway or we'll get a segfault */
     mb_set_userdata(c, h);
     
     if(result) {
-        dax_error("Unable to get handle for tag %s, %d", tagname, count);
-        dax_error("dax_tag_handle() returned %d", result);
+        dax_error(ds, "Unable to get handle for tag %s, %d", tagname, count);
+        dax_error(ds, "dax_tag_handle() returned %d", result);
         mb_disable_cmd(c);
     }
     mb_pre_send_callback(c, NULL);

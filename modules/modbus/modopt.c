@@ -35,6 +35,7 @@
 static void printconfig(void);
 
 struct Config config;
+extern dax_state *ds;
 
 static void
 _init_config(void)
@@ -68,21 +69,21 @@ _get_serial_config(lua_State *L, mb_port *p)
     lua_getfield(L, -2, "baudrate");
     baudrate = (int)lua_tonumber(L, -1);
     if(baudrate == 0) {
-        dax_debug(1, "Unknown Baudrate - %s, Using 9600", lua_tostring(L, -1));
+        dax_debug(ds, 1, "Unknown Baudrate - %s, Using 9600", lua_tostring(L, -1));
         baudrate = 9600;
     }
     
     lua_getfield(L, -3, "databits");
     databits = (short)lua_tonumber(L, -1);
     if(databits < 7 && databits > 8) {
-        dax_debug(1, "Unknown databits - %d, Using 8", databits);
+        dax_debug(ds, 1, "Unknown databits - %d, Using 8", databits);
         databits=8;
     }
 
     lua_getfield(L, -4, "stopbits");
     stopbits = (unsigned int)lua_tonumber(L, -1);
     if(stopbits !=1 && stopbits != 2) {
-        dax_debug(1, "Unknown stopbits - %d, Using 1", stopbits);
+        dax_debug(ds, 1, "Unknown stopbits - %d, Using 1", stopbits);
         stopbits=8;
     }
     
@@ -90,7 +91,7 @@ _get_serial_config(lua_State *L, mb_port *p)
     if(lua_isnumber(L, -1)) {
         parity = (unsigned char)lua_tonumber(L, -1);
         if(parity != MB_ODD && parity != MB_EVEN && parity != MB_NONE) {
-            dax_debug(1, "Unknown Parity %d, using NONE", parity);
+            dax_debug(ds, 1, "Unknown Parity %d, using NONE", parity);
         }
     } else {
         string = (char *)lua_tostring(L, -1);
@@ -99,11 +100,11 @@ _get_serial_config(lua_State *L, mb_port *p)
             else if(strcasecmp(string, "EVEN") == 0) parity = MB_EVEN;
             else if(strcasecmp(string, "ODD") == 0) parity = MB_ODD;
             else {
-                dax_debug(1, "Unknown Parity %s, using NONE", string);
+                dax_debug(ds, 1, "Unknown Parity %s, using NONE", string);
                 parity = MB_NONE;
             }
         } else {
-            dax_debug(1, "Parity not given, using NONE");
+            dax_debug(ds, 1, "Parity not given, using NONE");
             parity = MB_NONE;
         }
     }
@@ -141,11 +142,11 @@ _get_network_config(lua_State *L, mb_port *p)
         if(strcasecmp(string, "TCP") == 0) socket = TCP_SOCK;
         else if(strcasecmp(string, "UDP") == 0) socket = UDP_SOCK;
         else {
-            dax_debug(1, "Unknown Socket Type %s, using TCP", string);
+            dax_debug(ds, 1, "Unknown Socket Type %s, using TCP", string);
             socket = TCP_SOCK;
         }
     } else {
-        dax_debug(1, "Socket Type not given, using TCP");
+        dax_debug(ds, 1, "Socket Type not given, using TCP");
         socket = TCP_SOCK;
     }
     if(ipaddress != NULL) {
@@ -162,7 +163,7 @@ _get_slave_config(lua_State *L, mb_port *p)
 {
     unsigned int size;
     int result = 0;
-    dax_error("Slave functionality is not yet implemented");
+    dax_error(ds, "Slave functionality is not yet implemented");
     
     //--lua_getfield(L, -1, "holdreg");
     //--holdreg = (unsigned int)lua_tonumber(L, -1);
@@ -219,7 +220,7 @@ _add_port(lua_State *L)
         config.ports = malloc(sizeof(mb_port *) * DEFAULT_PORTS);
         config.portsize = DEFAULT_PORTS;
         if(config.ports == NULL) {
-            dax_fatal("Unable to allocate port array");
+            dax_fatal(ds, "Unable to allocate port array");
         }
     }
     /* Check to makes sure that we have some ports left */
@@ -230,11 +231,11 @@ _add_port(lua_State *L)
             config.ports = newports;
             config.portsize *= 2;
         } else {
-            dax_fatal("Unable to reallocate port array");
+            dax_fatal(ds, "Unable to reallocate port array");
         }
     }
     
-    dax_debug(LOG_MINOR, "Adding a port at index = %d", config.portcount);
+    dax_debug(ds, LOG_MINOR, "Adding a port at index = %d", config.portcount);
     
     lua_getfield(L, -1, "name");
     name = (char *)lua_tostring(L, -1);
@@ -243,7 +244,7 @@ _add_port(lua_State *L)
     /* Assign the pointer to p to make things simpler */
     p = config.ports[config.portcount];
     if(p == NULL) {
-        dax_fatal("Unable to allocate port[%d]", config.portcount);
+        dax_fatal(ds, "Unable to allocate port[%d]", config.portcount);
     }
     config.portcount++;
     
@@ -258,11 +259,11 @@ _add_port(lua_State *L)
         if(strcasecmp(string, "SERIAL") == 0) devtype = SERIAL_PORT;
         else if(strcasecmp(string, "NET") == 0) devtype = NETWORK_PORT;
         else {
-            dax_debug(1, "Unknown Device Type %s, assuming SERIAL", string);
+            dax_debug(ds, 1, "Unknown Device Type %s, assuming SERIAL", string);
             devtype = SERIAL_PORT;
         }
     } else {
-        dax_debug(1, "Device Type not given, assuming SERIAL");
+        dax_debug(ds, 1, "Device Type not given, assuming SERIAL");
         devtype = SERIAL_PORT;
     }
         
@@ -284,11 +285,11 @@ _add_port(lua_State *L)
         else if(strcasecmp(string, "ASCII") == 0) protocol = MB_ASCII;
         else if(strcasecmp(string, "TCP") == 0) protocol = MB_TCP;
         else {
-            dax_debug(1, "Unknown Protocol %s, assuming RTU", string);
+            dax_debug(ds, 1, "Unknown Protocol %s, assuming RTU", string);
             protocol = MB_RTU;
         }
     } else {
-        dax_debug(1, "Protocol not given, assuming RTU");
+        dax_debug(ds, 1, "Protocol not given, assuming RTU");
         protocol = MB_RTU;
     }
     lua_getfield(L, -2, "type");
@@ -299,7 +300,7 @@ _add_port(lua_State *L)
     else if(strcasecmp(string, "SERVER") == 0) type = MB_SLAVE;
     
     else {
-        dax_debug(1, "Unknown Port Type %s, assuming MASTER", string);
+        dax_debug(ds, 1, "Unknown Port Type %s, assuming MASTER", string);
         type = MB_MASTER;
     }
     lua_pop(L, 2);
@@ -377,10 +378,10 @@ _add_command(lua_State *L)
     printf("What do I think a MB_MASTER is?  I think %d\n", MB_MASTER);
     if(mb_get_type(config.ports[p]) != MB_MASTER) {
         printf("What kind of port did I get? %d\n", mb_get_type(config.ports[p-1]));
-        dax_debug(1, "Adding commands only makes sense for a Master or Client port");
+        dax_debug(ds, 1, "Adding commands only makes sense for a Master or Client port");
         return 0;
     }
-    dax_debug(10, "Adding a command to port %d", p);
+    dax_debug(ds, 10, "Adding a command to port %d", p);
     
     /* Allocate the new command and add it to the port */
     c = mb_new_cmd(config.ports[p]);
@@ -395,11 +396,11 @@ _add_command(lua_State *L)
         else if(strcasecmp(string, "CHANGE") == 0) mode = MB_ONCHANGE;
         else if(strcasecmp(string, "ONCHANGE") == 0) mode = MB_ONCHANGE;
         else {
-            dax_debug(1, "Unknown Command Mode %s, assuming CONTINUOUS", string);
+            dax_debug(ds, 1, "Unknown Command Mode %s, assuming CONTINUOUS", string);
             mode = MB_CONTINUOUS;
         }
     } else {
-        dax_debug(1, "Command Mode not given, assuming CONTINUOUS");
+        dax_debug(ds, 1, "Command Mode not given, assuming CONTINUOUS");
         mode = MB_CONTINUOUS;
     }
     mb_set_mode(c, mode);
@@ -426,7 +427,7 @@ _add_command(lua_State *L)
     length = (u_int16_t)lua_tonumber(L, -1);
     
     if(mb_set_command(c, node, function, reg, length)) {
-        dax_error("Unable to set command");
+        dax_error(ds, "Unable to set command");
     }
     lua_pop(L, 4);
     
@@ -440,7 +441,7 @@ _add_command(lua_State *L)
         /* This is freed() in database.c functions that set up the dax data */
         cmd_data = malloc(sizeof(cmd_temp_data));
         if(cmd_data == NULL) {
-            dax_fatal("_add_conmmand() - Unable to allocate memory for cmd_data\n");
+            dax_fatal(ds, "_add_conmmand() - Unable to allocate memory for cmd_data\n");
         }
         /* This information is so that the pre_send() callback will give us enough
          * information to setup the OpenDAX tag when it is called the first time.
@@ -454,7 +455,7 @@ _add_command(lua_State *L)
         mb_pre_send_callback(c, setup_command);
         //dt_add_tag(c, string, tagindex, function, length);
     } else {
-        dax_debug(1, "No Tagname Given for Command on Port %d", p);
+        dax_debug(ds, 1, "No Tagname Given for Command on Port %d", p);
     }
     
     lua_getfield(L, -3, "interval");
@@ -472,16 +473,16 @@ modbus_configure(int argc, const char *argv[])
     int flags, result = 0;
     
     _init_config();
-    dax_init_config("modbus");
+    dax_init_config(ds, "modbus");
     flags = CFG_CMDLINE | CFG_DAXCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute("tagname","tagname", 't', flags, "modbus");
+    result += dax_add_attribute(ds, "tagname","tagname", 't', flags, "modbus");
     
-    dax_set_luafunction((void *)_add_port, "add_port");
-    dax_set_luafunction((void *)_add_command, "add_command");
+    dax_set_luafunction(ds, (void *)_add_port, "add_port");
+    dax_set_luafunction(ds, (void *)_add_command, "add_command");
     
-    dax_configure(argc, (char **)argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
 
-    dax_free_config();
+    dax_free_config(ds);
     
     printconfig();
 

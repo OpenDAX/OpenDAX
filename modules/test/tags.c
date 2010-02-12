@@ -19,6 +19,8 @@
 
 #include <daxtest.h>
 
+extern dax_state *ds;
+
 /* Returns a random datatype to the caller */
 int get_random_type(void) {
     switch (rand()%11) {
@@ -75,9 +77,9 @@ add_random_tags(int tagcount, char *name)
             count = 1; /* the rest are just tags */
         }
         data_type = get_random_type();
-        result = dax_tag_add(NULL, tagname, data_type, count);
+        result = dax_tag_add(ds, NULL, tagname, data_type, count);
         if(result < 0) {
-            dax_debug(LOG_MINOR, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(data_type), count );
+            dax_debug(ds, LOG_MINOR, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(ds, data_type), count );
             return result;
 //        } else {
 //            dax_debug(LOG_MINOR, "%s added at index 0x%08X", tagname, result);
@@ -205,14 +207,14 @@ read_callback(cdt_iter member, void *udata)
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
                 lua_newtable(L);
-                offset = member.byte + (n * dax_get_typesize(member.type));
+                offset = member.byte + (n * dax_get_typesize(ds, member.type));
                 newdata.data = data + offset;
-                dax_cdt_iter(member.type, &newdata , read_callback);
+                dax_cdt_iter(ds, member.type, &newdata , read_callback);
                 lua_rawseti(L, -2, n + 1);
             }
         } else {
             newdata.data = data + member.byte;
-            dax_cdt_iter(member.type, &newdata, read_callback);
+            dax_cdt_iter(ds, member.type, &newdata, read_callback);
         }
     } else {
         _push_base_datatype(L, member, data + member.byte);
@@ -241,13 +243,13 @@ send_tag_to_lua(lua_State *L, Handle h, void *data)
         if(h.count > 1) {
             for(n = 0; n < h.count; n++) {
                 lua_newtable(L);    
-                offset = n * dax_get_typesize(h.type);
+                offset = n * dax_get_typesize(ds, h.type);
                 udata.data = (char *)data + offset;
-                dax_cdt_iter(h.type, &udata, read_callback);
+                dax_cdt_iter(ds, h.type, &udata, read_callback);
                 lua_rawseti(L, -2, n+1);
             }
         } else {
-            dax_cdt_iter(h.type, &udata, read_callback);
+            dax_cdt_iter(ds, h.type, &udata, read_callback);
         }
     } else {
         tag.count = h.count;
@@ -404,7 +406,7 @@ write_callback(cdt_iter member, void *udata)
         lua_rawget(L, -2);
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
-                offset = member.byte + (n * dax_get_typesize(member.type));
+                offset = member.byte + (n * dax_get_typesize(ds, member.type));
                 newdata.data = (char *)data + offset;
                 newdata.mask = (char *)mask + offset;
                 if( ! lua_istable(L, -1) ) {
@@ -420,7 +422,7 @@ write_callback(cdt_iter member, void *udata)
                         ((struct iter_udata *)udata)->error = -1;
                         return;
                     }
-                    dax_cdt_iter(member.type, &newdata , write_callback);
+                    dax_cdt_iter(ds, member.type, &newdata , write_callback);
                 }
                 lua_pop(L, 1);
                 if(newdata.error) {
@@ -437,7 +439,7 @@ write_callback(cdt_iter member, void *udata)
                     ((struct iter_udata *)udata)->error = -1;
                     return;
                 }
-                dax_cdt_iter(member.type, &newdata, write_callback);
+                dax_cdt_iter(ds, member.type, &newdata, write_callback);
             }
             if(newdata.error) {
                 ((struct iter_udata *)udata)->error = newdata.error;
@@ -475,7 +477,7 @@ get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
         udata.error = 0;
         if(h.count > 1) {
             for(n = 0; n < h.count; n++) {
-                offset = n * dax_get_typesize(h.type);
+                offset = n * dax_get_typesize(ds, h.type);
                 udata.data = (char *)data + offset;
                 udata.mask = (char *)mask + offset;
                 if( ! lua_istable(L, -1) ) {
@@ -489,7 +491,7 @@ get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
                         lua_pushstring(L, "Table needed to set tag");
                         return -1;
                     }
-                    dax_cdt_iter(h.type, &udata , write_callback);
+                    dax_cdt_iter(ds, h.type, &udata , write_callback);
                 }
                 lua_pop(L, 1);
                 if(udata.error) {
@@ -504,7 +506,7 @@ get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
                     lua_pushstring(L, "Table needed to set Tag");
                     return -1;
                 }
-                dax_cdt_iter(h.type, &udata, write_callback);
+                dax_cdt_iter(ds, h.type, &udata, write_callback);
             }
             if(udata.error) {
                 return udata.error;

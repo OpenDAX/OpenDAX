@@ -25,6 +25,10 @@
 #include <pthread.h>
 
 static int quitsig = 0;
+/* For now we'll keep ds as a global to simplify the code.  At some
+ * point when the luaif library is complete it'll be stored in the
+ * Lua_State Registry. */
+dax_state *ds;
 extern pthread_mutex_t daxmutex;
 
 void quit_signal(int sig);
@@ -159,7 +163,7 @@ lua_script_thread(script_t *s)
     setup_interpreter(L);    
     /* load and compile the file */
     if(luaL_loadfile(L, s->filename) ) {
-        dax_error("Error Loading Main Script - %s", lua_tostring(L, -1));
+        dax_error(ds, "Error Loading Main Script - %s", lua_tostring(L, -1));
         return 1;
     }
     /* Basicaly stores the Lua script */
@@ -175,11 +179,11 @@ lua_script_thread(script_t *s)
             
             /* Get the configured tags and set the globals for the script */
             if(_receive_globals(L, s)) {
-                dax_error("Unable to find all the global tags\n");
+                dax_error(ds, "Unable to find all the global tags\n");
             } else {
                 /* Run the script that is on the top of the stack */
                 if( lua_pcall(L, 0, 0, 0) ) {
-                    dax_error("Error Running Script - %s", lua_tostring(L, -1));
+                    dax_error(ds, "Error Running Script - %s", lua_tostring(L, -1));
                 }
                 /* Write the configured global tags out to the server */
                 /* TODO: Should we do something if this fails, if register globals
@@ -220,10 +224,10 @@ _start_thread(script_t *s)
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     
     if(pthread_create(&s->thread, &attr, (void *)&lua_script_thread, (void *)s)) {
-        dax_error( "Unable to start thread for script - %s", s->name);
+        dax_error(ds, "Unable to start thread for script - %s", s->name);
         return -1;
     } else {
-        dax_debug(LOG_MAJOR, "Started Thread for script - %s", s->name);
+        dax_debug(ds, LOG_MAJOR, "Started Thread for script - %s", s->name);
         return 0;
     }
 }
@@ -253,24 +257,29 @@ main(int argc, char *argv[])
     struct sigaction sa;
     
     
+    ds = dax_init("daxlua");
+    if(ds == NULL) {
+        fprintf(stderr, "Unable to Allocate DaxState Object\n");
+        return ERR_ALLOC;
+    }
     daxlua_init();
     
     /* For now */
-    dax_set_debug_topic(0xFFFFFFFF);
+    dax_set_debug_topic(ds, 0xFFFFFFFF);
     
     /* Reads the configuration */
     if(configure(argc,argv)) {
-        dax_fatal("Unable to configure");
+        dax_fatal(ds, "Unable to configure");
     }
     
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register("daxlua") ) {
-        dax_fatal("Unable to find OpenDAX");
+    if( dax_mod_register(ds, "daxlua") ) {
+        dax_fatal(ds, "Unable to find OpenDAX");
     }
     
     /* Run the initialization script */
     if(lua_init()) {
-        dax_fatal("Init Script \'%s\' failed to run properly", get_init());
+        dax_fatal(ds, "Init Script \'%s\' failed to run properly", get_init());
     } else {
         /* Start all the script threads */
         start_all_threads();
@@ -290,8 +299,8 @@ main(int argc, char *argv[])
         sleep(1);
         
         if(quitsig) {
-            dax_debug(LOG_MAJOR, "Quitting due to signal %d", quitsig);
-            dax_mod_unregister();
+            dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", quitsig);
+            dax_mod_unregister(ds);
             if(quitsig == SIGQUIT) {
                 exit(0);
             } else {
