@@ -79,6 +79,17 @@
 #define MB_SERIAL  0
 #define MB_NETWORK 1
 
+/* Maximum size of the receive buffer */
+#define MB_BUFF_SIZE 150
+
+/* This is used in the port for client connections for the TCP Server */
+struct client_buffer {
+	int fd;                /* File descriptor of the socket */
+	int buffindex;         /* index where the next character will be placed */
+	unsigned char buff[MB_BUFF_SIZE];   /* data buffer */
+	struct client_buffer *next;
+};
+
 /* Internal struct that defines a single Modbus(tm) Port */
 struct mb_port {
     char *name;               /* Port name if needed : Maybe we don't need this */
@@ -104,13 +115,17 @@ struct mb_port {
     int maxattempts; /* Number of failed attempts to allow before closing and exiting the port */
     
     u_int16_t *holdreg;       /* database index for holding registers (slave only) */
-    unsigned int holdsize;    /* size of the internaln holding register bank */
+    unsigned int holdsize;    /* size of the internal holding register bank */
     u_int16_t *inputreg;      /* database index for input registers (slave only) */
     unsigned int inputsize;   /* size of the internal input register bank */
     u_int16_t *coilreg;       /* database index for coils (slave only) */
     unsigned int coilsize;    /* size of the internal bank of coils in 16-bit registers */
     u_int16_t *discreg;       /* discrete input register */
     unsigned int discsize;    /* size of the internal bank of coils */
+    
+    fd_set fdset;
+    int maxfd;
+    struct client_buffer *buff_head; /* Head of a linked list of client connection buffers */
     
     struct mb_cmd *commands;  /* Linked list of Modbus commands */
     int fd;                   /* File descriptor to the port */
@@ -158,6 +173,9 @@ int add_cmd(mb_port *p, mb_cmd *mc);
 
 /* Command Functions - defined in modcmds.c */
 
+
+/* TCP Server Functions - defined in mbserver.c */
+int server_loop(mb_port *port);
 
 /* Utility Functions - defined in modutil.c */
 u_int16_t crc16(unsigned char *msg, unsigned short length);

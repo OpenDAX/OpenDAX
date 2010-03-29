@@ -1,4 +1,4 @@
-/* modports.c - Modbus (tm) Communications Library
+/* mbports.c - Modbus (tm) Communications Library
  * Copyright (C) 2009 Phil Birkelbach
  *
  * This program is free software; you can redistribute it and/or
@@ -51,6 +51,9 @@ initport(mb_port *p)
     p->coilsize = 0;
     p->discreg = NULL;
     p->discsize = 0;
+    p->buff_head = NULL;
+    FD_ZERO(&(p->fdset));
+    p->maxfd = 0;
     p->running = 0;
     p->inhibit = 0;
     p->commands = NULL;
@@ -304,6 +307,7 @@ mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport,
 int
 mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid)
 {
+	printf("mb_set_protocol() - type = %d, protocol = %d, slaveid = %d\n", type, protocol, slaveid);
     if(type == MB_MASTER || type == MB_SLAVE) {
         port->type = type;
     } else {
@@ -330,16 +334,15 @@ mb_open_port(mb_port *m_port)
 {
     int fd;
     
+    /* A TCP Server will open it's socket when the event loop is called */
+    if(m_port->devtype == MB_NETWORK && m_port->type == MB_SERVER) {
+    	return 0;
+    }
     if(m_port->devtype == MB_NETWORK) {
         fd = openIPport(m_port);
     } else {
         fd = openport(m_port);
     }
-    //--Removing pthread from the modbus library??
-    //--if(pthread_mutex_init (&m_port->port_mutex, NULL)) {
-    //--    dax_error("Problem Initilizing Mutex for port: %s", m_port->name);
-    //--    return -1;
-    //--}
     if(fd > 0) return 0;
     return fd;
 }
@@ -405,20 +408,47 @@ mb_get_type(mb_port *port)
     return port->type;
 }
 
-
-/* The following functions are used to set up the data for the slave port */
-int
-mb_set_register_size(mb_port *port, int reg, int size)
+/* These four functions allocate the data areas for a slave port
+ * A valid port pointer and size should be passed.  The new pointer
+ * to the data area will be returned.  A NULL pointer is returned on
+ * error and the only error is failure to allocate the data.
+ * The size should be passed as the number of 16 bit registers that are
+ * requested for the Holding and Input Register areas and should be the
+ * number of single bit Coils or Discrete Inputs that are requested
+ * These functions will calculate the actual amount of memory
+ * that is required. */
+u_int16_t *
+mb_alloc_holdreg(mb_port *port, unsigned int size)
 {
-    if(reg == MB_REG_HOLDING) {
-        //set holding register size
-        return 0;
-    } else if(reg == MB_REG_INPUT) {
-        return 0;
-    } else if(reg == MB_REG_COIL) {
-        return 0;
-    }
-    return MB_ERR_GENERIC;
+    port->holdreg = malloc(size * 2);
+    if(port->holdreg != NULL) port->holdsize = size;
+    return port->holdreg;
+}
+
+u_int16_t *
+mb_alloc_inputreg(mb_port *port, unsigned int size)
+{
+    port->inputreg = malloc(size * 2);
+    if(port->inputreg != NULL) port->inputsize = size;
+    return port->inputreg;
+    
+}
+
+u_int16_t *
+mb_alloc_coil(mb_port *port, unsigned int size)
+{
+    port->coilreg = malloc((size - 1)/8 + 1);
+    if(port->coilreg != NULL) port->coilsize = size;
+    return port->coilreg;
+   
+}
+
+u_int16_t *
+mb_alloc_discrete(mb_port *port, unsigned int size)
+{
+    port->discreg = malloc((size - 1)/8 + 1);
+    if(port->discreg != NULL) port->discsize = size;
+    return port->discreg;    
 }
 
 

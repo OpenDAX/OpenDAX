@@ -47,13 +47,21 @@ mb_run_port(struct mb_port *m_port)
     if(m_port->fd == 0) {
         m_port->inhibit = 1;
     }
+    printf("mb_run_port() - Port type = %d\n", m_port->type);
+            
     if(m_port->type == MB_MASTER) {
         printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
         return master_loop(m_port);
     } else if(m_port->type == MB_SLAVE) {
-        ; /* TODO: start slave thread */
+    	if(m_port->protocol == MB_TCP) {
+    		printf("mb_run_port() - Start the TCP Server Loop\n");
+    		return server_loop(m_port);
+    	} else {
+    		printf("mb_run_port() - Should run slave here\n");
+    		return MB_ERR_PROTOCOL;
+    	}
+        /* TODO: start slave thread */
     } else {
-        //DEBUGMSG2( "Unknown Port Type %d, on port %s", m_port->type, m_port->name);
         return MB_ERR_PORTTYPE;
     }
     return 0;
@@ -168,7 +176,7 @@ static int
 sendRTUrequest(mb_port *mp, mb_cmd *cmd)
 {
     u_int8_t buff[MB_FRAME_LEN], length;
-    u_int16_t crc, temp; //, result;
+    u_int16_t crc, temp;
     
     /* build the request message */
     buff[0]=cmd->node;
@@ -300,9 +308,7 @@ static int
 handleresponse(u_int8_t *buff, mb_cmd *cmd)
 {
     int n;
-    //--u_int16_t *data;
     
-    //DEBUGMSG2("handleresponse() - Function Code = %d", cmd->function);
     cmd->responses++;
     if(buff[1] >= 0x80) 
         return buff[2];

@@ -63,28 +63,29 @@ _get_serial_config(lua_State *L, mb_port *p)
     lua_getfield(L, -1, "device");
     device = (char *)lua_tostring(L, -1);
     if(device == NULL) {
-        luaL_error(L, "No device given for serial port %s", mb_get_name(p));
+        dax_debug(ds, 1, "No device given for serial port %s, Using /dev/serial", mb_get_name(p));
+        device = strdup("/dev/serial");
     }
     
     lua_getfield(L, -2, "baudrate");
     baudrate = (int)lua_tonumber(L, -1);
     if(baudrate == 0) {
-        dax_debug(ds, 1, "Unknown Baudrate - %s, Using 9600", lua_tostring(L, -1));
+        dax_debug(ds, 1, "Unknown Baudrate, Using 9600");
         baudrate = 9600;
     }
     
     lua_getfield(L, -3, "databits");
     databits = (short)lua_tonumber(L, -1);
-    if(databits < 7 && databits > 8) {
+    if(databits < 7 || databits > 8) {
         dax_debug(ds, 1, "Unknown databits - %d, Using 8", databits);
-        databits=8;
+        databits = 8;
     }
-
+    
     lua_getfield(L, -4, "stopbits");
     stopbits = (unsigned int)lua_tonumber(L, -1);
-    if(stopbits !=1 && stopbits != 2) {
+    if(stopbits != 1 && stopbits != 2) {
         dax_debug(ds, 1, "Unknown stopbits - %d, Using 1", stopbits);
-        stopbits=8;
+        stopbits = 1;
     }
     
     lua_getfield(L, -5, "parity");
@@ -111,7 +112,6 @@ _get_serial_config(lua_State *L, mb_port *p)
     result = mb_set_serial_port(p, device, baudrate, databits, parity, stopbits);
     lua_pop(L, 5);    
     return result;
-;
 }
 
 static inline int
@@ -164,37 +164,41 @@ _get_slave_config(lua_State *L, mb_port *p)
     unsigned int size;
     int result = 0;
     dax_error(ds, "Slave functionality is not yet implemented");
+    char *holdreg, *inputreg, *coilreg, *discreg;
     
-    //--lua_getfield(L, -1, "holdreg");
-    //--holdreg = (unsigned int)lua_tonumber(L, -1);
+    lua_getfield(L, -1, "holdreg");
+    holdreg = (char *)lua_tostring(L, -1);
+    
     lua_getfield(L, -2, "holdsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    //result = mb_set_holdsize(p, size);
-    lua_pop(L, 1);
+    //--result = mb_set_holdsize(p, size);
+    lua_pop(L, 2);
     if(result) return result;
     
-    //--lua_getfield(L, -3, "inputreg");
-    //--p->inputreg = (unsigned int)lua_tonumber(L, -1);
-    lua_getfield(L, -4, "inputsize");
+        
+    lua_getfield(L, -1, "inputreg");
+    inputreg = (char *)lua_tostring(L, -1);
+    lua_getfield(L, -2, "inputsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    //result = mb_set_inputsize(p, size);
-    lua_pop(L, 1);
+    //--result = mb_set_inputsize(p, size);
+    lua_pop(L, 2);
     if(result) return result;
     
-    lua_getfield(L, -5, "coilreg");
-    //--p->coilreg = (unsigned int)lua_tonumber(L, -1);
-    //--lua_getfield(L, -6, "coilsize");
+    lua_getfield(L, -1, "coilreg");
+    coilreg = (char *)lua_tostring(L, -1);
+    lua_getfield(L, -2, "coilsize");
     size = (unsigned int)lua_tonumber(L, -1);
     //result = mb_set_coilsize(p, size);
-    lua_pop(L, 1);
+    lua_pop(L, 2);
     if(result) return result;
-    lua_getfield(L, -7, "discreg");
     
-    //--p->floatreg = (unsigned int)lua_tonumber(L, -1);
-    //--lua_getfield(L, -8, "floatsize");
+    lua_getfield(L, -1, "discreg");
+    discreg = (char *)lua_tostring(L, -1);
+        //--p->floatreg = (unsigned int)lua_tonumber(L, -1);
+    lua_getfield(L, -2, "discsize");
     size = (unsigned int)lua_tonumber(L, -1);
     //result = mb_set_floatsize(p, size);
-    lua_pop(L, 1);
+    lua_pop(L, 2);
     if(result) return result;
     
     return 0;
@@ -257,7 +261,7 @@ _add_port(lua_State *L)
     string = (char *)lua_tostring(L, -1);
     if(string) {
         if(strcasecmp(string, "SERIAL") == 0) devtype = SERIAL_PORT;
-        else if(strcasecmp(string, "NET") == 0) devtype = NETWORK_PORT;
+        else if(strncasecmp(string, "NET", 3) == 0) devtype = NETWORK_PORT;
         else {
             dax_debug(ds, 1, "Unknown Device Type %s, assuming SERIAL", string);
             devtype = SERIAL_PORT;
@@ -294,6 +298,7 @@ _add_port(lua_State *L)
     }
     lua_getfield(L, -2, "type");
     string = (char *)lua_tostring(L, -1);
+    printf("Type string = %s\n", string);
     if(strcasecmp(string, "MASTER") == 0) type = MB_MASTER;
     else if(strcasecmp(string, "SLAVE") == 0) type = MB_SLAVE;
     else if(strcasecmp(string, "CLIENT") == 0) type = MB_MASTER;
@@ -305,13 +310,14 @@ _add_port(lua_State *L)
     }
     lua_pop(L, 2);
     if(type == MB_SLAVE) {
-        lua_getfield(L, -1, "slaveid");
+    	lua_getfield(L, -1, "slaveid");
         slaveid = (int)lua_tonumber(L, -1);
         lua_pop(L, 1);
        _get_slave_config(L, p);
     } else {
         slaveid = 0;
     }
+    printf("Made it past Slave Config\n");
     mb_set_protocol(p, type, protocol, slaveid);
     
     /* Have to decide how much of this will really be needed */

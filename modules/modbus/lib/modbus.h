@@ -55,6 +55,8 @@
 #define MB_ERR_FUNCTION   -9      /* Bad Function Code Given */
 #define MB_ERR_OPEN       -10     /* Failure to Open Port */
 #define MB_ERR_PORTFAIL   -11     /* Major Port Failure */
+#define MB_ERR_RECV_FAIL  -12     /* Recieve Failure */
+#define MB_ERR_NO_SOCKET  -13     /* The socket does not exist */
 
 /* Modbus Errors */
 #define ME_EXCEPTION      0x80;
@@ -85,7 +87,13 @@ void mb_destroy_port(mb_port *port);
 int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
 int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid);
-int mb_set_register_size(mb_port *port, int reg, int size);
+
+/* These functions allocate the slave data table areas */
+u_int16_t *mb_alloc_holdreg(mb_port *port, unsigned int size);
+u_int16_t *mb_alloc_inputreg(mb_port *port, unsigned int size);
+u_int16_t *mb_alloc_coil(mb_port *port, unsigned int size);
+u_int16_t *mb_alloc_discrete(mb_port *port, unsigned int size);
+
 int mb_set_frame_time(mb_port *port, int frame);
 int mb_set_delay_time(mb_port *port, int delay);
 int mb_set_scan_rate(mb_port *port, int rate);
