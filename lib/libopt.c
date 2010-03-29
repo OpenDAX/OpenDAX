@@ -365,7 +365,7 @@ _main_config_file(dax_state *ds) {
     
     /* load and run the configuration file */
     if(luaL_loadfile(L, cfile)  || lua_pcall(L, 0, 0, 0)) {
-        dax_error(ds, "Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_error(ds, "Problem executing configuration file %s - %s", cfile, lua_tostring(L, -1));
         result = ERR_GENERIC;
     } else {
         /* tell lua to push these variables onto the stack */
@@ -404,7 +404,7 @@ _mod_config_file(dax_state *ds) {
 	    
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
-        dax_error(ds, "Problem executing configuration file - %s", lua_tostring(ds->L, -1));
+        dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         return ERR_GENERIC;
     } else {
         _get_lua_globals(ds, CFG_MODCONF);

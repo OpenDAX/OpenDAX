@@ -127,5 +127,6 @@ AC_CONFIG_FILES([Makefile
                  modules/modbus/lib/Makefile
                  modules/daxc/Makefile
                  modules/daxlua/Makefile
-                 modules/test/Makefile])
+                 modules/test/Makefile
+                 modules/wio/Makefile])
 AC_OUTPUT

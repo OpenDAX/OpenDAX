@@ -14,19 +14,24 @@ p.bindport = 502      -- TCP/UDP Port to use
 --p.device = "/dev/ttyS0"
 --p.device = "/dev/tty.usbserial-FT3Q9XETA"
 p.device = "/dev/tty.usbserial"
-p.type = "MASTER"     -- modbus master
-p.protocol = "RTU"    -- RTU, ASCII, TCP
-p.slaveid = 1         -- modbus id if type is slave
-p.holdreg = 0         -- starting address for the holding registers 4xxxx (slave only)
-p.holdsize = 0        -- size of the holding register space for this slave
-p.inputreg = 0        -- starting address for the input registers 3xxxx (slave only)
-p.inputsize = 0       -- size of the input register space for this slave
-p.coilreg = 0         -- starting address for the coils (counted in bits) (slave only)
-p.coilsize = 0        -- size of the coil space counted in bits (slave only)
+p.type = "MASTER"       -- modbus master
+p.protocol = "RTU"      -- RTU, ASCII, TCP
+-- Slave Port ID and Register Configuration
+p.slaveid = 1           -- modbus id if type is slave
+p.holdreg = "mb_hreg"   -- tagname for the holding registers FC 3, 6, 16
+p.holdsize = 10         -- size of the holding register space for this slave
+p.inputreg = "mb_ireg"  -- tagname for the input registers FC 4
+p.inputsize = 20        -- size of the input register space for this slave
+p.coilreg = "mb_creg"   -- tagname for the coils FC 1, 5 ,15
+p.coilsize = 30         -- size of the coil space counted in bits
+p.discreg = "mb_dreg"   -- tagname for the discrete inputs FC 2 (counted in bits) 
+p.discsize = 40         -- size of the discrete inputs space (counted in bits)
+-- Serial Port Configuration
 p.baudrate = 9600 
 p.databits = 8    
 p.stopbits = 1
 p.parity = "NONE"     -- NONE, EVEN, ODD
+-- General Configuration
 p.scanrate = 1000     -- rate at which this port is scanned in mSec
 p.timeout = 1000      -- timeout period in mSec for response from slave
 p.frame = 30          -- frame time for the interbyte timeout

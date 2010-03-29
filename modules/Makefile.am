@@ -29,7 +29,7 @@ endif
 #  M_DAXLUA = daxlua
 #endif
 
-SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc test 
+SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc test wio
 #AUX_DIST = $(ac_aux_dir)/install-sh
 
 #dist-hook:

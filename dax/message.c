@@ -141,7 +141,7 @@ _msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
     
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0) {
-        xfatal("Unable to create local socket - %s", strerror(errno));
+        xfatal("Unable to create remote socket - %s", strerror(errno));
     }
     
     bzero(&addr, sizeof(addr));
@@ -161,6 +161,7 @@ _msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
     /* set the _remotefd set here.  This gives us a simpler way to
      * determine if the fd that we get from the select() call in
      * msg_receive() is a listening socket or not */
+    /* TODO: Does this need to be an fd_set?? */
     FD_SET(fd, &_listenfdset);
     msg_add_fd(fd);
     
