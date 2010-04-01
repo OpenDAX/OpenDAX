@@ -4,32 +4,25 @@ else
   M_MODBUS = 
 endif
 
-# We only build daxlua if we have the lua library somewhere (duh)
-if HAVE_LUA
-  M_DAXLUA = daxlua
+if TEST
+  M_TEST = test
+else
+  M_TEST = 
 endif
 
-if HAVE_LUA5_1
-  M_DAXLUA = daxlua
+if WIO
+  M_WIO = wio
+else
+  M_WIO = 
 endif
 
-if HAVE_LUA51
+if DAXLUA
   M_DAXLUA = daxlua
+else
+  M_DAXLUA =
 endif
 
-#if HAVE_LUALIB
-#  M_DAXLUA = daxlua
-#endif
-
-#if HAVE_LUALIB50
-#  M_DAXLUA = daxlua
-#endif
-
-#if HAVE_LUALIB51
-#  M_DAXLUA = daxlua
-#endif
-
-SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc test wio
+SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc $(M_TEST) $(M_WIO)
 #AUX_DIST = $(ac_aux_dir)/install-sh
 
 #dist-hook:
