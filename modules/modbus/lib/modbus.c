@@ -53,13 +53,13 @@ mb_run_port(struct mb_port *m_port)
         printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
         return master_loop(m_port);
     } else if(m_port->type == MB_SLAVE) {
-    	if(m_port->protocol == MB_TCP) {
-    		printf("mb_run_port() - Start the TCP Server Loop\n");
-    		return server_loop(m_port);
-    	} else {
-    		printf("mb_run_port() - Should run slave here\n");
-    		return MB_ERR_PROTOCOL;
-    	}
+        if(m_port->protocol == MB_TCP) {
+            printf("mb_run_port() - Start the TCP Server Loop\n");
+            return server_loop(m_port);
+        } else {
+            printf("mb_run_port() - Should run slave here\n");
+            return MB_ERR_PROTOCOL;
+        }
         /* TODO: start slave thread */
     } else {
         return MB_ERR_PORTTYPE;
@@ -374,9 +374,9 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
         if(mc->enable == 0) return 0;
     }
     do { /* retry loop */
-		result = sendrequest(mp, mc);
-		if(result > 0) {
-			msglen = getresponse(buff, mp);
+        result = sendrequest(mp, mc);
+        if(result > 0) {
+            msglen = getresponse(buff, mp);
         } else if(result == 0) {
             /* Should be 0 when a conditional command simply doesn't run */
             return result;
@@ -405,15 +405,15 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
                 mc->send_fail(mc, mc->userdata);
             }
             DEBUGMSG("Timeout");
-			mc->timeouts++;
-			mc->lasterror = ME_TIMEOUT;
+            mc->timeouts++;
+            mc->lasterror = ME_TIMEOUT;
         } else {
             /* Checksum failed in response */
             if(mc->send_fail != NULL) {
                 mc->send_fail(mc, mc->userdata);
             }
             DEBUGMSG("Checksum");
-			mc->crcerrors++;
+            mc->crcerrors++;
             mc->lasterror = ME_CHECKSUM;
         }
     } while(try++ <= mp->retries);
@@ -425,4 +425,66 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     return 0 - mc->lasterror;
 }
 
+static int
+_create_exception(unsigned char *buff, u_int16_t exception)
+{
+	buff[1] |= ME_EXCEPTION;
+	buff[2] = exception;
+	return 3;
+}
 
+/* Creates a generic slave response.  buff should point to a buffer that
+ * looks like an RTU request without the checksum.  This function will generate
+ * an RTU response message, and write that back into buff.  size is the total
+ * size that we can write into buff.  Returns positive number of bytes written, zero
+ * if no bytes written and negative error code if there is a problem. */
+int
+create_response(mb_port *port, unsigned char *buff, int size)
+{
+    int n;
+    u_int8_t node, function;
+    u_int16_t index, count;
+    
+    node = buff[0]; /* Node Number */
+    function = buff[1]; /* Modbus Function Code */
+    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
+    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
+    
+    /* If we're TCP then node doesn't matter yet.  Other wise return 0 if
+     * this message isn't for us. */
+    if(port->protocol != MB_TCP) {
+        if(node != port->slaveid) return 0;
+    }
+    switch(function) {
+    case 1:
+        break;
+    case 2:
+        break;
+    case 3:
+        if((count * 2) > (size - 3)) { /* Make sure we have enough room */
+            return MB_ERR_OVERFLOW;
+        }
+        if((index + count) > port->holdsize) {
+        	return _create_exception(buff, ME_BAD_ADDRESS);
+        }
+        buff[2] = count * 2;
+        for(n = 0; n < count; n++) {
+        	COPYWORD(&buff[3+(n*2)], &port->holdreg[index+n]);
+        }
+        return (count * 2) + 3;
+    case 4:
+        break;
+    case 5:
+        break;
+    case 6:
+        break;
+    case 15:
+        break;
+    case 16:
+        break;
+    default:
+        break;
+    }
+    
+    return 0;
+}

@@ -102,6 +102,35 @@ crc16check(u_int8_t *buff, int length)
     else return 0;
 };
 
+#ifdef __MB_THREAD_SAFE
+int
+__mb_mutex_init(_mb_mutex_t *mutex)
+{
+	return pthread_mutex_init(mutex, NULL);
+}
+
+int
+__mb_mutex_lock(mb_port *port, _mb_mutex_t *mutex)
+{
+	if(port->flags & MB_FLAGS_THREAD_SAFE) {
+		return pthread_mutex_lock(mutex);
+	} else {
+		return 0;
+	}			
+}
+
+int
+__mb_mutex_unlock(mb_port *port, _mb_mutex_t *mutex)
+{
+	if(port->flags & MB_FLAGS_THREAD_SAFE) {
+		return pthread_mutex_unlock(mutex);
+	} else {
+		return 0;
+	}
+}
+
+#endif /* __MB_THREAD_SAFE */
+
 #ifdef DEBUG
 /* This function is only included when DEBUG is defined.  It 
  * turns into DEBUGMSGx() in the code.  Redefine to something

@@ -26,6 +26,9 @@
  #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifdef HAVE_SYS_SOCKET_H
  #include <sys/socket.h>
 #endif
@@ -35,19 +38,24 @@
 #ifdef HAVE_STRING_H
  #include <string.h>
 #endif
+#ifdef HAVE_STRINGS_H
+ #include <strings.h>
+#endif
+#ifdef HAVE_SYS_SELECT_H
+ #include <sys/select.h>
+#endif
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
 #include <errno.h>
+#include <assert.h>
 #include <fcntl.h>
-#include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #include <modbus.h>
 
@@ -68,6 +76,29 @@
 #else
 # define COPYWORD(OUT,IN) memcpy((OUT),(IN),2);
 #endif
+
+/* This defines whether or not we are going to build a
+ * thread safe system.  If the user is not going to need
+ * thread safety this would be undefined and then not
+ * compiled into the library */
+#define __MB_THREAD_SAFE 1
+#ifdef __MB_THREAD_SAFE
+#  define mb_mutex_init(mutex) __mb_mutex_init((mutex))
+#  define mb_mutex_lock(port,mutex) __mb_mutex_lock((port),(mutex))
+#  define mb_mutex_unlock(port,mutex) __mb_mutex_unlock((port),(mutex))
+
+typedef pthread_mutex_t _mb_mutex_t;
+
+/* These are defined in mbutil.c */
+int __mb_mutex_init(_mb_mutex_t *);
+int __mb_mutex_lock(mb_port *, _mb_mutex_t *);
+int __mb_mutex_unlock(mb_port *, _mb_mutex_t *);
+
+#else
+#  define mb_mutex_init(port)
+#  define mb_mutex_lock(port,mutex)
+#  define mb_mutex_unlock(port,mutex)
+#endif   
 
 #define MB_FRAME_LEN 255
 
@@ -93,6 +124,7 @@ struct client_buffer {
 /* Internal struct that defines a single Modbus(tm) Port */
 struct mb_port {
     char *name;               /* Port name if needed : Maybe we don't need this */
+    unsigned int flags;       /* Port Attribute Flags */
     char *device;             /* device filename of the serial port */
     unsigned char enable;     /* 0=Pause, 1=Run */
     unsigned char type;       /* 0=Master, 1=Slave */
@@ -122,7 +154,12 @@ struct mb_port {
     unsigned int coilsize;    /* size of the internal bank of coils in 16-bit registers */
     u_int16_t *discreg;       /* discrete input register */
     unsigned int discsize;    /* size of the internal bank of coils */
-    
+#ifdef __MB_THREAD_SAFE
+    _mb_mutex_t hold_mutex;  /* mutexes used to lock the above register areas when needed */
+    _mb_mutex_t input_mutex;
+    _mb_mutex_t coil_mutex;
+    _mb_mutex_t disc_mutex;
+#endif    
     fd_set fdset;
     int maxfd;
     struct client_buffer *buff_head; /* Head of a linked list of client connection buffers */
@@ -135,9 +172,12 @@ struct mb_port {
     unsigned char inhibit;       /* When set the port will not be started */
     unsigned int inhibit_time;   /* Number of seconds before the port will be retried */
     unsigned int inhibit_temp;
+    void *userdata;
     /* These are callback function pointers for the port message data */
-    void (*out_callback)(struct mb_port *, u_int8_t *, unsigned int);
-    void (*in_callback)(struct mb_port *, u_int8_t *, unsigned int);
+    void (*out_callback)(struct mb_port *port, u_int8_t *buff, unsigned int);
+    void (*in_callback)(struct mb_port *port, u_int8_t *buff, unsigned int);
+    void (*slave_request)(struct mb_port *port, int reg, int index, int size);
+    void (*userdata_free)(struct mb_port *port, void *userdata);
 };
 
 struct mb_cmd {
@@ -176,6 +216,9 @@ int add_cmd(mb_port *p, mb_cmd *mc);
 
 /* TCP Server Functions - defined in mbserver.c */
 int server_loop(mb_port *port);
+
+/* Protocol Functions - defined in modbus.c */
+int create_response(mb_port * port, unsigned char *buff, int size);
 
 /* Utility Functions - defined in modutil.c */
 u_int16_t crc16(unsigned char *msg, unsigned short length);

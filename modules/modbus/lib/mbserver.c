@@ -52,7 +52,7 @@ static int
 _add_connection(mb_port *port, int fd)
 {
     struct client_buffer *new;
-	
+    
     DEBUGMSG2("_add_connection() - Adding connection on fd %d", fd);
     new = malloc(sizeof(struct client_buffer));
     if(new == NULL) return MB_ERR_ALLOC;
@@ -60,16 +60,16 @@ _add_connection(mb_port *port, int fd)
     new->fd = fd;
     new->buffindex = 0;
     
-	if(port->buff_head == NULL) {
-		/* If it's the first one just put it on top */
-	    new->next = NULL;
-	} else {
-		/* Just jam the thing onto the top of the list */
-		new->next = port->buff_head;
-	}
-	port->buff_head = new;
-	_add_fd(port, fd);
-	return 0;
+    if(port->buff_head == NULL) {
+        /* If it's the first one just put it on top */
+        new->next = NULL;
+    } else {
+        /* Just jam the thing onto the top of the list */
+        new->next = port->buff_head;
+    }
+    port->buff_head = new;
+    _add_fd(port, fd);
+    return 0;
 }
 
 /* Loops through the client buffer linked list of the port and sets
@@ -77,47 +77,91 @@ _add_connection(mb_port *port, int fd)
 static int
 _clear_buffers(mb_port *port)
 {
-	struct client_buffer *this;
-	
-	this = port->buff_head;
-	
-	while(this != NULL) {
-		this->buffindex = 0;
-		this = this->next;
-	}
-	return 0;
+    struct client_buffer *this;
+    
+    this = port->buff_head;
+    
+    while(this != NULL) {
+        this->buffindex = 0;
+        this = this->next;
+    }
+    return 0;
 }
 
 static int
 _del_connection(mb_port *port, int fd)
 {
-	
-	close(fd);
-	_del_fd(port, fd);
+    
+    close(fd);
+    _del_fd(port, fd);
     return 0;
+}
+
+static struct client_buffer *
+_get_buff_ptr(mb_port *port, int fd)
+{
+    struct client_buffer *this;
+    
+    this = port->buff_head;
+    while(this != NULL) {
+        if(this->fd == fd) {
+            return this;
+        }
+        this = this->next;
+    }
+    return NULL;
 }
 
 static int
 _mb_read(mb_port *port, int fd)
 {   
-	int result, size, n;
-	unsigned char buff[100];
-	
-	size = 100;
-	result = read(fd, buff, size);
-	DEBUGMSG("_mb_read() - read() has returned");
-	if(result < 0) {
-	    DEBUGMSG2("Unable to read data from socket %d", fd);
-	    return MB_ERR_RECV_FAIL;
-	} if(result == 0) { /* EOF means the other guy is closed */
-	    DEBUGMSG2("Received EOF on socket %d", fd);
-	    return MB_ERR_NO_SOCKET;
-	}
+    int result, size;
+    unsigned char buff[100];
+    struct client_buffer *cc;
+    u_int16_t msgsize;
     
-	for(n = 0; n < result; n++) {
-		fprintf(stderr, "[0x%X] ", buff[n]);
-	}
-	return 0;
+    size = 100;
+    result = read(fd, buff, size);
+    if(result < 0) {
+        DEBUGMSG2("Unable to read data from socket %d", fd);
+        return MB_ERR_RECV_FAIL;
+    } if(result == 0) { /* EOF means the other guy is closed */
+        DEBUGMSG2("Received EOF on socket %d", fd);
+        return MB_ERR_NO_SOCKET;
+    }
+    
+    cc = _get_buff_ptr(port, fd);
+    assert(cc != NULL); /* If we get this far cc should exist in the port */
+    
+    /* Check that we haven't received too big of a message */
+    if((result + cc->buffindex) > MB_BUFF_SIZE) {
+        return MB_ERR_OVERFLOW;
+    }
+    memcpy(&(cc->buff[cc->buffindex]), buff, result); /* Copy the new data to the buffer */
+    cc->buffindex += result;
+    if(cc->buffindex > 5) {
+        COPYWORD(&msgsize, (u_int16_t *)&cc->buff[4]);
+        if(cc->buffindex >= (msgsize + 6)) {
+            if(port->in_callback) {
+                port->in_callback(port, cc->buff, cc->buffindex);
+            }
+        
+            result = create_response(port, &(cc->buff[6]), MB_BUFF_SIZE - 6);
+            if(result > 0) { /* We have a response */
+            	msgsize = result;
+            	COPYWORD(&(cc->buff[4]), &msgsize);
+                if(port->out_callback) {
+                    port->out_callback(port, cc->buff, result + 6);
+                }
+                write(cc->fd, cc->buff, result + 6);
+                cc->buffindex = 0;
+            } else if(result < 0) {
+            	fprintf(stderr, "Error Code Returned %d\n", result);
+            	return result;
+            }
+        }
+    }
+    return 0;
 }
 
 /* Open a socket to listen */
@@ -213,18 +257,31 @@ _receive(mb_port *port)
 int
 server_loop(mb_port *port)
 {
-	int result;
-	
-	result = _server_listen(port);
-	if(result) {
-		DEBUGMSG2("Failed to listen on port - %s", strerror(errno));
-		return result;
-	}
-	
-	while(1) {
-		DEBUGMSG("Starting Receive Loop");
-		result = _receive(port);
-		if(result) return result;
-	}
-	return -1; /* Can never get here */
+    int result;
+    u_int16_t dummy[10];
+    
+    result = _server_listen(port);
+    if(result) {
+        DEBUGMSG2("Failed to listen on port - %s", strerror(errno));
+        return result;
+    } else {
+        DEBUGMSG2("Listening on file descriptor %d", port->fd);
+    }
+    
+    while(1) {
+        DEBUGMSG("Starting Receive Loop");
+        result = _receive(port);
+        if(result) {
+        	if(result == MB_ERR_OVERFLOW) {
+        		DEBUGMSG("Buffer Overflow Attempt");
+        	}
+        }
+        dummy[0]++;
+        dummy[1] = dummy[0] + 1;
+        mb_write_register(port, MB_REG_HOLDING, dummy, 0, 5);
+        //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
+        //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
+                
+    }
+    return -1; /* Can never get here */
 }

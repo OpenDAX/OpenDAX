@@ -26,6 +26,7 @@ static void
 initport(mb_port *p)
 {
     p->name = NULL;
+    p->flags = 0x00;
     p->device = NULL;
     p->fd = 0;
     p->enable = 1;
@@ -60,6 +61,12 @@ initport(mb_port *p)
     p->out_callback = NULL;
     p->in_callback = NULL;
     strcpy(p->ipaddress, "0.0.0.0");
+#ifdef __MB_THREAD_SAFE
+    mb_mutex_init(&p->hold_mutex);
+    mb_mutex_init(&p->input_mutex);
+    mb_mutex_init(&p->coil_mutex);
+    mb_mutex_init(&p->disc_mutex);
+#endif
 };
 
 static int
@@ -200,7 +207,7 @@ openIPport(mb_port *mp)
  * success or NULL on failure.  'name' can either be the name to give the port
  * or NULL if not needed. */
 mb_port *
-mb_new_port(const char *name)
+mb_new_port(const char *name, unsigned int flags)
 {
     mb_port *mport;
     mport = (mb_port *)malloc(sizeof(mb_port));
@@ -210,6 +217,7 @@ mb_new_port(const char *name)
          * the name isn't really all that important */
         if(name != NULL) {
             mport->name = strdup(name);
+            mport->flags = flags;
         }
     }
     return mport;    
@@ -307,7 +315,6 @@ mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport,
 int
 mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid)
 {
-	printf("mb_set_protocol() - type = %d, protocol = %d, slaveid = %d\n", type, protocol, slaveid);
     if(type == MB_MASTER || type == MB_SLAVE) {
         port->type = type;
     } else {
@@ -321,6 +328,7 @@ mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int
     port->slaveid = slaveid;
     return 0;
 }
+
 
 const char *mb_get_name(mb_port *port) {
     return (const char *)port->name;
@@ -420,35 +428,137 @@ mb_get_type(mb_port *port)
 u_int16_t *
 mb_alloc_holdreg(mb_port *port, unsigned int size)
 {
-    port->holdreg = malloc(size * 2);
-    if(port->holdreg != NULL) port->holdsize = size;
-    return port->holdreg;
+	void *new;
+	
+	mb_mutex_lock(port, &port->hold_mutex);	
+	new = realloc(port->holdreg, size * 2);
+	if(new != NULL) {
+		port->holdsize = size;
+		port->holdreg = new;
+	}
+	/* TODO: At some point we should only zero the new memory but this
+	 * will do for now. */
+	bzero(port->holdreg, size * 2);
+	mb_mutex_unlock(port, &port->hold_mutex);	
+	return new;
 }
 
 u_int16_t *
 mb_alloc_inputreg(mb_port *port, unsigned int size)
 {
-    port->inputreg = malloc(size * 2);
-    if(port->inputreg != NULL) port->inputsize = size;
-    return port->inputreg;
-    
+	void *new;
+	
+	mb_mutex_lock(port, &port->input_mutex);	
+	new = realloc(port->inputreg, size * 2);
+	if(new != NULL) {
+		port->inputsize = size;
+		port->inputreg = new;
+	}
+	bzero(port->inputreg, size * 2);
+	mb_mutex_unlock(port, &port->input_mutex);	
+	return new;
 }
 
 u_int16_t *
 mb_alloc_coil(mb_port *port, unsigned int size)
 {
-    port->coilreg = malloc((size - 1)/8 + 1);
-    if(port->coilreg != NULL) port->coilsize = size;
-    return port->coilreg;
-   
+	void *new;
+	
+	mb_mutex_lock(port, &port->coil_mutex);	
+	new = realloc(port->coilreg, (size - 1)/8 + 1);
+	if(new != NULL) {
+		port->coilsize = size;
+		port->coilreg = new;
+	}
+	bzero(port->coilreg, (size - 1)/8 + 1);
+	mb_mutex_unlock(port, &port->coil_mutex);
+	return new;
 }
 
 u_int16_t *
 mb_alloc_discrete(mb_port *port, unsigned int size)
 {
-    port->discreg = malloc((size - 1)/8 + 1);
-    if(port->discreg != NULL) port->discsize = size;
-    return port->discreg;    
+	void *new;
+	
+	mb_mutex_lock(port, &port->disc_mutex);	
+	new = realloc(port->discreg, (size - 1)/8 + 1);
+	if(new != NULL) {
+		port->discsize = size;
+		port->discreg = new;
+	}
+	bzero(port->coilreg, (size - 1)/8 + 1);
+	mb_mutex_unlock(port, &port->disc_mutex);	
+	return new;
+}
+
+/* These functions are thread safe ways to read/write the data tables */
+int
+mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count)
+{
+	u_int16_t *reg_ptr;
+	unsigned int reg_size, word, n;
+	_mb_mutex_t *reg_mutex;
+	unsigned char bit;
+	
+	switch(regtype) {
+		case MB_REG_HOLDING:
+			reg_ptr = port->holdreg;
+			reg_size = port->holdsize;
+			reg_mutex = &port->hold_mutex;
+			break;
+		case MB_REG_INPUT:
+			reg_ptr = port->inputreg;
+			reg_size = port->inputsize;
+			reg_mutex = &port->input_mutex;
+			break;
+		case MB_REG_COIL:
+			reg_ptr = port->coilreg;
+			reg_size = port->coilsize;
+			reg_mutex = &port->coil_mutex;
+			break;
+		case MB_REG_DISC:
+			reg_ptr = port->discreg;
+			reg_size = port->discsize;			
+			reg_mutex = &port->disc_mutex;
+			break;
+		default:
+			return MB_ERR_BAD_ARG;
+	}
+	if((index + count) > reg_size) {
+		return MB_ERR_OVERFLOW;
+	}
+	mb_mutex_lock(port, reg_mutex);
+	switch(regtype) {
+		case MB_REG_HOLDING:
+		case MB_REG_INPUT:
+			memcpy(&(reg_ptr[index]), buff, count * 2);
+			break;
+		case MB_REG_COIL:
+		case MB_REG_DISC:
+			word = index / 16;
+			bit = index % 16;
+			for(n = 0; n < count; n++) {
+				if((0x01 << (n % 16)) & buff[n/16] ) {
+					reg_ptr[word] |= (0x01 << bit);			
+				} else {
+					reg_ptr[word] &= ~(0x01 << bit);
+				}
+				bit ++;
+				if(bit == 16) {
+					bit = 0;
+					word++;
+				}
+			}
+			break;
+	}
+	mb_mutex_unlock(port, reg_mutex);
+	return 0;
+}
+
+int
+mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count)
+{
+	return 0;
 }
 
 
@@ -456,16 +566,28 @@ mb_alloc_discrete(mb_port *port, unsigned int size)
  * that are actually being sent by the modbus functions. */
 /* TODO: I know better than to have callbacks without user data */
 void
-mb_set_msgout_callback(mb_port *mp, void (*outfunc)(mb_port *,u_int8_t *,unsigned int))
+mb_set_msgout_callback(mb_port *mp, void (*outfunc)(mb_port *port, u_int8_t *buff, unsigned int size))
 {
     mp->out_callback = outfunc;
 }
 
 /* The msgin callback receives the bytes that are coming in from the port */
 void
-mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *,u_int8_t *,unsigned int))
+mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,u_int8_t *buff, unsigned int size))
 {
     mp->in_callback = infunc;
+}
+
+void
+mb_set_slave_request_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size))
+{
+	mp->slave_request = infunc;
+}
+
+void
+mb_set_userdata_free_callback(mb_port *mp, void (*infunc)(struct mb_port *port, void *userdata))
+{
+	mp->userdata_free = infunc;
 }
 
 
@@ -560,6 +682,13 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
                                                   mc->length);
             mc = mc->next;
         }
+    }
+    if(mp->type == MB_SLAVE) {
+    	fprintf(fd, "Slave ID: %d\n", mp->slaveid);
+    	fprintf(fd, "Coils: %d\n", mp->coilsize);
+    	fprintf(fd, "Discrete Inputs: %d\n", mp->discsize);
+    	fprintf(fd, "Holding Registers: %d\n", mp->holdsize);
+    	fprintf(fd, "Input Registers: %d\n", mp->holdsize);
     }
     fprintf(fd, "\n");
 }

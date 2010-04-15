@@ -57,13 +57,17 @@
 #define MB_ERR_PORTFAIL   -11     /* Major Port Failure */
 #define MB_ERR_RECV_FAIL  -12     /* Recieve Failure */
 #define MB_ERR_NO_SOCKET  -13     /* The socket does not exist */
+#define MB_ERR_BAD_ARG    -14     /* Bad Argument */
+#define MB_ERR_STOPPED    -15     /* Port was stopped externally */
+#define MB_ERR_OVERFLOW   -16     /* Buffer Overflow */
 
 /* Modbus Errors */
-#define ME_EXCEPTION      0x80;
-#define ME_WRONG_DEVICE   1;
-#define ME_WRONG_FUNCTION 2;
-#define ME_CHECKSUM       4;
-#define ME_TIMEOUT        8;
+#define ME_EXCEPTION      0x80
+#define ME_WRONG_FUNCTION 1
+#define ME_BAD_ADDRESS    2
+#define ME_WRONG_DEVICE   3
+#define ME_CHECKSUM       4
+#define ME_TIMEOUT        8
 
 /* Command Methods */
 #define	MB_DISABLE     0
@@ -71,6 +75,11 @@
 #define	MB_ONCHANGE    2
 //--#define MB_TRIGGER     3
 
+/* Port Attribute Flags */
+#define MB_FLAGS_STOP_LOOP    0x01
+#define MB_FLAGS_THREAD_SAFE  0x02
+
+/* Register Identifications */
 #define MB_REG_HOLDING 1
 #define MB_REG_INPUT   2
 #define MB_REG_COIL    3
@@ -80,7 +89,7 @@ typedef struct mb_port mb_port;
 typedef struct mb_cmd  mb_cmd;
 
 /* Create a New Modbus Port with the given name */
-mb_port *mb_new_port(const char *name);
+mb_port *mb_new_port(const char *name, unsigned int flags);
 /* Frees the memory allocated with mb_new_port() */
 void mb_destroy_port(mb_port *port);
 /* Port Configuration Functions */
@@ -93,6 +102,21 @@ u_int16_t *mb_alloc_holdreg(mb_port *port, unsigned int size);
 u_int16_t *mb_alloc_inputreg(mb_port *port, unsigned int size);
 u_int16_t *mb_alloc_coil(mb_port *port, unsigned int size);
 u_int16_t *mb_alloc_discrete(mb_port *port, unsigned int size);
+
+/* These functions are thread safe ways to read/write the slave data tables */
+int mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count);
+int mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count);
+
+// I might make these a macro for the above
+//int mb_write_coil(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
+//int mb_write_inputreg(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
+//int mb_write_coil(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
+//int mb_write_discrete(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
+//int mb_read_holdreg(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
+//int mb_read_inputreg(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
+//int mb_read_coil(mb_port *port, u_int8_t *buff, u_int16_t index, u_int16_t count);
+//int mb_read_discrete(mb_port *port, u_int8_t *buff, u_int16_t index, u_int16_t count);
+
 
 int mb_set_frame_time(mb_port *port, int frame);
 int mb_set_delay_time(mb_port *port, int delay);

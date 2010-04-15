@@ -171,7 +171,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     
     lua_getfield(L, -2, "holdsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    //--result = mb_set_holdsize(p, size);
+    /* Need to check for NULL pointer return here */
+    mb_alloc_holdreg(p, size);
     lua_pop(L, 2);
     if(result) return result;
     
@@ -244,7 +245,7 @@ _add_port(lua_State *L)
     lua_getfield(L, -1, "name");
     name = (char *)lua_tostring(L, -1);
     
-    config.ports[config.portcount] = mb_new_port(name);
+    config.ports[config.portcount] = mb_new_port(name, MB_FLAGS_THREAD_SAFE);
     /* Assign the pointer to p to make things simpler */
     p = config.ports[config.portcount];
     if(p == NULL) {
