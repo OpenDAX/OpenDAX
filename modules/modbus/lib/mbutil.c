@@ -20,11 +20,10 @@
 
 #include <stdarg.h>
 
-#include <modbus.h>
-#include <mblib.h>
 #define _XOPEN_SOURCE
 #include <unistd.h>
 #undef _XOPEN_SOURCE
+#include <mblib.h>
 
 
 /* CRC table straight from the modbus spec */

@@ -43,6 +43,9 @@
 #endif
 #ifdef HAVE_SYS_SELECT_H
  #include <sys/select.h>
+ #ifndef FD_COPY
+  #define FD_COPY(f, t) (void)(*(t) = *(f))
+ #endif
 #endif
 
 #include <unistd.h>
