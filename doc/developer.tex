@@ -12,21 +12,44 @@
 \setlength\parskip{10pt}
 \setcounter{secnumdepth}{3}
 
+\makeatletter
+\def\thickhrulefill{\leavevmode \leaders \hrule height 1pt\hfill \kern \z@}
+\renewcommand{\maketitle}{\begin{titlepage}%
+    \let\footnotesize\small
+    \let\footnoterule\relax
+    \parindent \z@
+    \reset@font
+    \null\vfil
+    \begin{flushleft}
+      \huge \@title
+    \end{flushleft}
+    \par
+    \hrule height 1pt
+    \par
+    \begin{flushright}
+      \LARGE \@author \par
+    \end{flushright}
+    \vskip 60\p@
+    \vfil\null
+  \end{titlepage}%
+  \setcounter{footnote}{0}%
+}
+
+\makeatother
+
 \title{OpenDAX Developer's Manual}
 \date{July 15, 2008}
 \author{Phil Birkelbach}
 
 
 \begin{document}
-\begin{titlepage}
 \maketitle
-
 \begin{flushleft}
 Copyright \textcopyright 2008 - Phil Birkelbach\linebreak
 All Rights Reserved
+
 \end{flushleft}
 
-\end{titlepage}
 \tableofcontents
 \newpage
 
@@ -35,15 +58,10 @@ OpenDAX is an open source, modular, data acquisition and control system. It is l
 
 This document a tutorial for a new developer to learn how to develop modules for OpenDAX as well as a reference for experienced module developers.
 
-
-
-%----Don't know why I have this paragraph.
-%What do we mean by OpenDAX application?  Well, it would be the OpenDAX system as a whole.  It could be something as simple as home automation system that has an %Insteon\textregistered module to control the lights with a couple of graphics showing the floorplan of the house.  It could also be something as complex as a plant %control system with thousands of end devices.  It could be anything in between and may even be something that we haven't thought of yet.  That's the beauty of a %modular system, it leaves the application developer free to be creative.
-
 \section{OpenDAX Basics}
 Before we get started, it would be good to discuss how OpenDAX works.  OpenDAX is made up of three main parts, the server, the libary and the modules.
 
-The OpenDAX server is the heart and soul of the OpenDAX system.  It sits at the center of the OpenDAX universe and coordinates all of the data and communication of the system.  The libdax library is abstracts the communication interface to the modules and the modules are where all the work is done.
+The OpenDAX server is the heart and soul of the OpenDAX system.  It sits at the center of the OpenDAX universe and coordinates all of the data and communications of the system.  The libdax library abstracts the communication interface to the modules and the modules are where all the work is done.
 
 If the server is the heart and soal of the OpenDAX application then modules are the arms and legs.  Modules do all of the work.  They are separate processes that may or may not be started by the server at run time.  Modern operating systems do a great job of managing processes and the OpenDAX developers didn't see any need to reinvent that wheel.  
 
@@ -55,7 +73,7 @@ The exact nature of the communication is subject to change at this point so I wo
 
 At some point in the future we hope to implement some server-to-server communication that might facilitate redundancy or an even better ability to distribute the system.  Right now there is only one server in any application and all the modules communicate to that single server.  Each module can only communicate to one server at this point but that should change soon.
 
-Modules can be started by the OpenDAX server or by any other means that the operating system has for starting processes (i.e. shell prompt, scripts etc).  If the module is to be started by the server there are a few advantages.  First the server will know if the module dies for some reason because the operating system will send it a signal.  This allows the server to restart the module or alert the user that a part of the system is down.  Another advantage to having the module be a child process of the server is that the server would have access to the stdin, stdout and stderr file descriptors and could redirect the I/O from the module in interesting ways.  This feature allows programs that were never meant to be OpenDAX modules to be used with and controlled by OpenDAX.  This feature isn't fully implemented yet but it should be very soon.
+Modules can be started by the OpenDAX server or by any other means that the operating system has for starting processes (i.e. shell prompt, scripts etc).  If the module is to be started by the server there are a few advantages.  First the server will know if the module dies for some reason because the operating system will send it a signal.  This allows the server to restart the module or alert the user that a part of the system is down.  Another advantage of having the module be a child process of the server is that the server would have access to the stdin, stdout and stderr file descriptors and could redirect the I/O from the module in interesting ways.  This feature allows programs that were never meant to be OpenDAX modules to be used with and controlled by OpenDAX.  This feature isn't fully implemented yet but it should be very soon.
 
 The server contains the tag database.  A tag is the atomic unit of data in the system.  These tags are analogous to variables in a programming language.  There are many different data types in OpenDAX and the user or module programmer can create compound datatypes that are collections of other types.  Compound data types are similar to a structure in C.  We will discuss compound data types later in this text.
 
@@ -79,6 +97,7 @@ Theoretically any C compiler can be used to build modules for OpenDAX, but we ha
 At some point we intend to include Lua and Python bindings for the libdax library so that modules can be written in those two languages.  The Lua bindings will come first because that language is already integrated into most of OpenDAX's workings, so most of that code is already written.  It just needs to be organized and separated into it's own library for use in the Lua bindings.  Python should prove to be a fairly simple translation of the Lua code once that day comes.
 
 \chapter{Module Configuration}
+The first thing that the module code should do is read it's configuration.  It is important to note that the module will have to read some configuration even if the module itself doesn't have any configurable options.  This is because the libdax library will need some configuration information to help it know how to communicate with the server.
 
 There are three methods for the module to recieve configuration information.  The main \textit{opendax.conf} contains configuration information for the server as well as any configuration that is common to all the modules on the local host machine.  Each module may have it's own configuration file that can be read and each module can receive configuration information passed as command line arguments.
 

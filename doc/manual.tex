@@ -12,6 +12,31 @@
 \setlength\parskip{10pt}
 \setcounter{secnumdepth}{3}
 
+\makeatletter
+\def\thickhrulefill{\leavevmode \leaders \hrule height 1pt\hfill \kern \z@}
+\renewcommand{\maketitle}{\begin{titlepage}%
+    \let\footnotesize\small
+    \let\footnoterule\relax
+    \parindent \z@
+    \reset@font
+    \null\vfil
+    \begin{flushleft}
+      \huge \@title
+    \end{flushleft}
+    \par
+    \hrule height 1pt
+    \par
+    \begin{flushright}
+      \LARGE \@author \par
+    \end{flushright}
+    \vskip 60\p@
+    \vfil\null
+  \end{titlepage}%
+  \setcounter{footnote}{0}%
+}
+
+\makeatother
+
 
 \title{OpenDAX User Manual}
 \date{June 13, 2008}
@@ -31,7 +56,7 @@ All Rights Reserved
 \tableofcontents
 \newpage
 
-\chapter*{Introduction}
+\chapter{Introduction}
 OpenDAX is an open source, modular, data acquisition and control system. It is licensed under the GPL (GNU Public License) and therefore is completely free to use and modify. OpenDAX is written primarily for Free operating systems like Linux, BSD and Darwin (Mac OS X). We are making every effort to make the code as portable as possible but these are the big three that we will do development on.
 
 OpenDAX could be used for anything from controlling the air conditioner in a home to controlling an entire industrial facility. Depending on what modules are installed and run it could be used as the firmware for a dedicated Programable Logic Controller (PLC) or a Home Automation system. It could loosely be compared to DCS (Distributed Control System) or a SCADA (Supervisory Control and Data Acquisition) system. Eventually the system would be able to scale up to a several hundred thousand tag system. At this moment the code is far to immature to be used for anything that required reliability but we hope to get it to that point sooner or later. Much will depend on how many developers take up the challenge to help work on the code.
@@ -43,6 +68,8 @@ The server is also reponsible for starting, stopping and managing the modules.  
 The modules do all the work and communicate with the opendax server through the libdax library. There will be modules for reading and writing to I/O points, data logging, alarming, machine interface, and logic. It will even be possible to use programs that were never written to be OpenDAX modules. These programs can be started from the OpenDAX process and have their STDIN and STDOUT piped to other modules so that they can be controlled. This will keep the OpenDAX system from having to reinvent the wheel if there is an existing program to do the work. Some examples might be using 'dc' for abitrary precision math, or mpg123 as a tone generator. Any program that you can interact with from the command line should work with OpenDAX as a module. 
 
 \chapter{Getting Started}
+\section{Installation}
+
 First, download OpenDAX. See the download page for details on how to get the source code.
 
 If you get the source code from the Subversion repository you will probably have to run the bootstrap.sh file in the root directory of the package to set up autoconf and automake. Otherwise you should be able to simply run...
@@ -63,8 +90,8 @@ One of the problems with the lua libraries is that different distributions will 
 Configure will look for libraries in the ld search path with these names, liblua, liblua51 and liblua5.1. If your distribution has another name for the libraries please let us know.
 
 Configure will look for the header files, lua.h, luaxlib.h and lualib.h in the directories lua/ lua51/, lua5.1/ and in the normal include directories. If it doesn't find any of these there will likely be compile time errors, when building lua.
-OS Specific Notes
-\section{Mac OS X}
+
+\subsection{Mac OS X}
 Download the source code file from www.lua.org and uncompress the file somewhere on your hard disk. At the time of this writing the lastet version was 5.1.2.
 \begin{verbatim}
     % tar -xzvf lua-5.1.2.tar.gz
@@ -80,16 +107,40 @@ Then it's a simple matter of...
 This is the easiest way that i have found to satisfy the Lua library requirements on OS X. This statically links the library but it's tiny so that shouldn't be too much of an issue. This is good enough for development at this point.
 
 The readline library should already be installed with OS X and shouldn't cause a problem.
-\section{Ubuntu Linux}
+\subsection{Ubuntu Linux}
 
 Install the following packages...
 \begin{verbatim}
     % sudo apt-get install liblua5.1-0-dev lua5.1 lua5.1-doc
 \end{verbatim}
 Lua depends on libreadline as well so once these packages are installed all of the OpenDAX dependencies should be met. This was last tried on Ubuntu 7.10.
-\section{FreeBSD}
+\subsection{FreeBSD}
 
 I've had trouble getting the Lua dependencies met with FreeBSD. I can get the libraries installed and configure finds them but the linker doesn't find them when make is run for some reason. I don't know that much about FreeBSD and frankly I don't use it so I had little motivation to work out the problems. I'd love it if someone could figure it out and drop me a line so that I can include those notes here. 
+
+\section{Configuration and Testing}
+
+Once you get OpenDAX installed on the system it might be a good idea to run the test module.  First we will have to get the server running.  Go to the configuration directory \footnote{On most systems this will be \texttt{/usr/local/etc/opendax}} and copy all of the *.conf.sample files to *.conf.\footnote{At some point in the future I hope that this task will be automated by the installation script but right now I don't want to spend the time on it.}   These are the configuration files.  The primary configuration file is opendax.conf.  This file configures the OpenDAX server as well as some defaults for all modules.
+
+Many of the individual modules will have their own configuration file as well.  Some may have many different configuration files.  Each configuration file is a Lua script.  In the simplest form the configuration file would simply be a list of assignment pairs. Like this...
+\begin{verbatim}
+daemonize = false
+statustag = "_status"
+pidfile = "/var/run/opendax.pid"
+... 
+\end{verbatim}
+
+These are just examples of the kind of information that you can find in a configuration file.  Since the OpenDAX configuration engine is based on the Lua programming language you can get very creative with how these configurations are generated.  We'll cover much more of the available configuration options later in the book when we start describing individual features.  For now the defaults that are included in the sample configurations should be sufficient for our needs.
+
+Once the configuration files are in place you should be able to run the server by typing \texttt{opendax} at the command prompt.  By default the server will send itself to the background and if everything works you should simply get a number printed to the screen indicating the PID of the server's process.
+
+To test the server installation you should run the \textit{daxtest} module.  This module should be located in the build tree where you compiled the program.  If extracted and compiled from your user directory it would be in \texttt{~/opendax.x.y/modules/test}.  Simply run the \texttt{daxtest} executable.  The module will print many messages to the screen depending on configuration and what tests are being run.  Once complete you should get a message that indicates how many tests were run and how many failed.  Hopefully the number of tests that fail is zero.
+
+Since OpenDAX is not very mature at this point please let the developers know of any tests that failed.  The \textit{opendax-devel} mailing list is the best place.
+
+At this point you may want to play around with the \textit{daxc} command line client module.  This is a command line interface to the server.  Run the module by typing \texttt{daxc} at the command line.  You'll be presented with the OpenDAX Daxc command interpreter.  Start with the help command and play.  For more information see the daxc references later in this book.
+
+Now, you should be able to start configuring your system.  You may want to restart the server, since the testing module creates thousands of tags that you will probably not want as part of your system.  Before you do that however, y
 
 \chapter{The OpenDAX Server}
 
