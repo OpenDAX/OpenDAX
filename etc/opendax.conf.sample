@@ -13,7 +13,7 @@ verbosity = 10
 daxroot = "/home/opendax/"
 
 --We only run this part when it's the server configuration call
-if opendax_server then
+if calling_module == "opendax" then
 
     m = {}
     

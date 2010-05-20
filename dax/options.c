@@ -193,8 +193,8 @@ readconfigfile(void)
     
     luaopen_base(L);
     
-    lua_pushboolean(L, 1);
-    lua_setglobal(L, "opendax_server");
+    lua_pushstring(L, "opendax");
+    lua_setglobal(L, CONFIG_GLOBALNAME);
     
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {

@@ -99,6 +99,8 @@ struct dax_message{
     int fd;             /* We'll use the fd to identify the module*/
 };
 
+#define CONFIG_GLOBALNAME "calling_module"
+
 typedef struct dax_message dax_message;
 
 #endif /* ! __LIBCOMMON_H */
