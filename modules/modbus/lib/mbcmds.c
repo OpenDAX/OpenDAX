@@ -114,7 +114,7 @@ int
 mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_int16_t length)
 {
     u_int8_t *newdata;
-    int newsize;
+    int newsize = 0;
     
     cmd->node = node;
     switch(function) {

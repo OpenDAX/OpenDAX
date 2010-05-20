@@ -10,27 +10,29 @@ verbosity = 10
 
 --pidfile = "/var/run/opendax.pid"
 
---daxroot = "/Users/phil/svn/opendax/branches/0.2/"
-daxroot = "/home/phil/opendax/branches/0.2/"
+daxroot = "/home/opendax/"
 
-m = {}
+--We only run this part when it's the server configuration call
+if opendax_server then
 
-m.startup   = 1
-m.restart   = false
-m.openpipes = false
+    m = {}
+    
+    m.startup   = 1
+    m.restart   = false
+    m.openpipes = false
+    
+    --This is the regression test module.
+    m.name      = "test"
+    m.path      = daxroot.."modules/test/daxtest"
+    
+    --add_module(m)
+    
+    
+    --This is an example of setting up the modbus module
+    m.name      = "modbus"
+    m.path      = daxroot.."modules/modbus/modbus"
+    m.args      = "-C " .. daxroot .. "etc/modbus.conf"
+    
+    --add_module(m)
 
-
---This is the regression test module.
-m.name      = "test"
-m.path      = daxroot.."modules/test/daxtest"
-
---add_module(m)
-
-
---This is an example of setting up the modbus module
-m.name      = "modbus"
-m.path      = daxroot.."modules/modbus/modbus"
-m.args      = "-C " .. daxroot .. "etc/modbus.conf"
-
---add_module(m)
-
+end

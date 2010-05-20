@@ -162,6 +162,7 @@ struct mb_port {
     _mb_mutex_t input_mutex;
     _mb_mutex_t coil_mutex;
     _mb_mutex_t disc_mutex;
+    _mb_mutex_t ctrl_mutex;  /* used to lock control bits */
 #endif    
     fd_set fdset;
     int maxfd;
@@ -169,6 +170,7 @@ struct mb_port {
     
     struct mb_cmd *commands;  /* Linked list of Modbus commands */
     int fd;                   /* File descriptor to the port */
+    int ctrl_flags;
     int dienow;
     unsigned int attempt;        /* Attempt counter */
     unsigned char running;       /* Flag to indicate the port is running */

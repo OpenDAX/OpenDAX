@@ -568,38 +568,23 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
     return 0;
 }
 
-/* Adds an event for the given tag.  The count is how many of those
-   tags the event should effect. */
-/* TODO: The count is not actually implemented yet. */
+
 int
-dax_event_add(dax_state *ds, char *tagname, int count)
+dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data)
 {
-    /*
-    dax_tag tag;
-    dax_event_message msg;
-    int result, test;
-    int size;
-    
-    result = dax_tag_byname(tagname, &tag);
-    if(result) {
-        return result;
-    }
-    
-    msg.idx = tag.idx;
-    if(tag.type == DAX_BOOL) {
-        msg.size = tag.count;
-    } else {
-        msg.size = TYPESIZE(tag.type) / 8 * tag.count;
-    }
-    
-    if(_message_send(ds, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
-        return ERR_MSG_SEND;
-    } else {
-        test = _message_recv(ds, MSG_EVNT_ADD, &result, &size, 1);
-        if(test) return test;
-    }       
-    return result;
-    */
+//    int result, test;
+//    int size;
+//    
+//    
+//    
+//    if(_message_send(ds, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
+//        return ERR_MSG_SEND;
+//    } else {
+//        test = _message_recv(ds, MSG_EVNT_ADD, &result, &size, 1);
+//        if(test) return test;
+//    }       
+//    return result;
+//    */
     return 0;
 }
 

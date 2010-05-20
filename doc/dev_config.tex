@@ -1,4 +1,4 @@
-\chapter{Module Configuration}
+\chapter{Configuration and Initialization}
 The first thing that the module code should do is read it's configuration.  It is important to note that the module will have to read some configuration even if the module itself does not have any configurable options.  This is because the libdax library will need some configuration information to help it know how to communicate with the server.
 
 There are three methods for the module to receive configuration information.  The main \textit{opendax.conf} contains configuration information for the server as well as any configuration that is common to all the modules on the local host machine.  Each module may have it's own configuration file that can be read and each module can receive configuration information passed as command line arguments.
@@ -169,3 +169,18 @@ int dax_free_config(dax_state *ds)
 This function simply takes a pointer to the \verb|dax_state| object and frees the data associated with the configuration.  There are a lot of strings that are maintained by the configuration system in the library and this is nothing more than a way to free up that memory.  If your module will need access to these configuration options and you don't want to make copies then you do not need to call this function.
 
 After calling this function any strings that you received from \verb|dax_get_attr()| will no longer be valid, so you don't want to reference those pointers any longer.
+
+\section{Module Registration}
+Before the server will communicate to the module, the module will need to register with the server.
+
+There are two functions that deal with module registration.
+\begin{verbatim}
+int dax_mod_register(dax_state *ds, char *name)
+int dax_mod_unregister(dax_state *ds)
+\end{verbatim}
+
+The \verb|dax_mod_register()| function\index{dax\_mod\_register() function} makes the initial connection to the server, identifies the module to the server and takes care of any other initialization issues that need to be handled.  Once the module has successfully been registered it can begin doing it's job.
+
+The \emph{name} argument is the name that the server will use to identify this module.  Module names must be unique.  \verb|dax_mod_register()| returns 0 on success and an error code on failure.
+
+The \verb|dax_mod_unregister()| function\index{dax\_mod\_unregister() function} informs the server that we are through and closes the connection.  It is a bad idea to let a module die without first calling \verb|dax_mod_unregister()|.

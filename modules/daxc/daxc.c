@@ -48,7 +48,7 @@ int main(int argc,char *argv[]) {
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
     
-    ds = dax_init("daxlua");
+    ds = dax_init("daxc");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
         return ERR_ALLOC;

@@ -193,6 +193,9 @@ readconfigfile(void)
     
     luaopen_base(L);
     
+    lua_pushboolean(L, 1);
+    lua_setglobal(L, "opendax_server");
+    
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
         xerror("Problem executing configuration file - %s", lua_tostring(L, -1));

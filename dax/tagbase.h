@@ -72,7 +72,7 @@ typedef struct dax_event_t {
     int id;
     tag_index idx;
     size_t size;
-    u_int32_t checksum;
+    void *data;
     struct mod_list *notify;
     struct dax_event_t *next;
 } _dax_event;

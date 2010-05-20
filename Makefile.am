@@ -12,7 +12,8 @@ EXTRA_DIST = common.h \
 			 modules/test/daxtest.lua \
 			 modules/test/tests/* \
 			 modules/daxlua/*.lua \
-			 etc/*.conf.sample 
+			 etc/*.conf.sample \
+			 doc/*.tex
 
 include_HEADERS = opendax.h
 

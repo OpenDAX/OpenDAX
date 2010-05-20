@@ -404,7 +404,7 @@ msg_tag_add(dax_message *msg)
     type = *((u_int32_t *)&msg->data[0]);
     count = *((u_int32_t *)&msg->data[4]);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[8], msg->fd, type, count);
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[8], msg->fd, type, count);
     
     idx = tag_add(&msg->data[8], type, count);
     
@@ -420,7 +420,7 @@ msg_tag_add(dax_message *msg)
 int
 msg_tag_del(dax_message *msg)
 {
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Delete Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Delete Message from %d", msg->fd);
     return 0;
 }
 
@@ -436,12 +436,12 @@ msg_tag_get(dax_message *msg)
     if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
         index = *((tag_index *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
         result = tag_get_index(index, &tag); /* get the tag */
-        xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for index 0x%X", msg->fd, index);
+        xlog(LOG_MSG | LOG_VERBOSE, "Tag Get Message from %d for index 0x%X", msg->fd, index);
     } else { /* A name was passed */
         ((char *)msg->data)[DAX_TAGNAME_SIZE + 1] = 0x00; /* Add a NULL to avoid trouble */
         /* Get the tag by it's name */
         result = tag_get_name((char *)&msg->data[1], &tag);
-        xlog(LOG_MSG | LOG_OBSCURE, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
+        xlog(LOG_MSG | LOG_VERBOSE, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
     }
     size = strlen(tag.name) + 13;
     buff = alloca(size);
@@ -452,7 +452,7 @@ msg_tag_get(dax_message *msg)
         *((u_int32_t *)&buff[8]) = tag.count;
         strcpy(&buff[12], tag.name);
         _message_send(msg->fd, MSG_TAG_GET, buff, size, RESPONSE);
-        xlog(LOG_MSG | LOG_OBSCURE, "Returning tag - '%s':0x%X to module %d",tag.name, tag.idx, msg->fd);
+        xlog(LOG_MSG | LOG_VERBOSE, "Returning tag - '%s':0x%X to module %d",tag.name, tag.idx, msg->fd);
     } else {
         _message_send(msg->fd, MSG_TAG_GET, &result, sizeof(result), ERROR);
         xlog(LOG_MSG, "Bad tag query for MSG_TAG_GET");
@@ -463,7 +463,7 @@ msg_tag_get(dax_message *msg)
 int
 msg_tag_list(dax_message *msg)
 {
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag List Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag List Message from %d", msg->fd);
     return 0;
 }
 
@@ -482,7 +482,7 @@ msg_tag_read(dax_message *msg)
     offset = *((int *)&msg->data[4]);
     size = *((int *)&msg->data[8]);
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, index, offset, size);
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, index, offset, size);
     
     result = tag_read(index, offset, &data, size);
     if(result) {
@@ -507,7 +507,7 @@ msg_tag_write(dax_message *msg)
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
 
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
 
     result = tag_write(handle, offset, data, size);
     if(result) {
@@ -534,7 +534,7 @@ msg_tag_mask_write(dax_message *msg)
     data = &msg->data[8];
     mask = &msg->data[8 + size];
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
     
     result = tag_mask_write(handle, offset, data, mask, size);
     if(result) {
@@ -550,7 +550,7 @@ msg_tag_mask_write(dax_message *msg)
 int
 msg_mod_get(dax_message *msg)
 {
-    xlog(LOG_MSG | LOG_OBSCURE, "Get Module Handle Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_VERBOSE, "Get Module Handle Message from %d", msg->fd);
     return 0;
 }
 
@@ -600,7 +600,7 @@ msg_cdt_create(dax_message *msg)
     
     msg->data[MSG_DATA_SIZE-1] = '\0'; /* Just to be safe */
     type = cdt_create(msg->data, &result);
-    xlog(LOG_MSG | LOG_OBSCURE, "Create CDT message name = '%s' type = 0x%X", msg->data, type);
+    xlog(LOG_MSG | LOG_VERBOSE, "Create CDT message name = '%s' type = 0x%X", msg->data, type);
     
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_CDT_CREATE, &result, sizeof(int), ERROR);    
@@ -624,12 +624,12 @@ msg_cdt_get(dax_message *msg)
     subcommand = msg->data[0];
     if(subcommand == CDT_GET_TYPE) {
         cdt_type = *((tag_type *)&msg->data[1]);
-        xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type 0x%X Message from Module %d", cdt_type, msg->fd);
+        xlog(LOG_MSG | LOG_VERBOSE, "CDT Get for type 0x%X Message from Module %d", cdt_type, msg->fd);
     } else {
         strncpy(type, &msg->data[1], DAX_TAGNAME_SIZE);
         type[DAX_TAGNAME_SIZE] = '\0';  /* Just to be sure */
         cdt_type = cdt_get_type(type);
-        xlog(LOG_MSG | LOG_OBSCURE, "CDT Get for type %s Message from Module %d", type, msg->fd);
+        xlog(LOG_MSG | LOG_VERBOSE, "CDT Get for type %s Message from Module %d", type, msg->fd);
     }
     
     size = serialize_datatype(cdt_type, &str);

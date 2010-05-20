@@ -67,7 +67,7 @@
 #define LOG_MSGERR  0x00000020  /* Errors returned to Modules */
 #define LOG_CONFIG  0x00000040  /* Configurations */
 #define LOG_MODULE  0x00000080  /* Module Milestones */
-#define LOG_OBSCURE 0x80000000  /* Used to increase the verbosity of the other topics */
+#define LOG_VERBOSE 0x80000000  /* Used to increase the verbosity of the other topics */
 
 /* Macro to get the size of the datatype */
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
@@ -96,14 +96,24 @@
 #define ERR_BADTYPE   -21 /* Bad Datatype */
 
 /* Module configuration flags */
-#define CFG_ARG_NONE 		0x00 /* No Arguments */
-#define CFG_ARG_OPTIONAL	0x01 /* Argument is optional */
-#define CFG_ARG_REQUIRED	0x02 /* Argument is required */
-#define CFG_CMDLINE			0x04 /* Command line */
-#define CFG_DAXCONF			0x08 /* opendax.conf file */
-#define CFG_MODCONF		    0x10 /* [module].conf file */
+#define CFG_ARG_NONE        0x00 /* No Arguments */
+#define CFG_ARG_OPTIONAL    0x01 /* Argument is optional */
+#define CFG_ARG_REQUIRED    0x02 /* Argument is required */
+#define CFG_CMDLINE         0x04 /* Command line */
+#define CFG_DAXCONF         0x08 /* opendax.conf file */
+#define CFG_MODCONF         0x10 /* [module].conf file */
 #define CFG_NO_VALUE        0x20 /* Don't store a value, only call callback */
 
+/* Event Types */
+#define EVNT_READ     0x01 /* Called before a tag is read - Not implemented */
+#define EVNT_WRITE    0x02 /* When a tag is written whether or not it has changed */
+#define EVNT_CHANGE   0x03 /* When a change to the tags value has changed */
+#define EVNT_SET      0x04 /* Bit set to 1*/
+#define EVNT_RESET    0x05 /* Bit cleared to 0*/
+#define EVNT_EQUAL    0x06 /* Equal to */
+#define EVNT_GREATER  0x07 /* Greater Than */
+#define EVNT_LESS     0x08 /* Less Than */
+#define EVNT_DEADBAD  0x09 /* Changed by X amount since last event */
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
@@ -192,7 +202,7 @@ void dax_log(dax_state *ds, const char *format, ...);
 void dax_fatal(dax_state *ds, const char *format, ...);
 
 /* Only registered modules will get responses from the server */
-int dax_mod_register(dax_state *, char *);   /* Registers the Module with the server */
+int dax_mod_register(dax_state *ds, char *name);   /* Registers the Module with the server */
 int dax_mod_unregister(dax_state *ds);       /* Unregister the Module with the server */
 
 /* Adds a tag to the opendax server database. */
@@ -232,7 +242,7 @@ int dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, s
  * data formatting necessary to read / write the tag to the server.  These
  * functions actually end up calling the above untyped functions.  The
  * caller must take care to allocate enough space in *data so that the
- * read function doesn't overflow the buffer an that the write functions
+ * read function doesn't overflow the buffer and that the write functions
  * don't try to dereference memory that is not allocated. */
 
 /* idx is the index of the tag that was returned by dax_tag_add() or
@@ -246,7 +256,7 @@ int dax_write_tag(dax_state *ds, Handle handle, void *data);
 int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 
 /* Event control functions */
-int dax_event_add(dax_state *ds, char *tag, int count);
+int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data);
 int dax_event_del(dax_state *ds, int id);
 int dax_event_get(dax_state *ds, int id);
 

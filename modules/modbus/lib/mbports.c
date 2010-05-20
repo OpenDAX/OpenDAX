@@ -167,7 +167,7 @@ openport(mb_port *m_port)
 static int
 openIPport(mb_port *mp)
 {
-    int fd;
+    int fd = 0;
     struct sockaddr_in addr;
     int result;
     

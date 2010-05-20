@@ -338,11 +338,14 @@ _get_lua_globals(dax_state *ds, int type) {
     return 0;
 }
 
+#define MOD_NAME_LEN 64
+
 /* This function tries to open the main configuration file,
  * typically opendax.conf and run it. */
 static inline int
 _main_config_file(dax_state *ds) {
 	int length, result = 0;
+    char mname[MOD_NAME_LEN];
 	char *cfile, *cdir;
 	lua_State *L;
 	
@@ -363,6 +366,12 @@ _main_config_file(dax_state *ds) {
     /* register the libraries that we need*/
     luaopen_base(L);
     
+    /* Create the 'opendax_modulename' boolean global and set it to 1 */
+    strlcpy(mname, "opendax_", MOD_NAME_LEN);
+    strlcat(mname, ds->modulename, MOD_NAME_LEN);
+    lua_pushboolean(ds->L, 1);
+    lua_setglobal(ds->L, mname);
+
     /* load and run the configuration file */
     if(luaL_loadfile(L, cfile)  || lua_pcall(L, 0, 0, 0)) {
         dax_error(ds, "Problem executing configuration file %s - %s", cfile, lua_tostring(L, -1));
@@ -380,8 +389,9 @@ _main_config_file(dax_state *ds) {
  * file and run it. */
 static inline int
 _mod_config_file(dax_state *ds) {
-	int length;
-	char *cfile, *cdir;
+    int length;
+    char mname[MOD_NAME_LEN];
+    char *cfile, *cdir;
 	
 	/* This gets the default configuration file name
 	 * We add 2 for the NULL character and the '/' */
@@ -401,7 +411,13 @@ _mod_config_file(dax_state *ds) {
         }
 	}
     luaopen_base(ds->L);
-	    
+    
+    /* Create the 'opendax_modulename' boolean global and set it to 1 */
+    strlcpy(mname, "opendax_", MOD_NAME_LEN);
+    strlcat(mname, ds->modulename, MOD_NAME_LEN);
+    lua_pushboolean(ds->L, 1);
+    lua_setglobal(ds->L, mname);
+
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
         dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
@@ -476,10 +492,10 @@ _verify_config(dax_state *ds)
 int
 dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {
-	if(ds->modulename == NULL) {
-		return ERR_NO_INIT;
-	}
-	if(flags & CFG_CMDLINE)
+    if(ds->modulename == NULL) {
+        return ERR_NO_INIT;
+    }
+    if(flags & CFG_CMDLINE)
 		_parse_commandline(ds, argc, argv);
 	/* This sets the confdir parameter to ETC_DIR if it
 	 * has not already been set on the command line */
@@ -491,7 +507,7 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
         _mod_config_file(ds);
     if(flags & CFG_DAXCONF)
         _main_config_file(ds);
-        
+
     _set_defaults(ds);
     //--_print_config(ds);
     return _verify_config(ds);
