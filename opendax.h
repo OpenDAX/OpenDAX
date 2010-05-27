@@ -68,6 +68,7 @@
 #define LOG_CONFIG  0x00000040  /* Configurations */
 #define LOG_MODULE  0x00000080  /* Module Milestones */
 #define LOG_VERBOSE 0x80000000  /* Used to increase the verbosity of the other topics */
+#define LOG_ALL     0xFFFFFFFF  /* Log everything */
 
 /* Macro to get the size of the datatype */
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))

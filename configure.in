@@ -128,5 +128,6 @@ AC_CONFIG_FILES([Makefile
                  modules/daxc/Makefile
                  modules/daxlua/Makefile
                  modules/test/Makefile
-                 modules/wio/Makefile])
+                 modules/wio/Makefile
+                 modules/skel/Makefile])
 AC_OUTPUT

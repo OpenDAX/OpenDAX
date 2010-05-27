@@ -42,12 +42,23 @@ These would be configured in \textit{opendax.conf}.
 
 \input{dev_api.tex}
 
-%\chapter{Skeleton Module}
-%\verbatiminput{../modules/skel/skel.c}
+\chapter{Skeleton Module}
+The Skeleton module is included in the distrubtion as a starting place for building new modules.  It includes just enough code to function as an OpenDAX module.  The code is well documented and when used with this manual it will, hopefully, make writing a new module for OpenDAX a fairly simple and straight forward process.  The Skeleton module is located in the /modules/skel subdirectory of the distribution.
+
+\section{skel.h}
+\begin{small}
+\verbatiminput{../modules/skel/skel.h}
+\end{small}
+\section{skel.c}
+\begin{small}
+\verbatiminput{../modules/skel/skel.c}
+\end{small}
 
 \input{dev_codebase.tex}
 \chapter{opendax.h Listing}
+\begin{small}
 \verbatiminput{../opendax.h}
+\end{small}
 
 %\chapter{GPL License}
 %\verbatiminput{../COPYING}
