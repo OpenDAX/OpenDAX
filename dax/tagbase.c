@@ -276,6 +276,7 @@ initialize_tagbase(void)
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
 
     /* Create the _status tag at handle zero */
+    /* TODO: Make the _status tag a cdt */
     if( (result = tag_add("_status", DAX_DWORD, STATUS_SIZE)) ) {
         xfatal("_status not created properly: Error %d", result);
     }
@@ -368,6 +369,7 @@ tag_add(char *name, tag_type type, unsigned int count)
     else
         bzero(_db[n].data, size);
 
+    _db[n].nextevent = 0;
     _db[n].events = NULL;
 
     if(_add_index(name, n)) {
@@ -922,6 +924,101 @@ type_size(tag_type type)
         size = TYPESIZE(type) / 8; /* Size in bytes */
     }
     return size;
+}
+
+static inline int
+verify_event_type(tag_type ttype, int etype)
+{
+    /* All datatypes can use Write or Change */
+    if(etype == EVENT_WRITE || etype == EVENT_CHANGE) {
+        return 0;
+    }
+    /* Only BOOL can use Set and Reset */
+    if(etype == EVENT_SET || etype == EVENT_RESET) {
+        if(ttype == DAX_BOOL) return 0;
+        else              return -1;
+    }
+    /* Booleans, Reals and Custom Datatypes Can't use Equal */
+    if(etype == EVENT_EQUAL) {
+        if(ttype == DAX_REAL || ttype == DAX_LREAL ||
+           ttype == DAX_BOOL || ttype >= DAX_CUSTOM) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+    /* At this point the only ones left are < > and deadband.  All
+     * except Booleans and Custom datatypes can use these */
+    if(ttype == DAX_BOOL || ttype >= DAX_CUSTOM) {
+        return -1;
+    } else {
+        return 0;
+    }
+    /* If we get here then we were given an unknown event type */
+    return -1;
+}
+
+/* Add the event defined.  Return the event id. 'h' is a handle to the tag
+ * data that the event is tied too.  'event_type' is the type of event (see
+ * opendax.h for #defines.  'data' is any data that may need to be
+ * passed such as values for deadband.*/
+int
+event_add(Handle h, int event_type, void *data, dax_module *module)
+{
+    _dax_event *head, *new, *this, *last;
+    
+    /* Bounds check handle */
+    if(h.index < 0 || h.index >= _tagcount) {
+        return ERR_ARG;
+    }
+    /* Bounds check size */
+    if( (h.byte + h.size) > _get_tag_size(h.index)) {
+        return ERR_2BIG;
+    }
+    if(verify_event_type(h.type, event_type)) {
+        return ERR_ARG;
+    }
+    /* If everything is okay then allocate the new event. */
+    new = xmalloc(sizeof(_dax_event));
+    if(new == NULL) {
+        xerror("event_add() - Unable to allocate new event");
+        return ERR_ALLOC;
+    }
+    new->id = _db[h.index].nextevent++;
+    new->byte = h.byte;
+    new->bit = h.bit;
+    new->size = h.size;
+    new->count = h.count;
+    new->datatype = h.type;
+    new->eventtype = event_type;
+    new->notify = module;
+    new->data = malloc(new->size);
+    if(new->data == NULL) {
+        xerror("event_add() - Unable to allocate memory for event data");
+        return ERR_ALLOC;
+    }
+    head = _db[h.index].events;
+    /* If the list is empty put it on top */
+    if(head == NULL) {
+        head = new;
+    }
+    /* Otherwise sort by byte offset */
+    this = head; last = head;
+    while(this != NULL && this->byte < new->byte) {
+        last = this;
+        this = this->next;
+    }
+    last->next = new;
+    new->next = this;
+
+    return new->id;
+}
+
+/* Not implemented yet.  I'm not quite sure what to do with this one */
+int
+event_del(int id)
+{
+    return ERR_GENERIC;
 }
 
 

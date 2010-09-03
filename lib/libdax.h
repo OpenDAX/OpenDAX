@@ -111,8 +111,8 @@ dax_int stom_int(dax_int);
 dax_uint stom_uint(dax_uint);
 
 /* 32 Bit conversion functions */
-#define mtos_word mtos_uint
-#define stom_word stom_uint
+#define mtos_dword mtos_uint
+#define stom_dword stom_uint
 #define mtos_time mtos_uint
 #define stom_time stom_uint
 
@@ -135,6 +135,11 @@ dax_lreal mtos_lreal(dax_lreal);
 dax_lint stom_lint(dax_lint);
 dax_ulint stom_ulint(dax_ulint);
 dax_lreal stom_lreal(dax_lreal);
+
+/* Generic Conversion Functions */
+int mtos_generic(tag_type type, void *dst, void *src);
+int stom_generic(tag_type type, void *dst, void *src);
+
 
 /* These functions handle the tag cache */
 int init_tag_cache(dax_state *ds);

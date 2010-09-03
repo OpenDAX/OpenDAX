@@ -59,18 +59,19 @@
 /* These are the debug logging topics.  Each debug message is
  * assigned one or more of these topics and will only be logged
  * when the corresponding bit is set in the configuration */
-#define LOG_MAJOR   0x00000001  /* Major Program Milestones */
-#define LOG_MINOR   0x00000002  /* Minor Program Milestones */
-#define LOG_FUNC    0x00000004  /* Function Entries */
-#define LOG_COMM    0x00000008  /* Communcations Milestones */
-#define LOG_MSG     0x00000010  /* Messages */
-#define LOG_MSGERR  0x00000020  /* Errors returned to Modules */
-#define LOG_CONFIG  0x00000040  /* Configurations */
-#define LOG_MODULE  0x00000080  /* Module Milestones */
+#define LOG_ERROR   0x00000001  /* Log errors - Not implemented yet */
+#define LOG_MAJOR   0x00000002  /* Major Program Milestones */
+#define LOG_MINOR   0x00000004  /* Minor Program Milestones */
+#define LOG_FUNC    0x00000008  /* Function Entries */
+#define LOG_COMM    0x00000010  /* Communcations Milestones */
+#define LOG_MSG     0x00000020  /* Messages */
+#define LOG_MSGERR  0x00000040  /* Errors returned to Modules */
+#define LOG_CONFIG  0x00000080  /* Configurations */
+#define LOG_MODULE  0x00000100  /* Module Milestones */
 #define LOG_VERBOSE 0x80000000  /* Used to increase the verbosity of the other topics */
 #define LOG_ALL     0xFFFFFFFF  /* Log everything */
 
-/* Macro to get the size of the datatype */
+/* Macro to get the size of the datatype in bits*/
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
 /* Library function errors */
@@ -106,15 +107,15 @@
 #define CFG_NO_VALUE        0x20 /* Don't store a value, only call callback */
 
 /* Event Types */
-#define EVNT_READ     0x01 /* Called before a tag is read - Not implemented */
-#define EVNT_WRITE    0x02 /* When a tag is written whether or not it has changed */
-#define EVNT_CHANGE   0x03 /* When a change to the tags value has changed */
-#define EVNT_SET      0x04 /* Bit set to 1*/
-#define EVNT_RESET    0x05 /* Bit cleared to 0*/
-#define EVNT_EQUAL    0x06 /* Equal to */
-#define EVNT_GREATER  0x07 /* Greater Than */
-#define EVNT_LESS     0x08 /* Less Than */
-#define EVNT_DEADBAD  0x09 /* Changed by X amount since last event */
+#define EVENT_READ     0x01 /* Called before a tag is read - Not implemented */
+#define EVENT_WRITE    0x02 /* When a tag is written whether or not it has changed */
+#define EVENT_CHANGE   0x03 /* When a change to the tags value has changed */
+#define EVENT_SET      0x04 /* Bit set to 1*/
+#define EVENT_RESET    0x05 /* Bit cleared to 0*/
+#define EVENT_EQUAL    0x06 /* Equal to */
+#define EVENT_GREATER  0x07 /* Greater Than */
+#define EVENT_LESS     0x08 /* Less Than */
+#define EVENT_DEADBAD  0x09 /* Changed by X amount since last event */
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
@@ -139,8 +140,8 @@ typedef int64_t    dax_lint;
 typedef u_int64_t  dax_ulint;
 typedef double     dax_lreal;
 
-typedef int tag_index;
-typedef unsigned int tag_type;
+typedef dax_dint tag_index;
+typedef dax_udint tag_type;
 
 struct Handle {
     tag_index index;     /* The Index of the Tag */
@@ -164,6 +165,15 @@ struct dax_tag {
 
 typedef struct dax_tag dax_tag;
 
+/* Identifier that is passed back and forth from modules to the server to
+ * uniquely identify an event definition in the system */
+typedef struct dax_event_id
+{
+    tag_index index;     /* The Index of the Tag */
+    int id;              /* The byte offset where the data block starts */
+} dax_event_id;
+
+/* Opaque pointer for storing a dax_state object in the library */
 typedef struct dax_state dax_state;
 
 /* These functions are for module configuration */
@@ -257,9 +267,10 @@ int dax_write_tag(dax_state *ds, Handle handle, void *data);
 int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 
 /* Event control functions */
-int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data);
+int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data, dax_event_id *id);
 int dax_event_del(dax_state *ds, int id);
 int dax_event_get(dax_state *ds, int id);
+int dax_event_modify(dax_state *ds, int id);
 
 /* Custom Datatype Functions */
 typedef struct datatype dax_cdt;

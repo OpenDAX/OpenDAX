@@ -279,6 +279,7 @@ dax_cdt_member(dax_state *ds, dax_cdt *cdt, char *name, tag_type type, unsigned 
      
     /* Duplicate Check */
     this = cdt->members;
+    last = this;
     while(this != NULL) {
         last = this;
         if(strcmp(name, this->name) == 0) return ERR_DUPL;

@@ -18,45 +18,157 @@
  *  Main source code file for the OpenDAX wireless I/O module.
  */
 
+#include <signal.h>
 #include <wio.h>
+
+
+void quit_signal(int sig);
+static void getout(int exitstatus);
+
+dax_state *ds;
+static int _quitsignal;
+
+int
+sendcommand(int fd, char *cmd)
+{
+    char str[128];
+    int len, result;
+
+    printf("Sending Command [%s]\n", cmd);
+    sprintf(str, "%s\r", cmd);
+    len = strlen(str)+1;
+    write(fd, str, len);
+    bzero(str, 128);
+    len = 0;
+    sleep(1);
+    do {
+      result = read(fd, str + len, 128);
+      len += result;
+    } while(result > 0 && len < 128);
+    printf("%d: %s\n", len, str);
+    return result;
+}
+
+int
+just_playing(int fd)
+{
+    char str[128];
+    int result, index = 0;
+    static int firsttime = 1;
+    sleep(1);
+    if(firsttime) {
+        printf("Doing First Time Stuff\n");
+        strcpy(str, "+++");
+        write(fd, str, 3);
+        sleep(2);
+        bzero(str, 128);
+        do {
+           result = read(fd, str+index, 128);
+           printf("read() returned : %d\n", result);
+           index += result;
+        } while(result > 0);
+
+        printf("%d: %s\n", index, str);
+        sleep(3);
+        sendcommand(fd, "ATD05");
+        sendcommand(fd, "ATD13");
+        sendcommand(fd, "ATD23");
+        sendcommand(fd, "ATD33");
+        sendcommand(fd, "ATD43");
+        sendcommand(fd, "ATAC");
+
+        firsttime=0;
+    }
+    sendcommand(fd, "ATIO1");
+    sendcommand(fd, "ATIO0");
+    sendcommand(fd, "ATIS");
+    return 0;
+}
 
 
 int
 main(int argc, char *argv[])
 {
     int fd;
-    char str[128];
+    struct sigaction sa;
+    int flags, result = 0;
     
-    if(argc < 2) {
-        printf("ERROR: Need to pass the device as a parameter\n");
-        return 1;
+    /* Set up the signal handlers for controlled exit*/
+    memset (&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = &quit_signal;
+    sigaction (SIGQUIT, &sa, NULL);
+    sigaction (SIGINT, &sa, NULL);
+    sigaction (SIGTERM, &sa, NULL);
+
+    /* Create and Initialize the OpenDAX library state object */
+    ds = dax_init("wio"); /* Replace 'skel' with your module name */
+    if(ds == NULL) {
+        dax_fatal(ds, "Unable to Allocate DaxState Object\n");
     }
-    fd = xbee_open_port(argv[1], B9600);
-    if(fd <= 0) {
-        printf("ERROR: Unable to open port - %s\n", argv[1]);
-        return 2;
+
+    /* Create and initialize the configuration subsystem in the library */
+    dax_init_config(ds, "wio");
+    flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
+    result += dax_add_attribute(ds, "device","device", 'd', flags, "wio");
+    //result += dax_add_attribute(ds, "event_tag","event_tag", 'e', flags, "skel_event");
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
+
+    //dax_free_config (ds);
+
+    /* Set the logging flags to show all the messages */
+    dax_set_debug_topic(ds, LOG_ALL);
+
+    /* Check for OpenDAX and register the module */
+    if( dax_mod_register(ds, "wio") ) {
+        dax_fatal(ds, "Unable to find OpenDAX");
     }
-    sleep(1);
-    strcpy(str, "+++");
-    write(fd, str, 3);
-    sleep(2);
-    read(fd, str, 3);
-    printf("%s\n", str);
     
-    strcpy(str, "ATIO1\r");
-    write(fd, str, 6);
-    sleep(1);
-    read(fd, str, 2);
-    printf("%s\n", str);
+//    result = dax_tag_add(ds, &h_full, tagname, DAX_DINT, 5);
+//    if(result) {
+//        dax_fatal(ds, "Unable to create tag - %s", tagname);
+//    }
+//    /* This function retrieves a handle for the tag.  This is simply an
+//     * example of how to retrieve a handle for a single element in the array */
+//    str = malloc(strlen(tagname) + 3);
+//    if(str == NULL) {
+//        dax_fatal(ds, "Unable to allocate memory");
+//    }
+//    strcpy(str, tagname);
+//    str = strcat(str, "[2]");
+//
+//    /* At this point str should be 'tagname[2]\0' */
+//    result = dax_tag_handle(ds, &h_part, str, 1);
+//    if(result) {
+//        dax_fatal(ds, "Unable to retrive Handle for tag - %s", tagname);
+//    }
+    fd = xbee_open_port(dax_get_attr(ds, "device"), B9600);
+    while(1) {
+        /* Check to see if the quit flag is set.  If it is then bail */
+        if(_quitsignal) {
+            dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            getout(_quitsignal);
+        }
+        sleep(1);
+        printf("Give 'er a try\n");
+        just_playing(fd);
+    }
     
-    strcpy(str, "ATIO0\r");
-    write(fd, str, 6);
-    read(fd, str, 2);
-    printf("%s\n", str);
-    strcpy(str, "ATCN\r");
-    write(fd, str, 5);
-    read(fd, str, 2);
-    printf("%s\n", str);
-    
-    return 0;
+/* This is just to make the compiler happy */
+    return(0);
 }
+
+/* Signal handler */
+void
+quit_signal(int sig)
+{
+    _quitsignal = sig;
+}
+
+/* We call this function to exit the program */
+static void
+getout(int exitstatus)
+{
+    dax_mod_unregister(ds);
+    exit(exitstatus);
+}
+

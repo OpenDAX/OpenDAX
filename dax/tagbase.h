@@ -54,26 +54,36 @@
 #endif
 
 /* Define Handles for _status register points */
-/* TODO: These should probably go away */
+/* TODO: These should probably go away in lieu of making the _status tag a cdt */
 #define STATUS_SIZE   4
 #define STAT_MSG_RCVD 0
 #define STAT_MSG_SENT 32
 #define STAT_DB_SIZE  64
 #define STAT_TAG_CNT 96
 
-#define CDT_FLAGS_FINAL 0x01
 
+/* This was going to be used to allow multiple modules to be notified on
+ * the same event.  The problem is when one moudle decides to change the
+ * event  For now we'll just have a different event in the list for each
+ * module instead of the linked list of modules to notify.
 struct mod_list {
     dax_module *module;
     struct mod_list *next;
 };
+*/
 
 typedef struct dax_event_t {
-    int id;
-    tag_index idx;
-    size_t size;
-    void *data;
-    struct mod_list *notify;
+    int id;              /* Unique identifier for this event definition */
+
+    int byte;            /* The byte offset where the data block starts */
+    unsigned char bit;   /* The bit offset */
+    int count;           /* The number of items represented by the handle */
+    u_int32_t size;      /* The total size of the data block in bytes */
+    tag_type datatype;   /* The datatype of the block */
+    int eventtype;       /* The type of event */
+    void *data;                /* Custom data that the event can use */
+//    struct mod_list *notify;   /* List of every module to be notified of this event */
+    dax_module *notify;   /* List of every module to be notified of this event */
     struct dax_event_t *next;
 } _dax_event;
 
@@ -82,6 +92,7 @@ typedef struct {
     tag_type type;
     unsigned int count;
     char *name;
+    int nextevent;
     _dax_event *events;
     char *data;
 } _dax_tag_db;
@@ -111,11 +122,11 @@ char *cdt_get_name(unsigned int type);
 int type_size(tag_type type);
 int serialize_datatype(tag_type type, char **str);
 
-/*
-handle_t tag_get_handle(char *name);
-int event_add(handle_t handle, size_t size, dax_module *module);
+
+//Handle tag_get_handle(char *name);
+int event_add(Handle h, int event_type, void *data, dax_module *module);
 int event_del(int id);
-*/
+
 
 #define DAX_DIAG
 #ifdef DAX_DIAG

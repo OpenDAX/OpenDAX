@@ -40,8 +40,9 @@
 #define MSG_EVNT_ADD   0x0009 /* Add an event to the taglist */
 #define MSG_EVNT_DEL   0x000A /* Delete an event */
 #define MSG_EVNT_GET   0x000B /* Get an event definition */
-#define MSG_CDT_CREATE 0x000C /* Create a Custom Datatype */
-#define MSG_CDT_GET    0x000D /* Get the definition of a Custom Datatype */
+#define MSG_EVNT_MOD   0x000C /* Get an event definition */
+#define MSG_CDT_CREATE 0x000D /* Create a Custom Datatype */
+#define MSG_CDT_GET    0x000E /* Get the definition of a Custom Datatype */
 /* More to come */
 
 #define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */

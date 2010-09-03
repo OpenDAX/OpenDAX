@@ -63,6 +63,7 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
    an asynchronous command handler.  This is due to a race condition that could
    happen if the server puts a message in the queue after we send a request but
    before we retrieve the result. */
+/* TODO: Do a better job of explaining the functionality of this function */
 static int
 _message_recv(dax_state *ds, int command, void *payload, int *size, int response)
 {
@@ -568,24 +569,50 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
     return 0;
 }
 
-
 int
-dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data)
+dax_event_add(dax_state *ds, Handle *h, int event_type, void *data, dax_event_id *id)
 {
-//    int result, test;
-//    int size;
-//    
-//    
-//    
-//    if(_message_send(ds, MSG_EVNT_ADD, &msg, sizeof(dax_event_message))) {
-//        return ERR_MSG_SEND;
-//    } else {
-//        test = _message_recv(ds, MSG_EVNT_ADD, &result, &size, 1);
-//        if(test) return test;
-//    }       
-//    return result;
-//    */
-    return 0;
+    int test;
+    dax_dint result;
+    dax_dint temp;
+    dax_udint u_temp;
+    int size;
+    char buff[MSG_DATA_SIZE];
+
+    temp = mtos_dint(h->index);
+    memcpy(buff, &temp, 4);
+    temp = mtos_dint(h->byte);
+    memcpy(&buff[4], &temp, 4);
+    temp = mtos_dint(h->count);
+    memcpy(&buff[8], &temp, 4);
+    temp = mtos_dint(h->type);
+    memcpy(&buff[12], &temp, 4);
+    temp = mtos_dint(event_type);
+    memcpy(&buff[16], &temp, 4);
+    u_temp = mtos_udint(h->size);
+    memcpy(&buff[20], &u_temp, 4);
+    buff[24]=h->bit;
+    
+    if(data != NULL) {
+        mtos_generic(h->type, &buff[25], data);
+        size = 25 + TYPESIZE(h->type) / 8;
+    } else {
+        size = 25;
+    }
+    if(_message_send(ds, MSG_EVNT_ADD, buff, size)) {
+        return ERR_MSG_SEND;
+    } else {
+        test = _message_recv(ds, MSG_EVNT_ADD, &result, &size, 1);
+        if(test) {
+            return test;
+        } else {
+            if(id != NULL) {
+                id->id = result;
+                id->index = h->index;
+            }
+        }
+    }       
+    return result;
 }
 
 int
@@ -599,6 +626,13 @@ dax_event_get(dax_state *ds, int id)
 {
     return 0;
 }
+
+int
+dax_event_mod(dax_state *ds, int id)
+{
+    return 0;
+}
+
 
 /* write the datatype to the server, and free() it */
 /* TODO: There is an arbitrary limit to the size that a compound

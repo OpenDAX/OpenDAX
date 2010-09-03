@@ -19,6 +19,10 @@
  * This file contains the messaging code for the OpenDAX core
  */
 
+/* TODO: Remove all normal C datatypes from the messages.  These could change
+ * size on different architectures.  Should use the dax_* datatypes or the
+ * _t datatypes instead */
+
 #include <message.h>
 #include <func.h>
 #include <module.h>
@@ -47,7 +51,7 @@ static fd_set _fdset;
 static int _maxfd;
 
 /* This array holds the functions for each message command */
-#define NUM_COMMANDS 14
+#define NUM_COMMANDS 15
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
 /* Macro to check whether or not the command 'x' is valid */
@@ -65,6 +69,7 @@ int msg_mod_get(dax_message *msg);
 int msg_evnt_add(dax_message *msg);
 int msg_evnt_del(dax_message *msg);
 int msg_evnt_get(dax_message *msg);
+int msg_evnt_mod(dax_message *msg);
 int msg_cdt_create(dax_message *msg);
 int msg_cdt_get(dax_message *msg);
 
@@ -203,6 +208,7 @@ msg_setup(void)
     cmd_arr[MSG_EVNT_ADD]   = &msg_evnt_add;
     cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
     cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
+    cmd_arr[MSG_EVNT_MOD]   = &msg_evnt_mod;
     cmd_arr[MSG_CDT_CREATE] = &msg_cdt_create;
     cmd_arr[MSG_CDT_GET]    = &msg_cdt_get;
     
@@ -557,24 +563,37 @@ msg_mod_get(dax_message *msg)
 int
 msg_evnt_add(dax_message *msg)
 {
-    /*
-    dax_event_message event;
+    Handle h;
+    void *data = NULL;
+    dax_dint event_type;
     dax_module *module;
-    int event_id = -1;
+    dax_dint event_id = -1;
     
-    xlog(LOG_MSG | LOG_OBSCURE, "Add Event Message from %d", msg->fd);
-    memcpy(&event, msg->data, sizeof(dax_event_message));
+    xlog(LOG_MSG | LOG_VERBOSE, "Add Event Message from %d", msg->fd);
     
     module = module_find_fd(msg->fd);
     if( module != NULL ) {
-        //event_id = event_add(event.handle, event.size, module);
+        memcpy(&h.index, msg->data, 4);
+        memcpy(&h.byte, &msg->data[4], 4);
+        memcpy(&h.count, &msg->data[8], 4);
+        memcpy(&h.type, &msg->data[12], 4);
+        memcpy(&event_type, &msg->data[16], 4);
+        memcpy(&h.size, &msg->data[20], 4);
+        h.bit = msg->data[24];
+        fprintf(stderr, "Event Handle Index = %d\n",h.index);
+        fprintf(stderr, "Event Handle Count = %d\n",h.count);
+        fprintf(stderr, "Event Handle Datatype = 0x%X\n",h.type);
+        fprintf(stderr, "Event Handle Size = %d\n",h.size);
+        fprintf(stderr, "Event Handle Byte = %d\n",h.byte);
+        fprintf(stderr, "Event Handle Bit = %d\n",h.bit);
+        fprintf(stderr, "Event Type = %d\n", event_type);
+        event_id = event_add(h, event_type, data, module);
     }
-    */
-    int event_id = -1;
+    
     if(event_id < 0) { /* Send Error */
         _message_send(msg->fd, MSG_EVNT_ADD, &event_id, 0, ERROR);    
     } else {
-        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, sizeof(int), RESPONSE);
+        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, sizeof(dax_dint), RESPONSE);
     }
     return 0;
 }
@@ -587,6 +606,12 @@ msg_evnt_del(dax_message *msg)
 
 int
 msg_evnt_get(dax_message *msg)
+{
+    return 0;
+}
+
+int
+msg_evnt_mod(dax_message *msg)
 {
     return 0;
 }

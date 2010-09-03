@@ -86,7 +86,7 @@ Human interfaces could also be textual interface where commands could be entered
 A Recording Module would probably be some kind of event recorder or data historian.
 
 \section{Generic Module Configuration}
-There are many options that can be configured for each of the different modules.  For those, consult the section that describes the module that you are interested in.  There are a few options that are common to all modules and they are described here.
+There are many options to be configured for each of the different modules.  For those, consult the section that describes the module that you are interested in.  There are a few options that are common to all modules and they are described here.
 
 There are three places that modules recieve configuration information.
 
@@ -98,16 +98,67 @@ There are three places that modules recieve configuration information.
 
 These sources are listed in order of increasing priority.  For example, if the configuration option is set on the command line as an argument it will override that same option given in either of the two configuration files.  If it is set in the module configuration file and the opendax.conf file the module configuration file will have precedence.
 
-The main opendax.conf configuration file is the same file that is used to configure the serverr.  It will most often contain configuration information that would be common to all modules that would be tedious to duplicate for every module in the system.  Information like what the server's IP address and port number are or what kind of event logging the system will do would be candidates for the opendax.conf file.
+The main \emph{opendax.conf} configuration file is the same file that is used to configure the serverr.  It will most often contain configuration information that would be common to all modules that would be tedious to duplicate for every module in the system.  Information like what the server's IP address and port number are or what kind of event logging the system will do would be candidates for the \emph{opendax.conf} file.
 
-The module configuration file is a file that will most likely be named after the module.  For instance the configuration file for the daxlua module is called daxlua.conf.  These files would contain information that is specific to each module.  The daxlua configuration contains the location of the script files to execture as an example.
+The module configuration file is a file that will most likely be named after the module.  For instance the configuration file for the \emph{daxlua} module is called \emph{daxlua.conf}.  These files would contain information that is specific to each module.  The \emph{daxlua} configuration contains the location of the script files to execute as an example.
 
 The common configuration options are...
 
 \begin{itemize}
 \item daemonize
+\item socketname
+\ldots not finished yet
 \end{itemize}
 
+The OpenDAX server and most of the modules use the Lua scripting language as the configuration file format.  The configuration files are actually executed within the server or modules process as a Lua script.  Generally the configuration is given by simple key/value pairs such as \ldots
+
+\begin{verbatim}
+daemonize = 1
+socketname = "/tmp/opendax"
+min_buffers = 64
+\end{verbatim}
+
+This may be sufficient for many systems but the Lua configuration system in OpenDAX is far more powerful than that.  It is also possible to import other configuration files, make decisions with \emph{if} statements, loop with \emph{for} or \emph{while}.
+
+<<insert Lua tutorial in here somewhere>>
+
+When the configuration file is read a global variable named \emph{calling\_module} is set to a string equal to the module's name.  This indicates to the configuration script which module is currently running the script.  You can use the variable to have multiple module configurations in a single file.  This makes it possible to separate configuration information based on function instead of by module.  For example, it would be easier to have all of the configurations for a set of flowmeters in a file called \emph{flowmeters.lua} and then include that file in each module that requires it.  The variable \emph{calling\_module} can then be used within that configuration file to determine whether it is configuring the modbus module or the historical logging module.
+
+Here is an example \ldots
+
+\begin{verbatim}
+--Global data that is used throughout
+flowmeters = {}
+flowmeters[1] = {}
+flowmeters[1].tagname = "FT_0101"
+flowmeters[1].description = "Inlet Flow to Plant"
+flowmeters[1].node    = 1
+flowmeters[2] = {}
+flowmeters[2].tagname = "FT_0102"
+flowmeters[2].description = "Outlet Flow from Plant"
+flowmeters[2].node    = 2
+...more flowmeters
+
+if calling_module == "modbus" then
+  for i=1,10 do
+    --use .tagname and .node to configure modbus commands
+  end
+end
+
+if calling_module == "logger" then
+  for i=1,10 do
+    --use .tagname and .description to configure the logger
+  end
+end
+
+if calling_module == "alarm" then
+  for i=1,10 do
+    --use .tagname and .description to configure the alarms
+  end
+end
+\end{verbatim}
+
+This construct gives the application developer a lot of flexibility in how he/she generates configurations for each particular application.
 
 \chapter{Command Line Client Module}
 The command line client module is called 'daxc'.  It is useful for debugging and examining or manipulating OpenDAX data in real time.  It can also be used for automating some OpenDAX tasks from a shell script.  It can be run interactively, it can read input from STDIN or a filename can be passed to it that has lists of daxc commands to execute.

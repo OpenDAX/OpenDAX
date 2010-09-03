@@ -371,44 +371,58 @@ _handle_test(lua_State *L)
 static int
 _lazy_test(lua_State *L)
 {
-    int result, n;
+    int result;
     Handle h;
-    unsigned char *data, *mask;
-    unsigned char *newdata;
+//    unsigned char *data, *mask;
+//    unsigned char *newdata;
+    dax_event_id id;
     
     result = dax_tag_handle(ds, &h, "LazyTag", 0);
     if(result) {
         luaL_error(L, "Problem getting handle for LazyTag = %d", result);
     }
     
-    data = malloc(h.size);
-    mask = malloc(h.size);
-    bzero(mask, h.size);
-    
-    *((int *)data) = 1;
-    *((dax_dint *)(data + 2)) = 2;
-    *((dax_udint *)(data + 6)) = 3;
-    
-    dax_write_tag(ds, h, data);
-    
-    *((dax_dint *)(data + 2)) = 5;
-    *((dax_dint *)(mask + 2)) = 0xFFFFFFFF;
-    
-    dax_mask_tag(ds, h, data, mask);
-    free(data); free(mask);
-    
-    dax_tag_handle(ds, &h, "LazyArray", 0);
-    for(n = 0; n < 10; n++) {
-        newdata = data + n * dax_get_typesize(ds, h.type);
-        
-        *((int *)newdata) = n * 10 + 1;
-        *((dax_dint *)(newdata + 2)) = n * 10 + 2;
-        *((dax_udint *)(newdata + 6)) = n * 10 + 3;
+    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id);
+    printf("dax_event_add() returned id.id %d\n", id.id);
+    printf("dax_event_add() returned id.index %d\n", id.index);
+
+    result = dax_tag_handle(ds, &h, "LazyTag[2]", 2);
+    if(result) {
+        luaL_error(L, "Problem getting handle for LazyTag = %d", result);
     }
     
-    dax_write_tag(ds, h, data);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id);
+    printf("dax_event_add() returned id.id %d\n", id.id);
+    printf("dax_event_add() returned id.index %d\n", id.index);
+        
+//    data = malloc(h.size);
+//    mask = malloc(h.size);
+//    bzero(mask, h.size);
+//    
+//    *((int *)data) = 1;
+//    *((dax_dint *)(data + 2)) = 2;
+//    *((dax_udint *)(data + 6)) = 3;
+//    
+//    dax_write_tag(ds, h, data);
+//    
+//    *((dax_dint *)(data + 2)) = 5;
+//    *((dax_dint *)(mask + 2)) = 0xFFFFFFFF;
+//    
+//    dax_mask_tag(ds, h, data, mask);
+//    free(data); free(mask);
+//    
+//    dax_tag_handle(ds, &h, "LazyArray", 0);
+//    for(n = 0; n < 10; n++) {
+//        newdata = data + n * dax_get_typesize(ds, h.type);
+//        
+//        *((int *)newdata) = n * 10 + 1;
+//        *((dax_dint *)(newdata + 2)) = n * 10 + 2;
+//        *((dax_udint *)(newdata + 6)) = n * 10 + 3;
+//    }
+//    
+//    dax_write_tag(ds, h, data);
     
-    return 0;
+    return result;
 }
 
 /**END OF LAZY PROGRAMMER TESTS**************************************/

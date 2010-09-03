@@ -140,24 +140,24 @@ _mb_read(mb_port *port, int fd)
     memcpy(&(cc->buff[cc->buffindex]), buff, result); /* Copy the new data to the buffer */
     cc->buffindex += result;
     if(cc->buffindex > 5) {
-        COPYWORD(&msgsize, (u_int16_t *)&cc->buff[4]);
+        COPYWORD(&msgsize, (u_int16_t *)&cc->buff[4]); /* Get the Modbus Message size */
         if(cc->buffindex >= (msgsize + 6)) {
             if(port->in_callback) {
                 port->in_callback(port, cc->buff, cc->buffindex);
             }
-        
+
             result = create_response(port, &(cc->buff[6]), MB_BUFF_SIZE - 6);
             if(result > 0) { /* We have a response */
-            	msgsize = result;
-            	COPYWORD(&(cc->buff[4]), &msgsize);
+                msgsize = result;
+                COPYWORD(&(cc->buff[4]), &msgsize);
                 if(port->out_callback) {
                     port->out_callback(port, cc->buff, result + 6);
                 }
                 write(cc->fd, cc->buff, result + 6);
                 cc->buffindex = 0;
             } else if(result < 0) {
-            	fprintf(stderr, "Error Code Returned %d\n", result);
-            	return result;
+                fprintf(stderr, "Error Code Returned %d\n", result);
+                return result;
             }
         }
     }
@@ -272,16 +272,16 @@ server_loop(mb_port *port)
         DEBUGMSG("Starting Receive Loop");
         result = _receive(port);
         if(result) {
-        	if(result == MB_ERR_OVERFLOW) {
-        		DEBUGMSG("Buffer Overflow Attempt");
-        	}
+            if(result == MB_ERR_OVERFLOW) {
+                DEBUGMSG("Buffer Overflow Attempt");
+            }
         }
         dummy[0]++;
         dummy[1] = dummy[0] + 1;
         mb_write_register(port, MB_REG_HOLDING, dummy, 0, 5);
         //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
         //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
-                
+
     }
     return -1; /* Can never get here */
 }

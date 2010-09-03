@@ -465,11 +465,11 @@ create_response(mb_port *port, unsigned char *buff, int size)
             return MB_ERR_OVERFLOW;
         }
         if((index + count) > port->holdsize) {
-        	return _create_exception(buff, ME_BAD_ADDRESS);
+            return _create_exception(buff, ME_BAD_ADDRESS);
         }
         buff[2] = count * 2;
         for(n = 0; n < count; n++) {
-        	COPYWORD(&buff[3+(n*2)], &port->holdreg[index+n]);
+            COPYWORD(&buff[3+(n*2)], &port->holdreg[index+n]);
         }
         return (count * 2) + 3;
     case 4:
