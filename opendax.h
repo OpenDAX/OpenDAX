@@ -59,7 +59,7 @@
 /* These are the debug logging topics.  Each debug message is
  * assigned one or more of these topics and will only be logged
  * when the corresponding bit is set in the configuration */
-#define LOG_ERROR   0x00000001  /* Log errors - Not implemented yet */
+#define LOG_ERROR   0x00000001  /* Log errors that are returned from functions */
 #define LOG_MAJOR   0x00000002  /* Major Program Milestones */
 #define LOG_MINOR   0x00000004  /* Minor Program Milestones */
 #define LOG_FUNC    0x00000008  /* Function Entries */
@@ -145,9 +145,9 @@ typedef dax_udint tag_type;
 
 struct Handle {
     tag_index index;     /* The Index of the Tag */
-    int byte;            /* The byte offset where the data block starts */
+    u_int32_t byte;      /* The byte offset where the data block starts */
     unsigned char bit;   /* The bit offset */
-    int count;           /* The number of items represented by the handle */
+    u_int32_t count;     /* The number of items represented by the handle */
     u_int32_t size;      /* The total size of the data block in bytes */
     tag_type type;       /* The datatype of the block */
 };
@@ -271,6 +271,9 @@ int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data, dax
 int dax_event_del(dax_state *ds, int id);
 int dax_event_get(dax_state *ds, int id);
 int dax_event_modify(dax_state *ds, int id);
+//int dax_event_assign_callback(dax_state *ds, void (*callback)(, void *udata));
+int dax_event_select(dax_state *ds, int timeout);
+int dax_event_poll(dax_state *ds);
 
 /* Custom Datatype Functions */
 typedef struct datatype dax_cdt;

@@ -518,7 +518,7 @@ msg_tag_write(dax_message *msg)
     result = tag_write(handle, offset, data, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_WRITE, &result, sizeof(result), ERROR);
-        xerror("Unable to write tag 0x%X with size %d",handle, size);
+        xlog(LOG_ERROR, "Unable to write tag 0x%X with size %d",handle, size);
     } else {
         _message_send(msg->fd, MSG_TAG_WRITE, NULL, 0, RESPONSE);
     }    

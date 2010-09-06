@@ -372,28 +372,28 @@ static int
 _lazy_test(lua_State *L)
 {
     int result;
+    dax_dint test[10];
+    
     Handle h;
 //    unsigned char *data, *mask;
 //    unsigned char *newdata;
     dax_event_id id;
     
-    result = dax_tag_handle(ds, &h, "LazyTag", 0);
-    if(result) {
-        luaL_error(L, "Problem getting handle for LazyTag = %d", result);
-    }
-    
-    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id);
-    printf("dax_event_add() returned id.id %d\n", id.id);
-    printf("dax_event_add() returned id.index %d\n", id.index);
+//    result = dax_tag_handle(ds, &h, "LazyTag", 0);
+//    if(result) {
+//        luaL_error(L, "Problem getting handle for LazyTag = %d", result);
+//    }
+//    
+//    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id);
 
-    result = dax_tag_handle(ds, &h, "LazyTag[2]", 2);
-    if(result) {
-        luaL_error(L, "Problem getting handle for LazyTag = %d", result);
-    }
-    
+    result = dax_tag_handle(ds, &h, "LazyTag[2]", 4);
     result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id);
-    printf("dax_event_add() returned id.id %d\n", id.id);
-    printf("dax_event_add() returned id.index %d\n", id.index);
+    result = dax_tag_handle(ds, &h, "LazyTag[3]", 1);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id);
+    
+    result = dax_tag_handle(ds, &h, "LazyTag[4]", 1);
+    result = dax_write_tag(ds, h, test);
+    
         
 //    data = malloc(h.size);
 //    mask = malloc(h.size);

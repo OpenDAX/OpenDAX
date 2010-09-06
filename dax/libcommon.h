@@ -83,6 +83,11 @@
 #  define DAX_MSGMAX 4096
 #endif
 
+/* Event messages are a fixed size */
+#ifndef EVENT_MSGSIZE
+#  define EVENT_MSGSIZE 25
+#endif
+
 /* This defines the size of the message minus the actual data */
 #define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)

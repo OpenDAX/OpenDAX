@@ -118,6 +118,11 @@ xfatal(const char *format, ...)
     kill(getpid(), SIGQUIT);
 }
 
+/* Logs an error everytime it's called.  These should be for internal
+ * program errors only.  If this function is called it really should
+ * be pointing out some serious condition within the server.  For user
+ * caused errors the xlog() function should be used with the ERR_LOG
+ * flag bit */
 void
 xerror(const char *format, ...)
 {
@@ -139,7 +144,7 @@ set_log_topic(u_int32_t topic)
     xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
 
-/* Sends the string to the logger verbosity is greater than __verbosity */
+/* logs the string if any of the bist in flags matches _logflags */
 void xlog(u_int32_t flags, const char *format, ...) {
     va_list val;
     if(flags & _logflags) {

@@ -306,8 +306,10 @@ tag_add(char *name, tag_type type, unsigned int count)
     unsigned int size;
     int result;
     
-    if(count == 0)
+    if(count == 0) {
+        xlog(LOG_ERROR, "tag_add() called with count = 0");
         return ERR_ARG;
+    }
 
     printf("tag_add() called with name = %s, type = 0x%X, count = %d\n", name, type, count);
     if(_tagcount >= _dbsize) {
@@ -320,11 +322,11 @@ tag_add(char *name, tag_type type, unsigned int count)
     }
     result = _checktype(type);
     if( result ) {
-        xerror("Unknown datatype %x", type);
+        xlog(LOG_ERROR, "tag_add() passed an unknown datatype %x", type);
         return ERR_BADTYPE; /* is the datatype valid */
     }
     if(_validate_name(name)) {
-        xerror("%s is not a valid tag name", name);
+        xlog(LOG_ERROR, "%s is not a valid tag name", name);
         return ERR_TAG_BAD;
     }
 
@@ -343,17 +345,18 @@ tag_add(char *name, tag_type type, unsigned int count)
         } else if(_db[n].type == type && _db[n].count < count) {
             /* If the new count is greater than the existing count then lets
              try to increase the size of the tags data */
-            newdata = realloc(_db[n].data, size);
+            newdata = xrealloc(_db[n].data, size);
             if(newdata) {
                 _db[n].data = newdata;
-                /* TODO: Zero the new part of the allocation */
                 _db[n].count = count;
+                /* TODO: Zero the new part of the allocation */
                 return n;
             } else {
+                xerror("Unable to allocate memory to grow the size of tag %s", name);
                 return ERR_ALLOC;
             }
         } else {
-            xerror("Duplicate tag name %s", name);
+            xlog(LOG_ERROR, "Duplicate tag name %s", name);
             return ERR_TAG_DUPL;
         }
     } else {
@@ -364,17 +367,19 @@ tag_add(char *name, tag_type type, unsigned int count)
     _db[n].type = type;
 
     /* Allocate the data area */
-    if((_db[n].data = xmalloc(size)) == NULL)
+    if((_db[n].data = xmalloc(size)) == NULL){
+        xerror("Unable to allocate memory for tag %s", name);
         return ERR_ALLOC;
-    else
+    } else {
         bzero(_db[n].data, size);
-
+    }
     _db[n].nextevent = 0;
     _db[n].events = NULL;
 
     if(_add_index(name, n)) {
         /* free up our previous allocation if we can't put this in the __index */
         free(_db[n].data);
+        xerror("Unable to allocate data for the tag database index");
         return ERR_ALLOC;
     }
     /* Only if everything works will we increment the count */
@@ -421,6 +426,7 @@ int
 tag_get_index(int index, dax_tag *tag)
 {
     if(index < 0 || index >= _tagcount) {
+        xlog(LOG_ERROR, "tag_get_index() called with an index that is out of range");
         return ERR_ARG;
     } else {
         tag->idx = index;
@@ -461,6 +467,59 @@ tag_read(tag_index idx, int offset, void *data, int size)
     return 0;
 }
 
+static int
+_send_event(tag_index idx, _dax_event *event)
+{
+    int result;
+    char buff[EVENT_MSGSIZE];
+    
+    ((u_int32_t *)buff)[0]  = htonl(event->eventtype);
+    ((u_int32_t *)buff)[4]  = htonl(idx);
+    ((u_int32_t *)buff)[8]  = htonl(event->id);
+    ((u_int32_t *)buff)[12] = htonl(event->byte);
+    ((u_int32_t *)buff)[16] = htonl(event->count);
+    ((u_int32_t *)buff)[20] = htonl(event->datatype);
+    ((u_int8_t *)buff)[24]  = event->bit;
+
+    result = xwrite(event->notify->efd, buff, EVENT_MSGSIZE);
+    if(result < 0) {
+        xerror("_message_send: %s", strerror(errno));
+        return ERR_MSG_SEND;
+    }
+    return 0;    
+}
+
+
+/* This function checks to see if an event has occurred.  It should be
+ * called from the tag_write() function or the tag_mask_write() function.
+ * If it decides that there is an event match to the data area given then
+ * it will call the send_event() function to send the event message to
+ * the proper module. This function assumes that the events that are stored
+ * with events that make sense so it does no checking.  There is no return type
+ * because there are no possible errors, and no information to pass back. */
+/* TODO: The event list should be sorted in increasing order of the bottom of
+ * the range so that this function would not have to run through all of the
+ * events.  For now we keep it simple. */
+static void
+_event_check(tag_index idx, int offset, int size) {
+    _dax_event *this;
+    
+    fprintf(stderr, "Event Check Called: idx = %d, offset = %d, size = %d\n",idx, offset, size);
+    this = _db[idx].events;
+
+    while(this != NULL) {
+        fprintf(stderr, "Checking Event Index %d, ID %d\n", idx, this->id);
+        if(offset <= (this->byte + this->size - 1) && (offset + size -1 ) >= this->byte) {
+            fprintf(stderr, "Event Hit offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
+            _send_event(idx, this);
+        } else {
+            fprintf(stderr, "Event Miss offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
+        }
+        this = this->next;
+    }
+    return;
+}
+
 /* This function writes data to the _db just like the above function reads it */
 int
 tag_write(tag_index idx, int offset, void *data, int size)
@@ -476,6 +535,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
     }
     /* Copy the data into the right place. */
     memcpy(&(_db[idx].data[offset]), data, size);
+    _event_check(idx, offset, size);
 //    printf("Write %s = ", _db[idx].name);
 //    for(n = 0;n < size; n++) {
 //        printf("[0x%02X] ", ((u_int8_t *)data)[n]);
@@ -508,6 +568,7 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
 //        printf("[0x%02X|0x%02X] ", ((u_int8_t *)data)[n],((u_int8_t *)mask)[n]);
     }
+    _event_check(idx, offset, size);
 //    printf("\n");
     return 0;
 }
@@ -562,6 +623,7 @@ cdt_append(datatype *cdt, char *str)
     this = cdt->members;
     while(this != NULL) {
         if( !strcasecmp(name, this->name) ) {
+            xlog(LOG_ERROR, "cdt_append() Duplicate name given");
             return ERR_DUPL;
         }
         this = this->next;
@@ -570,12 +632,14 @@ cdt_append(datatype *cdt, char *str)
     /* Allocate the new member */
     new = xmalloc(sizeof(cdt_member));
     if(new == NULL) {
+        xerror("Unable to allocate memory for new CDT member");
         return ERR_ALLOC;
     }
     /* Assign everything to the new datatype member */
     new->name = strdup(name);
     if(new->name == NULL) {
         free(new);
+        xerror("Unable to allocate memory for the name of the new CDT member");
         return ERR_ALLOC;
     }
     new->type = type;
@@ -781,6 +845,7 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
     }
     /* Check that the type is valid */
     if( _checktype(type) ) {
+        xlog(LOG_ERROR, "cdt_add_member() - datatype 0x%X does not exist");
         return ERR_ARG;
     }
 
@@ -788,6 +853,7 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
     this = cdt->members;
     while(this != NULL) {
         if( !strcasecmp(name, this->name) ) {
+            xlog(LOG_ERROR, "cdt_add_member() - name %s already exists", name);
             return ERR_DUPL;
         }
         this = this->next;
@@ -796,12 +862,14 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
     /* Allocate the new member */
     new = xmalloc(sizeof(cdt_member));
     if(new == NULL) {
+        xerror("cdt_add_member() - Unable to allocate memory for new datatype member %s", name);
         return ERR_ALLOC;
     }
     /* Assign everything to the new datatype member */
     new->name = strdup(name);
     if(new->name == NULL) {
         free(new);
+        xerror("cdt_add_member() - Unable to allocate memory for member name %s", name);
         return ERR_ALLOC;
     }
     new->type = type;
@@ -935,13 +1003,18 @@ verify_event_type(tag_type ttype, int etype)
     }
     /* Only BOOL can use Set and Reset */
     if(etype == EVENT_SET || etype == EVENT_RESET) {
-        if(ttype == DAX_BOOL) return 0;
-        else              return -1;
+        if(ttype == DAX_BOOL) {
+            return 0;
+        } else {
+            xlog(LOG_ERROR, "Only BOOL tags are allowed to use SET or RESET events");
+            return -1;
+        }
     }
     /* Booleans, Reals and Custom Datatypes Can't use Equal */
     if(etype == EVENT_EQUAL) {
         if(ttype == DAX_REAL || ttype == DAX_LREAL ||
            ttype == DAX_BOOL || ttype >= DAX_CUSTOM) {
+            xlog(LOG_ERROR, "EQUAL event not allowed for BOOL, REAL, LREAL or Custom types");
             return -1;
         } else {
             return 0;
@@ -950,11 +1023,13 @@ verify_event_type(tag_type ttype, int etype)
     /* At this point the only ones left are < > and deadband.  All
      * except Booleans and Custom datatypes can use these */
     if(ttype == DAX_BOOL || ttype >= DAX_CUSTOM) {
+        xlog(LOG_ERROR, "GREATER, LESS and DEADBAND events not allowed for BOOL and Custom types");
         return -1;
     } else {
         return 0;
     }
     /* If we get here then we were given an unknown event type */
+    xlog(LOG_ERROR, "Unknown datatype in new event");
     return -1;
 }
 
@@ -965,23 +1040,26 @@ verify_event_type(tag_type ttype, int etype)
 int
 event_add(Handle h, int event_type, void *data, dax_module *module)
 {
-    _dax_event *head, *new, *this, *last;
+    _dax_event *head, *new;
     
     /* Bounds check handle */
     if(h.index < 0 || h.index >= _tagcount) {
+        xlog(LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
         return ERR_ARG;
     }
     /* Bounds check size */
     if( (h.byte + h.size) > _get_tag_size(h.index)) {
+        xlog(LOG_ERROR, "Size of the affected data in the new event is too large");
         return ERR_2BIG;
     }
     if(verify_event_type(h.type, event_type)) {
+        /* error log handled in verify_event_type() function */
         return ERR_ARG;
     }
     /* If everything is okay then allocate the new event. */
     new = xmalloc(sizeof(_dax_event));
     if(new == NULL) {
-        xerror("event_add() - Unable to allocate new event");
+        xerror("event_add() - Unable to allocate memory for new event");
         return ERR_ALLOC;
     }
     new->id = _db[h.index].nextevent++;
@@ -997,24 +1075,25 @@ event_add(Handle h, int event_type, void *data, dax_module *module)
         xerror("event_add() - Unable to allocate memory for event data");
         return ERR_ALLOC;
     }
+    new->next = NULL;
+    
     head = _db[h.index].events;
     /* If the list is empty put it on top */
     if(head == NULL) {
-        head = new;
+        _db[h.index].events = new;
+    } else {
+        /* For now we are not going to sort these events.  The right optimization
+         * would be to sort by the bottom of the range.  This way the
+         * _event_check() function could stop once the top of the updated
+         * range is greater than the bottom of the range of the event. */
+        new->next = _db[h.index].events;
+        _db[h.index].events = new;
     }
-    /* Otherwise sort by byte offset */
-    this = head; last = head;
-    while(this != NULL && this->byte < new->byte) {
-        last = this;
-        this = this->next;
-    }
-    last->next = new;
-    new->next = this;
 
     return new->id;
 }
 
-/* Not implemented yet.  I'm not quite sure what to do with this one */
+/* Not implemented yet. */
 int
 event_del(int id)
 {
