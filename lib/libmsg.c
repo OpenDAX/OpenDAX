@@ -633,6 +633,23 @@ dax_event_mod(dax_state *ds, int id)
     return 0;
 }
 
+/* Blocks waiting for an event to happen.  If an event is found it
+ * will run the callback function for that event.  Returns ERR_TIMEOUT 
+ * if the time expires.  Returns zero on success. */
+int
+dax_event_select(dax_state *ds, int timeout) {
+    return 0;
+}
+
+/* Does not block and checks for a pending event.  If there is an
+ * event pending it will run the callback for that event.  Returns
+ * 0 if it services and event and ERR_NOTFOUND if there are no
+ * events pending to service */
+int
+dax_event_poll(dax_state *ds) {
+    return 0;
+}
+
 
 /* write the datatype to the server, and free() it */
 /* TODO: There is an arbitrary limit to the size that a compound
