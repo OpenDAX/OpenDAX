@@ -27,5 +27,7 @@
 #include <common.h>
 
 int luaopen_daxlib (lua_State *L);
+int daxlua_register_function(lua_State *L, char *function_name);
+int daxlua_set_state(lua_State *L, dax_state *new_ds);
 
 #endif

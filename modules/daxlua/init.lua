@@ -3,10 +3,10 @@ print "Starting DAXLua Init Script"
 members = {{"Index", "INT", 1},
            {"Offset", "DINT", 1}}
  
-dax_cdt_create("LuaDemoCDT", members)
+cdt_create("LuaDemoCDT", members)
 
-index = dax_tag_add("LuaDemoTag", "LuaDemoCDT", 1)
-index = dax_tag_add("LuaDemoDINT", "DINT", 1)
+index = tag_add("LuaDemoTag", "LuaDemoCDT", 1)
+index = tag_add("LuaDemoDINT", "DINT", 1)
 
 --This registers a Lua variable for the script that will be kept
 -- between calls to the script.

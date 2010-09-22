@@ -4,9 +4,9 @@ if _firstrun then
   StaticTest = {}
   StaticTest.x = 10
   StaticTest.y = 100
-  dax_tag_add("LuaDemo1INT", "INT", 1)
-  dax_tag_add("LuaDemo1exec", "DINT", 1)
-  dax_tag_add("LuaDemo1lastscan", "DINT", 1)
+  tag_add("LuaDemo1INT", "INT", 1)
+  tag_add("LuaDemo1exec", "DINT", 1)
+  tag_add("LuaDemo1lastscan", "DINT", 1)
   
   --The name of the script configured in daxlua.conf
   print(_name)
@@ -15,9 +15,9 @@ if _firstrun then
 end
 
 -- _executions is the number of times the script has been executed
-dax_write("LuaDemo1exec", _executions)
+tag_write("LuaDemo1exec", _executions)
 -- _lastscan is the number of milliseconds that it took to run the script the last time
-dax_write("LuaDemo1lastscan", _lastscan)
+tag_write("LuaDemo1lastscan", _lastscan)
 
 
 --These Tags were registered in init.lua so they are always available
@@ -26,10 +26,10 @@ LuaDemoTag.Index = LuaDemoTag.Index + 1
 LuaDemoTag.Offset = LuaDemoTag.Index + 5
 
 --Tags can be read/written manually from the script
-DemoINT = dax_read("LuaDemo1INT", 0)
+DemoINT = tag_read("LuaDemo1INT", 0)
 DemoINT = DemoINT + 1
 if DemoINT > 5000 then DemoINT = 0 end
-dax_write("LuaDemo1INT", DemoINT)
+tag_write("LuaDemo1INT", DemoINT)
 
 --This is the static variable that we registered.  It will not be sent to
 -- the server but will be available between calls to this script

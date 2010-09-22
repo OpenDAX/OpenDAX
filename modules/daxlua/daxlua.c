@@ -276,7 +276,8 @@ main(int argc, char *argv[])
     if( dax_mod_register(ds, "daxlua") ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
-    
+
+    daxlua_set_state(NULL, ds);
     /* Run the initialization script */
     if(lua_init()) {
         dax_fatal(ds, "Init Script \'%s\' failed to run properly", get_init());

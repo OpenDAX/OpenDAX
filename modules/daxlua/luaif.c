@@ -26,234 +26,12 @@
 #include <daxlua.h>
 #include <pthread.h>
 
-extern pthread_mutex_t daxmutex;
 extern dax_state *ds;
 
 int
 daxlua_init(void)
 {
-    pthread_mutex_init(&daxmutex, NULL);
     return 0;
-}
-
-/* Wrapper function for the cdt creation functions */
-/* The Lua function should be passed two arguments.  The
- * first is the name of the datatype and the second is
- * a table of tables that represent all the members of the
- * compound datatype.  It should be formatted like this...
- * members = {{"Name", "DataType", count},
- *            {"AnotherNmae", "DataType", count}} */
-static int
-_cdt_create(lua_State *L)
-{
-    int count, n = 1, result;
-    dax_cdt *cdt;
-    char *name, *type, *cdt_name;
-    
-    if(lua_gettop(L) != 2) {
-        luaL_error(L, "Wrong number of arguments to cdt_create()");
-    }
-    
-    cdt_name = (char *)lua_tostring(L, 1);
-    cdt = dax_cdt_new(cdt_name, NULL);
-    
-    if(cdt == 0) {
-        luaL_error(L, "Unable to create datatype %s", lua_tostring(L, 1));
-    }
-    
-    if(! lua_istable(L, 2) ) {
-        luaL_error(L, "Should pass a table to tag_handle_test()");
-    }
-    
-    while(1) {
-        /* Get the table from the argument */
-        lua_rawgeti(L, 2, n++);
-        if(lua_isnil(L, -1)) break;
-        lua_rawgeti(L, 3, 1);
-        name = (char *)lua_tostring(L, -1);
-        lua_rawgeti(L, 3, 2);
-        type = (char *)lua_tostring(L, -1);
-        lua_rawgeti(L, 3, 3);
-        count = lua_tointeger(L, -1);
-        lua_pop(L, 4);
-        
-        pthread_mutex_lock(&daxmutex);
-        result = dax_cdt_member(ds, cdt, name, dax_string_to_type(ds, type), count);
-        pthread_mutex_unlock(&daxmutex);
-        if(result) {
-            dax_cdt_free(cdt);
-            luaL_error(L, "Unable to add member %s", name);
-        }
-    }
-    pthread_mutex_lock(&daxmutex);
-    result = dax_cdt_create(ds, cdt, NULL);
-    pthread_mutex_unlock(&daxmutex);
-    
-    if(result) {
-        luaL_error(L, "Unable to create datatype %s", cdt_name);
-    }
-    
-    lua_pushinteger(L, result);
-    return 1;
-}
-
-/* Functions to expose to lua interpreter */
-/* Adds a tag to the dax tagbase.  Three arguments...
-    First - tagname
-    Second - tag type
-    Third - count
-    Returns the handle on success
-    Raises an error on failure
-*/
-static int
-_dax_tag_add(lua_State *L)
-{
-    char *name, *datatype;
-    int count;
-    tag_type type;
-    tag_index result;
-    Handle h;
-    if(lua_gettop(L) != 3) {
-        lua_pushnumber(L, -1.0);
-        return 1;
-    }
-    name = (char *)lua_tostring(L, 1); /* Get the tagname from the Lua stack */
-    datatype = (char *)lua_tostring(L, 2); /* Get the datatype from the Lua stack */
-    count = (int)lua_tonumber(L, 3);   /* Get the count from the Lua stack */
-    
-    if(name == NULL || datatype == NULL || count <=0) {
-        luaL_error(L, "Bad argument passed to dax_tag_add()");
-    }
-    
-    pthread_mutex_lock(&daxmutex);
-    type = dax_string_to_type(ds, datatype);
-    if(type == 0) {
-        pthread_mutex_unlock(&daxmutex);
-        luaL_error(L, "Unrecognized datatype %s\n", datatype);
-    }
-    result = dax_tag_add(ds, &h, name, type, count);
-    printf("dax_tag_add() returned %d\n", result);
-    pthread_mutex_unlock(&daxmutex);
-    
-    if( result == 0 ) {
-        lua_pushnumber(L, (double)h.index);
-    } else {
-        luaL_error(L, "Unable to Create Tag %s", name);
-    }
-    return 1;
-}
-
-
-/* These are the main data transfer functions.  These are wrappers for
- * the dax_read/write/mask function. */
-static int
-_dax_read(lua_State *L) {
-    char *name;
-    int count, result;
-    Handle h;
-    void *data;
-    
-    /* TODO: Might allow one argument and then set count = 0 */
-    if(lua_gettop(L) != 2) {
-        luaL_error(L, "Wrong number of arguments passed to tag_read()");
-    }
-    name = (char *)lua_tostring(L, 1);
-    count = lua_tointeger(L, 2);
-    
-    pthread_mutex_lock(&daxmutex);
-    result = dax_tag_handle(ds, &h, name, count);
-    if(result) {
-        pthread_mutex_unlock(&daxmutex);
-        luaL_error(L, "dax_tag_handle() returned %d", result);
-    }
-    data = malloc(h.size);
-    if(data == NULL) {
-        pthread_mutex_unlock(&daxmutex);
-        luaL_error(L, "tag_read() unable to allocate data area");
-    }
-    
-    result = dax_read_tag(ds, h, data);
-    
-    if(result) {
-        pthread_mutex_unlock(&daxmutex);
-        free(data);
-        luaL_error(L, "dax_read_tag() returned %d", result);
-    }
-    /* This function figures all the tag data out and pushes the right
-     * thing onto the top of the Lua stack */
-    tag_dax_to_lua(L, h, data);
-    pthread_mutex_unlock(&daxmutex);
-
-    free(data);
-    return 1;
-}
-
-static int
-_dax_write(lua_State *L) {
-    char *name;
-    char q = 0;
-    int result, n;
-    Handle h;
-    void *data, *mask;
-    
-    if(lua_gettop(L) != 2) {
-        luaL_error(L, "Wrong number of arguments passed to tag_write()");
-    }
-    name = (char *)lua_tostring(L, 1);
-    pthread_mutex_lock(&daxmutex);
-    result = dax_tag_handle(ds, &h, name, 0);
-    if(result) {
-        pthread_mutex_unlock(&daxmutex);
-        luaL_error(L, "dax_tag_handle() returned %d", result);
-    }
-    
-    data = malloc(h.size);
-    if(data == NULL) {
-        pthread_mutex_unlock(&daxmutex);
-        luaL_error(L, "tag_write() unable to allocate data area");
-    }
-
-    mask = malloc(h.size);
-    if(mask == NULL) {
-        pthread_mutex_unlock(&daxmutex);
-        free(data);
-        luaL_error(L, "tag_write() unable to allocate mask memory");
-    }
-    bzero(mask, h.size);
-    
-    result = tag_lua_to_dax(L, h, data, mask);
-    if(result) {
-        pthread_mutex_unlock(&daxmutex);
-        free(data);
-        free(mask);
-        lua_error(L); /* The error message should already be on top of the stack */
-    }
-    
-    /* This checks the mask to determine which function to use
-     * to write the data to the server */
-    /* TODO: Might want to scan through and find the beginning and end of
-     * any changed data and send less through the socket.  */
-    for(n = 0; n < h.size && q == 0; n++) {
-        if( ((unsigned char *)mask)[n] != 0xFF) {
-            q = 1;
-        }
-    }
-    if(q) {
-        result = dax_mask_tag(ds, h, data, mask);
-    } else {
-        result = dax_write_tag(ds, h, data);
-    }
-    pthread_mutex_unlock(&daxmutex);
-    
-    if(result) {
-        free(data);
-        free(mask);
-        luaL_error(L, "dax_write/mask_tag() returned %d", result);
-    }
-
-    free(data);
-    free(mask);
-    return 1;
 }
 
 /* The following functions take care of reading and writing tag data */
@@ -1147,23 +925,18 @@ and libraries */
 int
 setup_interpreter(lua_State *L)
 {
-    lua_pushcfunction(L, _dax_tag_add);
-    lua_setglobal(L, "dax_tag_add");
-    
-    lua_pushcfunction(L, _dax_read);
-    lua_setglobal(L, "dax_read");
-    
-    lua_pushcfunction(L, _dax_write);
-    lua_setglobal(L, "dax_write");
-    
+    /* This adds the functions that we need from the daxlua library */
+    daxlua_register_function(L,"cdt_create");
+    daxlua_register_function(L,"tag_add");
+    daxlua_register_function(L,"tag_get");
+    daxlua_register_function(L,"tag_read");
+    daxlua_register_function(L,"tag_write");
+
     lua_pushcfunction(L, _register_tag);
     lua_setglobal(L, "register_tag");
     
     lua_pushcfunction(L, _register_static);
     lua_setglobal(L, "register_static");
-    
-    lua_pushcfunction(L, _cdt_create);
-    lua_setglobal(L, "dax_cdt_create");
     
     /* register the libraries that we need*/
     luaopen_base(L);

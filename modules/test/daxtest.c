@@ -92,6 +92,7 @@ main(int argc,char *argv[])
     L = lua_open();
     /* This adds all of the Lua functions to the lua_State */
     add_test_functions(L);
+    daxlua_set_state(L, ds);
     
     /* load and run the configuration file */
     if(luaL_loadfile(L, script)  || lua_pcall(L, 0, 0, 0)) {

@@ -4,9 +4,9 @@ if _firstrun then
   StaticTest.x = 20
   StaticTest.y = 200
   
-  dax_tag_add("LuaDemo2INT", "INT", 1)
-  dax_tag_add("LuaDemo2exec", "DINT", 1)
-  dax_tag_add("LuaDemo2lastscan", "DINT", 1)
+  tag_add("LuaDemo2INT", "INT", 1)
+  tag_add("LuaDemo2exec", "DINT", 1)
+  tag_add("LuaDemo2lastscan", "DINT", 1)
   
   --The name of the script configured in daxlua.conf
   print(_name)
@@ -15,9 +15,9 @@ if _firstrun then
 end
 
 -- _executions is the number of times the script has been executed
-dax_write("LuaDemo2exec", _executions)
+tag_write("LuaDemo2exec", _executions)
 -- _lastscan is the number of milliseconds that it took to run the script the last time
-dax_write("LuaDemo2lastscan", _lastscan)
+tag_write("LuaDemo2lastscan", _lastscan)
 
 
 print("Demo2 - LuaDemoDINT = " .. LuaDemoDINT)
@@ -25,7 +25,7 @@ print("Demo2 - LuaDemoDINT = " .. LuaDemoDINT)
 -- value to the server but it will change the value for the duration of the script
 LuaDemoDINT = LuaDemoDINT + 1
 
-Demo2NT = dax_read("LuaDemo2INT", 0)
+Demo2NT = tag_read("LuaDemo2INT", 0)
 Demo2NT = Demo2NT + 1
 if Demo2NT > 50 then 
   Demo2NT = 0
@@ -39,7 +39,7 @@ if Demo2NT > 50 then
     _rate = FAST_RATE
   end
 end
-dax_write("LuaDemo2INT", Demo2NT)
+tag_write("LuaDemo2INT", Demo2NT)
 
 
 StaticTest.x = StaticTest.x + 1

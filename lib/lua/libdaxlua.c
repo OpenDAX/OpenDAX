@@ -457,6 +457,7 @@ _get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
     return 0;
 }
 
+/* These are the functions that get exported */
 
 /* Wrapper function for the cdt creation functions */
 /* The Lua function should be passed two arguments.  The
@@ -473,6 +474,9 @@ _cdt_create(lua_State *L)
     tag_type type;
     char *name, *typename, *cdt_name;
     
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
     if(lua_gettop(L) != 2) {
         luaL_error(L, "Wrong number of arguments to cdt_create()");
     }
@@ -528,6 +532,9 @@ _tag_add(lua_State *L)
     int result;
     tag_type type;
     
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
     if(lua_gettop(L) != 3) {
         luaL_error(L, "wrong number of arguments to tag_add()");
     }
@@ -552,6 +559,9 @@ _tag_get(lua_State *L)
     int result;
     dax_tag tag;
 
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
     if(lua_isnumber(L, 1)) {
         result = dax_tag_byindex(ds, &tag, (tag_index)lua_tointeger(L, 1));
     } else {
@@ -576,6 +586,9 @@ _tag_read(lua_State *L) {
     Handle h;
     void *data;
     
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
     if(lua_gettop(L) != 2) {
         luaL_error(L, "Wrong number of arguments passed to tag_read()");
     }
@@ -621,6 +634,9 @@ _tag_write(lua_State *L) {
     Handle h;
     void *data, *mask;
     
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
     if(lua_gettop(L) != 2) {
         luaL_error(L, "Wrong number of arguments passed to tag_write()");
     }
@@ -684,7 +700,19 @@ _tag_write(lua_State *L) {
     return 1;
 }
 
-static const struct luaL_reg daxlib[] = {
+/* This is used by C program / modules that would like to take care of all
+ * the allocation, initialization and configuration of their dax_state
+ * objects.  It is very critical for that C function not to lose track of
+ * this dax_state object because this simply resets the libraries global
+ * variable. */
+int
+daxlua_set_state(lua_State *L, dax_state *new_ds) {
+    ds = new_ds;
+    return 0;
+}
+
+/* This array defines the functions that can be exported to a Lua script */
+static const struct luaL_Reg daxlib[] = {
     {"cdt_create", _cdt_create},
     {"tag_add", _tag_add},
     {"tag_get", _tag_get},
@@ -693,9 +721,42 @@ static const struct luaL_reg daxlib[] = {
     {NULL, NULL}  /* sentinel */
 };
 
+/* This registers all of the functions that are defined in the above array
+ * to the Lua script given by L.  It places them in a table named 'dax' and
+ * leaves this table on the top of the stack.  This is the function that you
+ *  would pass to the 'package.loadlib()' function in the Lua script.  
+ * C program modules should probably use daxlua_register_function().  */
 int
 luaopen_daxlib (lua_State *L)
 {
-    luaL_openlib(L, "dax", daxlib, 0);
+    luaL_register(L, "dax", daxlib);
     return 1;
 }
+
+
+/* This function is used by C program modules to register the individual
+ * functions that it wants to be available to the lua_State. */
+int
+daxlua_register_function(lua_State *L, char *function_name) {
+    int n = 0;
+
+    if(strcmp(function_name, "all") == 0) {
+        while(daxlib[n].name != NULL) {
+            lua_pushcfunction(L, daxlib[n].func);
+            lua_setglobal(L, daxlib[n].name);
+            n++;
+        }
+    } else {
+        while(daxlib[n].name != NULL) {
+            if(strcmp(function_name, daxlib[n].name)) {
+                lua_pushcfunction(L, daxlib[n].func);
+                lua_setglobal(L, daxlib[n].name);
+            }
+            n++;
+        }
+    }
+    return 0;
+}
+
+
+
