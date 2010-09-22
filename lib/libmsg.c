@@ -206,12 +206,13 @@ _mod_register(dax_state *ds, char *name)
     *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
     *((u_int32_t *)&buff[4]) = htonl(REGISTER_SYNC);  /* registration flags */
     strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
-    
+
     if((result = _message_send(ds, MSG_MOD_REG, buff, REG_HDR_SIZE + len)))
         return result;
     len = DAX_MSGMAX;
     if((result = _message_recv(ds, MSG_MOD_REG, buff, &len, 1)))
         return result;
+
     /* Here we check to see if the data that we got in the registration message is in the same
        format as we use here on the client module. This should be offloaded to a separate
        function that can determine what needs to be done to the incoming and outgoing data to
@@ -270,6 +271,7 @@ dax_mod_register(dax_state *ds, char *name)
 {
     int fd, result;
     
+    libdax_lock(ds->lock);
     dax_debug(ds, LOG_COMM, "Sending registration for name - %s", name);
     
     /* This is the connection that we used for all the functional
@@ -282,7 +284,10 @@ dax_mod_register(dax_state *ds, char *name)
     }
     
     result = _mod_register(ds, name);
-    if(result) return result;
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
     
     /* This will be the event connection.  This socket recieves
      * asynchronous messages that are generated in the server */
@@ -290,12 +295,17 @@ dax_mod_register(dax_state *ds, char *name)
     if(fd > 0) {
         ds->afd = fd;
     } else {
+        libdax_unlock(ds->lock);
         return fd;
     }
     result = _event_register(ds); 
-    if(result) return result;
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
     init_tag_cache(ds);
     
+    libdax_unlock(ds->lock);
     return 0;
 }
 
@@ -303,8 +313,8 @@ int
 dax_mod_unregister(dax_state *ds)
 {
     int len, result = -1;
-    
-    
+    libdax_lock(ds->lock);
+
     if(ds->sfd) {
         result = _message_send(ds, MSG_MOD_REG, NULL, 0);
         if(! result ) {
@@ -316,6 +326,7 @@ dax_mod_unregister(dax_state *ds)
         close(ds->afd);
         ds->afd = 0;
     }
+    libdax_unlock(ds->lock);
     return result;
 }
 
@@ -344,9 +355,11 @@ dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count)
     } else {
         return ERR_TAG_BAD;
     }
-    
+    libdax_lock(ds->lock);
+
     result = _message_send(ds, MSG_TAG_ADD, buff, size);
     if(result) { 
+        libdax_unlock(ds->lock);
         return ERR_MSG_SEND;
     }
     
@@ -370,6 +383,7 @@ dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count)
         cache_tag_del(ds, name);
         cache_tag_add(ds, &tag);
     }
+    libdax_unlock(ds->lock);
     return result;
 }
 
@@ -387,6 +401,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
     
     if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
     
+    libdax_lock(ds->lock);
     if(check_cache_name(ds, name, tag)) {
         /* We make buff big enough for the outgoing message and the incoming
            response message which would have 3 additional int32s */
@@ -399,6 +414,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         if(result) {
             dax_error(ds, "Can't send MSG_TAG_GET message");
             free(buff);
+            libdax_unlock(ds->lock);
             return result;
         }
         size += 14; /* This makes room for the type, count and handle */
@@ -407,6 +423,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         if(result) {
             dax_error(ds, "Problem receiving message MSG_TAG_GET : result = %d", result);
             free(buff);
+            libdax_unlock(ds->lock);
             return result;
         }
         tag->idx = stom_dint( *((int *)&buff[0]) );
@@ -417,6 +434,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         cache_tag_add(ds, tag);
         free(buff);
     }
+    libdax_unlock(ds->lock);
     return 0;
 }
 
@@ -426,13 +444,15 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
 {
     int result, size;
     char buff[DAX_TAGNAME_SIZE + 13];
-    
+
+    libdax_lock(ds->lock);
     if(check_cache_index(ds, handle, tag)) {
         buff[0] = TAG_GET_INDEX;
         *((tag_index *)&buff[1]) = handle;
         result = _message_send(ds, MSG_TAG_GET, buff, sizeof(tag_index) + 1);
         if(result) {
             dax_error(ds, "Can't send MSG_TAG_GET message");
+            libdax_unlock(ds->lock);
             return result;
         }
         /* Maximum size of buffer, the 13 is the NULL plus three integers */
@@ -440,6 +460,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
             //dax_error("Unable to retrieve tag for handle %d", handle);
+            libdax_unlock(ds->lock);
             return result;
         }
         tag->idx = stom_dint(*((int32_t *)&buff[0]));
@@ -450,6 +471,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
         /* Add the tag to the tag cache */
         cache_tag_add(ds, tag);
     }
+    libdax_unlock(ds->lock);
     return 0;
 }
  
@@ -482,17 +504,21 @@ dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
         buff[0] = mtos_dint(idx);
         buff[1] = mtos_dint(offset + n * m_size);
         buff[2] = mtos_dint(sendsize);
-        
+
+        libdax_lock(ds->lock);
         result = _message_send(ds, MSG_TAG_READ, (void *)buff, sizeof(buff));
         if(result) {
+            libdax_unlock(ds->lock);
             return result;
         }
         result = _message_recv(ds, MSG_TAG_READ, &((char *)data)[m_size * n], &sendsize, 1);
         
         if(result) {
+            libdax_unlock(ds->lock);
             return result;
         }
     }
+    libdax_unlock(ds->lock);
     return 0;
 }
 
@@ -524,12 +550,20 @@ dax_write(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
         *((tag_index *)&buff[0]) = mtos_dint(idx);
         *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
         memcpy(&buff[8], data + (m_size * n), sendsize);
-        
+
+        libdax_lock(ds->lock);
         result = _message_send(ds, MSG_TAG_WRITE, buff, sendsize + sizeof(tag_index) + sizeof(int));
-        if(result) return result;
+        if(result) {
+            libdax_unlock(ds->lock);
+            return result;
+        }
         result = _message_recv(ds, MSG_TAG_WRITE, buff, 0, 1);
-        if(result) return result;
+        if(result) {
+            libdax_unlock(ds->lock);
+            return result;
+        }
     }
+    libdax_unlock(ds->lock);
     return 0;
 }
 
@@ -561,11 +595,19 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
         //for(apple = 0; apple < size; apple++) {
         //    printf("data [0x%X] mask [0x%X]\n", ((char *)data)[apple], ((char *)mask)[apple]);
         //}
+        libdax_lock(ds->lock);
         result = _message_send(ds, MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(tag_index) + sizeof(int));
-        if(result) return result;
+        if(result) {
+            libdax_unlock(ds->lock);
+            return result;
+        }
         result = _message_recv(ds, MSG_TAG_MWRITE, buff, 0, 1);
-        if(result) return result;
+        if(result) {
+            libdax_unlock(ds->lock);
+            return result;
+        }
     }
+    libdax_unlock(ds->lock);
     return 0;
 }
 
@@ -599,11 +641,15 @@ dax_event_add(dax_state *ds, Handle *h, int event_type, void *data, dax_event_id
     } else {
         size = 25;
     }
+    
+    libdax_lock(ds->lock);
     if(_message_send(ds, MSG_EVNT_ADD, buff, size)) {
+        libdax_unlock(ds->lock);
         return ERR_MSG_SEND;
     } else {
         test = _message_recv(ds, MSG_EVNT_ADD, &result, &size, 1);
         if(test) {
+            libdax_unlock(ds->lock);
             return test;
         } else {
             if(id != NULL) {
@@ -611,7 +657,8 @@ dax_event_add(dax_state *ds, Handle *h, int event_type, void *data, dax_event_id
                 id->index = h->index;
             }
         }
-    }       
+    }
+    libdax_unlock(ds->lock);
     return result;
 }
 
@@ -701,9 +748,11 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
 
     //--printf("dax_dt_create() %s\n", buff);
 
+    libdax_lock(ds->lock);
     result = _message_send(ds, MSG_CDT_CREATE, buff, size);
     
     if(result) { 
+        libdax_unlock(ds->lock);
         return result;
     }
     
@@ -718,6 +767,7 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
         result = add_cdt_to_cache(ds, stom_udint(*((tag_type *)rbuff)), buff);
         dax_cdt_free(cdt);
     }
+    libdax_unlock(ds->lock);
     return result;
 }
 
@@ -743,27 +793,27 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
         buff[0] = CDT_GET_NAME;
         size = strlen(name) + 1;
         strncpy(&(buff[1]), name, size); /* Pass the cdt name in this subcommand */
-        //--memcpy(&(buff[1]), name, size); /* Pass the cdt name in this subcommand */
         size++; /* Add one for the sub command */
     } else {
         buff[0] = CDT_GET_TYPE;  /* Put the subcommand in the first byte */
         *((u_int32_t *)&buff[1]) = mtos_udint(cdt_type); /* type in the next four */
         size = 5;
     }
-    
+
+    libdax_lock(ds->lock);
     result = _message_send(ds, MSG_CDT_GET, buff, size);
     
     if(result) { 
+        libdax_unlock(ds->lock);
         return ERR_MSG_SEND;
     }
     
     size = MSG_DATA_SIZE;
     result = _message_recv(ds, MSG_CDT_GET, buff, &size, 1);
-    //--printf("dax_cdt_get() - _message_recv() returned %d\n", result);
     if(result == 0) {
         type = stom_udint(*((tag_type *)buff));
-        //--printf("dax_cdt_get() - 0x%X : %s\n", type, &(buff[4]));
         result = add_cdt_to_cache(ds, type, &(buff[4]));
     }
+    libdax_unlock(ds->lock);
     return result;
 }

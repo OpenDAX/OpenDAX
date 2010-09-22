@@ -52,6 +52,12 @@ dax_init(char *name)
     ds->dax_debug = NULL;
     ds->dax_error = NULL;
     ds->dax_log = NULL;
+    ds->lock = malloc(sizeof(dax_lock));
+    if(ds->lock == NULL) return NULL;
+    if(libdax_init_lock(ds->lock)) {
+        free(ds);
+        return NULL;
+    }
 
     return ds;
 }
@@ -60,5 +66,7 @@ dax_init(char *name)
 int
 dax_free(dax_state *ds)
 {
+    libdax_unlock(ds->lock);
+    libdax_destroy_lock(ds->lock);
     return 0;
 }

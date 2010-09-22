@@ -380,7 +380,10 @@ dax_read_tag(dax_state *ds, Handle handle, void *data)
         memcpy(data, newdata, handle.size);
         free(newdata);
     } else {
-        return _read_format(ds, handle.type, handle.count, data, 0);
+        libdax_lock(ds->lock);
+        result = _read_format(ds, handle.type, handle.count, data, 0);
+        libdax_unlock(ds->lock);
+        return result;
     }
     return 0;
 }
@@ -507,8 +510,14 @@ dax_write_tag(dax_state *ds, Handle handle, void *data)
         free(newdata);
         free(mask);
     } else {
+        libdax_lock(ds->lock);
         result =  _write_format(ds, handle.type, handle.count, data, 0);
-        if(result) return result;
+        if(result) {
+            libdax_unlock(ds->lock);
+            return result;
+        }
+        /* Unlock here because dax_write() has it's own locking */
+        libdax_unlock(ds->lock);
         result = dax_write(ds, handle.index, handle.byte, data, handle.size);
     }
     return result;
@@ -544,8 +553,14 @@ dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask)
         free(newmask);
         free(newdata);
     } else {
+        libdax_lock(ds->lock);
         result =  _write_format(ds, handle.type, handle.count, data, 0);
-        if(result) return result;
+        if(result) {
+            libdax_unlock(ds->lock);
+            return result;
+        }
+        /* Unlock here because dax_mask() has it's own locking */
+        libdax_unlock(ds->lock);
         result = dax_mask(ds, handle.index, handle.byte, data, mask, handle.size);
     }
     return result;

@@ -163,41 +163,100 @@ dax_fatal(dax_state *ds, const char *format, ...)
     kill(getpid(), SIGQUIT);
 }
 
+#ifdef USE_PTHREAD_LOCK
+
+inline int
+libdax_lock(dax_lock *lock) {
+    int result;
+    result = pthread_mutex_lock(lock);
+    if(result) return ERR_GENERIC;
+    return 0;
+}
+
+inline int
+libdax_unlock(dax_lock *lock) {
+    int result;
+    result = pthread_mutex_unlock(lock);
+    if(result) return ERR_GENERIC;
+    return 0;
+}
+
+inline int
+libdax_init_lock(dax_lock *lock) {
+    int result;
+    result = pthread_mutex_init(lock, NULL);
+    if(result) return ERR_GENERIC;
+    return 0;
+}
+
+inline int
+libdax_destroy_lock(dax_lock *lock) {
+    int result;
+    result = pthread_mutex_destroy(lock);
+    if(result) return ERR_GENERIC;
+    return 0;
+}
+
+/* If not locking mechanisms are #defined then we just set the functions
+ * to return nothing and hope that the optimizer will eliminate them */
+#else
+
+inline int
+libdax_lock(dax_lock *lock) {
+    return 0;
+}
+
+inline int
+libdax_unlock(dax_lock *lock) {
+    return 0;
+}
+
+inline int
+libdax_init_lock(dax_lock *lock) {
+    return 0;
+}
+
+inline int
+libdax_destroy_lock(dax_lock *lock) {
+    return 0;
+}
+
+#endif
 
 
 /* This function takes the name argument and figures out the text part and puts
  that in 'tagname' then it sees if there is an index in [] and puts that in *index.
  The calling function should make sure that *tagname is big enough */
 /* TODO: This will probably be removed */
-int
-dax_tag_parse(char *name, char *tagname, int *index)
-{
-    int n = 0;
-    int i = 0;
-    int tagend = 0;
-    char test[10];
-    *index = -1;
-    
-    while(name[n] != '\0') {
-        if(name[n] == '[') {
-            tagend = n++;
-            /* figure the tagindex here */
-            while(name[n] != ']') {
-                if(name[n] == '\0') return -1; /* Gotta get to a ']' before the end */
-                test[i++] = name[n++];
-                if(i == 9) return -1; /* Number is too long */
-            }
-            test[i] = '\0';
-            *index = (int)strtol(test, NULL, 10);
-            n++;
-        }
-        n++;        
-    }
-    if(tagend) {
-        strncpy(tagname, name, tagend);
-        tagname[tagend] = '\0';
-    } else {
-        strcpy(tagname, name);
-    }
-    return 0;
-}
+//int
+//dax_tag_parse(char *name, char *tagname, int *index)
+//{
+//    int n = 0;
+//    int i = 0;
+//    int tagend = 0;
+//    char test[10];
+//    *index = -1;
+//    
+//    while(name[n] != '\0') {
+//        if(name[n] == '[') {
+//            tagend = n++;
+//            /* figure the tagindex here */
+//            while(name[n] != ']') {
+//                if(name[n] == '\0') return -1; /* Gotta get to a ']' before the end */
+//                test[i++] = name[n++];
+//                if(i == 9) return -1; /* Number is too long */
+//            }
+//            test[i] = '\0';
+//            *index = (int)strtol(test, NULL, 10);
+//            n++;
+//        }
+//        n++;        
+//    }
+//    if(tagend) {
+//        strncpy(tagname, name, tagend);
+//        tagname[tagend] = '\0';
+//    } else {
+//        strcpy(tagname, name);
+//    }
+//    return 0;
+//}

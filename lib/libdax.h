@@ -26,6 +26,13 @@
 #include <common.h>
 #include <opendax.h>
 
+
+/* Compiler Options */
+/* This causes the library to use pthread_mutex locks for thread safety.
+ * If this is not defined then the library will not be thread safe. */
+//TODO: This should probably be a configure script --without-locking directive
+#define USE_PTHREAD_LOCK 1
+
 typedef struct OptAttr {
     char *name;
     char *longopt;
@@ -67,6 +74,22 @@ struct datatype{
 
 typedef struct datatype datatype;
 
+#ifdef USE_PTHREAD_LOCK
+#include <pthread.h>
+/* This is all just an abstraction for using the pthread_mutex as
+ * a lock within the library */
+typedef pthread_mutex_t dax_lock;
+#else
+
+typedef int dax_lock;
+
+#endif
+
+inline int libdax_lock(dax_lock *lock);
+inline int libdax_unlock(dax_lock *lock);
+inline int libdax_init_lock(dax_lock *lock);
+inline int libdax_destroy_lock(dax_lock *lock);
+
 /* This is the main dax_state structure that holds all the information
    for one dax server connection */
 struct dax_state {
@@ -83,10 +106,12 @@ struct dax_state {
     int cache_count;       /* How many nodes we actually have */
     datatype *datatypes;
     unsigned int datatype_size;
+    dax_lock *lock;
     void (*dax_debug)(const char *output);
     void (*dax_error)(const char *output);
     void (*dax_log)(const char *output);
 };
+
 
 //#ifndef TAG_CACHE_LIMIT
 //#  define TAG_CACHE_LIMIT "8"
