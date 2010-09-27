@@ -459,6 +459,49 @@ _get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
 
 /* These are the functions that get exported */
 
+static int
+_dax_init(lua_State *L)
+{
+    char *modulename;
+    modulename = (char *)lua_tostring(L, 1);
+    /* TODO: Transfer the Lua 'arg' table to these variables */
+    int argc = 1;
+    char *argv[] = {modulename};
+    
+    /* Create and Initialize the OpenDAX library state object */
+    ds = dax_init(modulename);
+    if(ds == NULL) {
+        luaL_error(L, "Unable to allocate memory for dax_state object");
+    }
+
+    /* Create and initialize the configuration subsystem in the library */
+    dax_init_config(ds, modulename);
+    /* We don't really do any custom configuration at this point */
+    
+    /* Execute the configuration */
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+
+    /* Free the configuration data */
+    dax_free_config (ds);
+
+    /* Check for OpenDAX and register the module */
+    if( dax_mod_register(ds, modulename) ) {
+        luaL_error(L, "Unable to find OpenDAX Server");
+    }
+
+    return 0;
+}
+
+static int
+_dax_free(lua_State *L)
+{
+    if( dax_mod_unregister(ds) ) {
+        luaL_error(L, "Problem Unregistering from the server");
+    }
+    dax_free(ds);
+    return 0;
+}
+
 /* Wrapper function for the cdt creation functions */
 /* The Lua function should be passed two arguments.  The
  * first is the name of the datatype and the second is
@@ -713,6 +756,8 @@ daxlua_set_state(lua_State *L, dax_state *new_ds) {
 
 /* This array defines the functions that can be exported to a Lua script */
 static const struct luaL_Reg daxlib[] = {
+    {"dax_init", _dax_init},
+    {"dax_free", _dax_free},
     {"cdt_create", _cdt_create},
     {"tag_add", _tag_add},
     {"tag_get", _tag_get},
@@ -725,11 +770,14 @@ static const struct luaL_Reg daxlib[] = {
  * to the Lua script given by L.  It places them in a table named 'dax' and
  * leaves this table on the top of the stack.  This is the function that you
  *  would pass to the 'package.loadlib()' function in the Lua script.  
- * C program modules should probably use daxlua_register_function().  */
+ * C program modules should probably use daxlua_register_function(). */
+/* TODO: Add a table, "tags" to "dax" that would be empty but utilize the
+ * metamethods __index and __newindex to read and write the tags */
 int
-luaopen_daxlib (lua_State *L)
+luaopen_dax (lua_State *L)
 {
-    luaL_register(L, "dax", daxlib);
+    char *modulename = (char *)lua_tostring(L, 1);
+    luaL_register(L, modulename, daxlib);
     return 1;
 }
 
