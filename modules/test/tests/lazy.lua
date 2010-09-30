@@ -12,7 +12,16 @@
 --tag_add("LazyTag", "LazySimple", 1)
 --tag_add("LazyArray", "LazySimple", 10)
 
-tag_add("LazyTag", "DINT", 10)
+function callback(x)
+   print("Callback Officially Called with " .. x)
+end
 
-lazy_test()
+tag_add("LazyTag", "DINT", 10)
+event_add("LazyTag[2]", 1, "CHANGE", 0, callback, 44)
+
+
+tag_write("LazyTag[2]", 23)
+--event_select(2000)
+event_poll()
+--lazy_test()
 

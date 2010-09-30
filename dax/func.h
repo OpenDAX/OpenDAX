@@ -21,6 +21,9 @@
 #ifndef __FUNC_H
 #define __FUNC_H
 
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+
 /* Wrappers for system calls */
 ssize_t xwrite(int fd, const void *buff, size_t nbyte);
 

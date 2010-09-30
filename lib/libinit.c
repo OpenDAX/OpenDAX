@@ -48,13 +48,30 @@ dax_init(char *name)
     /* datatype list */
     ds->datatypes = NULL;
     ds->datatype_size = 0;
+    /* Event list array */
+    ds->events = malloc(sizeof(event_db));
+    if(ds->events == NULL) {
+        free(ds->modulename);
+        free(ds);
+        return NULL;
+    }
+    ds->event_size = 1;
+    ds->event_count = 0;
     /* Logging functions */
     ds->dax_debug = NULL;
     ds->dax_error = NULL;
     ds->dax_log = NULL;
     ds->lock = malloc(sizeof(dax_lock));
-    if(ds->lock == NULL) return NULL;
+    if(ds->lock == NULL) {
+        free(ds->modulename);
+        free(ds->events);
+        free(ds);
+        return NULL;
+    }
     if(libdax_init_lock(ds->lock)) {
+        free(ds->modulename);
+        free(ds->events);
+        free(ds->lock);
         free(ds);
         return NULL;
     }
@@ -62,11 +79,16 @@ dax_init(char *name)
     return ds;
 }
 
-/* TODO: Program dax_free() function */
+
 int
 dax_free(dax_state *ds)
 {
     libdax_unlock(ds->lock);
     libdax_destroy_lock(ds->lock);
+    free(ds->modulename);
+    /* TODO: gotta loop through and free the udata in the events. */
+    free(ds->events);
+    free(ds->lock);
+    free(ds);
     return 0;
 }

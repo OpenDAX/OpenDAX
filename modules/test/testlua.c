@@ -152,7 +152,7 @@ _handle_test(lua_State *L)
 static int
 _lazy_test(lua_State *L)
 {
-    int result;
+    int result, n;
     dax_dint test[10];
     
     Handle h;
@@ -167,15 +167,35 @@ _lazy_test(lua_State *L)
 //    
 //    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id);
 
+    for(n = 0; n < 10; n++) {
+        test[0] = n;
+    }
+    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+    result = dax_write_tag(ds, h, test);
+
     result = dax_tag_handle(ds, &h, "LazyTag[2]", 4);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id);
+    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
     result = dax_tag_handle(ds, &h, "LazyTag[3]", 1);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id);
+    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
     
-    result = dax_tag_handle(ds, &h, "LazyTag[4]", 1);
+    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
     result = dax_write_tag(ds, h, test);
     
-        
+    result = dax_event_select(ds, 2000, NULL);
+    if(result == ERR_TIMEOUT) {
+        luaL_error(L, "GOOD - dax_event_select() - Timed Out");
+    }
+    
+    test[0] = 10;
+    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+    result = dax_write_tag(ds, h, test);
+    
+    result = dax_event_select(ds, 2000, NULL);
+    if(result == ERR_TIMEOUT) {
+        luaL_error(L, "BAD - dax_event_select() - Timed Out");
+    }
+
+    
 //    data = malloc(h.size);
 //    mask = malloc(h.size);
 //    bzero(mask, h.size);
@@ -218,6 +238,10 @@ add_test_functions(lua_State *L)
     daxlua_register_function(L,"tag_get");
     daxlua_register_function(L,"tag_read");
     daxlua_register_function(L,"tag_write");
+    daxlua_register_function(L,"event_add");
+    daxlua_register_function(L,"event_select");
+    daxlua_register_function(L,"event_poll");
+
 
     /* These are the functions that only make sense in this module */
     lua_pushcfunction(L, _run_test);

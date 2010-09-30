@@ -115,7 +115,7 @@
 #define EVENT_EQUAL    0x06 /* Equal to */
 #define EVENT_GREATER  0x07 /* Greater Than */
 #define EVENT_LESS     0x08 /* Less Than */
-#define EVENT_DEADBAD  0x09 /* Changed by X amount since last event */
+#define EVENT_DEADBAND 0x09 /* Changed by X amount since last event */
 
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
@@ -266,14 +266,16 @@ int dax_read_tag(dax_state *ds, Handle handle, void *data);
 int dax_write_tag(dax_state *ds, Handle handle, void *data);
 int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 
-/* Event control functions */
-int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data, dax_event_id *id);
+/* Event handling functions */
+int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data, 
+                  dax_event_id *id, void (*callback)(void *udata), void *udata);
 int dax_event_del(dax_state *ds, int id);
 int dax_event_get(dax_state *ds, int id);
 int dax_event_modify(dax_state *ds, int id);
-//int dax_event_assign_callback(dax_state *ds, void (*callback)(, void *udata));
-int dax_event_select(dax_state *ds, int timeout);
-int dax_event_poll(dax_state *ds);
+int dax_event_select(dax_state *ds, int timeout, dax_event_id *id);
+int dax_event_poll(dax_state *ds, dax_event_id *id);
+int dax_event_get_fd(dax_state *ds);
+int dax_event_dispatch(dax_state *ds, dax_event_id *id);
 
 /* Custom Datatype Functions */
 typedef struct datatype dax_cdt;

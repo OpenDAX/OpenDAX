@@ -743,6 +743,151 @@ _tag_write(lua_State *L) {
     return 1;
 }
 
+/* This structure is used to store the indexes in the registry where the
+ * callback function and callback data are stored.  A pointer to one of
+ * these is what we send to the OpenDAX library to use as the callback
+ * for the C part of this deal. */
+typedef struct event_ref_data {
+    lua_State *L;
+    int function;
+    int data;
+} event_ref_data;
+
+/* This function should be passed a pointer to the event_ref_data structure
+ * that represents the lua_State, the Lua function and the argument that we
+ * want to pass to the Lua function and then calls the Lua function */
+static void
+_event_callback(void *data) {
+    event_ref_data *rdata;
+    rdata = (event_ref_data *)data;
+    lua_rawgeti(rdata->L, LUA_REGISTRYINDEX, rdata->function);
+    lua_rawgeti(rdata->L, LUA_REGISTRYINDEX, rdata->data);
+    lua_call(rdata->L, 1, 0);
+}
+
+/* Takes a string as an argument and returns the event type that the
+ * string represents.  Returns ERR_ARG if it can't find a match */
+static int
+_get_event_type(char *str) {
+    if(strcasecmp(str, "WRITE") == 0) {
+        return EVENT_WRITE;
+    } else if(strcasecmp(str, "CHANGE") == 0) {
+        return EVENT_CHANGE;
+    } else if(strcasecmp(str, "DEADBAND") == 0) {
+        return EVENT_DEADBAND;
+    } else if(strcasecmp(str, "SET") == 0) {
+        return EVENT_SET;
+    } else if(strcasecmp(str, "RESET") == 0) {
+        return EVENT_RESET;
+    } else if(strcasecmp(str, "EQUAL") == 0) {
+        return EVENT_EQUAL;
+    } else if(strcasecmp(str, "GREATER") == 0) {
+        return EVENT_GREATER;
+    } else if(strcasecmp(str, "LESS") == 0) {
+        return EVENT_LESS;
+    } else {
+        return ERR_ARG;
+    }
+}
+
+/* Used to add an event to the server's event list.  The arguments are...
+ * 1 - string - tagname
+ * 2 - number - count
+ * 3 - string - event type
+ * 4 - number - event data
+ * 5 - function - callback function
+ * 6 - ** - callback data
+ */ 
+static int
+_event_add(lua_State *L) {
+    char *str;
+    int count, type, result;
+    lua_Number number;
+    Handle h;
+    event_ref_data *edata;
+
+    if(lua_gettop(L) != 6) {
+        luaL_error(L, "Wrong number of arguments passed to event_add()");
+    }
+    if(!lua_isfunction(L, 5)) {
+        luaL_error(L, "Argument 5 to event_add() should be a function");
+    }
+
+    edata = malloc(sizeof(event_ref_data));
+    if(edata == NULL) {
+        luaL_error(L, "Unable to allocate memory");
+    }
+    /* Get tagname and count, then determine the handle */
+    str = (char *)lua_tostring(L, 1);
+    count = lua_tonumber(L, 2);
+    result = dax_tag_handle(ds, &h, str, count);
+    if(result) {
+        free(edata);
+        luaL_error(L, "%s with count %d is not a valid tag", str, count);
+    }
+    /* Get the event type and any number */
+    str = (char *)lua_tostring(L, 3);
+    type = _get_event_type(str);
+    if(type < 0) {
+        free(edata);
+        luaL_error(L, "%s is not a valid event type", str);
+    }
+    number = lua_tonumber(L, 4);
+
+    /* The data that was passed is actually at the top of the stack */
+    edata->data = luaL_ref(L, LUA_REGISTRYINDEX); /* Also pops the value */
+    /* Now the function should be at the top of the stack */
+    edata->function = luaL_ref(L, LUA_REGISTRYINDEX);
+    edata->L = L; /* We'll need this later */
+    result = dax_event_add(ds, &h, type, (void *)&number, NULL, _event_callback, edata);
+    if(result) {
+        free(edata);
+        luaL_error(L, "Unable to add event to server");
+    }
+    return 0;
+}
+
+/* Wrapper for dax_event_select().  It takes a single argument that is
+ * the timeout in milliseconds.  It returns 0 on timeout and 1 if
+ * it dispatches an event */
+static int
+_event_select(lua_State *L) {
+    int result;
+    int timeout;
+
+    if(lua_gettop(L) != 1) {
+        luaL_error(L, "Wrong number of arguments passed to event_select()");
+    }
+    timeout = lua_tonumber(L, 1);
+    result = dax_event_select(ds, timeout, NULL);
+
+    if(result == ERR_TIMEOUT) {
+        lua_pushnumber(L, 0);
+    } else if (result == 0) {
+        lua_pushnumber(L, 1);
+    } else {
+        luaL_error(L, "Problem with dax_event_select() call");
+    }
+    return 1;
+}
+
+static int
+_event_poll(lua_State *L) {
+    int result;
+
+    result = dax_event_poll(ds, NULL);
+
+    if(result == ERR_NOTFOUND) {
+        lua_pushnumber(L, 0);
+    } else if (result == 0) {
+        lua_pushnumber(L, 1);
+    } else {
+        luaL_error(L, "Problem with dax_event_poll() call");
+    }
+    return 1;
+}
+
+
 /* This is used by C program / modules that would like to take care of all
  * the allocation, initialization and configuration of their dax_state
  * objects.  It is very critical for that C function not to lose track of
@@ -763,6 +908,9 @@ static const struct luaL_Reg daxlib[] = {
     {"tag_get", _tag_get},
     {"tag_read", _tag_read},
     {"tag_write", _tag_write},
+    {"event_add", _event_add},
+    {"event_select", _event_select},
+    {"event_poll", _event_poll},
     {NULL, NULL}  /* sentinel */
 };
 
@@ -796,7 +944,7 @@ daxlua_register_function(lua_State *L, char *function_name) {
         }
     } else {
         while(daxlib[n].name != NULL) {
-            if(strcmp(function_name, daxlib[n].name)) {
+            if(strcmp(function_name, daxlib[n].name) == 0) {
                 lua_pushcfunction(L, daxlib[n].func);
                 lua_setglobal(L, daxlib[n].name);
             }

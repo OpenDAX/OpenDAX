@@ -25,6 +25,7 @@
 
 #include <common.h>
 #include <opendax.h>
+#include <dax/libcommon.h>
 
 
 /* Compiler Options */
@@ -90,6 +91,14 @@ inline int libdax_unlock(dax_lock *lock);
 inline int libdax_init_lock(dax_lock *lock);
 inline int libdax_destroy_lock(dax_lock *lock);
 
+/* Right now the event_db is stored within the dax_state as an array. */
+typedef struct event_db {
+    u_int32_t idx;  /* Tag index of the event */
+    u_int32_t id;   /* Individual id of the event */
+    void *udata;    /* The user data to be sent with callback() */
+    void (*callback)(void *udata);  /* Callback function */
+} event_db;
+
 /* This is the main dax_state structure that holds all the information
    for one dax server connection */
 struct dax_state {
@@ -107,15 +116,15 @@ struct dax_state {
     datatype *datatypes;
     unsigned int datatype_size;
     dax_lock *lock;
+    event_db *events;      /* Array of events stored for this connection */
+    int event_size;        /* Current size of the events array */
+    int event_count;       /* Total number of events stored in the array */
+    u_int8_t ebuff[EVENT_MSGSIZE]; /* Temporary buffer for event reception */
+    u_int8_t eindex;       /* Current index into the ebuff */
     void (*dax_debug)(const char *output);
     void (*dax_error)(const char *output);
     void (*dax_log)(const char *output);
 };
-
-
-//#ifndef TAG_CACHE_LIMIT
-//#  define TAG_CACHE_LIMIT "8"
-//#endif
 
 #define MIN_TIMEOUT      500
 #define MAX_TIMEOUT      30000
@@ -165,7 +174,6 @@ dax_lreal stom_lreal(dax_lreal);
 int mtos_generic(tag_type type, void *dst, void *src);
 int stom_generic(tag_type type, void *dst, void *src);
 
-
 /* These functions handle the tag cache */
 int init_tag_cache(dax_state *ds);
 int check_cache_index(dax_state *, tag_index, dax_tag *);
@@ -178,5 +186,9 @@ int opt_get_msgtimeout(dax_state *);
 datatype *get_cdt_pointer(dax_state *, tag_type, int *);
 int add_cdt_to_cache(dax_state *, tag_type type, char *typedesc);
 int dax_cdt_get(dax_state *ds, tag_type type, char *name);
+
+int add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *udata));
+int del_event(dax_state *ds, dax_event_id id);
+int exec_event(dax_state *ds, dax_event_id id);
 
 #endif /* !__LIBDAX_H */

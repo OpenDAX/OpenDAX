@@ -32,11 +32,69 @@ Event handling is not part of the system yet.  This is still a work in progress.
 Module messaging is not part of the system yet.  This is still a work in progress.
 
 \chapter{Shell Modules}
+
 Shell Modules are called that because they are processes that are normally started from the command line shell.  These modules could be anything from an mp3 player to a database client.  They could be just about any program that can be started from the shell prompt.  They obviously don't have any "normal" OpenDAX functionality.  OpenDAX allows their use by letting other modules gain access to the shell modules STDIN, STDOUT and STDERR file descriptors.  Text can be sent from other modules to these shell modules and controlled as though that text was being typed on the command line.  This allows OpenDAX to easily add functionality found in other programs and perhaps not reinvent too many wheels.
 
 Shell modules must be started by the \opendax server.  If you think about it this only makes sense.  If you simply ran them from the command line they would just be the same old programs.  When they are run as children of the \opendax server, the server would have access to the file descriptors that it needs to manipulate these programs.  It becomes a wrapper process for these programs.
 
 These would be configured in \textit{opendax.conf}.
+
+\chapter{Lua Modules}
+
+It is possible to write an OpenDAX module entirely in Lua\footnote{This feature is only partially implemented at this point but rudimentary support is included and development is ongoing}.  Included in the OpenDAX distribution is a library for interfacing to the OpenDAX API from Lua.  Since Lua is such an integral part of so much of the OpenDAX system this library was written for convenience, but since Lua is such an elegant language to embed and interface with it was easy to take this library and make a Lua Module\footnote{Not to be confused with an OpenDAX module} out of it. 
+
+\section{Installation}
+
+If you installed OpenDAX according to the instructions in this manual you should have the libdaxlua library file installed where the other libraries are installed.  Normally this would be /usr/local/lib but if you changed your prefix to the autoconf script it would be there instead.
+
+To get the module to work the library needs to exist in the path that LUA will look for libraries to load as modules.  In Lua this is passed as the LUA\_CPATH environment variable.  You can either pass this environment variable to all of your scripts or you can just create a symbolic link in one of the directories that are part of the default 'cpath.'  To find out what the cpath is use this command at the command prompt...
+
+\verb|lua -e "print(package.cpath)"|
+
+On my system it looks like this...
+
+\verb|./?.so;/usr/local/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so|
+
+Each path is separated by a ';' and the ? will be replaced with whatever you use as the argument to \textit{require()}.  So to load the luadax module as 'dax' then the Lua interpreter needs to find the library as one of those filenames.  We want the library to load when we use the command \verb|require("dax")| in our Lua scripts.  Add a symbolic link in \textit{/usr/local/lib/lua/5.1/} named \textit{dax.so} that points to the library, \textit{/usr/local/lib/libdaxlua.so}\footnote{In OSX the library will ed in .dylib but the symbolic link will still need to match the pattern in cpath}.
+
+Now when we use \verb|require("dax")| in our Lua scripts it looks in the directory \textit{/usr/local/lib/lua/5.1/} and finds a link to the library.  It loads the library and off we go.
+
+At some point we'll spend some time with the autoconf scripts and try to automate this process but for now this will have to do.
+
+\section{API Description}
+
+All of the functions of the OpenDAX Lua Module that you use to write your OpenDAX module are contained in a table of the same name that you used to create the module.  In my case it's \textit{"dax"}.
+
+\begin{verbatim}
+dax.init
+\end{verbatim}
+\index{dax.init function}
+
+\begin{verbatim}
+dax.free
+\end{verbatim}
+\index{dax.free function}
+
+\begin{verbatim}
+dax.cdt_create
+\end{verbatim}
+\index{dax.cdt_create function}
+
+\begin{verbatim}
+dax.tag_add
+\end{verbatim}
+\index{dax.tag_add function}
+
+\begin{verbatim}
+dax.tag_get
+\end{verbatim}
+\index{dax.tag_get function}
+
+\begin{verbatim}
+dax.tag_read
+\end{verbatim}
+\index{dax.tag_write function}
+
 
 \appendix
 

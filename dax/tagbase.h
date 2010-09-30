@@ -81,7 +81,8 @@ typedef struct dax_event_t {
     u_int32_t size;      /* The total size of the data block in bytes */
     tag_type datatype;   /* The datatype of the block */
     int eventtype;       /* The type of event */
-    void *data;                /* Custom data that the event can use */
+    void *data;          /* Data given by module */
+    void *test;          /* Internal data, depends on event type */
 //    struct mod_list *notify;   /* List of every module to be notified of this event */
     dax_module *notify;   /* List of every module to be notified of this event */
     struct dax_event_t *next;
@@ -110,6 +111,8 @@ tag_index tag_add(char *name, tag_type type, unsigned int count);
 int tag_del(char *name);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
+long int tag_get_count(void);
+
 
 int tag_read(tag_index handle, int offset, void *data, int size);
 int tag_write(tag_index handle, int offset, void *data, int size);
@@ -122,11 +125,8 @@ char *cdt_get_name(unsigned int type);
 int type_size(tag_type type);
 int serialize_datatype(tag_type type, char **str);
 
-
-//Handle tag_get_handle(char *name);
 int event_add(Handle h, int event_type, void *data, dax_module *module);
 int event_del(int id);
-
 
 #define DAX_DIAG
 #ifdef DAX_DIAG

@@ -437,6 +437,11 @@ tag_get_index(int index, dax_tag *tag)
     }
 }
 
+/* Just returns the tag count */
+long int tag_get_count(void) {
+    return _tagcount;
+}
+
 /* These are the low level tag reading / writing interface to the
  * database.
  * 
@@ -473,22 +478,132 @@ _send_event(tag_index idx, _dax_event *event)
     int result;
     char buff[EVENT_MSGSIZE];
     
-    ((u_int32_t *)buff)[0]  = htonl(event->eventtype);
-    ((u_int32_t *)buff)[4]  = htonl(idx);
-    ((u_int32_t *)buff)[8]  = htonl(event->id);
-    ((u_int32_t *)buff)[12] = htonl(event->byte);
-    ((u_int32_t *)buff)[16] = htonl(event->count);
-    ((u_int32_t *)buff)[20] = htonl(event->datatype);
-    ((u_int8_t *)buff)[24]  = event->bit;
+    *(u_int32_t *)(&buff[0])  = htonl(event->eventtype);
+    *(u_int32_t *)(&buff[4])  = htonl(idx);
+    *(u_int32_t *)(&buff[8])  = htonl(event->id);
+    *(u_int32_t *)(&buff[12]) = htonl(event->byte);
+    *(u_int32_t *)(&buff[16]) = htonl(event->count);
+    *(u_int32_t *)(&buff[20]) = htonl(event->datatype);
+    *(u_int8_t *)(&buff[24])  = event->bit;
 
     result = xwrite(event->notify->efd, buff, EVENT_MSGSIZE);
     if(result < 0) {
-        xerror("_message_send: %s", strerror(errno));
+        xerror("_send_event: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
     return 0;    
 }
 
+static inline int
+_event_change(_dax_event *event, tag_index idx, int offset, int size) {
+    int start, end, startbit, endbit, n, len;
+    u_int8_t *this, *that;
+    if(event->eventtype == DAX_BOOL) {
+        ;
+    } else {
+        this = (u_int8_t *)event->test + MAX(0, offset - event->byte);
+        that = (u_int8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
+        len = MIN(event->byte + event->size, offset + size) - MAX(offset, event->byte);
+        for(n = 0; n < len; n++) {
+            if(this[n] != that[n]) {
+                return 1; /* We have a winner */
+            }
+        }
+    }
+    return 0;
+}
+
+static inline int
+_event_deadband(_dax_event *event, tag_index idx, int offset, int size) {
+    switch (event->eventtype) {
+        case DAX_BOOL:
+            return 0;
+        case DAX_BYTE:
+            return 0;
+        case DAX_SINT:
+            return 0;
+        case DAX_WORD:
+            return 0;
+        case DAX_INT:
+            return 0;
+        case DAX_UINT:
+            return 0;
+        case DAX_DWORD:
+            return 0;
+        case DAX_DINT:
+            return 0;
+        case DAX_UDINT:
+            return 0;
+        case DAX_TIME:
+            return 0;
+        case DAX_REAL:
+            return 0;
+        case DAX_LWORD:
+            return 0;
+        case DAX_LINT:
+            return 0;
+        case DAX_ULINT:
+            return 0;
+        case DAX_LREAL:
+            return 0;
+        default:
+            return 0;
+    }
+
+    return 0;
+}
+
+static inline int
+_event_set(_dax_event *event, tag_index idx, int offset, int size) {
+    return 0;
+}
+
+static inline int
+_event_reset(_dax_event *event, tag_index idx, int offset, int size) {
+    return 0;
+}
+
+static inline int
+_event_equal(_dax_event *event, tag_index idx, int offset, int size) {
+    return 0;
+}
+
+static inline int
+_event_greater(_dax_event *event, tag_index idx, int offset, int size) {
+    return 0;
+}
+
+static inline int
+_event_less(_dax_event *event, tag_index idx, int offset, int size) {
+    return 0;
+}
+
+
+/* This function is called when the area of data is affected by the write
+ * and it determines whether the event should fire or not.  Return 1 if the
+ * event hits and 0 otherwise.  There are no errors */
+static int
+_event_hit(_dax_event *event, tag_index idx, int offset, int size) {
+    switch(event->eventtype) {
+        case EVENT_WRITE:
+            return 1;
+        case EVENT_CHANGE:
+            return _event_change(event, idx, offset, size);
+        case EVENT_DEADBAND:
+            return _event_deadband(event, idx, offset, size);
+        case EVENT_SET:
+            return _event_set(event, idx, offset, size);
+        case EVENT_RESET:
+            return _event_reset(event, idx, offset, size);
+        case EVENT_EQUAL:
+            return _event_equal(event, idx, offset, size);
+        case EVENT_GREATER:
+            return _event_greater(event, idx, offset, size);
+        case EVENT_LESS:
+            return _event_less(event, idx, offset, size);
+    }
+    return 0;
+}
 
 /* This function checks to see if an event has occurred.  It should be
  * called from the tag_write() function or the tag_mask_write() function.
@@ -509,9 +624,14 @@ _event_check(tag_index idx, int offset, int size) {
 
     while(this != NULL) {
         fprintf(stderr, "Checking Event Index %d, ID %d\n", idx, this->id);
+        /* This is to check whether the the data rages intersect.  If this
+         * test passes then we have manipulated the data associated with
+         * this event. */
         if(offset <= (this->byte + this->size - 1) && (offset + size -1 ) >= this->byte) {
             fprintf(stderr, "Event Hit offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
-            _send_event(idx, this);
+            if(_event_hit(this, idx, offset, size)) {
+                _send_event(idx, this);
+            }
         } else {
             fprintf(stderr, "Event Miss offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
         }
@@ -995,7 +1115,7 @@ type_size(tag_type type)
 }
 
 static inline int
-verify_event_type(tag_type ttype, int etype)
+_verify_event_type(tag_type ttype, int etype)
 {
     /* All datatypes can use Write or Change */
     if(etype == EVENT_WRITE || etype == EVENT_CHANGE) {
@@ -1033,6 +1153,94 @@ verify_event_type(tag_type ttype, int etype)
     return -1;
 }
 
+/* This function figures out how big the *data and *test memory blocks need
+ * to be in the event and assigns the proper data to them.  The *data area
+ * is to store the data from the user that is associated with the event, such
+ * as the number that the variables are supposed to be less than.  The *test
+ * area is to store state data such as a bitmap to show the last values of
+ * the tag to determine if a set event should be issued. It is assumed that
+ * the events make sense at this point. Returns 0 on success and an error
+ * code otherwise. */
+int
+_set_event_data(_dax_event *event, tag_index index, void *data) {
+    int datasize = 0, testsize = 0, size;
+    
+    /* Figure out how much memory to allocate */
+    switch(event->eventtype) {
+        case EVENT_WRITE: /* We don't need any of this to detect write events */
+            datasize = 0;
+            testsize = 0;
+            break;
+        case EVENT_CHANGE:
+            datasize = 0;
+            testsize = type_size(event->datatype) * event->count;
+            break;
+        case EVENT_DEADBAND:
+            size = type_size(event->datatype);
+            datasize = size;
+            testsize = size * event->count;
+            break;
+        case EVENT_SET:
+        case EVENT_RESET:
+            datasize = 0;
+            testsize = (event->count - 1)/8 + 1;
+            break;
+        case EVENT_EQUAL:
+        case EVENT_GREATER:
+        case EVENT_LESS:
+            datasize = type_size(event->datatype);
+            testsize = (event->count - 1)/8 + 1;
+            break;
+    }
+    /* Allocate the memory that we need */
+    if(datasize > 0) {
+        event->data = malloc(datasize);
+        if(event->data == NULL) {
+            xerror("event_add() - Unable to allocate memory for event data");
+            return ERR_ALLOC;
+        }
+    } else {
+        event->data = NULL;
+    }
+    
+    if(testsize > 0) {
+        event->test = malloc(testsize);
+        if(event->test == NULL) {
+            if(event->data != NULL) free(event->data);
+            xerror("event_add() - Unable to allocate memory for event test data");
+            return ERR_ALLOC;
+        }
+    } else {
+        event->test = NULL;
+    }
+
+    switch(event->eventtype) {
+        case EVENT_WRITE:
+           break;
+        case EVENT_DEADBAND:
+            /* Copy the existing tag data into the *data area */
+            memcpy(event->data, data, datasize);
+            memcpy(event->test, &_db[index].data[event->byte], testsize);
+            break;
+        case EVENT_CHANGE:
+            memcpy(event->test, &_db[index].data[event->byte], testsize);
+            break;
+        case EVENT_SET:
+        case EVENT_RESET:
+            bzero(event->test, testsize);
+            break;
+        case EVENT_EQUAL:
+        case EVENT_GREATER:
+        case EVENT_LESS:
+            memcpy(event->data, data, datasize);
+            bzero(event->test, testsize);
+            break;
+    }
+
+    
+    return 0;
+}
+
 /* Add the event defined.  Return the event id. 'h' is a handle to the tag
  * data that the event is tied too.  'event_type' is the type of event (see
  * opendax.h for #defines.  'data' is any data that may need to be
@@ -1041,6 +1249,7 @@ int
 event_add(Handle h, int event_type, void *data, dax_module *module)
 {
     _dax_event *head, *new;
+    int result;
     
     /* Bounds check handle */
     if(h.index < 0 || h.index >= _tagcount) {
@@ -1052,7 +1261,7 @@ event_add(Handle h, int event_type, void *data, dax_module *module)
         xlog(LOG_ERROR, "Size of the affected data in the new event is too large");
         return ERR_2BIG;
     }
-    if(verify_event_type(h.type, event_type)) {
+    if(_verify_event_type(h.type, event_type)) {
         /* error log handled in verify_event_type() function */
         return ERR_ARG;
     }
@@ -1070,16 +1279,16 @@ event_add(Handle h, int event_type, void *data, dax_module *module)
     new->datatype = h.type;
     new->eventtype = event_type;
     new->notify = module;
-    new->data = malloc(new->size);
-    if(new->data == NULL) {
-        xerror("event_add() - Unable to allocate memory for event data");
-        return ERR_ALLOC;
+    result = _set_event_data(new, h.index, data);
+    if(result) {
+        free(new);
+        return result;
     }
-    new->next = NULL;
-    
+
     head = _db[h.index].events;
     /* If the list is empty put it on top */
     if(head == NULL) {
+        new->next = NULL;
         _db[h.index].events = new;
     } else {
         /* For now we are not going to sort these events.  The right optimization
