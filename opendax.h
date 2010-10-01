@@ -96,6 +96,7 @@
 #define ERR_NOTNUMBER -19 /* Non Numeric Argument */
 #define ERR_EMPTY     -20 /* Empty */
 #define ERR_BADTYPE   -21 /* Bad Datatype */
+#define ERR_AUTH      -22 /* Not Authorized */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */
@@ -269,8 +270,8 @@ int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 /* Event handling functions */
 int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data, 
                   dax_event_id *id, void (*callback)(void *udata), void *udata);
-int dax_event_del(dax_state *ds, int id);
-int dax_event_get(dax_state *ds, int id);
+int dax_event_del(dax_state *ds, dax_event_id id);
+int dax_event_get(dax_state *ds, dax_event_id id);
 int dax_event_modify(dax_state *ds, int id);
 int dax_event_select(dax_state *ds, int timeout, dax_event_id *id);
 int dax_event_poll(dax_state *ds, dax_event_id *id);

@@ -74,9 +74,9 @@ int msg_cdt_create(dax_message *msg);
 int msg_cdt_get(dax_message *msg);
 
 
-/* Generic message sending function.  If size is zero then it is assumed that an error
-   is being sent to the module.  In that case payload should point to a single int that
-   indicates the error */
+/* Generic message sending function.  If response is MSG_ERROR then it is assumed that 
+ * an error is being sent to the module.  In that case payload should point to a 
+ * single int that indicates the error */
 static int
 _message_send(int fd, int command, void *payload, size_t size, int response)
 {
@@ -426,7 +426,6 @@ msg_tag_add(dax_message *msg)
 int
 msg_tag_del(dax_message *msg)
 {
-    xlog(LOG_MSG | LOG_VERBOSE, "Tag Delete Message from %d", msg->fd);
     return 0;
 }
 
@@ -601,6 +600,24 @@ msg_evnt_add(dax_message *msg)
 int
 msg_evnt_del(dax_message *msg)
 {
+    tag_index idx;
+    u_int32_t id;
+    int result;
+    dax_module *module;
+       
+    idx = *((u_int32_t *)&msg->data[0]);
+    id = *((u_int32_t *)&msg->data[4]);
+    module = module_find_fd(msg->fd);
+
+    xlog(LOG_MSG | LOG_VERBOSE, "Event Delete Message from %d", msg->fd);
+      
+    result = event_del(idx, id, module);
+    
+    if(idx >= 0) {
+        _message_send(msg->fd, MSG_EVNT_DEL, &idx, 8, RESPONSE);
+    } else {
+        _message_send(msg->fd, MSG_EVNT_DEL, &result, sizeof(result), ERROR);
+    }
     return 0;
 }
 

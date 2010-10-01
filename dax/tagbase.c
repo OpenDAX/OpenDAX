@@ -496,8 +496,11 @@ _send_event(tag_index idx, _dax_event *event)
 
 static inline int
 _event_change(_dax_event *event, tag_index idx, int offset, int size) {
-    int start, end, startbit, endbit, n, len;
+    int start, end, startbit, endbit, n, len, result;
     u_int8_t *this, *that;
+    
+    result = 0;
+    
     if(event->eventtype == DAX_BOOL) {
         ;
     } else {
@@ -506,11 +509,12 @@ _event_change(_dax_event *event, tag_index idx, int offset, int size) {
         len = MIN(event->byte + event->size, offset + size) - MAX(offset, event->byte);
         for(n = 0; n < len; n++) {
             if(this[n] != that[n]) {
-                return 1; /* We have a winner */
+                result = 1;
+                this[n] = that[n];
             }
         }
     }
-    return 0;
+    return result;
 }
 
 static inline int
@@ -1302,11 +1306,50 @@ event_add(Handle h, int event_type, void *data, dax_module *module)
     return new->id;
 }
 
-/* Not implemented yet. */
+/* Frees the memory associated with an event.  Pass a NULL pointer
+ * and bad things will happen. */
+static void
+_free_event(_dax_event *event) {
+    if(event->data != NULL) free(event->data);
+    if(event->test != NULL) free(event->test);
+    free(event);
+}
+
 int
-event_del(int id)
+event_del(int index, int id, dax_module *module)
 {
-    return ERR_GENERIC;
+    _dax_event *this, *last;
+    int result = ERR_NOTFOUND;
+    
+    if(index >= _tagcount || index < 0) {
+        xerror("event_del() - index %d is out of range\n", index);
+    }
+    this = _db[index].events;
+    if(this->id == id) {
+        if(this->notify != module) {
+            xlog(LOG_ERROR | LOG_VERBOSE, "Module cannot delete another module's event");
+            return ERR_AUTH;
+        }
+        _db[index].events = this->next;
+        _free_event(this);
+    }
+    last = this;
+    this = this->next;
+    while(this != NULL) {
+        if(this->id == id) {
+            if(this->notify != module) {
+                xlog(LOG_ERROR | LOG_VERBOSE, "Module cannot delete another module's event");
+                return ERR_AUTH;
+            }
+            last->next = this->next;
+            _free_event(this);
+            result = 0;
+            break; /* Uggg */
+        }
+        last = this;
+        this = this->next;
+    }
+    return result;
 }
 
 

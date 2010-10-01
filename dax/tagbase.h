@@ -126,7 +126,7 @@ int type_size(tag_type type);
 int serialize_datatype(tag_type type, char **str);
 
 int event_add(Handle h, int event_type, void *data, dax_module *module);
-int event_del(int id);
+int event_del(int index, int id, dax_module *module);
 
 #define DAX_DIAG
 #ifdef DAX_DIAG

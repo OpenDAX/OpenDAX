@@ -664,20 +664,51 @@ dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
 }
 
 int
-dax_event_del(dax_state *ds, int id)
+dax_event_del(dax_state *ds, dax_event_id id)
 {
+    int test, size;
+    dax_dint result;
+    dax_dint temp;
+    char buff[MSG_DATA_SIZE];
+
+    temp = mtos_dint(id.index);      /* Tag Index */
+    memcpy(buff, &temp, 4);
+    temp = mtos_dint(id.id);       /* Event ID */
+    memcpy(&buff[4], &temp, 4);
+    size = 8;
+    
+    libdax_lock(ds->lock);
+    if(_message_send(ds, MSG_EVNT_DEL, buff, size)) {
+        libdax_unlock(ds->lock);
+        return ERR_MSG_SEND;
+    } else {
+        test = _message_recv(ds, MSG_EVNT_DEL, &result, &size, 1);
+        if(test) {
+            libdax_unlock(ds->lock);
+            return test;
+        } else {
+            del_event(ds, id);
+        }
+    }
+    libdax_unlock(ds->lock);
+    return result;
+
+    
     return 0;
 }
 
 int
-dax_event_get(dax_state *ds, int id)
+dax_event_get(dax_state *ds, dax_event_id id)
 {
+    
     return 0;
 }
 
 int
-dax_event_mod(dax_state *ds, int id)
+dax_event_mod(dax_state *ds, dax_event_id id, Handle *h, int event_type, void *data,
+              void (*callback)(void *udata), void *udata)
 {
+    
     return 0;
 }
 

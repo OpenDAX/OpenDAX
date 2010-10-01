@@ -882,7 +882,7 @@ _event_poll(lua_State *L) {
     } else if (result == 0) {
         lua_pushnumber(L, 1);
     } else {
-        luaL_error(L, "Problem with dax_event_poll() call");
+        luaL_error(L, "Problem with dax_event_poll() returned %d", result);
     }
     return 1;
 }

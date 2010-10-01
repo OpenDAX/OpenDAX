@@ -26,6 +26,8 @@ int
 add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *udata)) {
     event_db *new_db;
 
+    /* TODO: Should find holes in the array from previous deletions and add new ones there. */
+    
     /* check to see if we need to grow the database */
     if(ds->event_count == ds->event_size) {
         /* For now we just double the size */
@@ -48,6 +50,21 @@ add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *ud
     ds->event_count++;
     return 0;
 }
+
+int
+del_event(dax_state *ds, dax_event_id id) {
+    int n;
+
+    for(n = 0; n < ds->event_count; n++) {
+        if(ds->events[n].idx == id.index && ds->events[n].id == id.id) {
+            memmove(&ds->events[n], &ds->events[n+1], sizeof(event_db) * (ds->event_count - n-1));
+            ds->event_count--;
+            return 0;
+        }
+    }
+    return ERR_NOTFOUND;
+}
+
 
 /* Blocks waiting for an event to happen.  If an event is found it
  * will run the callback function for that event.  Returns ERR_TIMEOUT 
@@ -97,7 +114,7 @@ dax_event_poll(dax_state *ds, dax_event_id *id) {
     } else if (result < 0) {
         return ERR_GENERIC;
     } else {
-        return ERR_TIMEOUT;
+        return ERR_NOTFOUND;
     }
     return 0;
 }
@@ -145,6 +162,7 @@ dax_event_dispatch(dax_state *ds, dax_event_id *id) {
 //        fprintf(stderr, "event bit   = %d\n", bit);
 //        fprintf(stderr, "event count = %d\n", count);
 //        fprintf(stderr, "event datatype = %s\n", dax_type_to_string(ds, datatype));
+        ds->eindex = 0; /* Reset for the next time */
         for(n = 0; n < ds->event_count; n ++) {
 //            fprintf(stderr, "checking for event at n = %d, idx = %d, id = %d\n", n, ds->events[n].idx, ds->events[n].id );
             if(ds->events[n].idx == idx && ds->events[n].id == eid) {

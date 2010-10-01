@@ -148,52 +148,96 @@ _handle_test(lua_State *L)
  * a developer a way to test new library or server features without
  * having to create a formal test.
  *******************************************************************/
+static void
+_event_callback(void *data) {
+    fprintf(stderr, "Got Callback: data = %d\n", *(int *)data);
+}
 
 static int
 _lazy_test(lua_State *L)
 {
     int result, n;
-    dax_dint test[10];
+    static dax_dint test[10];
     
     Handle h;
-//    unsigned char *data, *mask;
-//    unsigned char *newdata;
-    dax_event_id id;
+    dax_event_id id[10];
     
-//    result = dax_tag_handle(ds, &h, "LazyTag", 0);
-//    if(result) {
-//        luaL_error(L, "Problem getting handle for LazyTag = %d", result);
-//    }
-//    
-//    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id);
 
     for(n = 0; n < 10; n++) {
-        test[0] = n;
+        test[n] = n;
     }
-    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
-    result = dax_write_tag(ds, h, test);
+    result = dax_tag_add(ds, NULL, "LazyTag", DAX_DINT, 10);
+    result = dax_tag_handle(ds, &h, "LazyTag[0]", 1);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[0], _event_callback, &test[0]);
 
-    result = dax_tag_handle(ds, &h, "LazyTag[2]", 4);
-    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
+    result = dax_tag_handle(ds, &h, "LazyTag[1]", 1);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[1],  _event_callback, &test[1]);
+
+    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[2],  _event_callback, &test[2]);
+    
     result = dax_tag_handle(ds, &h, "LazyTag[3]", 1);
-    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
-    
-    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[3],  _event_callback, &test[3]);
+
+    result = dax_tag_handle(ds, &h, "LazyTag[4]", 1);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[4],  _event_callback, &test[4]);
+
+    result = dax_tag_handle(ds, &h, "LazyTag[5]", 1);
+    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[5],  _event_callback, &test[5]);
+
+    result = dax_tag_handle(ds, &h, "LazyTag", 6);
     result = dax_write_tag(ds, h, test);
+    while(!dax_event_poll(ds, NULL));
     
-    result = dax_event_select(ds, 2000, NULL);
-    if(result == ERR_TIMEOUT) {
-        luaL_error(L, "GOOD - dax_event_select() - Timed Out");
-    }
+    fprintf(stderr, "Deleting Number 3\n");
+    result = dax_event_del(ds, id[3]);
     
-    test[0] = 10;
-    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+    result = dax_tag_handle(ds, &h, "LazyTag", 6);
     result = dax_write_tag(ds, h, test);
+    while(!dax_event_poll(ds, NULL));
+
+    fprintf(stderr, "Deleting Number 5\n");
+    result = dax_event_del(ds, id[5]);
     
-    result = dax_event_select(ds, 2000, NULL);
-    if(result == ERR_TIMEOUT) {
-        luaL_error(L, "BAD - dax_event_select() - Timed Out");
-    }
+    result = dax_tag_handle(ds, &h, "LazyTag", 6);
+    result = dax_write_tag(ds, h, test);
+    while(!dax_event_poll(ds, NULL));
+
+    fprintf(stderr, "Deleting The Rest\n");
+    result = dax_event_del(ds, id[0]);
+    result = dax_event_del(ds, id[2]);
+    result = dax_event_del(ds, id[1]);
+    result = dax_event_del(ds, id[4]);
+
+    result = dax_tag_handle(ds, &h, "LazyTag", 6);
+    result = dax_write_tag(ds, h, test);
+    while(!dax_event_poll(ds, NULL));
+    
+    
+//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+//    result = dax_write_tag(ds, h, test);
+//
+//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 4);
+//    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
+//    result = dax_tag_handle(ds, &h, "LazyTag[3]", 1);
+//    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
+//    
+//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+//    result = dax_write_tag(ds, h, test);
+//    
+//    result = dax_event_select(ds, 2000, NULL);
+//    if(result == ERR_TIMEOUT) {
+//        luaL_error(L, "GOOD - dax_event_select() - Timed Out");
+//    }
+//    
+//    test[0] = 10;
+//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
+//    result = dax_write_tag(ds, h, test);
+//    
+//    result = dax_event_select(ds, 2000, NULL);
+//    if(result == ERR_TIMEOUT) {
+//        luaL_error(L, "BAD - dax_event_select() - Timed Out");
+//    }
 
     
 //    data = malloc(h.size);
