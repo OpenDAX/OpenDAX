@@ -656,11 +656,15 @@ dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
             }
             eid.id = result;
             eid.index = h->index;
-            add_event(ds, eid, udata, callback);
+            result = add_event(ds, eid, udata, callback);
+            if(result) {
+                libdax_unlock(ds->lock);
+                return result;
+            }
         }
     }
     libdax_unlock(ds->lock);
-    return result;
+    return 0;
 }
 
 int

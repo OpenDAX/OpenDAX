@@ -844,7 +844,7 @@ _event_add(lua_State *L) {
     result = dax_event_add(ds, &h, type, (void *)&number, &id, _event_callback, edata);
     if(result) {
         free(edata);
-        luaL_error(L, "Unable to add event to server");
+        luaL_error(L, "Unable to add event to server - result = %d", result);
     }
     lua_createtable(L, 2, 0);
     lua_pushinteger(L, id.index);

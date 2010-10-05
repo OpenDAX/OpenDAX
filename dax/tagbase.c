@@ -511,10 +511,8 @@ _event_change(_dax_event *event, tag_index idx, int offset, int size) {
         bit = event->bit;
         i = 0;
         for(n = 0; n < event->count; n++) {
-            fprintf(stderr, "checking n=%d bit=%d byte=%d\n", n, bit, i);
             mask = (0x01 << bit);
             if((this[i] & mask) != (that[i] & mask)) {
-                fprintf(stderr, "found a difference\n");
                 this[i] = that[i];
                 result = 1;
             }
@@ -580,14 +578,71 @@ _event_deadband(_dax_event *event, tag_index idx, int offset, int size) {
     return 0;
 }
 
+/* Checks to see if the bit is set and whether or not the event has been sent */
 static inline int
 _event_set(_dax_event *event, tag_index idx, int offset, int size) {
-    return 0;
+    int bit, n, i, result;
+    u_int8_t *this, *that;
+    u_int8_t mask;
+    result = 0;
+
+    /* TODO: Only check the bits that have changed.  For now we are just
+     * looping through each bit in the event to see if anything has
+     * changed.  This can be made much more efficient. */
+    this = (u_int8_t *)event->test;
+    that = (u_int8_t *)&(_db[idx].data[event->byte]);
+    bit = event->bit;
+    i = 0;
+    for(n = 0; n < event->count; n++) {
+        mask = (0x01 << bit);
+        if(that[i] & mask) {
+            if(!(this[i] & mask)) {
+                result = 1;
+                this[i] |= mask; /* Set flag so we don't do this next time */
+            }
+        } else {
+            this[i] &= ~mask; /* Unset flag so event will fire next time */
+        }
+        bit++;
+        if(bit == 8) {
+            bit = 0;
+            i++;
+        }
+    }
+    return result;
 }
 
 static inline int
 _event_reset(_dax_event *event, tag_index idx, int offset, int size) {
-    return 0;
+    int bit, n, i, result;
+    u_int8_t *this, *that;
+    u_int8_t mask;
+    result = 0;
+
+    /* TODO: Only check the bits that have changed.  For now we are just
+     * looping through each bit in the event to see if anything has
+     * changed.  This can be made much more efficient. */
+    this = (u_int8_t *)event->test;
+    that = (u_int8_t *)&(_db[idx].data[event->byte]);
+    bit = event->bit;
+    i = 0;
+    for(n = 0; n < event->count; n++) {
+        mask = (0x01 << bit);
+        if(!(that[i] & mask)) {
+            if(!(this[i] & mask)) {
+                result = 1;
+                this[i] |= mask; /* Set flag so we don't do this next time */
+            }
+        } else {
+            this[i] &= ~mask; /* Unset flag so event will fire next time */
+        }
+        bit++;
+        if(bit == 8) {
+            bit = 0;
+            i++;
+        }
+    }
+    return result;
 }
 
 static inline int
@@ -646,11 +701,11 @@ static void
 _event_check(tag_index idx, int offset, int size) {
     _dax_event *this;
     
-    fprintf(stderr, "Event Check Called: idx = %d, offset = %d, size = %d\n",idx, offset, size);
+    //fprintf(stderr, "Event Check Called: idx = %d, offset = %d, size = %d\n",idx, offset, size);
     this = _db[idx].events;
 
     while(this != NULL) {
-        fprintf(stderr, "Checking Event Index %d, ID %d\n", idx, this->id);
+        //fprintf(stderr, "Checking Event Index %d, ID %d\n", idx, this->id);
         /* This is to check whether the the data rages intersect.  If this
          * test passes then we have manipulated the data associated with
          * this event. */
@@ -1205,7 +1260,6 @@ _set_event_data(_dax_event *event, tag_index index, void *data) {
             } else {
                 testsize = type_size(event->datatype) * event->count;
             }
-            fprintf(stderr, "_set_event_data() - Change event test size set to %d\n", testsize);
             break;
         case EVENT_DEADBAND:
             size = type_size(event->datatype);
