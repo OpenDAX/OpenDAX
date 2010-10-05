@@ -28,6 +28,27 @@ function EventTest(tagname, val, test)
     end
 end    
 
+
+tag_add("EventBOOL", "BOOL", 20)
+arr = {}
+for n=1,20 do
+  arr[n] = false;
+end
+e = event_add("EventBOOL[3]", 9, "CHANGE", 0, callback, HIT)
+arr = {false, false, false, false, false, false, false, false, false, false}
+EventTest("EventBOOL", arr, MISS)
+arr[3] = true
+EventTest("EventBOOL", arr, MISS)
+arr[4] = true
+EventTest("EventBOOL", arr, HIT)
+arr[12] = true
+EventTest("EventBOOL", arr, HIT)
+arr[13] = true
+EventTest("EventBOOL", arr, MISS)
+--Delete the event when we are done
+event_del(e)
+
+
 --First we check the write event
 
 tag_add("EventDint", "DINT", 20)
@@ -40,6 +61,7 @@ EventTest("EventDint[15]", 22, MISS)
 
 tag_add("EventInt", "INT", 20)
 event_add("EventInt[5]", 10, "CHANGE", 0, callback, HIT)
+
 
 EventTest("EventInt[4]",  22, MISS)
 EventTest("EventInt[5]",  22, HIT)

@@ -3,7 +3,6 @@
 
 PASS = 0
 FAIL = 1
-
 --[[
 run_test("tests/random.lua", "Random Tag Addition Test")
 run_test("tests/tagname.lua", "Tagname Addition Test")
@@ -14,6 +13,7 @@ run_test("tests/typefail.lua", "Type Fail Test")
 run_test("tests/tagmodify.lua", "Tag Modification Test")
 run_test("tests/eventadd.lua", "Event Addition Test")
 --]]
---run_test("tests/events.lua", "Event Notification Test")
-run_test("tests/lazy.lua", "Lazy Programmer Test")
+run_test("tests/events.lua", "Event Notification Test")
+
+--run_test("tests/lazy.lua", "Lazy Programmer Test")
 

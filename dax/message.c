@@ -579,13 +579,13 @@ msg_evnt_add(dax_message *msg)
         memcpy(&event_type, &msg->data[16], 4);
         memcpy(&h.size, &msg->data[20], 4);
         h.bit = msg->data[24];
-        fprintf(stderr, "Event Handle Index = %d\n",h.index);
-        fprintf(stderr, "Event Handle Count = %d\n",h.count);
-        fprintf(stderr, "Event Handle Datatype = 0x%X\n",h.type);
-        fprintf(stderr, "Event Handle Size = %d\n",h.size);
-        fprintf(stderr, "Event Handle Byte = %d\n",h.byte);
-        fprintf(stderr, "Event Handle Bit = %d\n",h.bit);
-        fprintf(stderr, "Event Type = %d\n", event_type);
+//        fprintf(stderr, "Event Handle Index = %d\n",h.index);
+//        fprintf(stderr, "Event Handle Count = %d\n",h.count);
+//        fprintf(stderr, "Event Handle Datatype = 0x%X\n",h.type);
+//        fprintf(stderr, "Event Handle Size = %d\n",h.size);
+//        fprintf(stderr, "Event Handle Byte = %d\n",h.byte);
+//        fprintf(stderr, "Event Handle Bit = %d\n",h.bit);
+//        fprintf(stderr, "Event Type = %d\n", event_type);
         event_id = event_add(h, event_type, data, module);
     }
     

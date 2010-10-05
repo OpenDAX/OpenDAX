@@ -30,5 +30,24 @@ tag_write("LazyTag[2]", 22)
 event_select(2000)
 --]]
 
-lazy_test()
+arr = {false, false, false, false, false, false, false, false, false, false}
+tag_add("LazyBool", "BOOL", 10)
+--tag_write("LazyBool", arr)
+tag_write("LazyBool[2]", true)
+
+b = tag_read("LazyBool", 0)
+
+for n = 1,10 do
+  print(b[n])
+end
+
+tag_write("LazyBool[2]", false)
+print("-")
+b = tag_read("LazyBool", 0)
+
+for n = 1,10 do
+  print(b[n])
+end
+
+--lazy_test()
 

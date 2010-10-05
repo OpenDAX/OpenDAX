@@ -797,7 +797,8 @@ _get_event_type(char *str) {
  * 4 - number - event data
  * 5 - function - callback function
  * 6 - ** - callback data
- */ 
+ * The function returns a table that can be used in other functions.  The
+ * Lua script should probably not mess with the members of this table. */ 
 static int
 _event_add(lua_State *L) {
     char *str;
@@ -805,6 +806,7 @@ _event_add(lua_State *L) {
     lua_Number number;
     Handle h;
     event_ref_data *edata;
+    dax_event_id id;
 
     if(lua_gettop(L) != 6) {
         luaL_error(L, "Wrong number of arguments passed to event_add()");
@@ -839,11 +841,35 @@ _event_add(lua_State *L) {
     /* Now the function should be at the top of the stack */
     edata->function = luaL_ref(L, LUA_REGISTRYINDEX);
     edata->L = L; /* We'll need this later */
-    result = dax_event_add(ds, &h, type, (void *)&number, NULL, _event_callback, edata);
+    result = dax_event_add(ds, &h, type, (void *)&number, &id, _event_callback, edata);
     if(result) {
         free(edata);
         luaL_error(L, "Unable to add event to server");
     }
+    lua_createtable(L, 2, 0);
+    lua_pushinteger(L, id.index);
+    lua_rawseti(L, -2, 1);
+    lua_pushinteger(L, id.id);
+    lua_rawseti(L, -2, 2);
+    return 1;
+}
+
+/* Used to delete an event from the server.  The arguement is a single
+ * table that would have been returned from _add_event().  It returns
+ * nothing */
+static int
+_event_del(lua_State *L) {
+    dax_event_id id;
+
+    if(!lua_istable(L, 1)) {
+        luaL_error(L, "Wrong type of argument passed to event_del()");
+    }
+    lua_rawgeti(L, 1, 1); /* Get the index from the table */
+    id.index = lua_tointeger(L, -1);
+    lua_rawgeti(L, 1, 2); /* Get the id from the table */
+    id.id = lua_tointeger(L, -1);
+    
+    dax_event_del(ds, id);
     return 0;
 }
 
@@ -871,6 +897,8 @@ _event_select(lua_State *L) {
     return 1;
 }
 
+/* Wrapper for dax_event_poll() no argument  It returns 0 on if there are
+ * no events and 1 if it dispatches an event */
 static int
 _event_poll(lua_State *L) {
     int result;
@@ -909,6 +937,7 @@ static const struct luaL_Reg daxlib[] = {
     {"tag_read", _tag_read},
     {"tag_write", _tag_write},
     {"event_add", _event_add},
+    {"event_del", _event_del},
     {"event_select", _event_select},
     {"event_poll", _event_poll},
     {NULL, NULL}  /* sentinel */

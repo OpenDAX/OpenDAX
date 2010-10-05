@@ -104,7 +104,7 @@ AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtof strtoul])
 
-CFLAGS="$CFLAGS -Wall -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
+CFLAGS="-Wall -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
 
 if test $USE_DEBUG = yes ; then
 #   DEBUG=1

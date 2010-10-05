@@ -496,17 +496,40 @@ _send_event(tag_index idx, _dax_event *event)
 
 static inline int
 _event_change(_dax_event *event, tag_index idx, int offset, int size) {
-    int start, end, startbit, endbit, n, len, result;
+    int bit, n, i, len, result;
     u_int8_t *this, *that;
-    
+    u_int8_t mask;
     result = 0;
+
     
-    if(event->eventtype == DAX_BOOL) {
-        ;
+    if(event->datatype == DAX_BOOL) {
+        /* TODO: Only check the bits that have changed.  For now we are just
+         * looping through each bit in the event to see if anything has
+         * changed.  This can be made much more efficient. */
+        this = (u_int8_t *)event->test;
+        that = (u_int8_t *)&(_db[idx].data[event->byte]);
+        bit = event->bit;
+        i = 0;
+        for(n = 0; n < event->count; n++) {
+            fprintf(stderr, "checking n=%d bit=%d byte=%d\n", n, bit, i);
+            mask = (0x01 << bit);
+            if((this[i] & mask) != (that[i] & mask)) {
+                fprintf(stderr, "found a difference\n");
+                this[i] = that[i];
+                result = 1;
+            }
+            bit++;
+            if(bit == 8) {
+                bit = 0;
+                i++;
+            }
+        }
+        
     } else {
         this = (u_int8_t *)event->test + MAX(0, offset - event->byte);
         that = (u_int8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
         len = MIN(event->byte + event->size, offset + size) - MAX(offset, event->byte);
+
         for(n = 0; n < len; n++) {
             if(this[n] != that[n]) {
                 result = 1;
@@ -1177,7 +1200,12 @@ _set_event_data(_dax_event *event, tag_index index, void *data) {
             break;
         case EVENT_CHANGE:
             datasize = 0;
-            testsize = type_size(event->datatype) * event->count;
+            if(event->datatype == DAX_BOOL) {
+                testsize = (event->count - 1)/8 + 1;
+            } else {
+                testsize = type_size(event->datatype) * event->count;
+            }
+            fprintf(stderr, "_set_event_data() - Change event test size set to %d\n", testsize);
             break;
         case EVENT_DEADBAND:
             size = type_size(event->datatype);

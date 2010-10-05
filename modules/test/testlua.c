@@ -283,6 +283,7 @@ add_test_functions(lua_State *L)
     daxlua_register_function(L,"tag_read");
     daxlua_register_function(L,"tag_write");
     daxlua_register_function(L,"event_add");
+    daxlua_register_function(L,"event_del");
     daxlua_register_function(L,"event_select");
     daxlua_register_function(L,"event_poll");
 
