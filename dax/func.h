@@ -23,6 +23,8 @@
 
 #define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+#define ABS(a)     (((a) < 0) ? -(a) : (a))
+
 
 /* Wrappers for system calls */
 ssize_t xwrite(int fd, const void *buff, size_t nbyte);

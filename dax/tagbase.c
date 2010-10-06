@@ -616,14 +616,12 @@ _generic_compare(tag_type datatype, void *data1, void *data2) {
             if(u1.dax_byte < u2.dax_byte) return -1;
             else if(u1.dax_byte > u2.dax_byte) return 1;
             else return 0;
-            break;
         case DAX_SINT:
             u1.dax_sint = *(dax_sint *)data1;
             u2.dax_sint = *(dax_sint *)data2;
             if(u1.dax_sint < u2.dax_sint) return -1;
             else if(u1.dax_sint > u2.dax_sint) return 1;
             else return 0;
-            break;
         case DAX_UINT:
         case DAX_WORD:
             u1.dax_uint = *(dax_uint *)data1;
@@ -631,14 +629,12 @@ _generic_compare(tag_type datatype, void *data1, void *data2) {
             if(u1.dax_uint < u2.dax_uint) return -1;
             else if(u1.dax_uint > u2.dax_uint) return 1;
             else return 0;
-            break;
         case DAX_INT:
             u1.dax_int = *(dax_int *)data1;
             u2.dax_int = *(dax_int *)data2;
             if(u1.dax_int < u2.dax_int) return -1;
             else if(u1.dax_int > u2.dax_int) return 1;
             else return 0;
-            break;
         case DAX_UDINT:
         case DAX_DWORD:
         case DAX_TIME:
@@ -647,14 +643,12 @@ _generic_compare(tag_type datatype, void *data1, void *data2) {
             if(u1.dax_udint < u2.dax_udint) return -1;
             else if(u1.dax_udint > u2.dax_udint) return 1;
             else return 0;
-            break;
         case DAX_DINT:
             u1.dax_dint = *(dax_dint *)data1;
             u2.dax_dint = *(dax_dint *)data2;
             if(u1.dax_dint < u2.dax_dint) return -1;
             else if(u1.dax_dint > u2.dax_dint) return 1;
             else return 0;
-            break;
         case DAX_ULINT:
         case DAX_LWORD:
             u1.dax_ulint = *(dax_ulint *)data1;
@@ -662,28 +656,24 @@ _generic_compare(tag_type datatype, void *data1, void *data2) {
             if(u1.dax_ulint < u2.dax_ulint) return -1;
             else if(u1.dax_ulint > u2.dax_ulint) return 1;
             else return 0;
-            break;
         case DAX_LINT:
             u1.dax_lint = *(dax_lint *)data1;
             u2.dax_lint = *(dax_lint *)data2;
             if(u1.dax_lint < u2.dax_lint) return -1;
             else if(u1.dax_lint > u2.dax_lint) return 1;
             else return 0;
-            break;
         case DAX_REAL:
             u1.dax_real = *(dax_real *)data1;
             u2.dax_real = *(dax_real *)data2;
             if(u1.dax_real < u2.dax_real) return -1;
             else if(u1.dax_real > u2.dax_real) return 1;
             else return 0;
-            break;
         case DAX_LREAL:
             u1.dax_lreal = *(dax_lreal *)data1;
             u2.dax_lreal = *(dax_lreal *)data2;
             if(u1.dax_lreal < u2.dax_lreal) return -1;
             else if(u1.dax_lreal > u2.dax_lreal) return 1;
             else return 0;
-            break;
     }
     assert(0); /* Something is seriously wrong if we get here */
     return -2;
@@ -717,41 +707,91 @@ _event_compare(_dax_event *event, tag_index idx, int offset, int size, int compa
     return result;
 }
 
+/* This function calculates whether the deadband has been exceeded for each of the
+ * different datatypes.  Returns 1 if the deadband has been exceeded and 0 otherwise */
+static inline int
+_generic_deadband(_dax_event *event, void *data1, void *data2) {
+    dax_type_union diff, db;
+    
+    switch(event->datatype) {
+        case DAX_BYTE:
+            db.dax_byte = *(dax_byte *)event->data;
+            diff.dax_int = *(dax_byte *)data1 - *(dax_byte *)data2;         
+            if(ABS(diff.dax_int) >= db.dax_byte) return 1;
+            else return 0;
+        case DAX_SINT:
+            db.dax_sint = *(dax_sint *)event->data;
+            diff.dax_sint = *(dax_sint *)data1 - *(dax_sint *)data2;         
+            if(ABS(diff.dax_sint) >= db.dax_sint) return 1;
+            else return 0;
+        case DAX_UINT:
+        case DAX_WORD:
+            db.dax_uint = *(dax_uint *)event->data;
+            diff.dax_dint = *(dax_uint *)data1 - *(dax_uint *)data2;         
+            if(ABS(diff.dax_dint) >= db.dax_uint) return 1;
+            else return 0;
+        case DAX_INT:
+            db.dax_int = *(dax_int *)event->data;
+            diff.dax_int = *(dax_int *)data1 - *(dax_int *)data2;         
+            if(ABS(diff.dax_int) >= db.dax_int) return 1;
+            else return 0;
+        case DAX_UDINT:
+        case DAX_DWORD:
+        case DAX_TIME:
+            db.dax_udint = *(dax_udint *)event->data;
+            diff.dax_lint = *(dax_udint *)data1 - *(dax_udint *)data2;         
+            if(ABS(diff.dax_lint) >= db.dax_udint) return 1;
+            else return 0;
+        case DAX_DINT:
+            db.dax_dint = *(dax_dint *)event->data;
+            diff.dax_dint = *(dax_dint *)data1 - *(dax_dint *)data2;         
+            if(ABS(diff.dax_dint) >= db.dax_dint) return 1;
+            else return 0;
+        case DAX_ULINT:
+        case DAX_LWORD:
+            db.dax_ulint = *(dax_ulint *)event->data;
+            diff.dax_lint = *(dax_ulint *)data1 - *(dax_ulint *)data2;         
+            if(ABS(diff.dax_lint) >= db.dax_ulint) return 1;
+            else return 0;
+        case DAX_LINT:
+            db.dax_lint = *(dax_lint *)event->data;
+            diff.dax_lint = *(dax_lint *)data1 - *(dax_lint *)data2;         
+            if(ABS(diff.dax_lint) >= db.dax_lint) return 1;
+            else return 0;
+        case DAX_REAL:
+            db.dax_real = *(dax_real *)event->data;
+            diff.dax_real = *(dax_real *)data1 - *(dax_real *)data2;         
+            if(ABS(diff.dax_real) >= db.dax_real) return 1;
+            else return 0;
+        case DAX_LREAL:
+            db.dax_lreal = *(dax_lreal *)event->data;
+            diff.dax_lreal = *(dax_lreal *)data1 - *(dax_lreal *)data2;         
+            if(ABS(diff.dax_lreal) >= db.dax_lreal) return 1;
+            else return 0;
+    }
+    assert(0); /* Something is seriously wrong if we get here */
+    return -2;
+}
+
+
 static inline int
 _event_deadband(_dax_event *event, tag_index idx, int offset, int size) {
-    switch (event->datatype) {
-        case DAX_BYTE:
-            return 0;
-        case DAX_SINT:
-            return 0;
-        case DAX_WORD:
-            return 0;
-        case DAX_INT:
-            return 0;
-        case DAX_UINT:
-            return 0;
-        case DAX_DWORD:
-            return 0;
-        case DAX_DINT:
-            return 0;
-        case DAX_UDINT:
-            return 0;
-        case DAX_TIME:
-            return 0;
-        case DAX_REAL:
-            return 0;
-        case DAX_LWORD:
-            return 0;
-        case DAX_LINT:
-            return 0;
-        case DAX_ULINT:
-            return 0;
-        case DAX_LREAL:
-            return 0;
-        default:
-            return 0;
+    int n, inc, len, result;
+    u_int8_t *this, *that;
+    result = 0;
+
+    inc = TYPESIZE(event->datatype) / 8;
+    this = (u_int8_t *)event->test + MAX(0, offset - event->byte);
+    that = (u_int8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
+    len = MIN(event->byte + event->size, offset + size) - MAX(offset, event->byte);
+
+    for(n = 0; n < len; n += inc) {
+        if(_generic_deadband(event, &this[n], &that[n])) {
+            result = 1;
+            memcpy(&this[n], &that[n], inc);
+        }
     }
-    return 0;
+    return result;
 }
 
 
