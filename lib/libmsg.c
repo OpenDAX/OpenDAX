@@ -41,7 +41,7 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
     ((u_int32_t *)buff)[1] = htonl(command);
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
-    //--printf("M - Message send, size = %d\n", ntohl(((u_int32_t *)buff)[0]));
+
     /* TODO: We need to set some kind of timeout here.  This could block
        forever if something goes wrong.  It may be a signal or something too. */
     result = write(ds->sfd, buff, size + MSG_HDR_SIZE);
@@ -571,15 +571,14 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
     size_t n, count, m_size, sendsize;
     char buff[MSG_DATA_SIZE];
     int result;
-    //int apple;
-    
+
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle.*/
-	m_size = (MSG_DATA_SIZE - sizeof(tag_index) - sizeof(int)) / 2;
+    m_size = (MSG_DATA_SIZE - sizeof(tag_index) - sizeof(int)) / 2;
     count=((size - 1) / m_size) + 1;
     for(n = 0; n < count; n++) {
         if(n == (count - 1)) { /* Last Packet */
-		    sendsize = (size % m_size); /* What's left over */
+            sendsize = (size % m_size); /* What's left over */
         } else {
             sendsize = m_size;
         }
@@ -588,9 +587,7 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
         *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
         memcpy(&buff[8], data + (m_size * n), sendsize);
         memcpy(&buff[8 + sendsize], mask + (m_size * n), sendsize);
-        //for(apple = 0; apple < size; apple++) {
-        //    printf("data [0x%X] mask [0x%X]\n", ((char *)data)[apple], ((char *)mask)[apple]);
-        //}
+
         libdax_lock(ds->lock);
         result = _message_send(ds, MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(tag_index) + sizeof(int));
         if(result) {
@@ -724,7 +721,6 @@ int
 dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
 {
     int size = 0, result;
-    //tag_type type = 0;
     cdt_member *this;
     char test[DAX_TAGNAME_SIZE + 1];
     char buff[MSG_DATA_SIZE], rbuff[10];
@@ -764,8 +760,6 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
         this = this->next;
     }
 
-    //--printf("dax_dt_create() %s\n", buff);
-
     libdax_lock(ds->lock);
     result = _message_send(ds, MSG_CDT_CREATE, buff, size);
     
@@ -781,7 +775,6 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
         if(type != NULL) {
             *type = stom_udint(*((tag_type *)rbuff));
         }
-        //--printf("dax_cdt_create() 0x%X : %s\n", *type, &(buff[4]));
         result = add_cdt_to_cache(ds, stom_udint(*((tag_type *)rbuff)), buff);
         dax_cdt_free(cdt);
     }

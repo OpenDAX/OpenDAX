@@ -177,6 +177,24 @@ typedef struct dax_event_id
 /* Opaque pointer for storing a dax_state object in the library */
 typedef struct dax_state dax_state;
 
+/* Easy way to store base datatypes.  Doesn't include BOOL */
+typedef union dax_type_union {
+    dax_byte   dax_byte;
+    dax_sint   dax_sint;
+    dax_word   dax_word;
+    dax_int    dax_int;
+    dax_uint   dax_uint;
+    dax_dword  dax_dword;
+    dax_dint   dax_dint;
+    dax_udint  dax_udint;
+    dax_time   dax_time;
+    dax_lword  dax_lword;
+    dax_lint   dax_lint;
+    dax_ulint  dax_ulint;
+    dax_real   dax_real;
+    dax_lreal  dax_lreal;
+} dax_type_union;
+
 /* These functions are for module configuration */
 dax_state *dax_init(char *name);
 int dax_init_config(dax_state *ds, char *name);

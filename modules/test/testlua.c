@@ -157,7 +157,7 @@ static int
 _lazy_test(lua_State *L)
 {
     int result, n;
-    static dax_dint test[10];
+    static dax_dint test[10], data;
     
     Handle h;
     dax_event_id id[10];
@@ -166,108 +166,21 @@ _lazy_test(lua_State *L)
     for(n = 0; n < 10; n++) {
         test[n] = n;
     }
-    result = dax_tag_add(ds, NULL, "LazyTag", DAX_DINT, 10);
-    result = dax_tag_handle(ds, &h, "LazyTag[0]", 1);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[0], _event_callback, &test[0]);
-
-    result = dax_tag_handle(ds, &h, "LazyTag[1]", 1);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[1],  _event_callback, &test[1]);
-
-    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[2],  _event_callback, &test[2]);
-    
-    result = dax_tag_handle(ds, &h, "LazyTag[3]", 1);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[3],  _event_callback, &test[3]);
-
-    result = dax_tag_handle(ds, &h, "LazyTag[4]", 1);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[4],  _event_callback, &test[4]);
-
-    result = dax_tag_handle(ds, &h, "LazyTag[5]", 1);
-    result = dax_event_add(ds, &h, EVENT_WRITE, NULL, &id[5],  _event_callback, &test[5]);
-
-    result = dax_tag_handle(ds, &h, "LazyTag", 6);
-    result = dax_write_tag(ds, h, test);
-    while(!dax_event_poll(ds, NULL));
-    
-    fprintf(stderr, "Deleting Number 3\n");
-    result = dax_event_del(ds, id[3]);
-    
-    result = dax_tag_handle(ds, &h, "LazyTag", 6);
-    result = dax_write_tag(ds, h, test);
-    while(!dax_event_poll(ds, NULL));
-
-    fprintf(stderr, "Deleting Number 5\n");
-    result = dax_event_del(ds, id[5]);
-    
-    result = dax_tag_handle(ds, &h, "LazyTag", 6);
-    result = dax_write_tag(ds, h, test);
-    while(!dax_event_poll(ds, NULL));
-
-    fprintf(stderr, "Deleting The Rest\n");
-    result = dax_event_del(ds, id[0]);
-    result = dax_event_del(ds, id[2]);
-    result = dax_event_del(ds, id[1]);
-    result = dax_event_del(ds, id[4]);
-
-    result = dax_tag_handle(ds, &h, "LazyTag", 6);
-    result = dax_write_tag(ds, h, test);
-    while(!dax_event_poll(ds, NULL));
-    
-    
-//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
-//    result = dax_write_tag(ds, h, test);
-//
-//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 4);
-//    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
-//    result = dax_tag_handle(ds, &h, "LazyTag[3]", 1);
-//    result = dax_event_add(ds, &h, EVENT_CHANGE, NULL, &id, NULL, NULL);
-//    
-//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
-//    result = dax_write_tag(ds, h, test);
-//    
-//    result = dax_event_select(ds, 2000, NULL);
-//    if(result == ERR_TIMEOUT) {
-//        luaL_error(L, "GOOD - dax_event_select() - Timed Out");
-//    }
-//    
-//    test[0] = 10;
-//    result = dax_tag_handle(ds, &h, "LazyTag[2]", 1);
-//    result = dax_write_tag(ds, h, test);
-//    
-//    result = dax_event_select(ds, 2000, NULL);
-//    if(result == ERR_TIMEOUT) {
-//        luaL_error(L, "BAD - dax_event_select() - Timed Out");
-//    }
-
-    
-//    data = malloc(h.size);
-//    mask = malloc(h.size);
-//    bzero(mask, h.size);
-//    
-//    *((int *)data) = 1;
-//    *((dax_dint *)(data + 2)) = 2;
-//    *((dax_udint *)(data + 6)) = 3;
-//    
-//    dax_write_tag(ds, h, data);
-//    
-//    *((dax_dint *)(data + 2)) = 5;
-//    *((dax_dint *)(mask + 2)) = 0xFFFFFFFF;
-//    
-//    dax_mask_tag(ds, h, data, mask);
-//    free(data); free(mask);
-//    
-//    dax_tag_handle(ds, &h, "LazyArray", 0);
-//    for(n = 0; n < 10; n++) {
-//        newdata = data + n * dax_get_typesize(ds, h.type);
-//        
-//        *((int *)newdata) = n * 10 + 1;
-//        *((dax_dint *)(newdata + 2)) = n * 10 + 2;
-//        *((dax_udint *)(newdata + 6)) = n * 10 + 3;
-//    }
-//    
-//    dax_write_tag(ds, h, data);
-    
-    return result;
+    data = 25;
+    result = dax_tag_add(ds, NULL, "LazyTag", DAX_INT, 10);
+    result = dax_tag_handle(ds, &h, "LazyTag[5]", 3);
+    result = dax_event_add(ds, &h, EVENT_EQUAL, &data, &id[0], _event_callback, &test[0]);
+    dax_write_tag(ds, h, &test[5]);
+    dax_event_poll(ds, NULL);
+    test[5] = 25;
+    dax_write_tag(ds, h, &test[5]);
+    dax_event_poll(ds, NULL);
+    dax_write_tag(ds, h, &test[5]);
+    dax_event_poll(ds, NULL);
+    result = dax_tag_handle(ds, &h, "LazyTag[6]", 1);
+    dax_write_tag(ds, h, &test[5]);
+    dax_event_poll(ds, NULL);
+    return 0;
 }
 
 /**END OF LAZY PROGRAMMER TESTS**************************************/

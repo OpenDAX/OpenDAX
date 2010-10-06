@@ -568,7 +568,6 @@ msg_evnt_add(dax_message *msg)
     dax_module *module;
     dax_dint event_id = -1;
     
-    xlog(LOG_MSG | LOG_VERBOSE, "Add Event Message from %d", msg->fd);
     
     module = module_find_fd(msg->fd);
     if( module != NULL ) {
@@ -579,6 +578,7 @@ msg_evnt_add(dax_message *msg)
         memcpy(&event_type, &msg->data[16], 4);
         memcpy(&h.size, &msg->data[20], 4);
         h.bit = msg->data[24];
+        data = (void *)&msg->data[25];
 //        fprintf(stderr, "Event Handle Index = %d\n",h.index);
 //        fprintf(stderr, "Event Handle Count = %d\n",h.count);
 //        fprintf(stderr, "Event Handle Datatype = 0x%X\n",h.type);
@@ -586,6 +586,7 @@ msg_evnt_add(dax_message *msg)
 //        fprintf(stderr, "Event Handle Byte = %d\n",h.byte);
 //        fprintf(stderr, "Event Handle Bit = %d\n",h.bit);
 //        fprintf(stderr, "Event Type = %d\n", event_type);
+        xlog(LOG_MSG | LOG_VERBOSE, "Add Event Message from %d - Index = %d, Count = %d, Type = %d", msg->fd, h.index, h.count, event_type);
         event_id = event_add(h, event_type, data, module);
     }
     

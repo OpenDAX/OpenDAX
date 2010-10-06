@@ -2,6 +2,8 @@
 --types, sets up some events and then writes data to make sure that the events work
 --as they are supposed to.
 
+--TODO: These tests need to be formalized and completed
+
 --Some definitions
 HIT = 1
 MISS = 0
@@ -28,12 +30,62 @@ function EventTest(tagname, val, test)
     end
 end    
 
+tag_add("EventInt", "INT", 20)
+
+e = event_add("EventInt[5]", 5, "EQUAL", 25, callback, HIT)
+
+EventTest("EventInt[4]", 25, MISS)
+
+EventTest("EventInt[5]", 24, MISS)
+EventTest("EventInt[5]", 25, HIT)
+EventTest("EventInt[5]", 25, MISS)
+EventTest("EventInt[5]", 26, MISS)
+EventTest("EventInt[5]", 25, HIT)
+
+EventTest("EventInt[9]", 25, HIT)
+EventTest("EventInt[10]", 25, MISS)
+
+event_del(e)
+e = event_add("EventInt[5]", 5, "GREATER", 25, callback, HIT)
+
+EventTest("EventInt[4]", 5, MISS)
+EventTest("EventInt[4]", 26, MISS)
+
+EventTest("EventInt[5]", 24, MISS)
+EventTest("EventInt[5]", 25, MISS)
+EventTest("EventInt[5]", 26, HIT)
+EventTest("EventInt[5]", 27, MISS)
+EventTest("EventInt[5]", 25, MISS)
+EventTest("EventInt[5]", 26, HIT)
+
+EventTest("EventInt[9]", 26, HIT)
+EventTest("EventInt[10]", 26, MISS)
+
+event_del(e)
+
+e = event_add("EventInt[5]", 5, "LESS", 25, callback, HIT)
+
+EventTest("EventInt[4]", 5, MISS)
+EventTest("EventInt[4]", 24, MISS)
+
+EventTest("EventInt[5]", 24, HIT)
+EventTest("EventInt[5]", 25, MISS)
+EventTest("EventInt[5]", 26, MISS)
+EventTest("EventInt[5]", 24, HIT)
+EventTest("EventInt[5]", 25, MISS)
+EventTest("EventInt[5]", 24, HIT)
+
+EventTest("EventInt[9]", 24, HIT)
+EventTest("EventInt[10]", 24, MISS)
+
+
 --Boolean Change Events
 tag_add("EventBOOL", "BOOL", 20)
 arr = {}
 for n=1,20 do
   arr[n] = false;
 end
+
 
 e = event_add("EventBOOL[3]", 9, "CHANGE", 0, callback, HIT)
 EventTest("EventBOOL", arr, MISS)
@@ -111,16 +163,16 @@ event_del(e)
 --First we check the write event
 
 tag_add("EventDint", "DINT", 20)
-event_add("EventDint[5]", 10, "WRITE", 0, callback, HIT)
+e = event_add("EventDint[5]", 10, "WRITE", 0, callback, HIT)
 
 EventTest("EventDint[4]",  22, MISS)
 EventTest("EventDint[5]",  22, HIT)
 EventTest("EventDint[14]", 22, HIT)
 EventTest("EventDint[15]", 22, MISS)
 
-tag_add("EventInt", "INT", 20)
-event_add("EventInt[5]", 10, "CHANGE", 0, callback, HIT)
+event_del(e)
 
+event_add("EventInt[5]", 10, "CHANGE", 0, callback, HIT)
 
 EventTest("EventInt[4]",  22, MISS)
 EventTest("EventInt[5]",  22, HIT)

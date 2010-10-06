@@ -277,7 +277,7 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
             return -1;
         }
         /* We're just searching for indexes in the table.  Anything
-         other than numerical indexes in the table don't count */
+         * other than numerical indexes in the table don't count */
         for(n = 0; n < tag.count; n++) {
             lua_rawgeti(L, -1, n + 1);
             if(! lua_isnil(L, -1)) {
@@ -790,6 +790,66 @@ _get_event_type(char *str) {
     }
 }
 
+/* Converts the lua_Number that we would get off of the Lua stack into
+ * the proper datatype for DAX.  The pointer that is returned in **data
+ * will wind up pointing to a static member within this function.  This
+ * is not a general use function for this reason and it is not re-entrant
+ * or thread safe. */
+static inline void
+_convert_lua_number(tag_type datatype, void **data, lua_Number x) {
+    static dax_type_union u1;
+    
+    switch(datatype) {
+        case DAX_BYTE:
+            u1.dax_byte = (dax_byte)x;
+            *data = &u1.dax_byte;
+            return;
+        case DAX_SINT:
+            u1.dax_sint = (dax_sint)x;
+            *data = &u1.dax_sint;
+            return;
+        case DAX_UINT:
+        case DAX_WORD:
+            u1.dax_uint = (dax_uint)x;
+            *data = &u1.dax_uint;
+            return;
+        case DAX_INT:
+            u1.dax_int = (dax_int)x;
+            *data = &u1.dax_int;
+            return;
+        case DAX_UDINT:
+        case DAX_DWORD:
+        case DAX_TIME:
+            u1.dax_udint = (dax_udint)x;
+            *data = &u1.dax_udint;
+            return;
+        case DAX_DINT:
+            u1.dax_dint = (dax_dint)x;
+            *data = &u1.dax_dint;
+            return;
+        case DAX_ULINT:
+        case DAX_LWORD:
+            u1.dax_ulint = (dax_ulint)x;
+            *data = &u1.dax_ulint;
+            return;
+        case DAX_LINT:
+            u1.dax_lint = (dax_lint)x;
+            *data = &u1.dax_lint;
+            return;
+        case DAX_REAL:
+            u1.dax_real = (dax_real)x;
+            *data = &u1.dax_real;
+            return;
+        case DAX_LREAL:
+            u1.dax_lreal = (dax_lreal)x;
+            *data = &u1.dax_lreal;
+            return;
+        default:
+            *data = NULL;
+    }
+    return;
+}
+
 /* Used to add an event to the server's event list.  The arguments are...
  * 1 - string - tagname
  * 2 - number - count
@@ -807,6 +867,7 @@ _event_add(lua_State *L) {
     Handle h;
     event_ref_data *edata;
     dax_event_id id;
+    void *data;
 
     if(lua_gettop(L) != 6) {
         luaL_error(L, "Wrong number of arguments passed to event_add()");
@@ -834,14 +895,15 @@ _event_add(lua_State *L) {
         free(edata);
         luaL_error(L, "%s is not a valid event type", str);
     }
+    /* Get the data that we need for < > = and deadband events. */
     number = lua_tonumber(L, 4);
-
+    _convert_lua_number(h.type, &data, number);
     /* The data that was passed is actually at the top of the stack */
     edata->data = luaL_ref(L, LUA_REGISTRYINDEX); /* Also pops the value */
     /* Now the function should be at the top of the stack */
     edata->function = luaL_ref(L, LUA_REGISTRYINDEX);
     edata->L = L; /* We'll need this later */
-    result = dax_event_add(ds, &h, type, (void *)&number, &id, _event_callback, edata);
+    result = dax_event_add(ds, &h, type, data, &id, _event_callback, edata);
     if(result) {
         free(edata);
         luaL_error(L, "Unable to add event to server - result = %d", result);
