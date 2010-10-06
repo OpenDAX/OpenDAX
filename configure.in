@@ -1,5 +1,5 @@
 AC_PREREQ(2.61)
-AC_INIT([opendax],[0.5])
+AC_INIT([opendax],[0.5.1])
 AC_CONFIG_SRCDIR([dax/opendax.c])
 AC_CONFIG_AUX_DIR(config)
 
