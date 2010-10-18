@@ -31,7 +31,7 @@ dax_add_tag("MyInt", DAX_INT, 1);
 
 This would create a tag in the server with the name \textit{MyInt} of type INT.  The 1 as the last argument just means a single member.  A larger number would signify an array.
 
-There are also some typedefs in opendax.h that help with declaring variables within you module code.  They are the same as the precompiler defines except they are all lower case.  These make sure that the variable definitions inside your module match the data types of the tags in OpenDAX.  For the above Tag you could create a variable in C with this code...
+There are also some typedefs in opendax.h that help with declaring variables within you module code.  They are the same as the datatype definitions except they are all lower case.  For example, if you want to declare a variable that will match the \verb|DAX_DINT| data type you would use \verb|dax_dint| typedef.  These make sure that the variable definitions inside your module match the data types of the tags in OpenDAX.  For the above Tag you could create a variable in C with this code...
 
 \begin{verbatim}
 dax_int myInt;

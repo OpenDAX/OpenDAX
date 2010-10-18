@@ -38,6 +38,7 @@ static int
 _get_new_script(void)
 {
     void *ns;
+    int n;
     
     /* Allocate the script array if it has not already been done */
     if(scriptcount == 0) {
@@ -55,33 +56,68 @@ _get_new_script(void)
             return -1;
         }
     }
+    n = scriptcount;
     scriptcount++;
-    return scriptcount - 1;
+    /* Initialize the script structure */
+    scripts[n].globals = NULL;
+    scripts[n].firstrun = 1;
+    scripts[n].name = NULL;
+    return n;
 }
 
-/* Lua interface function for adding a modbus command to a port.  
- Accepts two arguments.  The first is the port to assign the command
- too, and the second is a table describing the command. */
+
+/* When this function is called it is expected that there
+ * is a table on the top of the Lua stack that represents
+ * the trigger */
+static int
+_set_trigger(lua_State *L, script_t *s) {
+    char *tagname, *string;
+    
+    lua_getfield(L, -1, "tag");
+    s->event_tagname = strdup((char *)lua_tostring(L, -1));
+    if(tagname == NULL) {
+        luaL_error(L, "'tagname' is required for an event trigger");
+        s->trigger = 0;
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "type");
+    string = (char *)lua_tostring(L, -1);
+    s->event_type = dax_event_string_to_type(string);
+    if(s->event_type == 0) {
+        luaL_error(L, "'type' event type is required for an event trigger");
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "count");
+    s->event_count = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "value");
+    s->event_value = lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
+    s->trigger = 1;
+    return 0;
+}
+
 static int
 _add_script(lua_State *L)
 {
     int si;
     char *string;
-    
+
     if(! lua_istable(L, 1) ) {
         luaL_error(L, "Table needed to add script");
     }
-    
+
     si = _get_new_script();
-    
+
     if(si < 0) {
         /* Just bail for now */
         return 0;
     }
-    /* Initialize the script structure */
-    scripts[si].globals = NULL;
-    scripts[si].firstrun = 1;
-    
+
     lua_getfield(L, 1, "enable");
     if( lua_isnil(L, -1)) {
         scripts[si].enable = 1;
@@ -89,9 +125,18 @@ _add_script(lua_State *L)
         scripts[si].enable = lua_toboolean(L, -1);
     }
     lua_pop(L, 1);
-    
+
+    lua_getfield(L, 1, "trigger");
+    if(lua_istable(L, -1)) {
+        _set_trigger(L, &scripts[si]);
+    } else {
+        scripts[si].trigger = 0;
+    }
+    lua_pop(L, 1);
+
     lua_getfield(L, 1, "name");
     string = (char *)lua_tostring(L, -1);
+    fprintf(stderr, "We got a script name of %s\n", string);
     if(string) {
         /* check for duplicate name */
         if(get_script_name(string)) {
@@ -104,7 +149,7 @@ _add_script(lua_State *L)
         scripts[si].name = NULL;
     }
     lua_pop(L, 1);
-    
+
     lua_getfield(L, 1, "filename");
     string = (char *)lua_tostring(L, -1);
     if(string) {
@@ -114,14 +159,14 @@ _add_script(lua_State *L)
         scripts[si].enable = 0;
     }
     lua_pop(L, 1);
-    
+
     lua_getfield(L, 1, "rate");
     scripts[si].rate = lua_tointeger(L, -1);
     if(scripts[si].rate <= 0) {
         scripts[si].rate = DEFAULT_RATE;
     }
     lua_pop(L, 1);
-    
+
     return 0;
 }
 

@@ -51,20 +51,23 @@ typedef struct Global_t {
 /* Contains all the information to identify a script */
 typedef struct Script_t {
     char enable;
+    char trigger;
     pthread_t thread;
+    pthread_cond_t condition;
+    pthread_mutex_t mutex;
     char *name;
     char *filename;
+    int func_ref;
+    char *event_tagname;
+    int event_count;
+    int event_type;
+    lua_Number event_value;
     unsigned char firstrun;
     long rate;
     long lastscan;
     long executions;
     global_t *globals;
 } script_t;
-
-/* The DAX API functions are not thread safe this is the mutex
-   that we use to ensure that only one script can use the API
-   at a time */
-pthread_mutex_t daxmutex;
 
 /* options.c - Configuration functions */
 int configure(int argc, char *argv[]);

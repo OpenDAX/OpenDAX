@@ -598,7 +598,7 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
             return ERR_ARG;
         }
         if(tag.count > 1 && index == ERR_NOTFOUND) {
-            dax_error(ds, "Ambigous reference in tag %s", tagname);
+            dax_error(ds, "Ambiguous reference in tag %s", tagname);
             return ERR_ARBITRARY;
         }
         result = _parse_next_member(ds, tag.type, h, nextname, count);

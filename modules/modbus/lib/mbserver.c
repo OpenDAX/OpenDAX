@@ -37,7 +37,7 @@ _del_fd(mb_port *port, int fd)
     
     FD_CLR(fd, &(port->fdset));
     
-    /* If it's the largest one then we need to refigure _maxfd */
+    /* If it's the largest one then we need to re-figure _maxfd */
     if(fd == port->maxfd) {
         for(n = 0; n <= port->maxfd; n++) {
             if(FD_ISSET(n, &(port->fdset))) {
@@ -175,17 +175,17 @@ _server_listen(mb_port *port)
     if(fd < 0) {
         return -1;
     }
-    
+
     bzero(&addr, sizeof(addr));
-    
+
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port->bindport);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    
+
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
         return -1;
     }
-    
+
     if(listen(fd, 5) < 0) {
         return -1;
     }
@@ -193,7 +193,7 @@ _server_listen(mb_port *port)
     /* We store this fd so that we know what socket we are listening on */
     port->fd = fd;
     _add_fd(port, fd);
-    
+
     return 0;
 }
 
@@ -207,14 +207,14 @@ _receive(mb_port *port)
     struct sockaddr_in addr;
     int result, fd, n;
     socklen_t len = 0;
-    
+
     FD_ZERO(&tmpset);
     FD_COPY(&(port->fdset), &tmpset);
     tm.tv_sec = 1; /* TODO: this should be configuration */
     tm.tv_usec = 0;
-    
+
     result = select(port->maxfd + 1, &tmpset, NULL, NULL, &tm);
-    
+
     if(result < 0) {
         /* Ignore interruption by signal */
         if(errno != EINTR) {

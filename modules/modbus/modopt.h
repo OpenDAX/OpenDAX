@@ -22,10 +22,6 @@
 #include <lib/modbus.h>
 
 
-//#ifndef DEFAULT_PID
-// #define DEFAULT_PID "/var/run/modbus.pid"
-//#endif
-
 #ifndef DEFAULT_DEVICE
  #define DEFAULT_DEVICE "/dev/serial"
 #endif

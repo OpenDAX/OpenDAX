@@ -22,6 +22,56 @@
 #include <libdax.h>
 #include <common.h>
 
+/* This function returns the proper event type that matches the string.
+ * Returns 0 for error */
+int
+dax_event_string_to_type(char *string) {
+    if(!strcasecmp(string, "WRITE")) {
+        return EVENT_WRITE;
+    } else if(!strcasecmp(string, "CHANGE")) {
+        return EVENT_CHANGE;
+    } else if(!strcasecmp(string, "SET")) {
+        return EVENT_SET;
+    } else if(!strcasecmp(string, "RESET")) {
+        return EVENT_RESET;
+    } else if(!strcasecmp(string, "EQUAL")) {
+        return EVENT_EQUAL;
+    } else if(!strcasecmp(string, "GREATER")) {
+        return EVENT_GREATER;
+    } else if(!strcasecmp(string, "LESS")) {
+        return EVENT_LESS;
+    } else if(!strcasecmp(string, "DEADBAND")) {
+        return EVENT_DEADBAND;
+    } else {
+        return 0;
+    }
+}
+
+/* Returns a string representing the event type, NULL on error */
+char *
+dax_event_type_to_string(int type) {
+    switch(type) {
+        case EVENT_WRITE:
+            return "WRITE";
+        case EVENT_CHANGE:
+            return "CHANGE";
+        case EVENT_SET:
+            return "SET";
+        case EVENT_RESET:
+            return "RESET";
+        case EVENT_EQUAL:
+            return "EQUAL";
+        case EVENT_GREATER:
+            return "GREATER";
+        case EVENT_LESS:
+            return "LESS";
+        case EVENT_DEADBAND:
+            return "DEADBAND";
+        default:
+            return NULL;
+    }
+}
+
 int
 add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *udata)) {
     event_db *new_db;
@@ -86,7 +136,7 @@ dax_event_select(dax_state *ds, int timeout, dax_event_id *id) {
             result = dax_event_dispatch(ds, id);
             if(result == 0) done = 1;
         } else if (result < 0) {
-            return ERR_GENERIC;
+            return result;
         } else {
             return ERR_TIMEOUT;
         }

@@ -34,7 +34,7 @@ initcmd(struct mb_cmd *c)
     c->data = NULL;
     c->datasize = 0;
     c->interval = 0;
-    
+
     c->icount = 0;
     c->requests = 0;
     c->responses = 0;

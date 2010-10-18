@@ -295,6 +295,9 @@ int dax_event_select(dax_state *ds, int timeout, dax_event_id *id);
 int dax_event_poll(dax_state *ds, dax_event_id *id);
 int dax_event_get_fd(dax_state *ds);
 int dax_event_dispatch(dax_state *ds, dax_event_id *id);
+/* Event Utility Functions */
+int dax_event_string_to_type(char *string);
+char *dax_event_type_to_string(int type);
 
 /* Custom Datatype Functions */
 typedef struct datatype dax_cdt;
