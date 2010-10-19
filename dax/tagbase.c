@@ -51,8 +51,6 @@ static datatype *_datatypes;
 static unsigned int _datatype_index; /* Next datatype index */
 static unsigned int _datatype_size;
 
-//static int _next_event_id = 0;
-
 /* Private function definitions */
 
 /* checks whether type is a valid datatype */
@@ -485,7 +483,9 @@ _send_event(tag_index idx, _dax_event *event)
     *(u_int32_t *)(&buff[16]) = htonl(event->count);
     *(u_int32_t *)(&buff[20]) = htonl(event->datatype);
     *(u_int8_t *)(&buff[24])  = event->bit;
-
+    
+    xlog(LOG_MSG, "Sending %d event to module %d",
+         event->eventtype, event->notify->efd);
     result = xwrite(event->notify->efd, buff, EVENT_MSGSIZE);
     if(result < 0) {
         xerror("_send_event: %s", strerror(errno));

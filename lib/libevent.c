@@ -118,9 +118,10 @@ del_event(dax_state *ds, dax_event_id id) {
 
 /* Blocks waiting for an event to happen.  If an event is found it
  * will run the callback function for that event.  Returns ERR_TIMEOUT 
- * if the time expires.  Returns zero on success. */
+ * if the time expires.  Returns zero on success.  If 0 is passed
+ * as the timeout it will wait forever. */
 int
-dax_event_select(dax_state *ds, int timeout, dax_event_id *id) {
+dax_event_wait(dax_state *ds, int timeout, dax_event_id *id) {
     int result;
     struct timeval tval;
     fd_set fds;
@@ -131,7 +132,11 @@ dax_event_select(dax_state *ds, int timeout, dax_event_id *id) {
         FD_SET(ds->afd, &fds);
         tval.tv_sec = timeout / 1000;
         tval.tv_usec = timeout % 1000;
-        result = select(ds->afd + 1, &fds, NULL, NULL, &tval);
+        if(timeout > 0) {
+            result = select(ds->afd + 1, &fds, NULL, NULL, &tval);
+        } else {
+            result = select(ds->afd + 1, &fds, NULL, NULL, NULL);
+        }
         if(result > 0) {
             result = dax_event_dispatch(ds, id);
             if(result == 0) done = 1;

@@ -102,8 +102,6 @@ _receive_globals(lua_State *L, script_t *s)
 /* Looks into the list of tags in the script and reads these global
    variables from the script and then writes the values out to the
    server */
-/* TODO: It would save some bandwidth if we only wrote tags that have
-   changed since we called register_globals() <- configuration?? */
 static inline int
 _send_globals(lua_State*L, script_t *s)
 {
@@ -140,7 +138,8 @@ _send_globals(lua_State*L, script_t *s)
 
 /* Converts the lua_Number that we would get off of the Lua stack into
  * the proper form and assigns it to the write member of the union 'dest'
- * a pointer to this union can then be passed to dax_event_add() */
+ * a pointer to this union can then be passed to dax_event_add() as the
+ * data argument for EQUAL, GREATER, LESS and DEADBAND events. */
 static inline void
 _convert_lua_number(tag_type datatype, dax_type_union *dest, lua_Number x) {
     
@@ -244,7 +243,6 @@ _run_script(lua_State *L, script_t *s) {
      for the right amount of time.  It ain't real time. */
     gettimeofday(&end, NULL);
     s->lastscan = (end.tv_sec - start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
-
 }
 
 /* This is the actual script thread function.  Here we run each periodic
@@ -253,7 +251,6 @@ int
 lua_script_thread(script_t *s)
 {
     lua_State *L;
-//    int result;
 
     /* Create a lua interpreter object */
     L = luaL_newstate();
@@ -269,7 +266,6 @@ lua_script_thread(script_t *s)
     if(s->trigger) {
         pthread_cond_init(&s->condition, NULL);
         pthread_mutex_init(&s->mutex, NULL);
-        //sem_init(&s->semaphore, 0, 0);
         _setup_script_event(L, s);
     }
 
@@ -279,7 +275,6 @@ lua_script_thread(script_t *s)
             pthread_mutex_lock(&s->mutex);
             pthread_cond_wait(&s->condition, &s->mutex);
             pthread_mutex_unlock(&s->mutex);
-            //sem_wait(&s->semaphore);
             if(s->enable) {
                 _run_script(L, s);
             }
@@ -346,7 +341,6 @@ main(int argc, char *argv[])
 {
     struct sigaction sa;
     
-    
     ds = dax_init("daxlua");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
@@ -384,7 +378,7 @@ main(int argc, char *argv[])
     sigaction (SIGTERM, &sa, NULL);
 
     while(1) {
-        dax_event_select(ds, 1000, NULL);
+        dax_event_wait(ds, 1000, NULL);
 
         if(quitsig) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", quitsig);

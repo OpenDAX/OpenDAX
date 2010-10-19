@@ -252,7 +252,6 @@ int dax_tag_handle(dax_state *ds, Handle *h, char *str, int count);
 /* Returns the size of the datatype in bytes */
 int dax_get_typesize(dax_state *ds, tag_type type);
 
-
 /* The following functions are for reading and writing data.  These 
  * are generic functions and are used by other functions within the
  * library.  They can be used by the modules as well but they don't
@@ -265,7 +264,8 @@ int dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size);
 /* simple untyped tag writing function */
 int dax_write(dax_state *ds, tag_index idx, int offset, void *data, size_t size);
 /* simple untyped masked tag write */
-int dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_t size);
+int dax_mask(dax_state *ds, tag_index idx, int offset, void *data,
+             void *mask, size_t size);
 
 /* These are the bread and butter tag handling functions.  The functions
  * understand the type of tag being written and take care of all the
@@ -291,7 +291,7 @@ int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data,
 int dax_event_del(dax_state *ds, dax_event_id id);
 int dax_event_get(dax_state *ds, dax_event_id id);
 int dax_event_modify(dax_state *ds, int id);
-int dax_event_select(dax_state *ds, int timeout, dax_event_id *id);
+int dax_event_wait(dax_state *ds, int timeout, dax_event_id *id);
 int dax_event_poll(dax_state *ds, dax_event_id *id);
 int dax_event_get_fd(dax_state *ds);
 int dax_event_dispatch(dax_state *ds, dax_event_id *id);
@@ -308,7 +308,8 @@ tag_type dax_string_to_type(dax_state *ds, char *type);
 const char *dax_type_to_string(dax_state *ds, tag_type type);
 
 dax_cdt *dax_cdt_new(char *name, int *error);
-int dax_cdt_member(dax_state *ds, dax_cdt *cdt, char *name, tag_type mem_type, unsigned int count);
+int dax_cdt_member(dax_state *ds, dax_cdt *cdt, char *name,
+                   tag_type mem_type, unsigned int count);
 int dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type);
 void dax_cdt_free(dax_cdt *cdt);
 

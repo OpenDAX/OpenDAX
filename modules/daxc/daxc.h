@@ -22,6 +22,9 @@
 #include <opendax.h>
 #include <signal.h>
 
+/* This is the maximum number of events that we can store. */
+#define MAX_EVENTS 64
+
 /* TAG commands */
 int tag_add(char **tokens);
 int list_tags(char **tokens);
@@ -37,3 +40,8 @@ int db_read_bit(void);
 int db_read(char **tokens);
 int db_write(void);
 int db_format(void);
+
+int event_add(char **tokens, int count);
+int event_del(char **tokens);
+int event_wait(char **tokens);
+int event_poll(void);

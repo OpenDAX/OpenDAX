@@ -279,7 +279,6 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
 {
     int n, bit;
     
-    //printf("_pop_base_datatype() called with *data = %p\n", data);
     if(tag.count > 1) { /* The tag is an array */
         /* Check that the second parameter is a table */
         if( ! lua_istable(L, -1) ) {
@@ -310,19 +309,12 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
     } else { /* Retrieved tag is a single point */
         if(tag.type == DAX_BOOL) {
             bit = tag.bit;
-//            printf("tag.bit = %d \n", tag.bit);
-//            printf("Before Data[%d] = 0x%X\n", bit/8, ((u_int8_t *)data)[bit/8]);
-//            printf("Before Mask[%d] = 0x%X\n", bit/8, ((u_int8_t *)mask)[bit/8]);
             if(lua_toboolean(L, -1)) {
-//                printf("set to TRUE\n");
                 ((u_int8_t *)data)[bit/8] |= (1 << (bit % 8));
             } else {  /* If the bit in the buffer is not set */
-//                printf("set to FALSE\n");
                 ((u_int8_t *)data)[bit/8] &= ~(1 << (bit % 8));
             }
             ((u_int8_t *)mask)[bit/8] |= (1 << (bit % 8));
-//            printf("After Data[%d] = 0x%X\n", bit/8, ((u_int8_t *)data)[bit/8]);
-//            printf("After Mask[%d] = 0x%X\n", bit/8, ((u_int8_t *)mask)[bit/8]);
             
         } else {
             _write_from_stack(L, tag.type, data, mask, 0);

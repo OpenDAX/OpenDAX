@@ -150,30 +150,30 @@ The second argument is simply the \texttt{id} structure that was returned by \ev
 
 \section{Handling Events}
 
-There are basically three ways to receive and handle events.  The first way is with the \eventselect function.  This function blocks and waits for the event to happen.  The second way is with the \verb|dax_event_poll()|\index{dax\_event\_poll() function} function, that checks for an event and immediately returns whether it deals with the event or not.  The last way to deal with events is to get the file descriptor of the socket that is being used to receive events and handle them yourself.
+There are basically three ways to receive and handle events.  The first way is with the \eventwait function.  This function blocks and waits for the event to happen.  The second way is with the \verb|dax_event_poll()|\index{dax\_event\_poll() function} function, that checks for an event and immediately returns whether it deals with the event or not.  The last way to deal with events is to get the file descriptor of the socket that is being used to receive events and handle them yourself.
 
 \begin{verbatim}
-int dax_event_select(dax_state *ds, int timeout, dax_event_id *id);
+int dax_event_wait(dax_state *ds, int timeout, dax_event_id *id);
 int dax_event_poll(dax_state *ds, dax_event_id *id);
 \end{verbatim}
-\index{dax\_event\_select() function}
+\index{dax\_event\_wait() function}
 \index{dax\_event\_poll() function}
 
 
-The \verb|| function takes a couple of arguments in addition to the normal \daxstate argument.  The first is \texttt{timeout}.  This is how long you would like to wait for the event before the function returns.  If the function returns a \verb|0| then it dispatched and event.  If it returns \texttt{ERR\_TIMEOUT} then it did not dispatch an event and has timed out.  This gives you the ability to block waiting for events but occasionally exit and handle some other details.  \eventselect will only handle one event and then return.  Even if there are more events in the buffer to deal with.
+The \verb|| function takes a couple of arguments in addition to the normal \daxstate argument.  The first is \texttt{timeout}.  This is how long you would like to wait for the event before the function returns.  If the function returns a \verb|0| then it dispatched and event.  If it returns \texttt{ERR\_TIMEOUT} then it did not dispatch an event and has timed out.  This gives you the ability to block waiting for events but occasionally exit and handle some other details.  \eventwait will only handle one event and then return.  Even if there are more events in the buffer to deal with.
 
-The last parameter to \eventselect is a pointer to a \texttt{dax\_event\_id} structure.  This will be filled in by \eventselect with the information that identifies this event.
+The last parameter to \eventwait is a pointer to a \texttt{dax\_event\_id} structure.  This will be filled in by \eventwait with the information that identifies this event.
 
-If you passed a pointer to a callback function to the \eventadd function, \verb|dax_event_select()| will call that function and pass the \texttt{udata} pointer that you passed to \eventadd when you created the event.  
+If you passed a pointer to a callback function to the \eventadd function, \verb|dax_event_wait()| will call that function and pass the \texttt{udata} pointer that you passed to \eventadd when you created the event.  
 
-The  function is very similar to \verb|dax_event_select()| except that it will not wait.  It returns immediately if there is no event to dispatch.  If it dispatches an event it returns 0 and \verb|ERR_NOTFOUND| if there was no event.  Both functions might return another error code if there was some other problem.
+The  function is very similar to \verb|dax_event_wait()| except that it will not wait.  It returns immediately if there is no event to dispatch.  If it dispatches an event it returns 0 and \verb|ERR_NOTFOUND| if there was no event.  Both functions might return another error code if there was some other problem.
 
 \begin{verbatim}
 int dax_event_poll(dax_state *ds, dax_event_id *id);
 \end{verbatim}
 \index{dax\_event\_poll() function}
 
-The final method of dealing with events allows your program to have complete control over the file descriptor.  This is more complex, but it might be necessary if your program needs to deal with other events.  First use \verb|int dax_event_get_fd(dax_state *ds)|\index{dax\_event\_get\_fd() function} function to retrieve the file descriptor that the library is using to wait on events to come from the server.  You can use other system calls such as \verb|system()| or \verb|poll()| to determine if there is a read pending.  If there is any information to read your module would then call \texttt{int dax\_event\_dispatch(dax\_state *ds, dax\_event\_id *id)}\index{dax\_event\_dispatch() function} function.  This function carries out the same tasks as \texttt{dax\_event\_select()} and \texttt{dax\_event\_poll()}.  In fact these two functions call \texttt{dax\_event\_dispatch()} from within the library.
+The final method of dealing with events allows your program to have complete control over the file descriptor.  This is more complex, but it might be necessary if your program needs to deal with other events.  First use \verb|int dax_event_get_fd(dax_state *ds)|\index{dax\_event\_get\_fd() function} function to retrieve the file descriptor that the library is using to wait on events to come from the server.  You can use other system calls such as \verb|system()| or \verb|poll()| to determine if there is a read pending.  If there is any information to read your module would then call \texttt{int dax\_event\_dispatch(dax\_state *ds, dax\_event\_id *id)}\index{dax\_event\_dispatch() function} function.  This function carries out the same tasks as \texttt{dax\_event\_wait()} and \texttt{dax\_event\_poll()}.  In fact these two functions call \texttt{dax\_event\_dispatch()} from within the library.
 
 It is important that your module does not read any of the bytes out of the socket that the file descriptor represents.  Also, the data is one way so you only need to detect that the socket is ready for reading.
 

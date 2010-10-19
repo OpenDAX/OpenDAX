@@ -24,25 +24,12 @@
 #include <stdarg.h>
 #include <signal.h>
 
-//static int _verbosity = 0;
-//static int _logflags = 0;
-
 /* These functions handle the logging and error callback function */
 
 /* Callback functions. */
 static void (*_dax_debug)(const char *output) = NULL;
 static void (*_dax_error)(const char *output) = NULL;
 static void (*_dax_log)(const char *output) = NULL;
-
-/* Set the verbosity level for the debug callback */
-//void
-//dax_set_verbosity(int level)
-//{
-//    /* bounds check */
-//    if(level < 0) _verbosity = 0;
-//    else if(level > 10) _verbosity = 10;
-//    else _verbosity = level;
-//}
 
 void
 dax_set_debug_topic(dax_state *ds, u_int32_t topic)
@@ -56,7 +43,6 @@ void
 dax_set_debug(dax_state *ds, void (*debug)(const char *format))
 {
     _dax_debug = debug;
-//--    return (long)_dax_debug;
 }
 
 /* Function for modules to set the error message callback */
@@ -64,7 +50,6 @@ void
 dax_set_error(dax_state *ds, void (*error)(const char *format))
 {
     _dax_error = error;
-//--    return (int)_dax_error;
 }
 
 /* Function for modules to override the dax_log function */
@@ -72,7 +57,6 @@ void
 dax_set_log(dax_state *ds, void (*log)(const char *format))
 {
     _dax_log = log;
-//--    return (int)_dax_log;
 }
 
 /* TODO: Make these function allocate the memory at run time so that
@@ -197,7 +181,7 @@ libdax_destroy_lock(dax_lock *lock) {
     return 0;
 }
 
-/* If not locking mechanisms are #defined then we just set the functions
+/* If no locking mechanisms are #defined then we just set the functions
  * to return nothing and hope that the optimizer will eliminate them */
 #else
 
@@ -222,41 +206,3 @@ libdax_destroy_lock(dax_lock *lock) {
 }
 
 #endif
-
-
-/* This function takes the name argument and figures out the text part and puts
- that in 'tagname' then it sees if there is an index in [] and puts that in *index.
- The calling function should make sure that *tagname is big enough */
-/* TODO: This will probably be removed */
-//int
-//dax_tag_parse(char *name, char *tagname, int *index)
-//{
-//    int n = 0;
-//    int i = 0;
-//    int tagend = 0;
-//    char test[10];
-//    *index = -1;
-//    
-//    while(name[n] != '\0') {
-//        if(name[n] == '[') {
-//            tagend = n++;
-//            /* figure the tagindex here */
-//            while(name[n] != ']') {
-//                if(name[n] == '\0') return -1; /* Gotta get to a ']' before the end */
-//                test[i++] = name[n++];
-//                if(i == 9) return -1; /* Number is too long */
-//            }
-//            test[i] = '\0';
-//            *index = (int)strtol(test, NULL, 10);
-//            n++;
-//        }
-//        n++;        
-//    }
-//    if(tagend) {
-//        strncpy(tagname, name, tagend);
-//        tagname[tagend] = '\0';
-//    } else {
-//        strcpy(tagname, name);
-//    }
-//    return 0;
-//}

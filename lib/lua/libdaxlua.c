@@ -947,7 +947,7 @@ _event_select(lua_State *L) {
         luaL_error(L, "Wrong number of arguments passed to event_select()");
     }
     timeout = lua_tonumber(L, 1);
-    result = dax_event_select(ds, timeout, NULL);
+    result = dax_event_wait(ds, timeout, NULL);
 
     if(result == ERR_TIMEOUT) {
         lua_pushnumber(L, 0);

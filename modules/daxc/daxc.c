@@ -162,7 +162,6 @@ runcmd(char *instr)
     }
     tokens[tcount] = NULL; /* Terminate the array with a NULL */    
     
-    
     /* test the command in sequential if's once found call function and continue */
     if( !strcasecmp(tokens[0],"dax")) {
         printf("Haven't done 'dax' yet\n");
@@ -192,7 +191,20 @@ runcmd(char *instr)
 //        else if( !strcasecmp(tokens[1], "write")) result = db_write();
 //        else if( !strcasecmp(tokens[1], "format")) result = db_format();
 //        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tokens[0]);
-//        
+    } else if( !strcasecmp(tokens[0], "event")) {
+        if( tokens[1] == NULL) {
+            fprintf(stderr, "ERROR: EVENT requires a subcommand.  Try ADD, DEL, WAIT, POLL\n");
+        } else if( !strcasecmp(tokens[1], "add")) {
+            event_add(&tokens[2], tcount - 2);
+        } else if( !strcasecmp(tokens[1], "del")) {
+            event_del(&tokens[2]);
+        } else if( !strcasecmp(tokens[1], "wait")) {
+            event_wait(&tokens[2]);
+        } else if( !strcasecmp(tokens[1], "poll")) {
+            event_poll();
+        } else {
+            fprintf(stderr, "ERROR: Unknown subcommand '%s'\n", tokens[1]);
+        }
     } else if( !strcasecmp(tokens[0],"msg")) {
         printf("Haven't done 'msg' yet!\n");    
     /* TODO: Really should work on the help command */

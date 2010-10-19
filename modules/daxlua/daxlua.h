@@ -87,5 +87,4 @@ int send_tag(lua_State *L, Handle h);
 void tag_dax_to_lua(lua_State *L, Handle h, void* data);
 int tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask);
 
-
 #endif /* !__DAXLUA_H */
