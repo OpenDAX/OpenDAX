@@ -172,6 +172,12 @@ Following '-f' or '--file' with the name of a file will cause daxc to open that 
 \subparagraph*{-x, --execute}
 The execute options should be followed by a command that is to be executed by daxc.
 
+\subparagraph*{-i, --interactive}
+When the module is started with the -f or -x options the default behavior of the module is to exit when finished with those commands.  If this option is used the program will enter interactive mode after those commands are issued.
+
+\subparagraph*{-q, --quiet}
+Suppresses some output of the program while it is executing a file or a command line option.  It does nothing for interactive mode.  This is useful for running the module from shell scripts. 
+
 \section{Commands}
 
 \subsection{list}

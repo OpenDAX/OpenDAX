@@ -22,6 +22,7 @@
 #include <daxc.h>
 
 extern dax_state *ds;
+extern int quiet_mode;
 
 static inline void
 show_tag(int n, dax_tag temp_tag)
@@ -77,7 +78,7 @@ tag_add(char **tokens)
     
     result = dax_tag_add(ds, &handle, tokens[0], type, count);
     if(result == 0) {
-        printf("Tag Added at index %d\n", handle.index);
+        if(!quiet_mode) printf("Tag Added at index %d\n", handle.index);
     } else {
         /* TODO: Print descriptive error message here */
         printf("OPPS Can't add tag???\n");
@@ -113,7 +114,7 @@ list_tags(char **tokens)
         /* If arg[0] is text then it's a tagname instead of an index */
         if(end_ptr == arg[0]) {
             if( dax_tag_byname(ds, &temp_tag, arg[0]) ) {
-                printf("ERROR: Unknown Tagname %s\n", arg[0]);
+                fprintf(stderr, "ERROR: Unknown Tagname %s\n", arg[0]);
                 return 1;
             } else {
                 show_tag(-1, temp_tag);
@@ -297,14 +298,6 @@ tag_read(char **tokens)
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
         return ERR_ARG;
     }
-    /* --- just for debugging
-    printf("h.index = %d\n", handle.index);
-    printf("h.byte = %d\n", handle.byte);
-    printf("h.bit = %d\n", handle.bit);
-    printf("h.size = %d\n", handle.size);
-    printf("h.count = %d\n", handle.count);
-    printf("h.type = %s\n", dax_type_to_string(handle.type));
-    */
     
     buff = malloc(handle.size);
     if(buff == NULL) {

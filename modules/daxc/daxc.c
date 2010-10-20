@@ -34,6 +34,7 @@ static void getout(int exitstatus);
 static int _quitsignal = 0;
 static char *history_file = NULL;
 dax_state *ds;
+int quiet_mode;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -73,6 +74,10 @@ int main(int argc,char *argv[]) {
         dax_fatal(ds, "Unable to find OpenDAX");
         getout(_quitsignal);
     }
+
+    if(dax_get_attr(ds, "quiet")) {
+        quiet_mode = 1;
+    }
     
     command = dax_get_attr(ds, "execute");
     
@@ -87,11 +92,13 @@ int main(int argc,char *argv[]) {
     if((filename || command) && !dax_get_attr(ds, "interactive")) {
         getout(0);
     }
-    
+
 /* At this point we are in interactive mode.  We first read the 
  * readline history file and then start an infininte loop where
  * We call the readline function repeatedly and then send the
  * input to runcmd */
+    quiet_mode = 0; /* We turn quiet mode off for interactive mode */
+
     home_dir = getenv("HOME");
     if(home_dir != NULL) {
         history_file = malloc(strlen(home_dir) + strlen(HISTORY_FILE) + 2);

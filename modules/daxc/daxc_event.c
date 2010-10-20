@@ -22,6 +22,7 @@
 #include <daxc.h>
 
 extern dax_state *ds;
+extern int quiet_mode;
 
 struct event_item {
     char used;
@@ -39,7 +40,11 @@ _event_callback(void *udata) {
      * opaque and some common representation should be created. */
     for(n = 0; n < MAX_EVENTS; n++) {
         if(events[n].event.index == id->index && events[n].event.id == id->id) {
-            printf("Event %d Recieved\n", n+1);
+            if(!quiet_mode) {
+                printf("Event %d Recieved\n", n+1);
+            } else {
+                printf("%d\n", n+1);
+            }
             return;
         }
     }
@@ -135,7 +140,7 @@ event_add(char **tokens, int count)
         return -1;
     }
     events[n].used = 1;
-    printf("OK: Event %d added\n", n+1);
+    if(!quiet_mode) printf("OK: Event %d added\n", n+1);
     return result;
 }
 
