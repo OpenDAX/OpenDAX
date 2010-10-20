@@ -49,6 +49,7 @@ typedef struct dax_Module {
     int fd;             /* The socket file descriptor for this module */
     int efd;            /* The notification file descriptor */
     time_t starttime;
+    int event_count;
     struct dax_Module *next, *prev;
 } dax_module;
 

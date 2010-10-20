@@ -605,7 +605,7 @@ event_add(Handle h, int event_type, void *data, dax_module *module)
         new->next = _db[h.index].events;
         _db[h.index].events = new;
     }
-
+    module->event_count++; /* Increment the Module's event reference counter */
     return new->id;
 }
 
@@ -652,11 +652,29 @@ event_del(int index, int id, dax_module *module)
         last = this;
         this = this->next;
     }
+    module->event_count--;
     return result;
 }
 
 int
-event_cleanup(dax_module *module)
-{
-    
+events_cleanup(dax_module *module) {
+    int n, count;
+    _dax_event *this;
+
+    count = tag_get_count();
+    /* We start our scan at the bottom and work our way up.  It's probably
+     * more likely that our modules events are associated with tags at the
+     * bottom of the list.  This should prove more efficient */
+    for(n = count-1; n >= 0 && module->event_count > 0; n--) {
+        if(_db[n].events != NULL) {
+            this = _db[n].events;
+            while(this != NULL) {
+                if(this->notify == module) {
+                    event_del(n, this->id, module);
+                }
+                this = this->next;
+            }
+        }
+    }
+    return 0;
 }

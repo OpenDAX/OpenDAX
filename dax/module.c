@@ -20,6 +20,7 @@
 #include <module.h>
 #include <options.h>
 #include <func.h>
+#include <tagbase.h>
 
 #include <time.h>
 #include <sys/socket.h>
@@ -278,6 +279,7 @@ module_add(char *name, char *path, char *arglist, int startup, unsigned int flag
         new->fd = 0;
         new->efd = 0;
         new->pid = 0;
+        new->event_count = 0;
         
         /* Add the module path to the struct */
         if(path) {
@@ -586,14 +588,15 @@ void
 module_unregister(int fd)
 {
     dax_module *mod;
-    
+
     mod = module_find_fd(fd);
     if(mod) {
         mod->state &= (~MSTATE_REGISTERED);
         mod->fd = 0;
         mod->efd = 0;
+        events_cleanup(mod);
         /* If we didn't start it then delete it */
-        if( !(mod->state & MSTATE_CHILD) ) {
+        if( !(mod->state & MSTATE_CHILD) && mod->event_count == 0) {
             module_del(mod);
         }
     }
