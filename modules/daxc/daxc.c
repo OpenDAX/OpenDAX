@@ -26,6 +26,7 @@
 #define HISTORY_FILE ".dax_history"
 
 int runcmd(char *inst);
+int runfile(char *filename);
 char *rl_gets(const char *prompt);
 void quit_signal(int sig);
 static void getout(int exitstatus);
@@ -58,7 +59,10 @@ int main(int argc,char *argv[]) {
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "execute","execute", 'x', flags, NULL);
     result += dax_add_attribute(ds, "file","file", 'f', flags, NULL);
-    
+    flags = CFG_CMDLINE;
+    result += dax_add_attribute(ds, "quiet","quiet", 'q', flags, NULL);
+    result += dax_add_attribute(ds, "interactive","interactive", 'i', flags, NULL);
+
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
     
     /* TODO: These have got to move to the configuration */
@@ -73,15 +77,16 @@ int main(int argc,char *argv[]) {
     command = dax_get_attr(ds, "execute");
     
     if(command) {
-        if(runcmd(command)) getout(1);
+        runcmd(command);
     }
     
-    filename = dax_get_attr(ds, "filename");
+    filename = dax_get_attr(ds, "file");
     if(filename) {
-        printf("Gonna try to run file %s\n", filename);
+        runfile(filename);
     }
-    
-    if(filename || command) getout(0);
+    if((filename || command) && !dax_get_attr(ds, "interactive")) {
+        getout(0);
+    }
     
 /* At this point we are in interactive mode.  We first read the 
  * readline history file and then start an infininte loop where
@@ -191,16 +196,16 @@ runcmd(char *instr)
 //        else if( !strcasecmp(tokens[1], "write")) result = db_write();
 //        else if( !strcasecmp(tokens[1], "format")) result = db_format();
 //        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tokens[0]);
-    } else if( !strcasecmp(tokens[0], "event")) {
+    } else if( !strncasecmp(tokens[0], "event", 5)) {
         if( tokens[1] == NULL) {
             fprintf(stderr, "ERROR: EVENT requires a subcommand.  Try ADD, DEL, WAIT, POLL\n");
-        } else if( !strcasecmp(tokens[1], "add")) {
+        } else if( !strncasecmp(tokens[1], "add", 3)) {
             event_add(&tokens[2], tcount - 2);
-        } else if( !strcasecmp(tokens[1], "del")) {
+        } else if( !strncasecmp(tokens[1], "del", 3)) {
             event_del(&tokens[2]);
-        } else if( !strcasecmp(tokens[1], "wait")) {
+        } else if( !strncasecmp(tokens[1], "wait", 4)) {
             event_wait(&tokens[2]);
-        } else if( !strcasecmp(tokens[1], "poll")) {
+        } else if( !strncasecmp(tokens[1], "poll", 4)) {
             event_poll();
         } else {
             fprintf(stderr, "ERROR: Unknown subcommand '%s'\n", tokens[1]);
@@ -216,14 +221,33 @@ runcmd(char *instr)
         getout(0);
     
     } else {
-        printf("Unknown Command - %s\n", tokens[0]);
+        fprintf(stderr, "Unknown Command - %s\n", tokens[0]);
     }
     
     free(tokens);
     return result;
 }
 
-
+int
+runfile(char *filename)
+{
+    char string[LINE_BUFF_SIZE];
+    FILE *file;
+    int len;
+    
+    file = fopen(filename, "r");
+    if(file == NULL) {
+        fprintf(stderr, "ERROR: Unable to open file - %s\n", filename);
+        return -1;
+    }
+    while(!feof(file)) {
+        fgets(string, LINE_BUFF_SIZE, file);
+        len = strlen(string);
+        if(string[len-1] == '\n') string[len-1] = '\0';
+        runcmd(string);
+    }
+    return 0;
+}
 
 /* TODO: Need to conditionally compile this function to
    either use libreadline or just use gets */

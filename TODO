@@ -4,22 +4,10 @@ _status tag can be written to by modules.  This should be read only.
 
 Allow 'nice' levels to be set for modules
 
-Finish making the 'libdaxlua' library into a package for Lua scripts.  I need
-to finish some initialization and destruction functions as well as write a
-little Lua file to go into the LUA_PATH somewhere so the 'require()' function
-can be used instead of having to load the library manually.  Also need to
-figure out how to find the right place to install this little script to the
-right place and have the 'make install' script put it in the right place.
-
-Finish asynchronous event notifiation stuff
-
-Add event driven scripts to daxlua as well as ways for scripts to poll or
-select on events.  How to do the callbacks???
-
 Much more testing needs to be done.
 
 There is a bug in the event handling logic when multiple modules of the
 same name are running.  Somewhere I'm using the name of the module to 
 identify it and the name is not forced to be unique.
 
-Also need to remove events when modules are gond.
+Also need to remove events when modules are gone.

@@ -24,6 +24,7 @@
 
 /* This is the maximum number of events that we can store. */
 #define MAX_EVENTS 64
+#define LINE_BUFF_SIZE 256
 
 /* TAG commands */
 int tag_add(char **tokens);

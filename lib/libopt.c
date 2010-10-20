@@ -25,12 +25,6 @@
 #include <ctype.h>
 
 
-//Globals are moved to the dax_state structure    
-//static optattr *_attr_head = NULL;
-//static lua_State *__L;
-//static char *_modulename;
-//static int _msgtimeout;
-
 /* Initialize the module configuration */
 int
 dax_init_config(dax_state *ds, char *name)
@@ -46,18 +40,18 @@ dax_init_config(dax_state *ds, char *name)
     }
     /* This sets up the configuration that is common to all modules */
     flags = CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute(ds, "socketname","socketname", 'S', flags, "/tmp/opendax");
+    result += dax_add_attribute(ds, "socketname","socketname", 'U', flags, "/tmp/opendax");
     result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
-    result += dax_add_attribute(ds, "server", "server", 's', flags, "LOCAL");
+    result += dax_add_attribute(ds, "server", "server", 'S', flags, "LOCAL");
     result += dax_add_attribute(ds, "debugtopic", "topic", 'T', flags, "MAJOR");
     result += dax_add_attribute(ds, "name", "name", 'N', flags, name);
-    result += dax_add_attribute(ds, "cachesize", "cachesize", 'z', flags, "8");
-    result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'o', flags, DEFAULT_TIMEOUT);
+    result += dax_add_attribute(ds, "cachesize", "cachesize", 'Z', flags, "8");
+    result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'O', flags, DEFAULT_TIMEOUT);
 
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "config", "config", 'C', flags, NULL);
-    result += dax_add_attribute(ds, "confdir", "confdir", 'c', flags, ETC_DIR);
+    result += dax_add_attribute(ds, "confdir", "confdir", 'K', flags, ETC_DIR);
     //result += dax_add_attribute(ds, "", "", '', flags, "");
 
     ds->modulename = strdup(name);
@@ -196,7 +190,11 @@ _set_attr(optattr *attr, char *value) {
     //--printf("_set_attr() called to set %s to %s\n", attr->name, value);
     /* Set the value and call the callback function if there is one */
     if( !(attr->flags & CFG_NO_VALUE) ) {
-        attr->value = strdup(value);
+        if(attr->flags & (CFG_ARG_OPTIONAL | CFG_ARG_REQUIRED)) {
+            attr->value = strdup(value);
+        } else {
+            attr->value = "Yes";
+        }
     }
     //--printf("%s was set to %s\n", attr->name, attr->value);
     if(attr->callback) {
@@ -510,6 +508,9 @@ dax_get_attr(dax_state *ds, char *name) {
     optattr *this;
     
     this = ds->attr_head;
+    if(name == NULL) {
+        return NULL;
+    }
     while(this != NULL) {
         if(!strcmp(this->name, name)) {
             return this->value;
