@@ -61,17 +61,6 @@
 #define STAT_DB_SIZE  64
 #define STAT_TAG_CNT 96
 
-
-/* This was going to be used to allow multiple modules to be notified on
- * the same event.  The problem is when one moudle decides to change the
- * event  For now we'll just have a different event in the list for each
- * module instead of the linked list of modules to notify.
-struct mod_list {
-    dax_module *module;
-    struct mod_list *next;
-};
-*/
-
 typedef struct dax_event_t {
     int id;              /* Unique identifier for this event definition */
 
@@ -83,7 +72,6 @@ typedef struct dax_event_t {
     int eventtype;       /* The type of event */
     void *data;          /* Data given by module */
     void *test;          /* Internal data, depends on event type */
-//    struct mod_list *notify;   /* List of every module to be notified of this event */
     dax_module *notify;   /* List of every module to be notified of this event */
     struct dax_event_t *next;
 } _dax_event;
@@ -112,6 +100,7 @@ int tag_del(char *name);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
 long int tag_get_count(void);
+int tag_get_size(tag_index idx);
 
 
 int tag_read(tag_index handle, int offset, void *data, int size);
@@ -125,6 +114,8 @@ char *cdt_get_name(unsigned int type);
 int type_size(tag_type type);
 int serialize_datatype(tag_type type, char **str);
 
+/* The event stuff is defined in events.c */
+void event_check(tag_index idx, int offset, int size);
 int event_add(Handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
 

@@ -167,21 +167,21 @@ _get_module_efd(int efd)
 }
 
 /* returns a module with the given name, NULL if not found */
-static dax_module *
-_get_module_name(char *name)
-{
-    int n;
-    
-    /* In case we ain't go no list */
-    if(_current_mod == NULL) return NULL;
-    
-    for(n = 0; n < _module_count; n++) {
-        if(!strcmp(_current_mod->name, name)) return _current_mod;
-        _current_mod = _current_mod->next;
-    }
-    
-    return NULL;
-}
+//static dax_module *
+//_get_module_name(char *name)
+//{
+//    int n;
+//    
+//    /* In case we ain't go no list */
+//    if(_current_mod == NULL) return NULL;
+//    
+//    for(n = 0; n < _module_count; n++) {
+//        if(!strcmp(_current_mod->name, name)) return _current_mod;
+//        _current_mod = _current_mod->next;
+//    }
+//    
+//    return NULL;
+//}
 
 /* Convert a string like "-d -x -y" to a NULL terminated array of
  * strings suitable as an arg list for the arg_list of an exec??()
@@ -260,11 +260,11 @@ _print_modules(void)
 dax_module *
 module_add(char *name, char *path, char *arglist, int startup, unsigned int flags)
 {
-    dax_module *new, *try;
+    dax_module *new; //, *try;
     xlog(LOG_MAJOR,"Adding module %s",name);
     
-    if((try = _get_module_name(name))) 
-        return try;
+//    if((try = _get_module_name(name))) 
+//        return try;
     
     new = xmalloc(sizeof(dax_module));
     if(new) {
