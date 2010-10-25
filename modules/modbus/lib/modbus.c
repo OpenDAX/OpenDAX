@@ -456,34 +456,44 @@ create_response(mb_port *port, unsigned char *buff, int size)
         if(node != port->slaveid) return 0;
     }
     switch(function) {
-    case 1:
-        break;
-    case 2:
-        break;
-    case 3:
-        if((count * 2) > (size - 3)) { /* Make sure we have enough room */
-            return MB_ERR_OVERFLOW;
-        }
-        if((index + count) > port->holdsize) {
-            return _create_exception(buff, ME_BAD_ADDRESS);
-        }
-        buff[2] = count * 2;
-        for(n = 0; n < count; n++) {
-            COPYWORD(&buff[3+(n*2)], &port->holdreg[index+n]);
-        }
-        return (count * 2) + 3;
-    case 4:
-        break;
-    case 5:
-        break;
-    case 6:
-        break;
-    case 15:
-        break;
-    case 16:
-        break;
-    default:
-        break;
+        case 1:
+            break;
+        case 2:
+            break;
+        case 3:
+            if((count * 2) > (size - 3)) { /* Make sure we have enough room */
+                return MB_ERR_OVERFLOW;
+            }
+            if((index + count) > port->holdsize) {
+                return _create_exception(buff, ME_BAD_ADDRESS);
+            }
+            buff[2] = count * 2;
+            for(n = 0; n < count; n++) {
+                COPYWORD(&buff[3+(n*2)], &port->holdreg[index+n]);
+            }
+            return (count * 2) + 3;
+        case 4:
+            if((count * 2) > (size - 3)) { /* Make sure we have enough room */
+                return MB_ERR_OVERFLOW;
+            }
+            if((index + count) > port->inputsize) {
+                return _create_exception(buff, ME_BAD_ADDRESS);
+            }
+            buff[2] = count * 2;
+            for(n = 0; n < count; n++) {
+                COPYWORD(&buff[3+(n*2)], &port->inputreg[index+n]);
+            }
+            return (count * 2) + 3;
+        case 5:
+            break;
+        case 6:
+            break;
+        case 15:
+            break;
+        case 16:
+            break;
+        default:
+            break;
     }
     
     return 0;

@@ -274,6 +274,8 @@ server_loop(mb_port *port)
         if(result) {
             if(result == MB_ERR_OVERFLOW) {
                 DEBUGMSG("Buffer Overflow Attempt");
+            } else {
+                return result;
             }
         }
         dummy[0]++;

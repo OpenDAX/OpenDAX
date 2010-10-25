@@ -98,7 +98,7 @@ if(dc == NULL) {
 
     error = dax_cdt_create(ds, dc, &type);
     if(error) {
-        printf("Error returned from dax_cdt_member() is %d\n", error);
+        printf("Error from dax_cdt_member() is %d\n", error);
 	    //handle error
     } else {
         printf("CDT created!  Data Type = 0x%X\n", type);
@@ -117,7 +117,10 @@ This code will build the above CDT.  There is some error checking missing on the
 \section{Creating Tags}
 The main function to use for creating tags for \opendax is \verb| dax_tag_add()| function\index{dax\_tag\_add() function}.  The prototype is given here.
 
-\verb|int dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count)|
+\begin{verbatim}
+int dax_tag_add(dax_state *ds, Handle *h, char *name,
+                tag_type type, int count)|
+\end{verbatim}
 
 There are three pieces of information that must be passed to this function to create a tag.  First you have to pass a \emph{name}.  The name is statically allocated so the size of the tag is fixed.  It must be less than \verb|DAX_TAGNAME_SIZE|.  Right now this is set at 32 characters.  It can easily be changed to allow longer tag names or made smaller to conserve memory in smaller systems.  The definition is in \emph{opendax.h} and once changed you will have to recompile everything.
 
@@ -154,13 +157,13 @@ MyCDT
 Let's say we create a tag that is a 10 item array of this type, named \emph{MyTag}.  We could represent parts of this tag with the following strings \ldots
 
 \begin{tabular}{lll}
-\textbf{str} & \textbf{count} & \textbf{Handle represents \ldots} \\
+\textbf{str} & \textbf{cnt} & \textbf{Handle represents \ldots} \\
 \verb|"MyTag"| & 1 & the entire tag \\ 
 \verb|"MyTag[0]"| & 1 & the entire first element \\ 
 \verb|"MyTag[0]"| & 2 & all of the first two elements \\ 
-\verb|"MyTag[1].MyInteger"| & n/a & the MyInteger member of the second element \\ 
-\verb|"MyTag[1].MyBools"| & n/a & the entire MyBools array of the second element \\ 
-\verb|"MyTag[2].MyReals[1]"| & 2 & two MyReals starting with the second one \\ 
+\verb|"MyTag[1].MyInteger"| & n/a & the MyInteger member of the 2nd element \\ 
+\verb|"MyTag[1].MyBools"| & n/a & the entire MyBools array of the 2nd element \\ 
+\verb|"MyTag[2].MyReals[1]"| & 2 & two MyReals starting with the 2nd one \\ 
 \end{tabular} 
 
 This is the way that tags and parts of tags should be represented within your module as well.  This representation should be pretty familiar to a C programmer.  Square brackets and numbers are used to index the arrays and '.'s are used to dereference parts of a tag that have a compound data type.  Arrays are zero indexed.
@@ -172,7 +175,8 @@ Once you have a handle to the data you can start to read and write that data.  T
 \begin{verbatim}
 int dax_read_tag(dax_state *ds, Handle handle, void *data);
 int dax_write_tag(dax_state *ds, Handle handle, void *data);
-int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
+int dax_mask_tag(dax_state *ds, Handle handle, void *data,
+                 void *mask);
 \end{verbatim}
 
 The \verb|dax_read_tag()| function \index{dax\_read\_tag() function}, as its name suggests is used to read tag data from the server.  The \verb|void *data| pointer should point to data that is formated in the same way that the handle data is formatted.  Usually this simply means that the variables in you module should be of the same type and size as what is pointed to by \emph{handle}.

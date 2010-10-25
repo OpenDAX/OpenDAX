@@ -49,11 +49,11 @@ The \textit{Equal}, \textit{Greater Than}, \textit{Less Than} and \textit{Deadba
 Also, the \textit{Equal}, \textit{Greater Than} and \textit{Less Than} events will only fire once when they are satisfied.  They must become untrue and then true again before another event will be fired.
 
 The \textit{Deadband} event will reset the "old value" when it fires.  So in the above example when the value is 4 and the deadband data is 2 the event will fire when the value becomes 6 but it won't fire again until the value changes by 2 from that 6.  Now the value must either fall back to 4 or become 8 to get this event again.
-
+2
 \begin{figure}[h]
 \centering
 \begin{tabular}{|l|c|c|c|c|c|c|c|c|}
-\hline   & Write & Change & Set & Reset & Equal & Greater & Less & Deadband \\ 
+\hline   & Write & Change & Set & Reset & = & $<$ & $>$ & Deadband \\ 
 \hline  BOOL & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  &  &  &  \\ 
 \hline  BYTE & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
 \hline  SINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ &$\bullet$  \\ 
@@ -160,7 +160,7 @@ int dax_event_poll(dax_state *ds, dax_event_id *id);
 \index{dax\_event\_poll() function}
 
 
-The \verb|| function takes a couple of arguments in addition to the normal \daxstate argument.  The first is \texttt{timeout}.  This is how long you would like to wait for the event before the function returns.  If the function returns a \verb|0| then it dispatched and event.  If it returns \texttt{ERR\_TIMEOUT} then it did not dispatch an event and has timed out.  This gives you the ability to block waiting for events but occasionally exit and handle some other details.  \eventwait will only handle one event and then return.  Even if there are more events in the buffer to deal with.
+The \texttt{dax\_event\_wait()} function takes a couple of arguments in addition to the normal \daxstate argument.  The first is \texttt{timeout}.  This is how long you would like to wait for the event before the function returns.  If the function returns a \verb|0| then it dispatched and event.  If it returns \texttt{ERR\_TIMEOUT} then it did not dispatch an event and has timed out.  This gives you the ability to block waiting for events but occasionally exit and handle some other details.  \eventwait will only handle one event and then return.  Even if there are more events in the buffer to deal with.
 
 The last parameter to \eventwait is a pointer to a \texttt{dax\_event\_id} structure.  This will be filled in by \eventwait with the information that identifies this event.
 
@@ -173,7 +173,7 @@ int dax_event_poll(dax_state *ds, dax_event_id *id);
 \end{verbatim}
 \index{dax\_event\_poll() function}
 
-The final method of dealing with events allows your program to have complete control over the file descriptor.  This is more complex, but it might be necessary if your program needs to deal with other events.  First use \verb|int dax_event_get_fd(dax_state *ds)|\index{dax\_event\_get\_fd() function} function to retrieve the file descriptor that the library is using to wait on events to come from the server.  You can use other system calls such as \verb|system()| or \verb|poll()| to determine if there is a read pending.  If there is any information to read your module would then call \texttt{int dax\_event\_dispatch(dax\_state *ds, dax\_event\_id *id)}\index{dax\_event\_dispatch() function} function.  This function carries out the same tasks as \texttt{dax\_event\_wait()} and \texttt{dax\_event\_poll()}.  In fact these two functions call \texttt{dax\_event\_dispatch()} from within the library.
+The final method of dealing with events allows your program to have complete control over the file descriptor.  This is more complex, but it might be necessary if your program needs to deal with other events.  First use \texttt{dax\_event\_get\_fd()}\index{dax\_event\_get\_fd() function} function to retrieve the file descriptor that the library is using to wait on events to come from the server.  You can use other system calls such as \verb|system()| or \verb|poll()| to determine if there is a read pending.  If there is any information to read your module would then call \texttt{int dax\_event\_dispatch(dax\_state *ds, dax\_event\_id *id)}\index{dax\_event\_dispatch() function} function.  This function carries out the same tasks as \texttt{dax\_event\_wait()} and \texttt{dax\_event\_poll()}.  In fact these two functions call \texttt{dax\_event\_dispatch()} from within the library.
 
 It is important that your module does not read any of the bytes out of the socket that the file descriptor represents.  Also, the data is one way so you only need to detect that the socket is ready for reading.
 
@@ -261,19 +261,19 @@ dax.event_del
 The Skeleton module is included in the distribution as a starting place for building new modules.  It includes just enough code to function as an OpenDAX module.  The code is well documented and when used with this manual it will, hopefully, make writing a new module for OpenDAX a fairly simple and straight forward process.  The Skeleton module is located in the /modules/skel subdirectory of the distribution.
 
 \section{skel.h}
-\begin{small}
+\begin{tiny}
 \verbatiminput{../modules/skel/skel.h}
-\end{small}
+\end{tiny}
 \section{skel.c}
-\begin{small}
+\begin{tiny}
 \verbatiminput{../modules/skel/skel.c}
-\end{small}
+\end{tiny}
 
 \input{dev_codebase.tex}
 \chapter{opendax.h Listing}
-\begin{small}
+\begin{tiny}
 \verbatiminput{../opendax.h}
-\end{small}
+\end{tiny}
 
 %\chapter{GPL License}
 %\verbatiminput{../COPYING}

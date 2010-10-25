@@ -227,6 +227,7 @@ mb_new_port(const char *name, unsigned int flags)
 static void
 _free_cmd(mb_cmd *cmd)
 {
+    if(cmd == NULL) return;
     if(cmd->next != NULL) {
         _free_cmd(cmd->next);
     }
