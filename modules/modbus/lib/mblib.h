@@ -181,7 +181,8 @@ struct mb_port {
     /* These are callback function pointers for the port message data */
     void (*out_callback)(struct mb_port *port, u_int8_t *buff, unsigned int);
     void (*in_callback)(struct mb_port *port, u_int8_t *buff, unsigned int);
-    void (*slave_request)(struct mb_port *port, int reg, int index, int size);
+    void (*slave_read)(struct mb_port *port, int reg, int index, int size, void *userdata);
+    void (*slave_write)(struct mb_port *port, int reg, int index, int size, void *userdata);
     void (*userdata_free)(struct mb_port *port, void *userdata);
 };
 

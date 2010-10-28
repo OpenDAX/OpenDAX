@@ -60,6 +60,9 @@ initport(mb_port *p)
     p->commands = NULL;
     p->out_callback = NULL;
     p->in_callback = NULL;
+    p->slave_read = NULL;
+    p->slave_write = NULL;
+    p->userdata = NULL;
     strcpy(p->ipaddress, "0.0.0.0");
 #ifdef __MB_THREAD_SAFE
     mb_mutex_init(&p->hold_mutex);
@@ -331,7 +334,7 @@ mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int
 }
 
 
-const char *mb_get_name(mb_port *port) {
+const char *mb_get_port_name(mb_port *port) {
     return (const char *)port->name;
 }
 
@@ -410,12 +413,23 @@ mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit)
 }
 
 unsigned char
-mb_get_type(mb_port *port)
+mb_get_port_type(mb_port *port)
 {
     DEBUGMSG2("mb_get_type() called for modbus port %s", port->name);
     DEBUGMSG2("mb_get_type() returning %d", port->type);
     return port->type;
 }
+
+unsigned char
+mb_get_port_protocol(mb_port *port) {
+    return port->protocol;
+}
+
+u_int8_t
+mb_get_port_slaveid(mb_port *port) {
+    return port->slaveid;
+}
+                                 
 
 /* These four functions allocate the data areas for a slave port
  * A valid port pointer and size should be passed.  The new pointer
@@ -491,6 +505,27 @@ mb_alloc_discrete(mb_port *port, unsigned int size)
 	mb_mutex_unlock(port, &port->disc_mutex);	
 	return new;
 }
+
+unsigned int
+mb_get_holdreg_size(mb_port *port) {
+    return port->holdsize;
+}
+
+unsigned int
+mb_get_inputreg_size(mb_port *port) {
+    return port->inputsize;
+}
+
+unsigned int
+mb_get_coil_size(mb_port *port) {
+    return port->coilsize;
+}
+
+unsigned int
+mb_get_discrete_size(mb_port *port) {
+    return port->discsize;
+}
+
 
 /* These functions are thread safe ways to read/write the data tables */
 int
@@ -580,16 +615,36 @@ mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,u_int8_t *buff, 
 }
 
 void
-mb_set_slave_request_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size))
-{
-	mp->slave_request = infunc;
+mb_set_port_userdata(mb_port *mp, void *userdata, void (*freefunc)(struct mb_port *port, void *userdata)) {
+    mp->userdata = userdata;
+    if(freefunc) {
+        mp->userdata_free = freefunc;
+    }
+}
+
+void *
+mb_get_port_userdata(mb_port *mp) {
+    return mp->userdata;
 }
 
 void
-mb_set_userdata_free_callback(mb_port *mp, void (*infunc)(struct mb_port *port, void *userdata))
+mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size, void *userdata))
 {
-	mp->userdata_free = infunc;
+	mp->slave_read = infunc;
 }
+
+void
+mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size, void *userdata))
+{
+    mp->slave_write = infunc;
+}
+
+
+//void
+//mb_set_userdata_free_callback(mb_port *mp, void (*infunc)(struct mb_port *port, void *userdata))
+//{
+//	mp->userdata_free = infunc;
+//}
 
 
 /*********************/

@@ -183,9 +183,12 @@ mb_set_mode(mb_cmd *cmd, unsigned char mode)
 }
 
 void
-mb_set_userdata(mb_cmd *cmd, void *data)
+mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd *, void *))
 {
     cmd->userdata = data;
+    if(userdata_free) {
+        cmd->userdata_free = userdata_free;
+    }
 }
 
 /* Returns true (1) if the function code for cmd will read from the node */

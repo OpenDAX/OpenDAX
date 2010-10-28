@@ -53,6 +53,40 @@ _port_thread(void *port) {
     dax_fatal(ds, "This Shouldn't Exit Here!");
 }
 
+static int
+_setup_port(mb_port *port) {
+    unsigned int size;
+    int result;
+    port_userdata *ud;
+    
+    ud = (port_userdata *)mb_get_port_userdata(port);
+
+    if(mb_get_port_type(port) == MB_SLAVE) {
+        size = mb_get_holdreg_size(port);
+        if(size) {
+            result = dax_tag_add(ds, &ud->hold_handle, ud->holdreg, DAX_UINT, size);
+            if(result) return result;
+        }
+        size = mb_get_inputreg_size(port);
+        if(size) {
+            result = dax_tag_add(ds, &ud->input_handle, ud->inputreg, DAX_UINT, size);
+            if(result) return result;
+        }
+        size = mb_get_coil_size(port);
+        if(size) {
+            result = dax_tag_add(ds, &ud->coil_handle, ud->coilreg, DAX_BOOL, size);
+            if(result) return result;
+        }
+        size = mb_get_discrete_size(port);
+        if(size) {
+            result = dax_tag_add(ds, &ud->disc_handle, ud->discreg, DAX_BOOL, size);
+            if(result) return result;
+        }        
+
+    }
+    return 0;
+}
+
 int
 main (int argc, const char * argv[]) {
     int result, n;
@@ -102,13 +136,17 @@ main (int argc, const char * argv[]) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     for(n = 0; n < config.portcount; n++) {
-        mb_set_msgout_callback(config.ports[n], outdata);
-        mb_set_msgin_callback(config.ports[n], indata);
-        printf("Starting Thread for port - %s",mb_get_name(config.ports[n]));
-        if(pthread_create(&config.threads[n], &attr, (void *)&_port_thread, (void *)config.ports[n])) {
-            dax_error(ds, "Unable to start thread for port - %s", mb_get_name(config.ports[n]));
+        if(_setup_port(config.ports[n])) {
+            dax_error(ds, "Problem setting up port - %s", mb_get_port_name(config.ports[n]));
         } else {
-            dax_debug(ds, LOG_MAJOR, "Started Thread for port - %s", mb_get_name(config.ports[n]));
+            mb_set_msgout_callback(config.ports[n], outdata);
+            mb_set_msgin_callback(config.ports[n], indata);
+            printf("Starting Thread for port - %s",mb_get_port_name(config.ports[n]));
+            if(pthread_create(&config.threads[n], &attr, (void *)&_port_thread, (void *)config.ports[n])) {
+                dax_error(ds, "Unable to start thread for port - %s", mb_get_port_name(config.ports[n]));
+            } else {
+                dax_debug(ds, LOG_MAJOR, "Started Thread for port - %s", mb_get_port_name(config.ports[n]));
+            }
         }
     }
     
@@ -178,7 +216,7 @@ void
 outdata(mb_port *mp, u_int8_t *buff, unsigned int len)
 {
    int n;
-   printf("%s:", mb_get_name(mp));
+   printf("%s:", mb_get_port_name(mp));
    for(n = 0; n < len; n++) {
        printf("(%X)", buff[n]);
    }
@@ -189,7 +227,7 @@ void
 indata(mb_port *mp, u_int8_t *buff, unsigned int len)
 {
    int n;
-   printf("%s:", mb_get_name(mp));
+   printf("%s:", mb_get_port_name(mp));
    for(n = 0; n < len; n++) {
        printf("[%X]",buff[n]);
    }

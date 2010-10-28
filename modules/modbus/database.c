@@ -95,13 +95,13 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
     
     snprintf(tagname, DAX_TAGNAME_SIZE + 20, "%s[%d]", cdata->tagname, cdata->index);
     free(userdata); /* This offsets the malloc in _add_command() */
-    mb_set_userdata(c, NULL); /* Just so we know */
+    mb_set_cmd_userdata(c, NULL, NULL); /* Just so we know */
            
     result = dax_tag_handle(ds, h, tagname, count);
     /* Since h is allocated with a single malloc call we don't have to free
      * it because it will be freed when the command is destroyed.
      * We want to make sure and set the userdata anyway or we'll get a segfault */
-    mb_set_userdata(c, h);
+    mb_set_cmd_userdata(c, h, NULL);
     
     if(result) {
         dax_error(ds, "Unable to get handle for tag %s, %d", tagname, count);

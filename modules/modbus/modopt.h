@@ -19,6 +19,7 @@
 #ifndef __OPTIONS_H
 #define __OPTIONS_H
 
+#include <opendax.h>
 #include <lib/modbus.h>
 
 
@@ -41,14 +42,26 @@ struct Config {
     mb_port **ports; /* Pointer to an array of ports */
 };
 
-struct cmd_temp_data {
+typedef struct cmd_temp_data {
     char *tagname;
     int index;
     u_int8_t function;
     u_int16_t length;
-};
+} cmd_temp_data;
 
-typedef struct cmd_temp_data cmd_temp_data;
+/* This is a structure of information that we attach to the mb_port userdata
+ * field that helps us keep track of information that our module needs */
+typedef struct port_userdata {
+    char *holdreg;  /* OpenDAX Tagnames */
+    char *inputreg;
+    char *coilreg;
+    char *discreg;
+    Handle hold_handle; /* OpenDAX Handles */
+    Handle input_handle;
+    Handle coil_handle;
+    Handle disc_handle;
+} port_userdata;
+
 
 int modbus_configure(int, const char **);
 int getbaudrate(int);

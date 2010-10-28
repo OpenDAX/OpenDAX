@@ -63,7 +63,7 @@ _get_serial_config(lua_State *L, mb_port *p)
     lua_getfield(L, -1, "device");
     device = (char *)lua_tostring(L, -1);
     if(device == NULL) {
-        dax_debug(ds, 1, "No device given for serial port %s, Using /dev/serial", mb_get_name(p));
+        dax_debug(ds, 1, "No device given for serial port %s, Using /dev/serial", mb_get_port_name(p));
         device = strdup("/dev/serial");
     }
     
@@ -164,11 +164,14 @@ _get_slave_config(lua_State *L, mb_port *p)
     unsigned int size;
     int result = 0;
     dax_error(ds, "Slave functionality is not yet implemented");
-    char *holdreg, *inputreg, *coilreg, *discreg;
+    port_userdata *ud;
+
+    ud = malloc(sizeof(port_userdata));
+    if(ud == NULL) return ERR_ALLOC;
     
     lua_getfield(L, -1, "holdreg");
-    holdreg = (char *)lua_tostring(L, -1);
-    
+    ud->holdreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->holdreg == NULL) return ERR_ALLOC;
     lua_getfield(L, -2, "holdsize");
     size = (unsigned int)lua_tonumber(L, -1);
     /* Need to check for NULL pointer return here */
@@ -178,31 +181,36 @@ _get_slave_config(lua_State *L, mb_port *p)
     
         
     lua_getfield(L, -1, "inputreg");
-    inputreg = (char *)lua_tostring(L, -1);
+    ud->inputreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->inputreg == NULL) return ERR_ALLOC;
     lua_getfield(L, -2, "inputsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    //--result = mb_set_inputsize(p, size);
+    mb_alloc_inputreg(p, size);
     lua_pop(L, 2);
     if(result) return result;
     
     lua_getfield(L, -1, "coilreg");
-    coilreg = (char *)lua_tostring(L, -1);
+    ud->coilreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->coilreg == NULL) return ERR_ALLOC;
     lua_getfield(L, -2, "coilsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    //result = mb_set_coilsize(p, size);
+    mb_alloc_coil(p, size);
+        //result = mb_set_coilsize(p, size);
     lua_pop(L, 2);
     if(result) return result;
     
     lua_getfield(L, -1, "discreg");
-    discreg = (char *)lua_tostring(L, -1);
-        //--p->floatreg = (unsigned int)lua_tonumber(L, -1);
+    ud->discreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->discreg == NULL) return ERR_ALLOC;
+       //--p->floatreg = (unsigned int)lua_tonumber(L, -1);
     lua_getfield(L, -2, "discsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    //result = mb_set_floatsize(p, size);
+    mb_alloc_discrete(p, size);
+        //result = mb_set_floatsize(p, size);
     lua_pop(L, 2);
-    if(result) return result;
     
-    return 0;
+    mb_set_port_userdata(p, ud, NULL);
+    return result;
 }
 
 /* Lua interface function for adding a port.  It takes a single
@@ -214,7 +222,7 @@ _add_port(lua_State *L)
     mb_port **newports;
     char *string, *name;
     int slaveid, tmp, maxfailures, inhibit;
-    unsigned char devtype, protocol, type, enable; 
+    unsigned char devtype, protocol, type, enable;
     
     if(!lua_istable(L, -1)) {
         luaL_error(L, "add_port() received an argument that is not a table");
@@ -383,8 +391,8 @@ _add_command(lua_State *L)
         luaL_error(L, "add_command() received an argument that is not a table");
     }
     printf("What do I think a MB_MASTER is?  I think %d\n", MB_MASTER);
-    if(mb_get_type(config.ports[p]) != MB_MASTER) {
-        printf("What kind of port did I get? %d\n", mb_get_type(config.ports[p-1]));
+    if(mb_get_port_type(config.ports[p]) != MB_MASTER) {
+        printf("What kind of port did I get? %d\n", mb_get_port_type(config.ports[p-1]));
         dax_debug(ds, 1, "Adding commands only makes sense for a Master or Client port");
         return 0;
     }
@@ -458,7 +466,7 @@ _add_command(lua_State *L)
         cmd_data->index = tagindex;
         cmd_data->function = function;
         cmd_data->length = length;
-        mb_set_userdata(c, cmd_data);
+        mb_set_cmd_userdata(c, cmd_data, NULL);
         mb_pre_send_callback(c, setup_command);
         //dt_add_tag(c, string, tagindex, function, length);
     } else {
