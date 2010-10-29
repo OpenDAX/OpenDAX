@@ -606,7 +606,8 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
 
 int
 dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
-              dax_event_id *id, void (*callback)(void *udata), void *udata)
+              dax_event_id *id, void (*callback)(void *udata),
+              void *udata, void (*free_callback)(void *udata))
 {
     int test;
     dax_dint result;
@@ -653,7 +654,7 @@ dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
             }
             eid.id = result;
             eid.index = h->index;
-            result = add_event(ds, eid, udata, callback);
+            result = add_event(ds, eid, udata, callback, free_callback);
             if(result) {
                 libdax_unlock(ds->lock);
                 return result;

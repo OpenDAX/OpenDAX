@@ -258,7 +258,7 @@ int
 server_loop(mb_port *port)
 {
     int result;
-    u_int16_t dummy[10];
+    //u_int16_t dummy[10];
     
     result = _server_listen(port);
     if(result) {
@@ -278,9 +278,9 @@ server_loop(mb_port *port)
                 return result;
             }
         }
-        dummy[0]++;
-        dummy[1] = dummy[0] + 1;
-        mb_write_register(port, MB_REG_HOLDING, dummy, 0, 5);
+        //dummy[0]++;
+        //dummy[1] = dummy[0] + 1;
+        //mb_write_register(port, MB_REG_HOLDING, dummy, 0, 5);
         //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
         //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
 

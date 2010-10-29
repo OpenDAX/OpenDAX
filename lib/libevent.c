@@ -73,7 +73,9 @@ dax_event_type_to_string(int type) {
 }
 
 int
-add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *udata)) {
+add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *udata),
+          void (*free_callback)(void *udata))
+{
     event_db *new_db;
 
     /* TODO: Should find holes in the array from previous deletions and add new ones there. */
@@ -96,18 +98,25 @@ add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *ud
     ds->events[ds->event_count].id = id.id;
     ds->events[ds->event_count].udata = udata;
     ds->events[ds->event_count].callback = callback;
-    
+    ds->events[ds->event_count].free_callback = free_callback;
+        
     ds->event_count++;
     return 0;
 }
 
+/* Finds the event in the list and removes it.  It also calls the free_callback()
+ * function if it is assigned */
 int
-del_event(dax_state *ds, dax_event_id id) {
+del_event(dax_state *ds, dax_event_id id)
+{
     int n;
 
     for(n = 0; n < ds->event_count; n++) {
         if(ds->events[n].idx == id.index && ds->events[n].id == id.id) {
             memmove(&ds->events[n], &ds->events[n+1], sizeof(event_db) * (ds->event_count - n-1));
+            if(ds->events[n].free_callback) {
+                ds->events[n].free_callback(ds->events[n].udata);
+            }
             ds->event_count--;
             return 0;
         }
@@ -121,7 +130,8 @@ del_event(dax_state *ds, dax_event_id id) {
  * if the time expires.  Returns zero on success.  If 0 is passed
  * as the timeout it will wait forever. */
 int
-dax_event_wait(dax_state *ds, int timeout, dax_event_id *id) {
+dax_event_wait(dax_state *ds, int timeout, dax_event_id *id)
+{
     int result;
     struct timeval tval;
     fd_set fds;
@@ -154,7 +164,8 @@ dax_event_wait(dax_state *ds, int timeout, dax_event_id *id) {
  * 0 if it services an event and ERR_NOTFOUND if there are no
  * events pending to service */
 int
-dax_event_poll(dax_state *ds, dax_event_id *id) {
+dax_event_poll(dax_state *ds, dax_event_id *id)
+{
     int result;
     struct timeval tval;
     fd_set fds;
@@ -179,7 +190,8 @@ dax_event_poll(dax_state *ds, dax_event_id *id) {
  * it's own file descriptor management.  Handy for event driven programs
  * that need to select() on multiple file descriptors */
 int
-dax_event_get_fd(dax_state *ds) {
+dax_event_get_fd(dax_state *ds)
+{
     return ds->afd;
 }
 
@@ -192,7 +204,8 @@ dax_event_get_fd(dax_state *ds) {
  * the event, ERR_NOTFOUND if it only received a partial event message from
  * the server and other errors if necessary. */
 int
-dax_event_dispatch(dax_state *ds, dax_event_id *id) {
+dax_event_dispatch(dax_state *ds, dax_event_id *id)
+{
     int result, n;
     u_int32_t etype, idx, eid, byte, count, datatype;
     u_int8_t bit;

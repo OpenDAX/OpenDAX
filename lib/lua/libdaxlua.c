@@ -903,7 +903,7 @@ _event_add(lua_State *L) {
     /* Now the function should be at the top of the stack */
     edata->function = luaL_ref(L, LUA_REGISTRYINDEX);
     edata->L = L; /* We'll need this later */
-    result = dax_event_add(ds, &h, type, data, &id, _event_callback, edata);
+    result = dax_event_add(ds, &h, type, data, &id, _event_callback, edata, NULL);
     if(result) {
         free(edata);
         luaL_error(L, "Unable to add event to server - result = %d", result);

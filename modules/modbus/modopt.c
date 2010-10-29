@@ -170,8 +170,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     if(ud == NULL) return ERR_ALLOC;
     
     lua_getfield(L, -1, "holdreg");
-    ud->holdreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->holdreg == NULL) return ERR_ALLOC;
+    ud->reg[HOLD_REG].mbreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->reg[HOLD_REG].mbreg == NULL) return ERR_ALLOC;
     lua_getfield(L, -2, "holdsize");
     size = (unsigned int)lua_tonumber(L, -1);
     /* Need to check for NULL pointer return here */
@@ -181,8 +181,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     
         
     lua_getfield(L, -1, "inputreg");
-    ud->inputreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->inputreg == NULL) return ERR_ALLOC;
+    ud->reg[INPUT_REG].mbreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->reg[INPUT_REG].mbreg == NULL) return ERR_ALLOC;
     lua_getfield(L, -2, "inputsize");
     size = (unsigned int)lua_tonumber(L, -1);
     mb_alloc_inputreg(p, size);
@@ -190,23 +190,20 @@ _get_slave_config(lua_State *L, mb_port *p)
     if(result) return result;
     
     lua_getfield(L, -1, "coilreg");
-    ud->coilreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->coilreg == NULL) return ERR_ALLOC;
+    ud->reg[COIL_REG].mbreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->reg[COIL_REG].mbreg == NULL) return ERR_ALLOC;
     lua_getfield(L, -2, "coilsize");
     size = (unsigned int)lua_tonumber(L, -1);
     mb_alloc_coil(p, size);
-        //result = mb_set_coilsize(p, size);
     lua_pop(L, 2);
     if(result) return result;
     
     lua_getfield(L, -1, "discreg");
-    ud->discreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->discreg == NULL) return ERR_ALLOC;
-       //--p->floatreg = (unsigned int)lua_tonumber(L, -1);
+    ud->reg[DISC_REG].mbreg = strdup((char *)lua_tostring(L, -1));
+    if(ud->reg[DISC_REG].mbreg == NULL) return ERR_ALLOC;
     lua_getfield(L, -2, "discsize");
     size = (unsigned int)lua_tonumber(L, -1);
     mb_alloc_discrete(p, size);
-        //result = mb_set_floatsize(p, size);
     lua_pop(L, 2);
     
     mb_set_port_userdata(p, ud, NULL);

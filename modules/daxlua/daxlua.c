@@ -206,7 +206,7 @@ _setup_script_event(lua_State *L, script_t *s) {
 
     _convert_lua_number(h.type, &u, s->event_value);
     result = dax_event_add(ds, &h, s->event_type, (void *)&u, 
-                           NULL, _script_event_dispatch, s);
+                           NULL, _script_event_dispatch, s, NULL);
     if(result) {
         return(result);
     }

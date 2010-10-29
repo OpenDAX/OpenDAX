@@ -53,34 +53,90 @@ _port_thread(void *port) {
     dax_fatal(ds, "This Shouldn't Exit Here!");
 }
 
-static int
-_setup_port(mb_port *port) {
-    unsigned int size;
-    int result;
-    port_userdata *ud;
-    
-    ud = (port_userdata *)mb_get_port_userdata(port);
+/* This structure and the following functions are used to set up the
+ * callback information for a slave port.  It's a bit convoluted but
+ * basically there is userdata assigned to the port that contains all
+ * the handles and event information for the slave data areas.  These
+ * functions set up the callbacks for the slave ports so that they can
+ * update the modbus library register tables when the data in OpenDAX
+ * changes.  The userdata structure is defined in modopt.h */
+typedef struct _slave_data {
+    Handle h;
+    mb_port *port;
+    int modreg;
+} _slave_data;
 
+static void
+_slave_callback(void *udata)
+{
+    u_int8_t buff[((_slave_data *)udata)->h.size];
+    _slave_data *sd;
+    int result;
+    sd = (_slave_data *)udata;
+    fprintf(stderr, "_slave_callback() sd = %p\n", sd);
+    
+    result = dax_read_tag(ds, sd->h, buff);
+    if(result) {
+        dax_error(ds, "Unable to read tag data for port %s", mb_get_port_name(sd->port));
+    } else {
+        result = mb_write_register(sd->port, sd->modreg, (u_int16_t *)buff, 0, sd->h.count);
+    }
+    return;
+}
+
+static void
+_free_slave_data(void *udata) {
+    free(udata);
+}
+
+static int
+_slave_port_add(mb_port *port, port_ud_item *item, int mbreg, int size)
+{
+    int result;
+    _slave_data *sd;
+
+    
+    result = dax_tag_add(ds, &item->h, item->mbreg, DAX_UINT, size);
+    if(result) return result;
+    
+    sd = malloc(sizeof(_slave_data));
+    if(sd) {
+        sd->h = item->h;
+        sd->modreg = mbreg;
+        sd->port = port;
+        fprintf(stderr, "_slave_port_add() - sd = %p, modreg = %d, portname = %s\n", sd, sd->modreg, mb_get_port_name(sd->port));
+        result = dax_event_add(ds, &sd->h, EVENT_CHANGE, NULL, &item->event, 
+                               _slave_callback, sd, _free_slave_data);
+    } else {
+        dax_error(ds, "Unable to add data to port %s", mb_get_port_name(port));
+    }
+    return 0;
+}
+
+static int
+_setup_port(mb_port *port)
+{
+    unsigned int size;
+    port_userdata *ud;
+        
+    ud = (port_userdata *)mb_get_port_userdata(port);
+    
     if(mb_get_port_type(port) == MB_SLAVE) {
         size = mb_get_holdreg_size(port);
         if(size) {
-            result = dax_tag_add(ds, &ud->hold_handle, ud->holdreg, DAX_UINT, size);
-            if(result) return result;
+            _slave_port_add(port, &ud->reg[HOLD_REG], MB_REG_HOLDING, size);
         }
         size = mb_get_inputreg_size(port);
         if(size) {
-            result = dax_tag_add(ds, &ud->input_handle, ud->inputreg, DAX_UINT, size);
-            if(result) return result;
+            _slave_port_add(port, &ud->reg[INPUT_REG], MB_REG_INPUT, size);            
         }
         size = mb_get_coil_size(port);
         if(size) {
-            result = dax_tag_add(ds, &ud->coil_handle, ud->coilreg, DAX_BOOL, size);
-            if(result) return result;
+            _slave_port_add(port, &ud->reg[COIL_REG], MB_REG_COIL, size);
         }
         size = mb_get_discrete_size(port);
         if(size) {
-            result = dax_tag_add(ds, &ud->disc_handle, ud->discreg, DAX_BOOL, size);
-            if(result) return result;
+            _slave_port_add(port, &ud->reg[DISC_REG], MB_REG_DISC, size);
         }        
 
     }
@@ -151,7 +207,7 @@ main (int argc, const char * argv[]) {
     }
     
     while(1) {
-        sleep(10);
+        dax_event_wait(ds, 1000, NULL);
         /*TODO: May need to do some kind of housekeeping here */
     }
     

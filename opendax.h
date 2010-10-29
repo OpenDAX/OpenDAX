@@ -287,7 +287,8 @@ int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 
 /* Event handling functions */
 int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data, 
-                  dax_event_id *id, void (*callback)(void *udata), void *udata);
+                  dax_event_id *id, void (*callback)(void *udata), void *udata,
+                  void (*free_callback)(void *udata));
 int dax_event_del(dax_state *ds, dax_event_id id);
 int dax_event_get(dax_state *ds, dax_event_id id);
 int dax_event_modify(dax_state *ds, int id);

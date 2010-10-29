@@ -169,7 +169,7 @@ _lazy_test(lua_State *L)
     data = 25;
     result = dax_tag_add(ds, NULL, "LazyTag", DAX_INT, 10);
     result = dax_tag_handle(ds, &h, "LazyTag[5]", 3);
-    result = dax_event_add(ds, &h, EVENT_EQUAL, &data, &id[0], _event_callback, &test[0]);
+    result = dax_event_add(ds, &h, EVENT_EQUAL, &data, &id[0], _event_callback, &test[0], NULL);
     dax_write_tag(ds, h, &test[5]);
     dax_event_poll(ds, NULL);
     test[5] = 25;
