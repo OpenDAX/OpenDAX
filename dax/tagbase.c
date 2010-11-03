@@ -620,10 +620,18 @@ cdt_append(datatype *cdt, char *str)
 tag_type
 cdt_create(char *str, int *error) {
     int result;
-    char *name, *member, *last;
+    char *name, *member, *last, *tmp, *serial;
     datatype cdt;
     datatype *new_datatype;
+    tag_type type;
     
+    /* We need a duplicate of the string to help check if this exact
+     * CDT has been added before.  In that case we don't return error */
+    tmp = strdup(str);
+    if(tmp == NULL) {
+        if(error != NULL) *error = ERR_ALLOC;
+        return 0;
+    }
     /* This messes with *str.  It puts a '\0' everywhere there is a ':'
      * and that is okay because the calling function doesn't need it anymore
      * except for printing the name so this works out okay. */
@@ -631,13 +639,21 @@ cdt_create(char *str, int *error) {
     /* Check that the name is okay */
     if( (result = _validate_name(name)) ) {
         if(error != NULL) *error = result;
+        free(tmp);
         return 0;
     }
-    if(cdt_get_type(name)) {
-        if(error != NULL) *error = ERR_DUPL;
-        return 0;
+    if((type = cdt_get_type(name))) {
+        serialize_datatype(type, &serial);
+        if(strcmp(serial, tmp)) { /* This means the two CDT's are not equal */
+            if(error != NULL) *error = ERR_DUPL;
+            free(tmp);
+            return 0;
+        } else {
+            free(tmp);
+            return type;
+        }
     }
-    
+    free(tmp); /* We don't need this anymore. */
     /* Initialize the new datatype */
     cdt.name = strdup(name);
     if(cdt.name == NULL) {
