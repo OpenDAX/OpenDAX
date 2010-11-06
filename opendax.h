@@ -232,7 +232,7 @@ void dax_log(dax_state *ds, const char *format, ...);
 void dax_fatal(dax_state *ds, const char *format, ...);
 
 /* Only registered modules will get responses from the server */
-int dax_mod_register(dax_state *ds, char *name);   /* Registers the Module with the server */
+int dax_mod_register(dax_state *ds);   /* Registers the Module with the server */
 int dax_mod_unregister(dax_state *ds);       /* Unregister the Module with the server */
 
 /* Adds a tag to the opendax server database. */

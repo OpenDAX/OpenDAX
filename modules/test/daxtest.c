@@ -81,7 +81,7 @@ main(int argc,char *argv[])
     
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
     
-    if(dax_mod_register(ds, "daxtest"))
+    if(dax_mod_register(ds))
         dax_fatal(ds, "Unable to register with the server");
     
     script = dax_get_attr(ds, "testscript");

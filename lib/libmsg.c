@@ -263,12 +263,12 @@ _event_register(dax_state *ds)
  * to the server.  *name is the name that we want to give our 
  * module */
 int
-dax_mod_register(dax_state *ds, char *name)
+dax_mod_register(dax_state *ds)
 {
     int fd, result;
     
     libdax_lock(ds->lock);
-    dax_debug(ds, LOG_COMM, "Sending registration for name - %s", name);
+    dax_debug(ds, LOG_COMM, "Sending registration for name - %s", ds->modulename);
     
     /* This is the connection that we used for all the functional
      * request / response messages. */
@@ -279,7 +279,7 @@ dax_mod_register(dax_state *ds, char *name)
         return fd;
     }
     
-    result = _mod_register(ds, name);
+    result = _mod_register(ds, ds->modulename);
     if(result) {
         libdax_unlock(ds->lock);
         return result;

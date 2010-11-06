@@ -22,7 +22,7 @@ if(ds == NULL) exit(-1);
 
 First we declare a pointer to a \verb|dax_state| object.  This is an opaque pointer that you program will need to maintain for it's entire lifetime.
 
-Once the pointer is declared we use the \verb|dax_init()| function to allocate it and initialize it.  The only real error that this function can really have is memory allocation failure, in which case it will return NULL.  Your module should probably log an error an exit gracefully.  The string that is passed to \verb|dax_init()| is the name of your module as it will be seen throughout the system.  We'll talk about this later.
+Once the pointer is declared we use the \verb|dax_init()| function to allocate it and initialize it.  The only real error that this function can really have is memory allocation failure, in which case it will return NULL.  Your module should probably log an error an exit gracefully.  The string that is passed to \verb|dax_init()| is the name of your module as it will be seen throughout the system.  It can be overridden by names gathered during the configuration process.  We'll talk about this later.
 
 Once we have initialized the \verb|dax_state| we need to allocate and initialize the configuration information in the \verb|dax_state|.  We do this with the \verb|dax_init_config()| \index{dax\_init\_config() function}function.  We'll add the following lines to our module code\ldots
 
@@ -175,12 +175,12 @@ Before the server will communicate to the module, the module will need to regist
 
 There are two functions that deal with module registration.
 \begin{verbatim}
-int dax_mod_register(dax_state *ds, char *name)
+int dax_mod_register(dax_state *ds)
 int dax_mod_unregister(dax_state *ds)
 \end{verbatim}
 
 The \verb|dax_mod_register()| function\index{dax\_mod\_register() function} makes the initial connection to the server, identifies the module to the server and takes care of any other initialization issues that need to be handled.  Once the module has successfully been registered it can begin doing it's job.
 
-The \emph{name} argument is the name that the server will use to identify this module.  Module names must be unique.  \verb|dax_mod_register()| returns 0 on success and an error code on failure.
+\verb|dax_mod_register()| returns 0 on success and an error code on failure.
 
 The \verb|dax_mod_unregister()| function\index{dax\_mod\_unregister() function} informs the server that we are through and closes the connection.  It is a bad idea to let a module die without first calling \verb|dax_mod_unregister()|.

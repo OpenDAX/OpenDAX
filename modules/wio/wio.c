@@ -119,7 +119,7 @@ main(int argc, char *argv[])
     dax_set_debug_topic(ds, LOG_ALL);
 
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds, "wio") ) {
+    if( dax_mod_register(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
     

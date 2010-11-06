@@ -491,7 +491,12 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
     if(dax_get_attr(ds, "confdir") == NULL) {
         dax_set_attr(ds, "confdir", ETC_DIR);
     }
-    
+    /* If we set the name on the command line then we'll use it here */
+    if(dax_get_attr(ds, "name") != NULL) {
+        free(ds->modulename);
+        ds->modulename = strdup(dax_get_attr(ds, "name"));
+        if(ds->modulename==NULL) return ERR_ALLOC;
+    }
     if(flags & CFG_MODCONF)
         _mod_config_file(ds);
     if(flags & CFG_DAXCONF)

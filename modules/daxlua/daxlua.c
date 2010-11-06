@@ -357,7 +357,7 @@ main(int argc, char *argv[])
     }
 
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds, "daxlua") ) {
+    if( dax_mod_register(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
 

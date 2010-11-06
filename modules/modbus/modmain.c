@@ -179,7 +179,7 @@ main (int argc, const char * argv[]) {
         dax_fatal(ds, "Unable to initialize the database!");
     }
     
-    if( dax_mod_register(ds, "modbus") ) {
+    if( dax_mod_register(ds) ) {
         dax_fatal(ds, "Unable to connect to OpenDAX server!");
     }
     

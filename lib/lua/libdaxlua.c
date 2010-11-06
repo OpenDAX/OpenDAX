@@ -485,7 +485,7 @@ _dax_init(lua_State *L)
     dax_free_config (ds);
 
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds, modulename) ) {
+    if( dax_mod_register(ds) ) {
         luaL_error(L, "Unable to find OpenDAX Server");
     }
 
