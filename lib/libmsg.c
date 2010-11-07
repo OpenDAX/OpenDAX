@@ -369,7 +369,11 @@ dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count)
             h->bit = 0;
             h->type = type;
             h->count = count;
-            h->size = count * dax_get_typesize(ds, type);
+            if(type == DAX_BOOL) {
+                h->size = (count - 1)/8 +1;
+            } else {
+                h->size = count * dax_get_typesize(ds, type);
+            }
         }
         strcpy(tag.name, name);
         tag.idx = *(tag_index *)buff;

@@ -141,7 +141,7 @@ dax_event_wait(dax_state *ds, int timeout, dax_event_id *id)
         FD_ZERO(&fds);
         FD_SET(ds->afd, &fds);
         tval.tv_sec = timeout / 1000;
-        tval.tv_usec = timeout % 1000;
+        tval.tv_usec = (timeout % 1000) * 1000;
         if(timeout > 0) {
             result = select(ds->afd + 1, &fds, NULL, NULL, &tval);
         } else {
