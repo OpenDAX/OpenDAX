@@ -441,7 +441,7 @@ _create_exception(unsigned char *buff, u_int16_t exception)
 int
 create_response(mb_port *port, unsigned char *buff, int size)
 {
-    int n;
+    int n, bit, word, buffbit, buffbyte;
     u_int8_t node, function;
     u_int16_t index, count;
     
@@ -456,11 +456,65 @@ create_response(mb_port *port, unsigned char *buff, int size)
         if(node != port->slaveid) return 0;
     }
     switch(function) {
-        case 1:
-            break;
-        case 2:
-            break;
-        case 3:
+        case 1: /* Read Coils */
+            if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
+                return MB_ERR_OVERFLOW;
+            }
+            if((index + count) > port->coilsize) {
+                return _create_exception(buff, ME_BAD_ADDRESS);
+            }
+            buff[2] = (count - 1)/8+1;
+
+            bit = index % 16;
+            word = index / 16;
+            buffbit = 0;
+            buffbyte = 3;
+            for(n = 0; n < count; n++) {
+                if(port->coilreg[word] & (0x01 << bit)) {
+                    buff[buffbyte] |= (0x01 << buffbit);
+                } else {
+                    buff[buffbyte] &= ~(0x01 << buffbit);
+                }
+                buffbit++;
+                if(buffbit == 8) {
+                    buffbit = 0; buffbyte++;
+                }
+                bit++;
+                if(bit == 16) {
+                    bit = 0; word++;
+                }
+            }
+            return (count - 1)/8+4;
+        case 2: /* Read Discrete Inputs */
+            if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
+                return MB_ERR_OVERFLOW;
+            }
+            if((index + count) > port->discsize) {
+                return _create_exception(buff, ME_BAD_ADDRESS);
+            }
+            buff[2] = (count - 1)/8+1;
+
+            bit = index % 16;
+            word = index / 16;
+            buffbit = 0;
+            buffbyte = 3;
+            for(n = 0; n < count; n++) {
+                if(port->discreg[word] & (0x01 << bit)) {
+                    buff[buffbyte] |= (0x01 << buffbit);
+                } else {
+                    buff[buffbyte] &= ~(0x01 << buffbit);
+                }
+                buffbit++;
+                if(buffbit == 8) {
+                    buffbit = 0; buffbyte++;
+                }
+                bit++;
+                if(bit == 16) {
+                    bit = 0; word++;
+                }
+            }
+            return (count - 1)/8+4;
+        case 3: /* Read Holding Registers */
             if((count * 2) > (size - 3)) { /* Make sure we have enough room */
                 return MB_ERR_OVERFLOW;
             }
@@ -472,7 +526,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 COPYWORD(&buff[3+(n*2)], &port->holdreg[index+n]);
             }
             return (count * 2) + 3;
-        case 4:
+        case 4: /* Read Input Registers */
             if((count * 2) > (size - 3)) { /* Make sure we have enough room */
                 return MB_ERR_OVERFLOW;
             }
@@ -487,6 +541,8 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 5:
             break;
         case 6:
+            break;
+        case 8:
             break;
         case 15:
             break;

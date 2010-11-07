@@ -223,7 +223,7 @@ _receive(mb_port *port)
             return MB_ERR_RECV_FAIL;
         }
     } else if(result == 0) { /* Timeout */
-        DEBUGMSG("_receive() - Timeout");
+//        DEBUGMSG("_receive() - Timeout");
         _clear_buffers(port); /* this erases all of the _buffer nodes */
         return 0;
     } else {
@@ -269,7 +269,7 @@ server_loop(mb_port *port)
     }
     
     while(1) {
-        DEBUGMSG("Starting Receive Loop");
+//        DEBUGMSG("Starting Receive Loop");
         result = _receive(port);
         if(result) {
             if(result == MB_ERR_OVERFLOW) {

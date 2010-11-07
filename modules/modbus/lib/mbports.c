@@ -443,67 +443,67 @@ mb_get_port_slaveid(mb_port *port) {
 u_int16_t *
 mb_alloc_holdreg(mb_port *port, unsigned int size)
 {
-	void *new;
-	
-	mb_mutex_lock(port, &port->hold_mutex);	
-	new = realloc(port->holdreg, size * 2);
-	if(new != NULL) {
-		port->holdsize = size;
-		port->holdreg = new;
-	}
-	/* TODO: At some point we should only zero the new memory but this
-	 * will do for now. */
-	bzero(port->holdreg, size * 2);
-	mb_mutex_unlock(port, &port->hold_mutex);	
-	return new;
+    void *new;
+    
+    mb_mutex_lock(port, &port->hold_mutex);	
+    new = realloc(port->holdreg, size * 2);
+    if(new != NULL) {
+        port->holdsize = size;
+        port->holdreg = new;
+    }
+    /* TODO: At some point we should only zero the new memory but this
+     * will do for now. */
+    bzero(port->holdreg, size * 2);
+    mb_mutex_unlock(port, &port->hold_mutex);	
+    return new;
 }
 
 u_int16_t *
 mb_alloc_inputreg(mb_port *port, unsigned int size)
 {
-	void *new;
-	
-	mb_mutex_lock(port, &port->input_mutex);	
-	new = realloc(port->inputreg, size * 2);
-	if(new != NULL) {
-		port->inputsize = size;
-		port->inputreg = new;
-	}
-	bzero(port->inputreg, size * 2);
-	mb_mutex_unlock(port, &port->input_mutex);	
-	return new;
+    void *new;
+
+    mb_mutex_lock(port, &port->input_mutex);	
+    new = realloc(port->inputreg, size * 2);
+    if(new != NULL) {
+        port->inputsize = size;
+        port->inputreg = new;
+    }
+    bzero(port->inputreg, size * 2);
+    mb_mutex_unlock(port, &port->input_mutex);	
+    return new;
 }
 
 u_int16_t *
 mb_alloc_coil(mb_port *port, unsigned int size)
 {
-	void *new;
-	
-	mb_mutex_lock(port, &port->coil_mutex);	
-	new = realloc(port->coilreg, (size - 1)/8 + 1);
-	if(new != NULL) {
-		port->coilsize = size;
-		port->coilreg = new;
-	}
-	bzero(port->coilreg, (size - 1)/8 + 1);
-	mb_mutex_unlock(port, &port->coil_mutex);
-	return new;
+    void *new;
+
+    mb_mutex_lock(port, &port->coil_mutex);	
+    new = realloc(port->coilreg, (size - 1)/8 + 1);
+    if(new != NULL) {
+        port->coilsize = size;
+        port->coilreg = new;
+    }
+    bzero(port->coilreg, (size - 1)/8 + 1);
+    mb_mutex_unlock(port, &port->coil_mutex);
+    return new;
 }
 
 u_int16_t *
 mb_alloc_discrete(mb_port *port, unsigned int size)
 {
-	void *new;
-	
-	mb_mutex_lock(port, &port->disc_mutex);	
-	new = realloc(port->discreg, (size - 1)/8 + 1);
-	if(new != NULL) {
-		port->discsize = size;
-		port->discreg = new;
-	}
-	bzero(port->coilreg, (size - 1)/8 + 1);
-	mb_mutex_unlock(port, &port->disc_mutex);	
-	return new;
+    void *new;
+
+    mb_mutex_lock(port, &port->disc_mutex);	
+    new = realloc(port->discreg, (size - 1)/8 + 1);
+    if(new != NULL) {
+        port->discsize = size;
+        port->discreg = new;
+    }
+    bzero(port->coilreg, (size - 1)/8 + 1);
+    mb_mutex_unlock(port, &port->disc_mutex);	
+    return new;
 }
 
 unsigned int
@@ -531,70 +531,70 @@ mb_get_discrete_size(mb_port *port) {
 int
 mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count)
 {
-	u_int16_t *reg_ptr;
-	unsigned int reg_size, word, n;
-	_mb_mutex_t *reg_mutex;
-	unsigned char bit;
-	fprintf(stderr, "mb_write_register() called with regtype = %d", regtype);
-	switch(regtype) {
-		case MB_REG_HOLDING:
-			reg_ptr = port->holdreg;
-			reg_size = port->holdsize;
-			reg_mutex = &port->hold_mutex;
-			break;
-		case MB_REG_INPUT:
-			reg_ptr = port->inputreg;
-			reg_size = port->inputsize;
-			reg_mutex = &port->input_mutex;
-			break;
-		case MB_REG_COIL:
-			reg_ptr = port->coilreg;
-			reg_size = port->coilsize;
-			reg_mutex = &port->coil_mutex;
-			break;
-		case MB_REG_DISC:
-			reg_ptr = port->discreg;
-			reg_size = port->discsize;			
-			reg_mutex = &port->disc_mutex;
-			break;
-		default:
-			return MB_ERR_BAD_ARG;
-	}
-	if((index + count) > reg_size) {
-		return MB_ERR_OVERFLOW;
-	}
-	mb_mutex_lock(port, reg_mutex);
-	switch(regtype) {
-		case MB_REG_HOLDING:
-		case MB_REG_INPUT:
-			memcpy(&(reg_ptr[index]), buff, count * 2);
-			break;
-		case MB_REG_COIL:
-		case MB_REG_DISC:
-			word = index / 16;
-			bit = index % 16;
-			for(n = 0; n < count; n++) {
-				if((0x01 << (n % 16)) & buff[n/16] ) {
-					reg_ptr[word] |= (0x01 << bit);			
-				} else {
-					reg_ptr[word] &= ~(0x01 << bit);
-				}
-				bit ++;
-				if(bit == 16) {
-					bit = 0;
-					word++;
-				}
-			}
-			break;
-	}
-	mb_mutex_unlock(port, reg_mutex);
-	return 0;
+    u_int16_t *reg_ptr;
+    unsigned int reg_size, word, n;
+    _mb_mutex_t *reg_mutex;
+    unsigned char bit;
+    fprintf(stderr, "mb_write_register() called with regtype = %d", regtype);
+    switch(regtype) {
+        case MB_REG_HOLDING:
+            reg_ptr = port->holdreg;
+            reg_size = port->holdsize;
+            reg_mutex = &port->hold_mutex;
+            break;
+        case MB_REG_INPUT:
+            reg_ptr = port->inputreg;
+            reg_size = port->inputsize;
+            reg_mutex = &port->input_mutex;
+            break;
+        case MB_REG_COIL:
+            reg_ptr = port->coilreg;
+            reg_size = port->coilsize;
+            reg_mutex = &port->coil_mutex;
+            break;
+        case MB_REG_DISC:
+            reg_ptr = port->discreg;
+            reg_size = port->discsize;
+            reg_mutex = &port->disc_mutex;
+            break;
+        default:
+            return MB_ERR_BAD_ARG;
+    }
+    if((index + count) > reg_size) {
+        return MB_ERR_OVERFLOW;
+    }
+    mb_mutex_lock(port, reg_mutex);
+    switch(regtype) {
+        case MB_REG_HOLDING:
+        case MB_REG_INPUT:
+            memcpy(&(reg_ptr[index]), buff, count * 2);
+            break;
+        case MB_REG_COIL:
+        case MB_REG_DISC:
+            word = index / 16;
+            bit = index % 16;
+            for(n = 0; n < count; n++) {
+                if((0x01 << (n % 16)) & buff[n/16] ) {
+                    reg_ptr[word] |= (0x01 << bit);
+                } else {
+                    reg_ptr[word] &= ~(0x01 << bit);
+                }
+                bit ++;
+                if(bit == 16) {
+                    bit = 0;
+                    word++;
+                }
+            }
+            break;
+    }
+    mb_mutex_unlock(port, reg_mutex);
+    return 0;
 }
 
 int
 mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count)
 {
-	return 0;
+    return 0;
 }
 
 
@@ -630,7 +630,7 @@ mb_get_port_userdata(mb_port *mp) {
 void
 mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size, void *userdata))
 {
-	mp->slave_read = infunc;
+    mp->slave_read = infunc;
 }
 
 void
@@ -643,7 +643,7 @@ mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, in
 //void
 //mb_set_userdata_free_callback(mb_port *mp, void (*infunc)(struct mb_port *port, void *userdata))
 //{
-//	mp->userdata_free = infunc;
+//    mp->userdata_free = infunc;
 //}
 
 
@@ -740,11 +740,11 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
         }
     }
     if(mp->type == MB_SLAVE) {
-    	fprintf(fd, "Slave ID: %d\n", mp->slaveid);
-    	fprintf(fd, "Coils: %d\n", mp->coilsize);
-    	fprintf(fd, "Discrete Inputs: %d\n", mp->discsize);
-    	fprintf(fd, "Holding Registers: %d\n", mp->holdsize);
-    	fprintf(fd, "Input Registers: %d\n", mp->holdsize);
+        fprintf(fd, "Slave ID: %d\n", mp->slaveid);
+        fprintf(fd, "Coils: %d\n", mp->coilsize);
+        fprintf(fd, "Discrete Inputs: %d\n", mp->discsize);
+        fprintf(fd, "Holding Registers: %d\n", mp->holdsize);
+        fprintf(fd, "Input Registers: %d\n", mp->holdsize);
     }
     fprintf(fd, "\n");
 }

@@ -486,7 +486,7 @@ modbus_configure(int argc, const char *argv[])
     
     _init_config();
     dax_init_config(ds, "modbus");
-    flags = CFG_CMDLINE | CFG_DAXCONF | CFG_ARG_REQUIRED;
+    flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagname","tagname", 't', flags, "modbus");
     
     dax_set_luafunction(ds, (void *)_add_port, "add_port");

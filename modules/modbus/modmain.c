@@ -73,8 +73,7 @@ _slave_callback(void *udata)
     _slave_data *sd;
     int result;
     sd = (_slave_data *)udata;
-    fprintf(stderr, "_slave_callback() sd = %p\n", sd);
-    
+
     result = dax_read_tag(ds, sd->h, buff);
     if(result) {
         dax_error(ds, "Unable to read tag data for port %s", mb_get_port_name(sd->port));
@@ -95,16 +94,18 @@ _slave_port_add(mb_port *port, port_ud_item *item, int mbreg, int size)
     int result;
     _slave_data *sd;
 
-    
-    result = dax_tag_add(ds, &item->h, item->mbreg, DAX_UINT, size);
+    if(mbreg == MB_REG_COIL || mbreg == MB_REG_DISC) {
+        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_BOOL, size);
+    } else {
+        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_UINT, size);
+    }
     if(result) return result;
-    
+
     sd = malloc(sizeof(_slave_data));
     if(sd) {
         sd->h = item->h;
         sd->modreg = mbreg;
         sd->port = port;
-        fprintf(stderr, "_slave_port_add() - sd = %p, modreg = %d, portname = %s\n", sd, sd->modreg, mb_get_port_name(sd->port));
         result = dax_event_add(ds, &sd->h, EVENT_CHANGE, NULL, &item->event, 
                                _slave_callback, sd, _free_slave_data);
     } else {
@@ -118,7 +119,7 @@ _setup_port(mb_port *port)
 {
     unsigned int size;
     port_userdata *ud;
-        
+
     ud = (port_userdata *)mb_get_port_userdata(port);
     
     if(mb_get_port_type(port) == MB_SLAVE) {
@@ -128,7 +129,7 @@ _setup_port(mb_port *port)
         }
         size = mb_get_inputreg_size(port);
         if(size) {
-            _slave_port_add(port, &ud->reg[INPUT_REG], MB_REG_INPUT, size);            
+            _slave_port_add(port, &ud->reg[INPUT_REG], MB_REG_INPUT, size);
         }
         size = mb_get_coil_size(port);
         if(size) {
