@@ -535,7 +535,7 @@ mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, 
     unsigned int reg_size, word, n;
     _mb_mutex_t *reg_mutex;
     unsigned char bit;
-    fprintf(stderr, "mb_write_register() called with regtype = %d", regtype);
+    fprintf(stderr, "mb_write_register() called with regtype = %d\n", regtype);
     switch(regtype) {
         case MB_REG_HOLDING:
             reg_ptr = port->holdreg;
@@ -594,6 +594,63 @@ mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, 
 int
 mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count)
 {
+    u_int16_t *reg_ptr;
+    unsigned int reg_size, word, n;
+    _mb_mutex_t *reg_mutex;
+    unsigned char bit;
+    fprintf(stderr, "mb_read_register() called with regtype = %d\n", regtype);
+    switch(regtype) {
+        case MB_REG_HOLDING:
+            reg_ptr = port->holdreg;
+            reg_size = port->holdsize;
+            reg_mutex = &port->hold_mutex;
+            break;
+        case MB_REG_INPUT:
+            reg_ptr = port->inputreg;
+            reg_size = port->inputsize;
+            reg_mutex = &port->input_mutex;
+            break;
+        case MB_REG_COIL:
+            reg_ptr = port->coilreg;
+            reg_size = port->coilsize;
+            reg_mutex = &port->coil_mutex;
+            break;
+        case MB_REG_DISC:
+            reg_ptr = port->discreg;
+            reg_size = port->discsize;
+            reg_mutex = &port->disc_mutex;
+            break;
+        default:
+            return MB_ERR_BAD_ARG;
+    }
+    if((index + count) > reg_size) {
+        return MB_ERR_OVERFLOW;
+    }
+    mb_mutex_lock(port, reg_mutex);
+    switch(regtype) {
+        case MB_REG_HOLDING:
+        case MB_REG_INPUT:
+            memcpy(buff, &(reg_ptr[index]), count * 2);
+            break;
+        case MB_REG_COIL:
+        case MB_REG_DISC:
+            word = index / 16;
+            bit = index % 16;
+            for(n = 0; n < count; n++) {
+                if((0x01 << bit) & reg_ptr[word] ) {
+                    buff[n / 16] |= (0x01 << (n%16));
+                } else {
+                    buff[n / 16] &= ~(0x01 << (n%16));
+                }
+                bit ++;
+                if(bit == 16) {
+                    bit = 0;
+                    word++;
+                }
+            }
+            break;
+    }
+    mb_mutex_unlock(port, reg_mutex);
     return 0;
 }
 
@@ -628,13 +685,13 @@ mb_get_port_userdata(mb_port *mp) {
 }
 
 void
-mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size, void *userdata))
+mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata))
 {
     mp->slave_read = infunc;
 }
 
 void
-mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size, void *userdata))
+mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata))
 {
     mp->slave_write = infunc;
 }

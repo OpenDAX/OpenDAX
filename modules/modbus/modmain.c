@@ -35,6 +35,7 @@ extern struct Config config;
  * point when the luaif library is complete it'll be stored in the
  * Lua_State Registry. */
 dax_state *ds;
+static int _caught_signal;
 
 void catchsignal(int sig);
 void catchpipe(int sig);
@@ -50,7 +51,6 @@ static void
 _port_thread(void *port) {
     int result;
     result = mb_run_port((mb_port *)port);
-    dax_fatal(ds, "This Shouldn't Exit Here!");
 }
 
 /* This structure and the following functions are used to set up the
@@ -66,8 +66,13 @@ typedef struct _slave_data {
     int modreg;
 } _slave_data;
 
+/* This function is set up as the callback function for change events for the 
+ * OpenDAX tags that represent the modbus data areas.  The userdata contains
+ * the tag handle, a pointer to the port and the modbus register index so that
+ * it can read the newly changed tag data from the server and then write it
+ * to the proper register area from the modbus library */
 static void
-_slave_callback(void *udata)
+_slave_event_callback(void *udata)
 {
     u_int8_t buff[((_slave_data *)udata)->h.size];
     _slave_data *sd;
@@ -83,13 +88,64 @@ _slave_callback(void *udata)
     return;
 }
 
+/* This function is so we can so this variable length array. */ 
+static void
+_write_data(mb_port *port, Handle h, int reg)
+{
+    int n;
+    /*Add the extra byte so that we know that the
+     * mb_read_register() function won't overflow our buffer */
+    u_int8_t buff[h.size+1];
+    int result;
+
+    result = mb_read_register(port, reg, (u_int16_t *)buff, 0, h.count);
+    for(n = 0; n < h.size; n++) {
+        fprintf(stderr,"[0x%X]", buff[n]);
+    }
+    fprintf(stderr, "\n");
+    if(result) {
+        dax_error(ds, "Unable to get data from Modbus Registers\n");
+    } else {
+        result = dax_write_tag(ds, h, buff);
+        if(result) {
+            dax_error(ds, "Unable to write tag data to server\n");
+        }
+    }
+}
+
+/* This callback function is assigned as the slave_write callback to the modbus
+ * library.  After the library updates the modbus tables with new information this
+ * function is called which writes the data back to the OpenDAX server */
+static void
+_slave_write_callback(mb_port *port, int reg, int index, int count, void *userdata)
+{
+    port_userdata *ud;
+    
+    ud = (port_userdata *)userdata;
+    if(reg == MB_REG_HOLDING) {
+        _write_data(port, ud->reg[HOLD_REG].h, MB_REG_HOLDING);
+    } else if(reg == MB_REG_INPUT) {
+        _write_data(port, ud->reg[INPUT_REG].h, MB_REG_INPUT);
+    } else if(reg == MB_REG_COIL) {
+        _write_data(port, ud->reg[COIL_REG].h, MB_REG_COIL);
+    } else if(reg == MB_REG_DISC) {
+        _write_data(port, ud->reg[DISC_REG].h, MB_REG_DISC);
+    } else {
+        assert(0);
+    }
+        
+}
+
 static void
 _free_slave_data(void *udata) {
     free(udata);
 }
 
+/* This function sets up an individual slave port register.  It's adds the
+ * tag to the OpenDAX server, then allocates and sets up a slave userdata
+ * structure and assigns it to a change event for the newly created tag */
 static int
-_slave_port_add(mb_port *port, port_ud_item *item, int mbreg, int size)
+_slave_reg_add(mb_port *port, port_ud_item *item, int mbreg, int size)
 {
     int result;
     _slave_data *sd;
@@ -107,13 +163,19 @@ _slave_port_add(mb_port *port, port_ud_item *item, int mbreg, int size)
         sd->modreg = mbreg;
         sd->port = port;
         result = dax_event_add(ds, &sd->h, EVENT_CHANGE, NULL, &item->event, 
-                               _slave_callback, sd, _free_slave_data);
+                               _slave_event_callback, sd, _free_slave_data);
+        /* Now we call the callback to write any existing data to the port */
+        _slave_event_callback(sd);
     } else {
         dax_error(ds, "Unable to add data to port %s", mb_get_port_name(port));
     }
     return 0;
 }
 
+/* When this function is called the port registers in the modbus library
+ * have been setup but the OpenDAX part hasn't.  This funtion gets the
+ * information from the port user data and determines which registers we are
+ * going to use and calls the _slave_reg_add() function for those registers */
 static int
 _setup_port(mb_port *port)
 {
@@ -125,21 +187,21 @@ _setup_port(mb_port *port)
     if(mb_get_port_type(port) == MB_SLAVE) {
         size = mb_get_holdreg_size(port);
         if(size) {
-            _slave_port_add(port, &ud->reg[HOLD_REG], MB_REG_HOLDING, size);
+            _slave_reg_add(port, &ud->reg[HOLD_REG], MB_REG_HOLDING, size);
         }
         size = mb_get_inputreg_size(port);
         if(size) {
-            _slave_port_add(port, &ud->reg[INPUT_REG], MB_REG_INPUT, size);
+            _slave_reg_add(port, &ud->reg[INPUT_REG], MB_REG_INPUT, size);
         }
         size = mb_get_coil_size(port);
         if(size) {
-            _slave_port_add(port, &ud->reg[COIL_REG], MB_REG_COIL, size);
+            _slave_reg_add(port, &ud->reg[COIL_REG], MB_REG_COIL, size);
         }
         size = mb_get_discrete_size(port);
         if(size) {
-            _slave_port_add(port, &ud->reg[DISC_REG], MB_REG_DISC, size);
+            _slave_reg_add(port, &ud->reg[DISC_REG], MB_REG_DISC, size);
         }        
-
+        mb_set_slave_write_callback(port, _slave_write_callback);
     }
     return 0;
 }
@@ -209,37 +271,37 @@ main (int argc, const char * argv[]) {
     
     while(1) {
         dax_event_wait(ds, 1000, NULL);
-        /*TODO: May need to do some kind of housekeeping here */
-    }
-    
-    for(n = 0; n < config.portcount; n++) {
-        mb_close_port(config.ports[n]);
+
+        if(_caught_signal) {
+            if(_caught_signal == SIGHUP) {
+                dax_log(ds, "Should be Reconfiguring Now");
+                //--reconfigure();
+                _caught_signal = 0;
+            } else if(_caught_signal == SIGTERM || _caught_signal == SIGINT || 
+                      _caught_signal == SIGQUIT) {
+                dax_log(ds, "Exiting with signal %d", _caught_signal);
+                getout(0);
+            } else if(_caught_signal == SIGCHLD) {
+                dax_log(ds, "Got SIGCHLD");
+                /* TODO: Figure out which thread quit and restart it */
+                _caught_signal = 0;
+               /*There is probably some really cool child process handling stuff to do here
+                 but I don't quite know what to do yet. */
+             } else if(_caught_signal == SIGUSR1) {
+                dax_log(ds, "Got SIGUSR1");
+                _caught_signal = 0;
+            }
+        }
+        /*TODO: Should scan ports to make sure that they are all still running */
     }
 
     return 0;
 }
 
-
-/* TODO: We need to have some kind of watchdog thread that accepts all
-   the signals for the module and then deals with them appropriately.
-   There also needs to be a wakeup routine for the port threads somehow. */
-
 /* This function is used as the signal handler for all the signals
-* that are going to be caught by the program */
+ * that are going to be caught by the program */
 void catchsignal(int sig) {
-    if(sig == SIGHUP) {
-        dax_log(ds, "Should be Reconfiguring Now");
-        //--reconfigure();
-    } else if(sig == SIGTERM || sig == SIGINT || sig == SIGQUIT) {
-        dax_log(ds, "Exiting with signal %d", sig);
-        getout(0);
-    } else if(sig == SIGCHLD) {
-        dax_log(ds, "Got SIGCHLD");
-       /*There is probably some really cool child process handling stuff to do here
-         but I don't quite know what to do yet. */
-     } else if(sig == SIGUSR1) {
-        dax_log(ds, "Got SIGUSR1");
-    }
+    _caught_signal = sig;
 }
 
 void
@@ -263,6 +325,7 @@ getout(int exitcode)
     
     for(n = 0; n < config.portcount; n++) {
     /* TODO: Should probably stop the running threads here and then close the ports */
+        mb_close_port(config.ports[n]);
         mb_destroy_port(config.ports[n]);
     }
     exit(exitcode);

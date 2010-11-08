@@ -428,9 +428,94 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
 static int
 _create_exception(unsigned char *buff, u_int16_t exception)
 {
-	buff[1] |= ME_EXCEPTION;
-	buff[2] = exception;
-	return 3;
+    buff[1] |= ME_EXCEPTION;
+    buff[2] = exception;
+    return 3;
+}
+
+/* Handles responses for function codes 1 and 2 */
+static int
+_read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
+{
+    int n, bit, word, buffbit, buffbyte;
+    unsigned int regsize;
+    u_int16_t index, count, *reg;
+
+    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
+    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
+    if(port->slave_read) { /* Call the callback function if it has been set */
+        port->slave_read(port, mbreg, index, count, port->userdata);
+    }
+    if(mbreg == MB_REG_COIL) {
+        reg = port->coilreg;
+        regsize = port->coilsize;
+    } else {
+        reg = port->discreg;
+        regsize = port->discsize;
+    }
+    
+    if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
+        return MB_ERR_OVERFLOW;
+    }
+    if((index + count) > regsize) {
+        return _create_exception(buff, ME_BAD_ADDRESS);
+    }
+    buff[2] = (count - 1)/8+1;
+
+    bit = index % 16;
+    word = index / 16;
+    buffbit = 0;
+    buffbyte = 3;
+    for(n = 0; n < count; n++) {
+        if(reg[word] & (0x01 << bit)) {
+            buff[buffbyte] |= (0x01 << buffbit);
+        } else {
+            buff[buffbyte] &= ~(0x01 << buffbit);
+        }
+        buffbit++;
+        if(buffbit == 8) {
+            buffbit = 0; buffbyte++;
+        }
+        bit++;
+        if(bit == 16) {
+            bit = 0; word++;
+        }
+    }
+    return (count - 1)/8+4;
+}
+
+/* Handles responses for function codes 3 and 4 */
+static int
+_read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
+{
+    int n;
+    unsigned int regsize;
+    u_int16_t index, count, *reg;
+
+    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
+    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
+    if(port->slave_read) { /* Call the callback function if it has been set */
+        port->slave_read(port, mbreg, index, count, port->userdata);
+    }
+    if(mbreg == MB_REG_HOLDING) {
+        reg = port->holdreg;
+        regsize = port->holdsize;
+    } else {
+        reg = port->inputreg;
+        regsize = port->inputsize;
+    }
+
+    if((count * 2) > (size - 3)) { /* Make sure we have enough room */
+        return MB_ERR_OVERFLOW;
+    }
+    if((index + count) > regsize) {
+        return _create_exception(buff, ME_BAD_ADDRESS);
+    }
+    buff[2] = count * 2;
+    for(n = 0; n < count; n++) {
+        COPYWORD(&buff[3+(n*2)], &reg[index+n]);
+    }
+    return (count * 2) + 3;
 }
 
 /* Creates a generic slave response.  buff should point to a buffer that
@@ -441,14 +526,11 @@ _create_exception(unsigned char *buff, u_int16_t exception)
 int
 create_response(mb_port *port, unsigned char *buff, int size)
 {
-    int n, bit, word, buffbit, buffbyte;
     u_int8_t node, function;
-    u_int16_t index, count;
-    
+    u_int16_t index, value, count;
+    int word, bit, n;
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
-    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
     
     /* If we're TCP then node doesn't matter yet.  Other wise return 0 if
      * this message isn't for us. */
@@ -457,97 +539,78 @@ create_response(mb_port *port, unsigned char *buff, int size)
     }
     switch(function) {
         case 1: /* Read Coils */
-            if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
-                return MB_ERR_OVERFLOW;
+            return _read_bits_response(port, buff, size, MB_REG_COIL);
+        case 2: /* Read Discrete Inputs */
+            return _read_bits_response(port, buff, size, MB_REG_DISC);
+        case 3: /* Read Holding Registers */
+            return _read_words_response(port, buff, size, MB_REG_HOLDING);
+        case 4: /* Read Input Registers */
+            return _read_words_response(port, buff, size, MB_REG_INPUT);
+        case 5: /* Write Single Coil */
+            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&value, (u_int16_t *)&buff[4]); /* Value */
+            if(index >= port->coilsize) {
+                return _create_exception(buff, ME_BAD_ADDRESS);
             }
+            if(value) {
+                port->coilreg[index / 16] |= (0x01 << (index % 16));
+            } else {
+                port->coilreg[index / 16] &= ~(0x01 << (index % 16));
+            }
+            if(port->slave_write) { /* Call the callback function if it has been set */
+                port->slave_write(port, MB_REG_COIL, index, 1, port->userdata);
+            }
+            return 6;
+        case 6: /* Write Single Register */
+            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&value, (u_int16_t *)&buff[4]); /* Value */
+            if(index >= port->holdsize) {
+                return _create_exception(buff, ME_BAD_ADDRESS);
+            }
+            port->holdreg[index] = value;
+            if(port->slave_write) { /* Call the callback function if it has been set */
+                port->slave_write(port, MB_REG_HOLDING, index, 1, port->userdata);
+            }
+            return 6;
+        case 8:
+            return size / 2;
+        case 15: /* Write Multiple Coils */
+            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&count, (u_int16_t *)&buff[4]); /* Value */
             if((index + count) > port->coilsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
-            buff[2] = (count - 1)/8+1;
-
-            bit = index % 16;
             word = index / 16;
-            buffbit = 0;
-            buffbyte = 3;
+            bit = index % 16;
             for(n = 0; n < count; n++) {
-                if(port->coilreg[word] & (0x01 << bit)) {
-                    buff[buffbyte] |= (0x01 << buffbit);
+                fprintf(stderr, "Buff[%d] = 0x%X\n", 7 +n/8, buff[7+n/8]);
+                if(buff[7 + n/8] & (0x01 << (n%8))) {
+                    fprintf(stderr, "Setting Coil %d to TRUE\n", index + n);
+                    port->coilreg[word] |= (0x01 << bit);
                 } else {
-                    buff[buffbyte] &= ~(0x01 << buffbit);
-                }
-                buffbit++;
-                if(buffbit == 8) {
-                    buffbit = 0; buffbyte++;
+                    fprintf(stderr, "Setting Coil %d to FALSE\n", index + n);
+                    port->coilreg[word] &= ~(0x01 << bit);
                 }
                 bit++;
-                if(bit == 16) {
-                    bit = 0; word++;
-                }
+                if(bit == 16) { bit = 0; word++; }
             }
-            return (count - 1)/8+4;
-        case 2: /* Read Discrete Inputs */
-            if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
-                return MB_ERR_OVERFLOW;
+            if(port->slave_write) { /* Call the callback function if it has been set */
+                port->slave_write(port, MB_REG_COIL, index, count, port->userdata);
             }
-            if((index + count) > port->discsize) {
-                return _create_exception(buff, ME_BAD_ADDRESS);
-            }
-            buff[2] = (count - 1)/8+1;
-
-            bit = index % 16;
-            word = index / 16;
-            buffbit = 0;
-            buffbyte = 3;
-            for(n = 0; n < count; n++) {
-                if(port->discreg[word] & (0x01 << bit)) {
-                    buff[buffbyte] |= (0x01 << buffbit);
-                } else {
-                    buff[buffbyte] &= ~(0x01 << buffbit);
-                }
-                buffbit++;
-                if(buffbit == 8) {
-                    buffbit = 0; buffbyte++;
-                }
-                bit++;
-                if(bit == 16) {
-                    bit = 0; word++;
-                }
-            }
-            return (count - 1)/8+4;
-        case 3: /* Read Holding Registers */
-            if((count * 2) > (size - 3)) { /* Make sure we have enough room */
-                return MB_ERR_OVERFLOW;
-            }
+            return 6;
+        case 16: /* Write Multiple Registers */
+            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&count, (u_int16_t *)&buff[4]); /* Value */
             if((index + count) > port->holdsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
-            buff[2] = count * 2;
             for(n = 0; n < count; n++) {
-                COPYWORD(&buff[3+(n*2)], &port->holdreg[index+n]);
+                COPYWORD(&port->holdreg[index + n], &buff[7 + (n*2)]);
             }
-            return (count * 2) + 3;
-        case 4: /* Read Input Registers */
-            if((count * 2) > (size - 3)) { /* Make sure we have enough room */
-                return MB_ERR_OVERFLOW;
+            if(port->slave_write) { /* Call the callback function if it has been set */
+                port->slave_write(port, MB_REG_HOLDING, index, count, port->userdata);
             }
-            if((index + count) > port->inputsize) {
-                return _create_exception(buff, ME_BAD_ADDRESS);
-            }
-            buff[2] = count * 2;
-            for(n = 0; n < count; n++) {
-                COPYWORD(&buff[3+(n*2)], &port->inputreg[index+n]);
-            }
-            return (count * 2) + 3;
-        case 5:
-            break;
-        case 6:
-            break;
-        case 8:
-            break;
-        case 15:
-            break;
-        case 16:
-            break;
+            return 6;
         default:
             break;
     }

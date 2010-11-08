@@ -189,7 +189,6 @@ _server_listen(mb_port *port)
     if(listen(fd, 5) < 0) {
         return -1;
     }
-    //FD_SET(fd, &(port->fdset));
     /* We store this fd so that we know what socket we are listening on */
     port->fd = fd;
     _add_fd(port, fd);
@@ -217,7 +216,9 @@ _receive(mb_port *port)
 
     if(result < 0) {
         /* Ignore interruption by signal */
-        if(errno != EINTR) {
+        if(errno == EINTR) {
+            ; /* TODO: check to see if we should die here */
+        } else {
             /* TODO: Deal with these errors */
             DEBUGMSG2("_receive() - select error: %s", strerror(errno));
             return MB_ERR_RECV_FAIL;
@@ -258,8 +259,7 @@ int
 server_loop(mb_port *port)
 {
     int result;
-    //u_int16_t dummy[10];
-    
+
     result = _server_listen(port);
     if(result) {
         DEBUGMSG2("Failed to listen on port - %s", strerror(errno));
@@ -269,7 +269,6 @@ server_loop(mb_port *port)
     }
     
     while(1) {
-//        DEBUGMSG("Starting Receive Loop");
         result = _receive(port);
         if(result) {
             if(result == MB_ERR_OVERFLOW) {
@@ -278,12 +277,6 @@ server_loop(mb_port *port)
                 return result;
             }
         }
-        //dummy[0]++;
-        //dummy[1] = dummy[0] + 1;
-        //mb_write_register(port, MB_REG_HOLDING, dummy, 0, 5);
-        //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
-        //mb_write_register(port, MB_REG_HOLDING, &dummy, 0, 1);
-
     }
     return -1; /* Can never get here */
 }

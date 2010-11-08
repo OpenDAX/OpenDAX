@@ -148,9 +148,9 @@ void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsign
 /* Sets the port userdata pointer */
 void mb_set_port_userdata(mb_port *mp, void *userdata, void (*freefunc)(struct mb_port *port, void *userdata));
 /* Sets the callback that is called when the Slave/Server receives a request to read data from the slave*/
-void mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size, void *userdata));
+void mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata));
 /* Sets the callback that is called when the Slave/Server receives a request to write data to the slave*/
-void mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int size, void *userdata));
+void mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata));
 
 void *mb_get_port_userdata(mb_port *mp);
 
