@@ -42,6 +42,7 @@ _init_config(void)
 {
     config.portcount = 0;
     config.portsize = 1;
+    config.threads = NULL;
     config.ports = NULL;
 }
 

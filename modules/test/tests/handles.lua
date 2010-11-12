@@ -5,6 +5,8 @@
 --and this test fails.  The CDT creation and tag addition functions should all pass.  If they
 --fail then the error is allowed to raise to the caller and the test fail.
 
+--TODO: Need to test the handle that is returned when tags are added
+
 members = {{"Int5", "INT", 5},     --10
            {"Bool10", "BOOL", 10}, -- 2
            {"Dint1", "DINT", 1},   -- 4

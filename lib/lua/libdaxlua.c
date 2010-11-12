@@ -935,11 +935,11 @@ _event_del(lua_State *L) {
     return 0;
 }
 
-/* Wrapper for dax_event_select().  It takes a single argument that is
+/* Wrapper for dax_event_wait().  It takes a single argument that is
  * the timeout in milliseconds.  It returns 0 on timeout and 1 if
  * it dispatches an event */
 static int
-_event_select(lua_State *L) {
+_event_wait(lua_State *L) {
     int result;
     int timeout;
 
@@ -1000,7 +1000,7 @@ static const struct luaL_Reg daxlib[] = {
     {"tag_write", _tag_write},
     {"event_add", _event_add},
     {"event_del", _event_del},
-    {"event_select", _event_select},
+    {"event_wait", _event_wait},
     {"event_poll", _event_poll},
     {NULL, NULL}  /* sentinel */
 };

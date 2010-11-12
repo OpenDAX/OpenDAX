@@ -22,7 +22,7 @@ else
   M_DAXLUA =
 endif
 
-SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc $(M_TEST) $(M_WIO) skel
+SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc $(M_TEST) $(M_WIO) arduino skel
 #AUX_DIST = $(ac_aux_dir)/install-sh
 
 #dist-hook:

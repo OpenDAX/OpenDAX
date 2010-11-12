@@ -130,5 +130,7 @@ AC_CONFIG_FILES([Makefile
                  modules/daxlua/Makefile
                  modules/test/Makefile
                  modules/wio/Makefile
+                 modules/arduino/Makefile
+                 modules/arduino/lib/Makefile
                  modules/skel/Makefile])
 AC_OUTPUT
