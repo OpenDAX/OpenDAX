@@ -497,14 +497,15 @@ dax_module *
 module_register(char *name, pid_t pid, int fd)
 {
     dax_module *mod, *test;
-    //char *newname;
-    //size_t size;
     int result;
     in_addr_t host;
     
-    /* A module with the given file descriptor already exists */
-    if(_get_module_fd(fd)) {
-        return NULL;
+    /* If a module with the given file descriptor already exists
+     * then we need to unregister that module.  It must have failed
+     * or the OS would not give us the file descriptor again. */
+    test = _get_module_fd(fd);
+    if(test) {
+        module_unregister(test->fd);
     }
     
     result = _get_host(fd, &host);
@@ -525,19 +526,7 @@ module_register(char *name, pid_t pid, int fd)
     
     /* If the module doesn't already exist */
     if(mod == NULL) {
-        /* Do we already have a module of this name */
-        //--mod = _get_module_name(name);
-        //--if(mod && mod->state & MSTATE_REGISTERED) {
-            /* We already have one of these running */
-            /* Get a new string big enough for adding the PID */
-            //--size = strlen(name) + 7;
-            //--newname = (char *)malloc(size);
-            //--snprintf(newname, size, "%s%d", name, pid);
-            mod = module_add(name, NULL, NULL, 0, 0);
-        //} else  {
-            /* Never seen this guy before so we'll add it */
-        //    mod = module_add(name, NULL, NULL, 0, 0);
-        //}
+        mod = module_add(name, NULL, NULL, 0, 0);
     }
     if(mod) {
         mod->pid = pid;
