@@ -872,10 +872,13 @@ _event_add(lua_State *L) {
     if(lua_gettop(L) != 6) {
         luaL_error(L, "Wrong number of arguments passed to event_add()");
     }
-    if(!lua_isfunction(L, 5)) {
-        luaL_error(L, "Argument 5 to event_add() should be a function");
+    if(lua_isnil(L, 5) || lua_tonumber(L, 5) == 0) {
+        
+    } else {
+        if(!lua_isfunction(L, 5)) {
+            luaL_error(L, "Argument 5 to event_add() should be a function");
+        }
     }
-
     edata = malloc(sizeof(event_ref_data));
     if(edata == NULL) {
         luaL_error(L, "Unable to allocate memory");

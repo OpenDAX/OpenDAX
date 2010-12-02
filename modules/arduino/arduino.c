@@ -25,13 +25,14 @@ void quit_signal(int sig);
 static void getout(int exitstatus);
 
 dax_state *ds; /* DaxState Object */
-static ar_network *an; /* Arduino IO Network Object */
+static ar_network *_an; /* Arduino IO Network Object */
 static int _quitsignal;
 /* Configuration */
-static char *device;
-static unsigned int baudrate;
-static int retries;
-static int timeout;
+static char *_device;
+static unsigned int _baudrate;
+static int _retries;
+static int _timeout;    /* Message Timeout (mSec) */
+static int _rate;       /* Polling Rate (mSec) */
 
 static ar_node _nodes[MAX_NODES];
 static int _node_count;
@@ -203,9 +204,6 @@ _add_node(lua_State *L)
     return 0;
 }
 
-
-
-
 static int
 _run_config(int argc, char *argv[])
 {
@@ -217,16 +215,18 @@ _run_config(int argc, char *argv[])
     result += dax_add_attribute(ds, "baudrate","baudrate", 'b', flags, "9600");
     result += dax_add_attribute(ds, "retries","retries", 'r', flags, "3");
     result += dax_add_attribute(ds, "timeout","timeout", 't', flags, "500");
-    
+    result += dax_add_attribute(ds, "rate","rate", 'p', flags, "1000");
+        
     dax_set_luafunction(ds, (void *)_add_node, "add_node");
     /* Execute the configuration */
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
 
     /* Get the results of the configuration */
-    device = strdup(dax_get_attr(ds, "device"));
-    baudrate = strtol(dax_get_attr(ds, "baudrate"), NULL, 0);
-    retries = strtol(dax_get_attr(ds, "retries"), NULL, 0);
-    timeout = strtol(dax_get_attr(ds, "timeout"), NULL, 0);
+    _device = strdup(dax_get_attr(ds, "device"));
+    _baudrate = strtol(dax_get_attr(ds, "baudrate"), NULL, 0);
+    _retries = strtol(dax_get_attr(ds, "retries"), NULL, 0);
+    _timeout = strtol(dax_get_attr(ds, "timeout"), NULL, 0);
+    _rate = strtol(dax_get_attr(ds, "rate"), NULL, 0);
     /* Free the configuration data */
     dax_free_config (ds);
     return 0;
@@ -238,10 +238,10 @@ _print_config(void)
     int n;
     struct ar_pin *pin;
     struct ar_analog *analog;
-    fprintf(stderr, "device = %s\n", device);
-    fprintf(stderr, "baudrate = %d\n", baudrate);
-    fprintf(stderr, "retries = %d\n", retries);
-    fprintf(stderr, "timeout = %d\n", timeout);
+    fprintf(stderr, "device = %s\n", _device);
+    fprintf(stderr, "baudrate = %d\n", _baudrate);
+    fprintf(stderr, "retries = %d\n", _retries);
+    fprintf(stderr, "timeout = %d\n", _timeout);
 
     for(n = 0; n < _node_count; n++) {
         fprintf(stderr, "Node[%d] name = %s : address = %s\n", n, _nodes[n].name, _nodes[n].address);
@@ -290,17 +290,31 @@ int main(int argc,char *argv[])
     
     //--_print_config();
     
-    an = ario_init();
-    if(an == NULL) dax_fatal(ds, "Unable to allocate Arduino Network Object");
+    _an = ario_init();
+    if(_an == NULL) dax_fatal(ds, "Unable to allocate Arduino Network Object");
     
-    result = ario_openport(an, device, baudrate);
+    result = ario_openport(_an, _device, _baudrate);
     if(result < 0) {
-        dax_fatal(ds, "Unable to open Arduino Network on device %s", device);
+        dax_fatal(ds, "Unable to open Arduino Network on device %s", _device);
     }
     
+    result = ario_pin_mode(_an, "AA", 3, ARIO_PIN_DI);
+    fprintf(stderr, "ario_pin_mode(3) returned %d\n", result);
+    result = ario_pin_mode(_an, "AA", 4, ARIO_PIN_DO);
+    fprintf(stderr, "ario_pin_mode(4) returned %d\n", result);
+    result = ario_pin_pullup(_an, "AA", 3, 1);
+    fprintf(stderr, "ario_pin_pullup() returned %d\n", result);
     while(1) {
-        sleep(1);
-        ario_pin_mode(an, "AA", 3, 0);
+        usleep(_rate * 1000);
+        result = ario_pin_read(_an, "AA", 3);
+        fprintf(stderr, "ario_pin_read() returned %d\n", result);
+        if(n == 1) {
+            n = 0;
+        } else {
+            n = 1;
+        }
+        result = ario_pin_write(_an, "AA", 4, n);
+        fprintf(stderr, "ario_pin_write(4, %d) returned %d\n", n, result);
 
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {

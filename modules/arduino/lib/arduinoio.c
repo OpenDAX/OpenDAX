@@ -98,7 +98,9 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
     if(length > MAX_MSG_SIZE) return -1;
 
     do {
-        fprintf(stderr, "Sending Msg...");
+        //fprintf(stderr, "Sending Msg:");
+        for(n = 0; n < length; n++) fprintf(stderr, "%c", msg[n]);
+        fprintf(stderr, "\n");
         result = write(an->fd, msg, length);
         if(result < 0) {
             return ARIO_ERR_WRITE;
@@ -110,7 +112,7 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
             FD_SET(an->fd, &fds);
             tval.tv_sec = an->timeout / 1000;
             tval.tv_usec = (an->timeout % 1000) * 1000;
-            fprintf(stderr, "selecting....\n");
+            //fprintf(stderr, "selecting....\n");
             result = select(an->fd + 1, &fds, NULL, NULL, &tval);
             if(result == 0) {
                 fprintf(stderr, "Timeout\n");
@@ -122,15 +124,15 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
                     break;
                 }
             } else {
-                fprintf(stderr, "Reading Data");
+                //fprintf(stderr, "Reading Data");
                 while(read(an->fd, &buff[index], 1) != 0) {
-                    fprintf(stderr, ".");
+                    //fprintf(stderr, ".");
                     if(buff[index] == '\r') {
                         buff[index + 1] = '\0';
-                        for(n=0; n <= index; n++) fprintf(stderr, "[0x%X]", buff[n]);
-                        fprintf(stderr, "\n%s\n", buff);
+                        //for(n=0; n <= index; n++) fprintf(stderr, "[0x%X]", buff[n]);
+                        fprintf(stderr, "%s\n", buff);
                         result = _validate_message(buff, index);
-                        fprintf(stderr, "Validate returned %d\n", result);
+                        //fprintf(stderr, "Validate returned %d\n", result);
                         if(result == 0) return index+1;
                         if(result < 0)  return result;
                     }
@@ -141,6 +143,26 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
     } while(tryagain);
 
     return result;
+}
+
+static int
+_get_ack(char *buff)
+{
+    if(buff[4] == 'O' && buff[5] == 'K') {
+        return 0;
+    } else {
+        return (buff[5] - '0') * -1;
+    }
+}
+
+static int
+_get_response(char *buff)
+{
+    if(buff[4] == 'E') {
+        return (buff[5] - '0') * -1;
+    } else {
+        return strtol(&buff[4], NULL, 16);
+    }
 }
 
 ar_network *
@@ -168,10 +190,10 @@ ario_openport(ar_network *an, char *device, unsigned int baudrate)
 {
     int fd, br;
     struct termios options;
-    
+
     /* the port is opened RW and reads will not block */
     fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
-    //fd = open(device, O_RDWR | O_NOCTTY);
+
     if(fd == -1)  {
         return(-1);
     } else  {
@@ -224,26 +246,72 @@ ario_set_timeout(ar_network *an, int timeout)
 int
 ario_pin_mode(ar_network *an, char *address, int pin, int mode)
 {
-    int result;
+    int result, next;
     char buff[MAX_MSG_SIZE];
-    char msg[] = "$AA&CD3I\r";
-    
-    result = _send_msg(an, msg, 9, buff);
-    if(result < 0) {
-        fprintf(stderr, "Something has gone horribly wrong.");
-        perror(" ");
-        return -1;
+    char msg[MAX_MSG_SIZE];
+    //"$AA&CD3I\r"
+    msg[0] = '$';
+    msg[1] = address[0];
+    msg[2] = address[1];
+    msg[3] = '&';
+    msg[4] = 'C';
+    msg[5] = 'D';
+    if(pin > 9) {
+        msg[6] = (pin / 10) + '0';
+        msg[7] = (pin % 10) + '0';
+        next = 8;
+    } else {
+        msg[6] = pin + '0';
+        next = 7;
     }
-    buff[result] = '\0';
-    fprintf(stderr, "-%s", buff);
-    
-    return 0;
+    if(mode == ARIO_PIN_DI) {
+        msg[next++] = 'I';
+    } else if(mode == ARIO_PIN_DO || mode == ARIO_PIN_PWM) {
+        msg[next++] = 'O';
+    } else {
+        return ARIO_ERR_ARGUMENT;
+    }
+    msg[next] = '\r';
+    result = _send_msg(an, msg, next + 1, buff);
+    if(result < 0) return result;
+    if(buff[1] != address[0] || buff[2] != address[1]) return ARIO_ERR_ADDRESS;
+    result = _get_ack(buff);
+    return result;
 }
 
 int
 ario_pin_pullup(ar_network *an, char *address, int pin, int pullup)
 {
-    return 0;
+    int result, next;
+    char buff[MAX_MSG_SIZE];
+    char msg[MAX_MSG_SIZE];
+    //"$AA&CD3R1\r"
+    msg[0] = '$';
+    msg[1] = address[0];
+    msg[2] = address[1];
+    msg[3] = '&';
+    msg[4] = 'C';
+    msg[5] = 'D';
+    if(pin > 9) {
+        msg[6] = (pin / 10) + '0';
+        msg[7] = (pin % 10) + '0';
+        next = 8;
+    } else {
+        msg[6] = pin + '0';
+        next = 7;
+    }
+    msg[next++] = 'R';
+    if(pullup) {
+        msg[next++] = '1';
+    } else {
+        msg[next++] = '0';
+    }
+    msg[next] = '\r';
+    result = _send_msg(an, msg, next + 1, buff);
+    if(result < 0) return result;
+    if(buff[1] != address[0] || buff[2] != address[1]) return ARIO_ERR_ADDRESS;
+    result = _get_ack(buff);
+    return result;
 }
 
 int
@@ -261,13 +329,65 @@ ario_ai_ref(ar_network *an, char *address, int ai, int ref)
 int
 ario_pin_read(ar_network *an, char *address, int pin)
 {
-    return 0;
+    int result, next;
+    char buff[MAX_MSG_SIZE];
+    char msg[MAX_MSG_SIZE];
+    //"$AA&RD3\r"
+    msg[0] = '$';
+    msg[1] = address[0];
+    msg[2] = address[1];
+    msg[3] = '&';
+    msg[4] = 'R';
+    msg[5] = 'D';
+    if(pin > 9) {
+        msg[6] = (pin / 10) + '0';
+        msg[7] = (pin % 10) + '0';
+        next = 8;
+    } else {
+        msg[6] = pin + '0';
+        next = 7;
+    }
+    msg[next] = '\r';
+    result = _send_msg(an, msg, next + 1, buff);
+    if(result < 0) return result;
+    if(buff[1] != address[0] || buff[2] != address[1]) return ARIO_ERR_ADDRESS;
+    result = _get_response(buff);
+    return result;
 }
 
 int
 ario_pin_write(ar_network *an, char *address, int pin, int val)
 {
-    return 0;
+    int result, next;
+    char buff[MAX_MSG_SIZE];
+    char msg[MAX_MSG_SIZE];
+    //"$AA&WD3,1\r"
+    msg[0] = '$';
+    msg[1] = address[0];
+    msg[2] = address[1];
+    msg[3] = '&';
+    msg[4] = 'W';
+    msg[5] = 'D';
+    if(pin > 9) {
+        msg[6] = (pin / 10) + '0';
+        msg[7] = (pin % 10) + '0';
+        next = 8;
+    } else {
+        msg[6] = pin + '0';
+        next = 7;
+    }
+    msg[next++] = ',';
+    if(val) {
+        msg[next++] = '1';
+    } else {
+        msg[next++] = '0';
+    }
+    msg[next] = '\r';
+    result = _send_msg(an, msg, 10, buff);
+    if(result < 0) return result;
+    if(buff[1] != address[0] || buff[2] != address[1]) return ARIO_ERR_ADDRESS;
+    result = _get_ack(buff);
+    return result;
 }
 
 int

@@ -29,6 +29,7 @@
 #define ARIO_ERR_TIMEOUT       -5
 #define ARIO_ERR_WRITE         -6
 #define ARIO_ERR_READ          -7
+#define ARIO_ERR_ADDRESS       -8;
 
 #define ARIO_PIN_DI  1
 #define ARIO_PIN_DO  2
