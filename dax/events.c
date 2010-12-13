@@ -628,6 +628,7 @@ event_del(int index, int id, dax_module *module)
         xerror("event_del() - index %d is out of range\n", index);
     }
     this = _db[index].events;
+    if(this == NULL) return ERR_NOTFOUND;
     if(this->id == id) {
         if(this->notify != module) {
             xlog(LOG_ERROR | LOG_VERBOSE, "Module cannot delete another module's event");

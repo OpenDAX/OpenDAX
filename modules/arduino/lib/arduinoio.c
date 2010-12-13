@@ -72,35 +72,18 @@ _getbaudrate(unsigned int b_in)
     }
 }
 
-/* Returns...
- * 0 if the message is complete and fully formed
- * <0 if the message is malformed
- * >0 if the message is incomplete
- * */
-static int
-_validate_message(char *buff, int index)
-{
-    if(buff[0] != '%') return -1;
-    if(index > 3 && buff[3] != '&') return -1;
-    if(index > MAX_MSG_SIZE) return -1; 
-    if(index > 3 && buff[index] == '\r') return 0;
-    return 1;
-}
-
 static int
 _send_msg(ar_network *an, char *msg, int length, char *buff)
 {
     struct timeval tval;
     fd_set fds;
     int result, tryagain = 0, try = 0, done = 0, index;
-    int n;
-    
+
     if(length > MAX_MSG_SIZE) return -1;
 
     do {
-        //fprintf(stderr, "Sending Msg:");
-        for(n = 0; n < length; n++) fprintf(stderr, "%c", msg[n]);
-        fprintf(stderr, "\n");
+        /* TODO: Delay should probably be configurable */
+        usleep(10000);
         result = write(an->fd, msg, length);
         if(result < 0) {
             return ARIO_ERR_WRITE;
@@ -112,10 +95,9 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
             FD_SET(an->fd, &fds);
             tval.tv_sec = an->timeout / 1000;
             tval.tv_usec = (an->timeout % 1000) * 1000;
-            //fprintf(stderr, "selecting....\n");
             result = select(an->fd + 1, &fds, NULL, NULL, &tval);
+            /* This is a Timeout */
             if(result == 0) {
-                fprintf(stderr, "Timeout\n");
                 if(try >= an->retries) {
                     return ARIO_ERR_TIMEOUT;
                 } else {
@@ -123,18 +105,18 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
                     tryagain = 1;
                     break;
                 }
+            } else if(result == EINTR) {
+                return -1;
             } else {
-                //fprintf(stderr, "Reading Data");
-                while(read(an->fd, &buff[index], 1) != 0) {
-                    //fprintf(stderr, ".");
+                /* It's simpler just to read one character at a time */
+                while( (result = read(an->fd, &buff[index], 1)) != 0) {
+                    /* If read() returns an error we should bail */
+                    if(result < 0) return result;
                     if(buff[index] == '\r') {
-                        buff[index + 1] = '\0';
-                        //for(n=0; n <= index; n++) fprintf(stderr, "[0x%X]", buff[n]);
-                        fprintf(stderr, "%s\n", buff);
-                        result = _validate_message(buff, index);
-                        //fprintf(stderr, "Validate returned %d\n", result);
-                        if(result == 0) return index+1;
-                        if(result < 0)  return result;
+                        if(buff[0] != '%') index = 0;
+                        if(index > 3 && buff[3] != '&') index = 0;
+                        if(index > MAX_MSG_SIZE) index = 0; 
+                        if(index > 3 && buff[index] == '\r') return 0;
                     }
                     index += 1;
                 }

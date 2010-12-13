@@ -33,12 +33,15 @@ static unsigned int _baudrate;
 static int _retries;
 static int _timeout;    /* Message Timeout (mSec) */
 static int _rate;       /* Polling Rate (mSec) */
+static int _maxfail;    /* Maximum number of failures of a node before shutdown */
+static int _reconnect;  /* Time (sec) before a reconnect is tried on a failed node */
+static int _connected;  /* Port is connected */
 
 static ar_node _nodes[MAX_NODES];
 static int _node_count;
 
 static void
-_add_pin(u_int8_t number, u_int8_t type, u_int8_t pullup, char *tagname)
+_add_pin(u_int8_t number, u_int8_t type, u_int8_t flags, char *tagname)
 {
     struct ar_pin *new_pin, *this;
     if(tagname == NULL) {
@@ -55,7 +58,7 @@ _add_pin(u_int8_t number, u_int8_t type, u_int8_t pullup, char *tagname)
     }
     new_pin->type = type;
     new_pin->number = number;
-    new_pin->pullup = pullup;
+    new_pin->flags = flags;
     new_pin->tagname = strdup(tagname);
     new_pin->next = NULL;
     
@@ -118,7 +121,7 @@ _add_analog(u_int8_t number, u_int8_t reference, char *tagname)
 static int
 _add_node(lua_State *L)
 {
-    u_int8_t type, pullup, n;
+    u_int8_t type, flags, n;
     const char *str;
     
     if(_node_count >= MAX_NODES) {
@@ -143,6 +146,7 @@ _add_node(lua_State *L)
     _nodes[_node_count].address = strdup(str);
 
     for(n = MIN_PIN; n < MAX_PIN; n++) {
+        flags = 0;  /* Reset the Flags */
         lua_rawgeti(L, 3, n);
         if(lua_istable(L, -1)) {
             lua_pushstring(L, "type");
@@ -161,11 +165,20 @@ _add_node(lua_State *L)
             lua_pop(L, 1);
             lua_pushstring(L, "pullup");
             lua_rawget(L, -2);
-            pullup = lua_toboolean(L, -1);
+            if(lua_toboolean(L, -1)) BIT_SET(flags, PIN_FLAG_PULLUP);
             lua_pop(L, 1);
+            lua_pushstring(L, "create");
+            lua_rawget(L, -2);
+            if(lua_toboolean(L, -1)) BIT_SET(flags, PIN_FLAG_CREATE);
+            lua_pop(L, 1);
+            lua_pushstring(L, "invert");
+            lua_rawget(L, -2);
+            if(lua_toboolean(L, -1)) BIT_SET(flags, PIN_FLAG_INVERT);
+            lua_pop(L, 1);
+            
             lua_pushstring(L, "tagname");
             lua_rawget(L, -2);
-            _add_pin(n, type, pullup, (char *)lua_tostring(L, -1));
+            _add_pin(n, type, flags, (char *)lua_tostring(L, -1));
             lua_pop(L, 1);
         }
         lua_pop(L, 1);
@@ -211,12 +224,17 @@ _run_config(int argc, char *argv[])
     /* Create and initialize the configuration subsystem in the library */
     dax_init_config(ds, "arduino");
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
+    result = 0;
     result += dax_add_attribute(ds, "device","device", 'd', flags, "/dev/ttyS0");
     result += dax_add_attribute(ds, "baudrate","baudrate", 'b', flags, "9600");
     result += dax_add_attribute(ds, "retries","retries", 'r', flags, "3");
     result += dax_add_attribute(ds, "timeout","timeout", 't', flags, "500");
-    result += dax_add_attribute(ds, "rate","rate", 'p', flags, "1000");
-        
+    result += dax_add_attribute(ds, "poll_rate","poll_rate", 'p', flags, "1000");
+    result += dax_add_attribute(ds, "max_fail","max_fail", 'f', flags, "20");
+    result += dax_add_attribute(ds, "reconnect","reconnect", 'n', flags, "120");
+    if(result > 0) {
+        fprintf(stderr, "Problem adding attributes - %d\n", result);
+    }
     dax_set_luafunction(ds, (void *)_add_node, "add_node");
     /* Execute the configuration */
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
@@ -226,7 +244,9 @@ _run_config(int argc, char *argv[])
     _baudrate = strtol(dax_get_attr(ds, "baudrate"), NULL, 0);
     _retries = strtol(dax_get_attr(ds, "retries"), NULL, 0);
     _timeout = strtol(dax_get_attr(ds, "timeout"), NULL, 0);
-    _rate = strtol(dax_get_attr(ds, "rate"), NULL, 0);
+    _rate = strtol(dax_get_attr(ds, "poll_rate"), NULL, 0);
+    _maxfail = strtol(dax_get_attr(ds, "max_fail"), NULL, 0);
+    _reconnect = strtol(dax_get_attr(ds, "reconnect"), NULL, 0);
     /* Free the configuration data */
     dax_free_config (ds);
     return 0;
@@ -242,12 +262,18 @@ _print_config(void)
     fprintf(stderr, "baudrate = %d\n", _baudrate);
     fprintf(stderr, "retries = %d\n", _retries);
     fprintf(stderr, "timeout = %d\n", _timeout);
-
+    fprintf(stderr, "poll_rate = %d\n", _rate);
+    fprintf(stderr, "max_fail = %d\n", _maxfail);
+    fprintf(stderr, "reconnect = %d\n", _reconnect);
+      
     for(n = 0; n < _node_count; n++) {
         fprintf(stderr, "Node[%d] name = %s : address = %s\n", n, _nodes[n].name, _nodes[n].address);
         pin = _nodes[n].pins;
         while(pin != NULL) {
-            fprintf(stderr, " Pin[%d] type = %d : tagname = %s : pullup = %d\n", pin->number, pin->type, pin->tagname, pin->pullup);
+            fprintf(stderr, " Pin[%d] type = %d : tagname = %s ", pin->number, pin->type, pin->tagname);
+            fprintf(stderr, ": pullup = %d ", BIT_ISSET(pin->flags, PIN_FLAG_PULLUP) ? 1 : 0);
+            fprintf(stderr, ": create = %d ", BIT_ISSET(pin->flags, PIN_FLAG_CREATE) ? 1 : 0);
+            fprintf(stderr, ": invert = %d\n", BIT_ISSET(pin->flags, PIN_FLAG_INVERT) ? 1 : 0);
             pin = pin->next;
         }
         analog = _nodes[n].analogs;
@@ -258,11 +284,185 @@ _print_config(void)
     }
 }
 
+/* This is the callback that is assigned to a change event for
+ * the tag associated with the pin.  It simply sets the HIT flag */
+static void
+_pin_event_callback(void *udata)
+{
+    struct ar_pin *pin;
+    pin = (struct ar_pin *)udata;
+    BIT_SET(pin->flags, PIN_FLAG_HIT);
+}
+
+inline static int
+_inhibit_node(int node)
+{
+    struct ar_pin *pthis;
+    struct ar_analog *athis;
+    
+    /* Sets the time that this node was inhibited */
+    gettimeofday(&_nodes[node].inhibited, NULL);
+    pthis = _nodes[node].pins;
+    while(pthis != NULL) {
+        BIT_RESET(pthis->flags, PIN_FLAG_ENABLED);
+        if(pthis->type == ARIO_PIN_DO || pthis->type == ARIO_PIN_PWM) {
+            dax_event_del(ds, pthis->event);
+        }
+        pthis = pthis->next;
+    }
+    athis = _nodes[node].analogs;
+    while(athis != NULL) {
+        BIT_RESET(athis->flags, PIN_FLAG_ENABLED);
+        athis = athis->next;
+    }
+
+    return 0;
+}
+
+inline static int
+_init_pin(int node, struct ar_pin *pin)
+{
+    int type, result, temp;
+
+    result = ario_pin_mode(_an, _nodes[node].address, pin->number, pin->type);
+    if(result) return result;
+    if(pin->type == ARIO_PIN_DI) {
+        if(BIT_ISSET(pin->flags, PIN_FLAG_PULLUP)) {
+            temp = 1;
+        } else {
+            temp = 0;
+        }
+        result = ario_pin_pullup(_an, _nodes[node].address, pin->number, temp);
+    }
+    if(result) return result;
+    
+    if(BIT_ISSET(pin->flags, PIN_FLAG_CREATE)) {
+        if(pin->type == ARIO_PIN_PWM) {
+            type = DAX_SINT;
+        } else {
+            type = DAX_BOOL;
+        }
+        /* TODO: Deal with making arrays here */
+        dax_tag_add(ds, NULL, pin->tagname, type, 1);
+    }
+    result = dax_tag_handle(ds, &pin->handle, pin->tagname, 0);
+    if(result) return result;
+    /* If it's an output type pin we need an event */
+    if(pin->type == ARIO_PIN_DO || pin->type == ARIO_PIN_PWM) {
+        result = dax_event_add(ds, &pin->handle, EVENT_CHANGE, NULL, 
+                               &pin->event, _pin_event_callback,
+                               (void *)pin, NULL);
+        if(result) return result;
+    }
+    BIT_SET(pin->flags, PIN_FLAG_ENABLED);
+    BIT_SET(pin->flags, PIN_FLAG_HIT); /* This will force a write */
+    return 0;
+}
+
+inline static int
+_init_analog(int node, struct ar_analog *analog)
+{
+    return -1;
+}
+
+inline static int
+_init_node(int node)
+{
+    struct ar_pin *pthis;
+    struct ar_analog *athis;
+    int good_pin_count = 0;
+    int good_analog_count = 0;
+    int result;
+    
+    _nodes[node].failures = 0;
+    pthis = _nodes[node].pins;
+    while(pthis != NULL) {
+        result = _init_pin(node, pthis);
+        if(result == 0) good_pin_count++;
+        pthis = pthis->next;
+    }
+    athis = _nodes[node].analogs;
+    while(athis != NULL) {
+        result = _init_analog(node, athis);
+        if(result == 0) good_analog_count++;
+        athis = athis->next;
+    }
+    if(good_pin_count > 0 || good_analog_count > 0) {
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
+inline static int
+_exec_node(int node)
+{
+    struct ar_pin *pthis;
+    struct ar_analog *athis;
+    int value, temp, result;
+
+    pthis = _nodes[node].pins;
+    while(pthis != NULL) {
+        if(BIT_ISSET(pthis->flags, PIN_FLAG_ENABLED)) {
+            if(pthis->type == ARIO_PIN_DI) {
+                value = ario_pin_read(_an, _nodes[node].address, pthis->number);
+                if( value < 0) {
+                    _nodes[node].failures++;
+                } else {
+                    if(value != pthis->lastvalue) {
+                        temp = 0;
+                        if(value) temp = 0x01;
+                        if(BIT_ISSET(pthis->flags, PIN_FLAG_INVERT)) {
+                            BIT_TOGGLE(temp, 0x01);
+                        }
+                        dax_write_tag(ds, pthis->handle, &temp);
+                        pthis->lastvalue = value;
+                    }
+                }
+            } else if(pthis->type == ARIO_PIN_DO) {
+                if(BIT_ISSET(pthis->flags, PIN_FLAG_HIT)) {
+                    BIT_RESET(pthis->flags, PIN_FLAG_HIT);
+                    result = dax_read_tag(ds, pthis->handle, &temp);
+                    if(result == 0) {
+                        if(BIT_ISSET(pthis->flags, PIN_FLAG_INVERT)) {
+                            BIT_TOGGLE(temp, 0x01);
+                        }
+                        result = ario_pin_write(_an, _nodes[node].address, pthis->number, temp);
+                        if(result < 0) _nodes[node].failures++;
+                    }
+                }
+            } else if(pthis->type == ARIO_PIN_PWM) {
+                ;//ario_pin_pwm(ar_network *an, char *address, int pin, int val);
+            } else {
+                assert(0); /* One of the above must be true */
+            }
+        }
+        if(_nodes[node].failures > _maxfail) {
+            _inhibit_node(node);
+            return -1;
+        }
+        pthis = pthis->next;
+    }
+    athis = _nodes[node].analogs;
+    while(athis != NULL) {
+        BIT_RESET(athis->flags, PIN_FLAG_ENABLED);
+
+        if(_nodes[node].failures > _maxfail) {
+            _inhibit_node(node);
+            return -1;
+        }
+        athis = athis->next;
+    }
+    return 0;
+}
+
 /* main inits and then calls run */
 int main(int argc,char *argv[])
 {
     struct sigaction sa;
-    int result, n;
+    int result, node, good_nodes;
+    struct timeval start, end, now;
+    long time_spent;
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -288,34 +488,71 @@ int main(int argc,char *argv[])
         dax_fatal(ds, "Unable to find OpenDAX");
     }
     
-    //--_print_config();
+    _print_config();
     
     _an = ario_init();
     if(_an == NULL) dax_fatal(ds, "Unable to allocate Arduino Network Object");
-    
-    result = ario_openport(_an, _device, _baudrate);
-    if(result < 0) {
-        dax_fatal(ds, "Unable to open Arduino Network on device %s", _device);
-    }
-    
-    result = ario_pin_mode(_an, "AA", 3, ARIO_PIN_DI);
-    fprintf(stderr, "ario_pin_mode(3) returned %d\n", result);
-    result = ario_pin_mode(_an, "AA", 4, ARIO_PIN_DO);
-    fprintf(stderr, "ario_pin_mode(4) returned %d\n", result);
-    result = ario_pin_pullup(_an, "AA", 3, 1);
-    fprintf(stderr, "ario_pin_pullup() returned %d\n", result);
-    while(1) {
-        usleep(_rate * 1000);
-        result = ario_pin_read(_an, "AA", 3);
-        fprintf(stderr, "ario_pin_read() returned %d\n", result);
-        if(n == 1) {
-            n = 0;
-        } else {
-            n = 1;
-        }
-        result = ario_pin_write(_an, "AA", 4, n);
-        fprintf(stderr, "ario_pin_write(4, %d) returned %d\n", n, result);
 
+    while(1) {
+        if( ! _connected) {
+            dax_debug(ds, LOG_COMM, "Attempting to connect to device %s", _device);
+            result = ario_openport(_an, _device, _baudrate);
+            if(result < 0) {
+                dax_error(ds, "Unable to open Arduino Network on device %s", _device);
+                sleep(_reconnect);
+            } else {
+                dax_debug(ds, LOG_COMM, "Connected to device %s", _device);
+                _connected = 1;
+                for(node = 0; node < _node_count; node++) {
+                    _init_node(node);
+                }
+            }
+        }
+        if(_connected) {
+            gettimeofday(&start, NULL);
+            good_nodes = 0;
+            for(node = 0; node < _node_count; node++) {
+                /* Check to see if the node is inhibited.  If it is then check
+                 * to see if enough time has passed (reconnect seconds) to try
+                 * to un-inhibit the node */
+                if(BIT_ISSET(_nodes[node].flags, NODE_FLAG_INHIBITED)) {
+                    gettimeofday(&now, NULL);
+                    if(now.tv_sec > _nodes[node].inhibited.tv_sec + _nodes[node].reconnect) {
+                        result = _init_node(node);
+                        if(result) {
+                            _inhibit_node(node);
+                        } else {
+                            BIT_RESET(_nodes[node].flags, NODE_FLAG_INHIBITED);
+                        }
+                    }
+                }
+                /* This is not really the same as an else from above because the above
+                 * if() block may unset the INHIBITED flag */
+                if( ! BIT_ISSET(_nodes[node].flags, NODE_FLAG_INHIBITED)) {
+                    if(_exec_node(node) == 0) {
+                        good_nodes++;
+                    }
+                }
+            }
+            if(good_nodes == 0) {
+                dax_debug(ds, LOG_COMM, "Port down, disconnecting from %s", _device);
+                ario_closeport(_an);
+                _connected = 0;
+                sleep(_reconnect);
+            } else {
+                gettimeofday(&end, NULL);
+                time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
+                /* If it takes longer than the scan rate then just go again instead of sleeping */
+                result = 0;
+                if(time_spent < _rate) {
+                    result = dax_event_wait(ds, _rate - time_spent, NULL);
+                }
+                /* Poll for the rest once the time has expired */
+                if(result == 0) {
+                    while(! dax_event_poll(ds, NULL));
+                }
+            }
+        }
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
