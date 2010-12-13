@@ -19,14 +19,22 @@
 
 /* This is configuration stuff that should be changed for different
  * sized Arduinos */
+#define HALF_DUPLEX    // undefine this if using full duplex point to point
+
 int const BUFF_SIZE   = 12;   // Size of the receive buffer
 int const BAUDRATE    = 9600;
 char address[2] = {'A', 'A'};  // Two character hex address
 
 /* If a pin number is not in this array it is not considered a valid
    pin on the Arduino.  This would changed for different Arduino's */
-int const NUM_PINS = 18;
-byte PinNumbers[] = {2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+
+#ifdef HALF_DUPLEX
+  int const NUM_PINS = 17;
+  byte PinNumbers[] = {3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+#else
+  int const NUM_PINS = 18;
+  byte PinNumbers[] = {2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+#endif
 byte PinConfig[NUM_PINS];
 
 /* These correspond to A0, A1, A2 .... etc */
@@ -54,7 +62,11 @@ byte next;             // index used for parsing commands
 
 void setup() 
 { 
+#ifdef HALF_DUPLEX
+    pinMode(2, OUTPUT);
+#endif
     Serial.begin(BAUDRATE); 
+    
 }
 
 void loop() 
@@ -111,12 +123,21 @@ void parse_command()
 
 void respond(char *s)
 {
+#ifdef HALF_DUPLEX
+  digitalWrite(2, 1);
+#endif
   Serial.print("%");
   Serial.print(address[0]);
   Serial.print(address[1]);
   Serial.print("&");
   Serial.print(s);
   Serial.print("\r");
+#ifdef HALF_DUPLEX
+/* This delay is required because we have to wait until the byte has been fully sent
+ * before we turn the RS485 enable/disable pin off */
+  delay(3);  //TODO: Change to actually watch the register in the serial port 
+  digitalWrite(2, 0);
+#endif
 }
 
 void config_digital()
