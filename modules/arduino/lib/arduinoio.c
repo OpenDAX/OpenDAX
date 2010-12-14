@@ -78,7 +78,8 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
     struct timeval tval;
     fd_set fds;
     int result, tryagain = 0, try = 0, done = 0, index;
-
+    //int n;
+    
     if(length > MAX_MSG_SIZE) return -1;
 
     do {
@@ -88,6 +89,9 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
         if(result < 0) {
             return ARIO_ERR_WRITE;
         }
+        //fprintf(stderr, "<");
+        //for(n = 0; n < length-1; n++) fprintf(stderr, "%c", msg[n]);
+        //fprintf(stderr, "> ");
         index = 0;
         do {
             tryagain = 0;
@@ -109,6 +113,7 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
                 return -1;
             } else {
                 /* It's simpler just to read one character at a time */
+                //fprintf(stderr, "[");
                 while( (result = read(an->fd, &buff[index], 1)) != 0) {
                     /* If read() returns an error we should bail */
                     if(result < 0) return result;
@@ -116,10 +121,16 @@ _send_msg(ar_network *an, char *msg, int length, char *buff)
                         if(buff[0] != '%') index = 0;
                         if(index > 3 && buff[3] != '&') index = 0;
                         if(index > MAX_MSG_SIZE) index = 0; 
-                        if(index > 3 && buff[index] == '\r') return 0;
+                        if(index > 3 && buff[index] == '\r') {
+                            //fprintf(stderr, "]\n");
+                            return 0;
+                        }
+                    //} else {
+                        //fprintf(stderr, "%c", buff[index]);
                     }
                     index += 1;
                 }
+                
             }
         } while(!done);
     } while(tryagain);
@@ -365,7 +376,7 @@ ario_pin_write(ar_network *an, char *address, int pin, int val)
         msg[next++] = '0';
     }
     msg[next] = '\r';
-    result = _send_msg(an, msg, 10, buff);
+    result = _send_msg(an, msg, next+1, buff);
     if(result < 0) return result;
     if(buff[1] != address[0] || buff[2] != address[1]) return ARIO_ERR_ADDRESS;
     result = _get_ack(buff);

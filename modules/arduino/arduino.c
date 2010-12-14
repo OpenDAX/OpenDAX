@@ -324,8 +324,13 @@ _init_pin(int node, struct ar_pin *pin)
 {
     int type, result, temp;
 
+    dax_debug(ds, LOG_MINOR, "Initializing Pin:%d Tagname = %s", pin->number, pin->tagname);
     result = ario_pin_mode(_an, _nodes[node].address, pin->number, pin->type);
-    if(result) return result;
+    if(result) {
+        dax_debug(ds, LOG_ERROR, "Problem Setting Mode return result; for Node:%s Pin:%d Result = %d",
+                 _nodes[node].address, pin->number, result);
+        return result;
+    }
     if(pin->type == ARIO_PIN_DI) {
         if(BIT_ISSET(pin->flags, PIN_FLAG_PULLUP)) {
             temp = 1;
@@ -334,7 +339,12 @@ _init_pin(int node, struct ar_pin *pin)
         }
         result = ario_pin_pullup(_an, _nodes[node].address, pin->number, temp);
     }
-    if(result) return result;
+    if(result) {
+        dax_debug(ds, LOG_ERROR, "Problem Setting Pullup for Node:%s Pin:%d Result = %d",
+                 _nodes[node].address, pin->number, result);
+        
+        return result;
+    }
     
     if(BIT_ISSET(pin->flags, PIN_FLAG_CREATE)) {
         if(pin->type == ARIO_PIN_PWM) {
@@ -373,7 +383,9 @@ _init_node(int node)
     int good_pin_count = 0;
     int good_analog_count = 0;
     int result;
-    
+
+    dax_debug(ds, LOG_MINOR, "Initializing Node:%d", node);
+
     _nodes[node].failures = 0;
     pthis = _nodes[node].pins;
     while(pthis != NULL) {
@@ -408,6 +420,8 @@ _exec_node(int node)
                 value = ario_pin_read(_an, _nodes[node].address, pthis->number);
                 if( value < 0) {
                     _nodes[node].failures++;
+                    dax_debug(ds, LOG_ERROR, "Unable to write to Node:%s Pin:%d Result=%d",
+                              _nodes[node].address, pthis->number, value);
                 } else {
                     if(value != pthis->lastvalue) {
                         temp = 0;
@@ -428,7 +442,12 @@ _exec_node(int node)
                             BIT_TOGGLE(temp, 0x01);
                         }
                         result = ario_pin_write(_an, _nodes[node].address, pthis->number, temp);
-                        if(result < 0) _nodes[node].failures++;
+                        if(result < 0) {
+                            _nodes[node].failures++;
+                            dax_debug(ds, LOG_ERROR, "Unable to write to Node:%s Pin:%d Result = %d",
+                                      _nodes[node].address, pthis->number, result);
+                            
+                        }
                     }
                 }
             } else if(pthis->type == ARIO_PIN_PWM) {
