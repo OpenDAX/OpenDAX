@@ -22,11 +22,16 @@ else
   M_DAXLUA =
 endif
 
-SUBDIRS = $(M_DAXLUA) $(M_MODBUS) daxc $(M_TEST) $(M_WIO) arduino skel
-#AUX_DIST = $(ac_aux_dir)/install-sh
+if ARDUINO
+  M_ARDUINO = arduino
+else
+  M_ARDUINO =
+endif
 
-#dist-hook:
-#	(cd $(distdir) && mkdir $(ac_aux_dir))
-#	for file in $(AUX_DIST); do \
-#	  cp $$file $(distdir)/$$file; \
-#	done
+if HISTLOG
+  M_HISTLOG = histlog
+else
+  M_HISTLOG =
+endif
+
+SUBDIRS = daxc $(M_DAXLUA) $(M_MODBUS) $(M_TEST) $(M_WIO) $(M_ARDUINO) $(M_HISTLOG) skel

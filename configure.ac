@@ -2,6 +2,7 @@ AC_PREREQ(2.61)
 AC_INIT([opendax],[0.6])
 AC_CONFIG_SRCDIR([dax/opendax.c])
 AC_CONFIG_AUX_DIR(config)
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_USE_SYSTEM_EXTENSIONS
 AC_CONFIG_HEADERS([config.h])
@@ -52,9 +53,28 @@ AC_ARG_ENABLE([daxlua],
     esac],[daxlua=true]) 
 AM_CONDITIONAL([DAXLUA], [test x$daxlua = xtrue])
 
+AC_ARG_ENABLE([arduino], 
+[  --disable-arduino   Do Not Compile Arduino Module], 
+[case "${enableval}" in 
+    yes) arduino=true ;; 
+    no) arduino=false ;;
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-arduino]) ;; 
+    esac],[arduino=true]) 
+AM_CONDITIONAL([ARDUINO], [test x$arduino = xtrue])
+
+AC_ARG_ENABLE([histlog], 
+[  --disable-histlog   Do Not Compile Historical Logging Module], 
+[case "${enableval}" in 
+    yes) histlog=true ;; 
+    no) histlog=false ;;
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-histlog]) ;; 
+    esac],[histlog=true]) 
+AM_CONDITIONAL([HISTLOG], [test x$histlog = xtrue])
+
 #These lines will check for the library and add the right stuff to config.h
 AC_CHECK_LIB([pthread], [pthread_create], [got_pthread=true])
 AC_CHECK_LIB([readline], [readline], [got_readline=true])
+AC_CHECK_LIB([mysql], [mysql_init], [got_msyql=true])
 AC_CHECK_LIB([lua],[luaL_newstate], [got_lua=true], [got_lua=false])
 AC_CHECK_LIB([lua50],[luaL_newstate], [got_lua50=true], [got_lua50=false])
 AC_CHECK_LIB([lua5.1],[luaL_newstate], [got_lua5_1=true], [got_lua5_1=false])
@@ -83,7 +103,7 @@ AC_SUBST(LUALIB)
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/socket.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h signal.h sys/select.h])
-
+AC_CHECK_HEADERS([mysql.h])
 AC_CHECK_HEADERS([lua5.1/lua.h lua5.1/lauxlib.h lua5.1/lualib.h])
 AC_CHECK_HEADERS([lua51/lua.h lua51/lauxlib.h lua51/lualib.h])
 AC_CHECK_HEADERS([lua/lua.h lua/lauxlib.h lua/lualib.h])
@@ -132,5 +152,6 @@ AC_CONFIG_FILES([Makefile
                  modules/wio/Makefile
                  modules/arduino/Makefile
                  modules/arduino/lib/Makefile
+                 modules/histlog/Makefile
                  modules/skel/Makefile])
 AC_OUTPUT
