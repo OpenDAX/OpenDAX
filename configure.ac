@@ -75,6 +75,8 @@ AM_CONDITIONAL([HISTLOG], [test x$histlog = xtrue])
 AC_CHECK_LIB([pthread], [pthread_create], [got_pthread=true])
 AC_CHECK_LIB([readline], [readline], [got_readline=true])
 AC_CHECK_LIB([mysql], [mysql_init], [got_msyql=true])
+AC_CHECK_LIB([dl], [dlopen], [got_dl=true])
+AC_CHECK_LIB([ltdl], [lt_dlopen], [got_ltdl=true])
 AC_CHECK_LIB([lua],[luaL_newstate], [got_lua=true], [got_lua=false])
 AC_CHECK_LIB([lua50],[luaL_newstate], [got_lua50=true], [got_lua50=false])
 AC_CHECK_LIB([lua5.1],[luaL_newstate], [got_lua5_1=true], [got_lua5_1=false])
@@ -83,6 +85,7 @@ AC_CHECK_LIB([lua51],[luaL_newstate], [got_lua51=true], [got_lua51=false])
 #Some Automake conditionals that we can use later
 AM_CONDITIONAL([HAVE_PTHREAD], test $got_pthread = true)
 AM_CONDITIONAL([HAVE_READLINE], test $got_readline = true)
+AM_CONDITIONAL([HAVE_MYSQL], test $got_mysql = true)
 AM_CONDITIONAL([HAVE_LUA], test $got_lua = true)
 AM_CONDITIONAL([HAVE_LUA51], test $got_lua51 = true)
 AM_CONDITIONAL([HAVE_LUA5_1], test $got_lua5_1 = true)
@@ -95,6 +98,12 @@ elif test $got_lua5_1 = true ; then
   LUALIB='-llua5.1'
 else
   LUALIB=
+  echo "--ERROR---------------------------------
+  echo "Lua Libraries are Required to"
+  echo "Build OpenDAX!  Install Lua development"
+  echo "Packages and try again"
+  echo "----------------------------------------
+  (exit 1); exit 1;
 fi
 
 AC_SUBST(LUALIB)
@@ -104,6 +113,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/socket.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h signal.h sys/select.h])
 AC_CHECK_HEADERS([mysql.h])
+AC_CHECK_HEADERS([ltdl.h] [dlfcn.h])
 AC_CHECK_HEADERS([lua5.1/lua.h lua5.1/lauxlib.h lua5.1/lualib.h])
 AC_CHECK_HEADERS([lua51/lua.h lua51/lauxlib.h lua51/lualib.h])
 AC_CHECK_HEADERS([lua/lua.h lua/lauxlib.h lua/lualib.h])
@@ -123,6 +133,7 @@ AC_FUNC_REALLOC
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtof strtoul])
+AC_CHECK_FUNCS([mysql_init dlopen lt_dlopen])
 
 CFLAGS="-Wall -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
 
@@ -153,5 +164,42 @@ AC_CONFIG_FILES([Makefile
                  modules/arduino/Makefile
                  modules/arduino/lib/Makefile
                  modules/histlog/Makefile
+                 modules/histlog/plugins/Makefile
+                 modules/histlog/plugins/file/Makefile
+                 modules/histlog/plugins/mysql/Makefile
                  modules/skel/Makefile])
 AC_OUTPUT
+
+if test $got_msyql!=true; then
+echo "--WARNING----------------------------------"
+echo "Unable to find MySQL Libraries"
+echo "Not building MySQL data plugin for the"
+echo "Historical Logging Module"
+echo "-------------------------------------------"
+fi
+
+# Print Build Information
+
+
+echo \
+"-------------------------------------------------
+
+ ${PACKAGE_NAME} Version ${PACKAGE_VERSION}
+
+ Prefix: '${prefix}'.
+ Compiler: '${CC} ${CFLAGS} ${CPPFLAGS}'
+
+ Modules to be built:
+   modbus:  ${modbus}
+   daxlua:  ${daxlua}
+   test:    ${test}
+   wio:     ${wio}
+   arduino: ${arduino}
+   histlog: ${histlog}
+   
+ Now type 'make @<:@<target>@:>@'
+   where the optional <target> is:
+     all                - build all binaries
+     install            - install everything
+
+--------------------------------------------------"
