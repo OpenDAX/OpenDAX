@@ -202,4 +202,9 @@ echo \
      all                - build all binaries
      install            - install everything
 
+ Currently the Python Extensions are not built
+ from this configuration.  See the file
+ lib/python/README for more information.
+
 --------------------------------------------------"
+
