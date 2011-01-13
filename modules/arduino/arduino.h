@@ -23,9 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
+#include <common.h>
 #include <sys/time.h>
 #include <assert.h>
 

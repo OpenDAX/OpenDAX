@@ -21,28 +21,56 @@
 
 #include <pydax.h>
 
+/* TODO: This should eventually be a Python object that we
+ * create and handle.  Right now we'll keep it a global for
+ * simplicity but it will only allow one connection per
+ * Python script. */
 dax_state *ds;
 
 static PyObject *pydax_init(PyObject *pSelf, PyObject *pArgs)
 {
     char *modname;
+    int result;
+    /* TODO: Get command line arguments and process them too */
+    int argc = 1;
+    char *argv[] = {modname};
     
     if(!PyArg_ParseTuple(pArgs, "s", &modname)) return NULL;
-    
+
     ds = dax_init(modname);
     if(ds == NULL) {
+        PyErr_SetString(PyExc_IOError, "Unable to Allocate Dax State Object");
+        return NULL;
+    }
+    /* Initialize and run the configuration */
+    result = dax_init_config(ds, modname);
+    if(result != 0) {
+        PyErr_SetString(PyExc_IOError, "Unable to Allocate Configuration");
+        return NULL;
+    }
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+
+    /* Free the configuration data */
+    dax_free_config(ds);
+
+    /* Check for OpenDAX and register the module */
+    if( dax_mod_register(ds) ) {
         PyErr_SetString(PyExc_IOError, "Unable to Connect to OpenDAX Server");
         return NULL;
     }
+
     Py_RETURN_NONE;
 }
 
 
 static PyObject *pydax_add(PyObject *pSelf, PyObject *pArgs)
 {
-  PyObject *pX, *pY;
-  if(!PyArg_ParseTuple(pArgs, "OO", &pX, &pY)) return NULL;
-  return PyNumber_Add(pX,pY);
+    char *tagname, *type;
+    int count
+    if(!PyArg_ParseTuple(pArgs, "ssi", &tagname, &type, &count)) return NULL;
+
+    
+    return PyNumber_Add(pX,pY);
 }
 
 struct Items {
