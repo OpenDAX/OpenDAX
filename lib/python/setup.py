@@ -25,9 +25,11 @@ Description = 'Python Interface Module to the OpenDAX API'
 Version = '0.6'
 SourceFiles = ['pydax.c']
 IncludeDirs = ['.']
+Libraries = ['dax']
 
 pydax = Extension('pydax',
                   include_dirs = IncludeDirs,
+                  libraries = Libraries,
                   sources = SourceFiles)
 
 setup(name = PackageName, version = Version,

@@ -20,4 +20,5 @@
  */
 
 #include <Python.h>
+#include <opendax.h>
 

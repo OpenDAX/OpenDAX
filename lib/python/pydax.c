@@ -21,6 +21,23 @@
 
 #include <pydax.h>
 
+dax_state *ds;
+
+static PyObject *pydax_init(PyObject *pSelf, PyObject *pArgs)
+{
+    char *modname;
+    
+    if(!PyArg_ParseTuple(pArgs, "s", &modname)) return NULL;
+    
+    ds = dax_init(modname);
+    if(ds == NULL) {
+        PyErr_SetString(PyExc_IOError, "Unable to Connect to OpenDAX Server");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+
 static PyObject *pydax_add(PyObject *pSelf, PyObject *pArgs)
 {
   PyObject *pX, *pY;
@@ -61,6 +78,7 @@ static PyObject *pydax_test(PyObject *pSelf, PyObject *pArgs)
 
 
 static PyMethodDef pydax_methods[] = {
+  {"init", pydax_init, METH_VARARGS, NULL},
   {"add", pydax_add, METH_VARARGS, NULL},
   {"test", pydax_test, METH_VARARGS, NULL},
   {NULL, NULL}};
