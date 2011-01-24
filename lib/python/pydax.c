@@ -411,6 +411,9 @@ _read_callback(cdt_iter member, void *udata)
     PySys_WriteStdout("_read_callback() - udata = %p\n", udata);
     PySys_WriteStdout("_read_callback() - data = %p\n", data);
     PySys_WriteStdout("_read_callback() - po = %p\n", po);
+    for(n = 0; n < 3; n++) {
+        PySys_WriteStdout("_read_callback() - data[%d] = 0x%2X\n", n, data[n]);
+    }
     /* This handles the odd case where we have BOOLS that have a bit index
      * other than 0.  _create_py_object() can handle the others.  We put
      * this here because having a bit offset other than 0 only makes sense
@@ -425,6 +428,8 @@ _read_callback(cdt_iter member, void *udata)
                 return;
             }
             for(n = 0; n < member.count; n++) {
+                PySys_WriteStdout("_read_callback() - byte = %d, bit -= %d, 0x%X << 0x%X\n", byte, bit, ((u_int8_t *)data)[byte], (0x01 << bit));
+
                 if(((u_int8_t *)data)[byte] & (0x01 << bit)) {
                     Py_INCREF(Py_True);
                     PyList_SetItem(item, n, Py_True);
@@ -439,7 +444,7 @@ _read_callback(cdt_iter member, void *udata)
                 }
             }
         } else {
-            if(((u_int8_t *)data)[byte]) {
+            if(((u_int8_t *)data)[byte] & (0x01 << bit)) {
                 Py_INCREF(Py_True);
                 item = Py_True;
             } else {

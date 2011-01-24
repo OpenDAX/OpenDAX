@@ -33,8 +33,15 @@ members = {{"Int", "INT", 1},
            {"reBool", "BOOL", 1},
            {"triBool", "BOOL",1},
            {"Dint",  "DINT",  1}}
- 
- test4 = cdt_create("Test4", members)
+
+test4 = cdt_create("Test4", members)
+
+members = {{"Bool1", "BOOL", 10},
+           {"Bool2",  "BOOL",  1},
+           {"Bool3", "BOOL", 3}}
+
+test5 = cdt_create("Test5", members)
+
 
 tag_add("HandleBool1", "BOOL", 1)
 tag_add("HandleBool7", "BOOL", 7)
@@ -48,6 +55,9 @@ tag_add("HandleTest2", test2, 5)
 tag_add("HandleTest3", test3, 1)
 tag_add("HandleTest4", test3, 10)
 tag_add("HandleTestIV", test4, 1)
+tag_add("HandleTest5", test5, 1)
+tag_add("HandleTest5_10", test5, 10)
+
 
 --Test that the handles returned are correct
 --Each tag entry contains...
@@ -111,5 +121,15 @@ handle_test("",                            0,  0,  0, 0,  0,  "Yup",    FAIL)
 handle_test("HandleTestIV.Bool",           0,  2,  0, 1,  1,  "BOOL",   PASS)
 handle_test("HandleTestIV.reBool",         0,  2,  1, 1,  1,  "BOOL",   PASS)
 handle_test("HandleTestIV.triBool",        0,  2,  2, 1,  1,  "BOOL",   PASS)
+
+handle_test("HandleTest5",                 0,  0,  0, 1,  2,  "Test5",  PASS)
+handle_test("HandleTest5.Bool1",           0,  0,  0, 10, 2,  "BOOL",   PASS)
+handle_test("HandleTest5.Bool1[1]",        0,  0,  1, 1,  1,  "BOOL",   PASS)
+handle_test("HandleTest5.Bool1[9]",        0,  1,  1, 1,  1,  "BOOL",   PASS)
+handle_test("HandleTest5.Bool2",           0,  1,  2, 1,  1,  "BOOL",   PASS)
+handle_test("HandleTest5.Bool3",           0,  1,  3, 3,  1,  "BOOL",   PASS)
+handle_test("HandleTest5.Bool3[0]",        0,  1,  3, 1,  1,  "BOOL",   PASS)
+handle_test("HandleTest5.Bool3[2]",        0,  1,  5, 1,  1,  "BOOL",   PASS)
+
 
 

@@ -3,9 +3,9 @@ import time
 
 pydax.init("PyDAX")
 
-new_type = (("Mem1", "INT", 10),
-            ("Mem2", "INT", 1),
-            ("Mem3", "DINT", 1))
+new_type = (("Mem1", "BOOL", 10),
+            ("Mem2", "BOOL", 1),
+            ("Mem3", "BOOL", 3))
 
 x = pydax.cdt_create("PyDAX_Type", new_type)
 #print hex(x)
@@ -18,8 +18,9 @@ pydax.add("PyBOOL", "BOOL", 10)
 
 pydax.add("PyCDTTAG", "PyDAX_TYPE", 1)
 
-print pydax.read("PyCDTTAG", 0)
-
+for n in range(1000):
+  print pydax.read("PyCDTTAG", 0)
+  time.sleep(1)
 #print pydax.get("PyDAXTAG")
 #print pydax.get(0)
 #print pydax.get(1)

@@ -474,7 +474,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
 int
 tag_write(tag_index idx, int offset, void *data, int size)
 {
-//    int n;
+    int n;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
@@ -486,11 +486,11 @@ tag_write(tag_index idx, int offset, void *data, int size)
     /* Copy the data into the right place. */
     memcpy(&(_db[idx].data[offset]), data, size);
     event_check(idx, offset, size);
-//    printf("Write %s = ", _db[idx].name);
-//    for(n = 0;n < size; n++) {
-//        printf("[0x%02X] ", ((u_int8_t *)data)[n]);
-//    }
-//    printf("\n");
+    printf("Write %s = ", _db[idx].name);
+    for(n = 0;n < size; n++) {
+        printf("[0x%02X] ", ((u_int8_t *)data)[n]);
+    }
+    printf("\n");
     return 0;
 }
 
@@ -513,13 +513,13 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     db = &_db[idx].data[offset];
     newdata = (char *)data;
     newmask = (char *)mask;
-//    printf("%s = ", _db[idx].name);
+    printf("%s = ", _db[idx].name);
     for(n = 0; n < size; n++) {
         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
-//        printf("[0x%02X|0x%02X] ", ((u_int8_t *)data)[n],((u_int8_t *)mask)[n]);
+        printf("[0x%02X|0x%02X] ", ((u_int8_t *)data)[n],((u_int8_t *)mask)[n]);
     }
     event_check(idx, offset, size);
-//    printf("\n");
+    printf("\n");
     return 0;
 }
 
