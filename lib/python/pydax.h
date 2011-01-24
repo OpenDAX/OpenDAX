@@ -22,3 +22,8 @@
 #include <Python.h>
 #include <opendax.h>
 
+struct iter_udata {
+    PyObject *po;
+    void *data;
+    int error;
+};

@@ -21,6 +21,7 @@
 #define __OPENDAX_H
 
 #include <sys/types.h>
+#include <float.h>
 
 /* Data type definitions */
 /* #define DAX_ALIAS   0x0000 // Don't know about alias' at this point */
@@ -124,6 +125,39 @@
 #endif
 
 #define IS_CUSTOM(TYPE) ((TYPE) & DAX_CUSTOM)
+/* 8 Bit */
+#define DAX_BYTE_MIN    0
+#define DAX_BYTE_MAX    255
+#define DAX_SINT_MIN   -128
+#define DAX_SINT_MAX    127
+/* 16 Bit */
+#define DAX_WORD_MIN    0
+#define DAX_WORD_MAX    65535
+#define DAX_UINT_MIN    DAX_WORD_MIN
+#define DAX_UINT_MAX    DAX_WORD_MAX
+#define DAX_INT_MIN    -32768
+#define DAX_INT_MAX     32767
+/* 32 Bit */
+#define DAX_DWORD_MIN   0
+#define DAX_DWORD_MAX   4294967295
+#define DAX_DINT_MIN   -2147483648
+#define DAX_DINT_MAX    2147483647
+#define DAX_UDINT_MIN   DAX_DWORD_MIN
+#define DAX_UDINT_MAX   DAX_DWORD_MAX
+#define DAX_TIME_MIN    DAX_DWORD_MIN
+#define DAX_TIME_MAX    DAX_DWORD_MAX
+/* 64 Bit */
+#define DAX_LWORD_MIN  -9223372036854775808LL
+#define DAX_LWORD_MAX   9223372036854775807LL
+#define DAX_LINT_MIN    DAX_LWORD_MIN
+#define DAX_LINT_MAX    DAX_LWORD_MAX
+#define DAX_ULINT_MIN   0
+#define DAX_ULINT_MAX   18446744073709551615ULL
+/* Floating Point */
+#define DAX_REAL_MIN   -FLT_MAX
+#define DAX_REAL_MAX    FLT_MAX
+#define DAX_LREAL_MIN  -DBL_MAX
+#define DAX_LREAL_MAX   DBL_MAX
 
 /* typedefs to the basic DAX_? datatypes */
 typedef u_int8_t   dax_byte;
