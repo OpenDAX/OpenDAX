@@ -573,7 +573,7 @@ int
 dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_t size)
 {
     size_t n, count, m_size, sendsize;
-    char buff[MSG_DATA_SIZE];
+    u_int8_t buff[MSG_DATA_SIZE];
     int result;
 
     /* This calculates the amount of data that we can send with a single message

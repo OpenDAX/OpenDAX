@@ -402,6 +402,7 @@ _read_callback(cdt_iter member, void *udata)
     PyObject *item = NULL;
     int bit, byte, n;
 
+/********TESTING*************
     PySys_WriteStdout("_read_callback() called for member %s\n", member.name);
     PySys_WriteStdout("member.type = %s\n", dax_type_to_string(ds, member.type));
     PySys_WriteStdout("member.byte = %d\n", member.byte);
@@ -414,6 +415,7 @@ _read_callback(cdt_iter member, void *udata)
     for(n = 0; n < 3; n++) {
         PySys_WriteStdout("_read_callback() - data[%d] = 0x%2X\n", n, data[n]);
     }
+*/
     /* This handles the odd case where we have BOOLS that have a bit index
      * other than 0.  _create_py_object() can handle the others.  We put
      * this here because having a bit offset other than 0 only makes sense
@@ -428,7 +430,7 @@ _read_callback(cdt_iter member, void *udata)
                 return;
             }
             for(n = 0; n < member.count; n++) {
-                PySys_WriteStdout("_read_callback() - byte = %d, bit -= %d, 0x%X << 0x%X\n", byte, bit, ((u_int8_t *)data)[byte], (0x01 << bit));
+//                PySys_WriteStdout("_read_callback() - byte = %d, bit -= %d, 0x%X << 0x%X\n", byte, bit, ((u_int8_t *)data)[byte], (0x01 << bit));
 
                 if(((u_int8_t *)data)[byte] & (0x01 << bit)) {
                     Py_INCREF(Py_True);
@@ -453,15 +455,12 @@ _read_callback(cdt_iter member, void *udata)
             }
         }
     } else {
-        PySys_WriteStdout("_read_callback() - About to call _create_py_object() for...\n");
+//        PySys_WriteStdout("_read_callback() - About to call _create_py_object() for...\n");
         item = _create_py_object((void *)(data + member.byte), member.type, member.count);
         if(item == NULL) {
             ((struct iter_udata *)udata)->error = 1;
             return;
         }
-    }
-    if(item == NULL) {
-        PySys_WriteStdout("_read_callback() - item = NULL, Not Good\n");
     }
     PyDict_SetItemString(po, member.name, item);
     Py_DECREF(item);
@@ -515,9 +514,9 @@ _create_py_object(void *buff, tag_type type, u_int32_t count)
             udata.po = po;
             udata.data = buff;
             udata.error = 0;
-            PySys_WriteStdout("_create_py_object() - data = %p\n", udata.data);
-            PySys_WriteStdout("_create_py_object() - po = %p\n", udata.po);
-            PySys_WriteStdout("_create_py_object() - &udata = %p\n", &udata);
+//            PySys_WriteStdout("_create_py_object() - data = %p\n", udata.data);
+//            PySys_WriteStdout("_create_py_object() - po = %p\n", udata.po);
+//            PySys_WriteStdout("_create_py_object() - &udata = %p\n", &udata);
             dax_cdt_iter(ds, type, &udata, _read_callback);
             return po;
         }

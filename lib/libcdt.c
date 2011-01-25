@@ -502,7 +502,7 @@ _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int c
                 h->bit += this->count;
                 if(h->bit > 7) {
                     h->byte += h->bit / 8;
-                    h->bit %= 7;
+                    h->bit %= 8;
                 }
             } else {
                 /* Gotta step up one if the last member was a bool */
@@ -540,7 +540,7 @@ _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int c
             if((index + count) > this->count ) return ERR_2BIG;
             if(this->type == DAX_BOOL) {
                 h->byte += index / 8;
-                h->bit = index % 8;
+                h->bit += index % 8;
                 /* Two bits across the byte boundry require two bytes */
                 h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
                 h->count = count;

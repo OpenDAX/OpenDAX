@@ -33,21 +33,6 @@
 /* TODO: I need a way to invalidate the tag cache so that changes
    to the tag can be put into the tag cache */
 
-/* This is the structure for our tag cache */
-/* **** moved to libdax.h
-typedef struct Tag_Cnode {
-    tag_index idx;
-    unsigned int type;
-    unsigned int count;
-    struct Tag_Cnode *next;
-    struct Tag_Cnode *prev;
-    char name[DAX_TAGNAME_SIZE + 1];
-} tag_cnode;
-*/
-//static tag_cnode *_cache_head; /* First node in the cache list */
-//static int _cache_limit;       /* Total number of nodes that we'll allocate */
-//static int _cache_count;       /* How many nodes we actually have */
-
 int
 init_tag_cache(dax_state *ds)
 {
@@ -528,8 +513,8 @@ int
 dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask)
 {
     int i, n, result = 0;
-    unsigned char *newmask = NULL, *newdata;
-    
+    u_int8_t *newmask = NULL, *newdata;
+
     if(handle.type == DAX_BOOL && handle.bit > 0) {
         newmask = malloc(handle.size);
         if(newmask == NULL) return ERR_ALLOC;
@@ -540,7 +525,7 @@ dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask)
         }
         bzero(newmask, handle.size);
         bzero(newdata, handle.size);
-            
+
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
             if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {

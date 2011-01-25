@@ -498,7 +498,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
 int
 tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
 {
-    char *db, *newdata, *newmask;
+    u_int8_t *db, *newdata, *newmask;
     int n;
 
     /* Bounds check handle */
@@ -511,15 +511,15 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     }
     /* Just to make it easier */
     db = &_db[idx].data[offset];
-    newdata = (char *)data;
-    newmask = (char *)mask;
-    printf("%s = ", _db[idx].name);
+    newdata = (u_int8_t *)data;
+    newmask = (u_int8_t *)mask;
+//    printf("%s = ", _db[idx].name);
     for(n = 0; n < size; n++) {
         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
-        printf("[0x%02X|0x%02X] ", ((u_int8_t *)data)[n],((u_int8_t *)mask)[n]);
+//        printf("[0x%02X|0x%02X] ", ((u_int8_t *)data)[n],((u_int8_t *)mask)[n]);
     }
     event_check(idx, offset, size);
-    printf("\n");
+//    printf("\n");
     return 0;
 }
 

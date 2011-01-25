@@ -42,7 +42,8 @@ show_tag(int n, dax_tag temp_tag)
 int
 tag_add(char **tokens)
 {
-    int type, count, result;
+    int count, result;
+    tag_type type;
     Handle handle;
     const char usage[] = "Usage: add type count\n";
     
@@ -56,7 +57,7 @@ tag_add(char **tokens)
     if( tokens[1] ) {
         type = dax_string_to_type(ds, tokens[1]);
         if( type < 0 ) {
-            fprintf(stderr, "ERROR: Invalid Type Given\n");
+            fprintf(stderr, "ERROR: Invalid Type '%s' Given\n", tokens[1]);
             return 1;
         }
     } else {
@@ -215,24 +216,18 @@ string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
 {   
     long temp;
 
-    fprintf(stderr, "string_to_dax() - val = %s\n", val);
-    fprintf(stderr, "string_to_dax() - type = %s\n", dax_type_to_string(ds, type));
-    fprintf(stderr, "string_to_dax() - buff[%d] = 0x%02X\n", index/8, ((u_int8_t *)buff)[index/8]);
-    fprintf(stderr, "string_to_dax() - index = %d\n", index);
-    //fprintf(stderr, "string_to_dax() - val = 0x%02X\n", *val);
-    
     switch (type) {
-        //case DAX_BOOL:
-        //    temp = strtol(val, NULL, 0);
-        //    if(temp == 0) {
-        //        ((u_int8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
-        //    } else {
-        //        ((u_int8_t *)buff)[index / 8] |= (0x01 << (index % 8));
-        //    }
-        //    if(mask) {
-        //        ((u_int8_t *)mask)[index / 8] |= (0x01 << (index % 8));
-        //    }
-        //    break;
+        case DAX_BOOL:
+            temp = strtol(val, NULL, 0);
+            if(temp == 0) {
+                ((u_int8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
+            } else {
+                ((u_int8_t *)buff)[index / 8] |= (0x01 << (index % 8));
+            }
+            if(mask) {
+                ((u_int8_t *)mask)[index / 8] |= (0x01 << (index % 8));
+            }
+            break;
         case DAX_BYTE:
         case DAX_SINT:
             ((dax_sint *)buff)[index] = (dax_sint)strtol(val, NULL, 0);
@@ -354,11 +349,6 @@ tag_write(char **tokens, int tcount) {
         return ERR_ARG;
     }
 
-    fprintf(stderr, "tag_write() - Handle.size = %d\n", handle.size);
-    fprintf(stderr, "tag_write() - Handle.count = %d\n", handle.count);
-    fprintf(stderr, "tag_write() - Handle.byte = %d\n", handle.byte);
-    fprintf(stderr, "tag_write() - Handle.bit = %d\n", handle.bit);
-    
     buff = malloc(handle.size);
     mask = malloc(handle.size);
     if(buff == NULL || mask == NULL) {
@@ -378,29 +368,11 @@ tag_write(char **tokens, int tcount) {
      * I'd have to search for any '-' and then use dax_mask_tag() instead. */
         
     for(n = 0; n < points; n++) {
-        if(handle.type == DAX_BOOL) {
-            if(n == 0) {
-                byte = 0;
-                bit = handle.bit;
-            }
-            temp = strtol(tokens[n + 1], NULL, 0);
-            fprintf(stderr, "tag_write() - token[%d] = %s\n", n+1, tokens[n+1]);
-            if(temp == 0) {
-                ((u_int8_t *)buff)[byte] &= ~(0x01 << (bit));
-            } else {
-                ((u_int8_t *)buff)[byte] |= (0x01 << (bit));
-            }
-            if(mask) {
-                ((u_int8_t *)mask)[byte] |= (0x01 << (bit));
-            }
-            bit++;
-            if(bit == 8) { bit = 0; byte++; }
-        } else {    
-            string_to_dax(tokens[n + 1], handle.type, buff, mask, n);
-        }
+        string_to_dax(tokens[n + 1], handle.type, buff, mask, n);
     }
     /* TODO: Check if the mask is all 1s and if so just use the dax_write_tag() function */
     result = dax_mask_tag(ds, handle, buff, mask);
+                
     if(result) {
         fprintf(stderr, "ERROR: Unable to Write to tag %s\n", name);
     }
