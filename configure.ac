@@ -135,7 +135,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtof strtoul])
 AC_CHECK_FUNCS([mysql_init dlopen lt_dlopen])
 
-CFLAGS="-Wall -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
+CFLAGS="-Wall -arch x86_64 -arch i386 -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
 
 if test $USE_DEBUG = yes ; then
 #   DEBUG=1

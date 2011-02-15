@@ -554,6 +554,7 @@ _cdt_create(lua_State *L)
     }
     result = dax_cdt_create(ds, cdt, &type);
     if(result) {
+        dax_cdt_free(cdt);
         luaL_error(L, "Unable to create datatype %s", cdt_name);
     }
     
@@ -603,7 +604,7 @@ _tag_get(lua_State *L)
     dax_tag tag;
 
     if(ds == NULL) {
-        luaL_error(L, "OpenDAX is not initialized");
+        luaL_error(L, "OpeOnDAX is not initialized");
     }
     if(lua_isnumber(L, 1)) {
         result = dax_tag_byindex(ds, &tag, (tag_index)lua_tointeger(L, 1));
