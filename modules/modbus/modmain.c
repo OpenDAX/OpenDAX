@@ -268,7 +268,10 @@ main (int argc, const char * argv[]) {
             }
         }
     }
-    
+    /* TODO: Need some kind of semaphore here to signal when we can go to the running state */
+    /* This might be a problem since the threads may not have actually started yet */
+    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+
     while(1) {
         dax_event_wait(ds, 1000, NULL);
 

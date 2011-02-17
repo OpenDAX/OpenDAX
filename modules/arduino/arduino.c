@@ -479,7 +479,7 @@ _exec_node(int node)
 int main(int argc,char *argv[])
 {
     struct sigaction sa;
-    int result, node, good_nodes;
+    int result, node, good_nodes, running = 0;
     struct timeval start, end, now;
     long time_spent;
     /* Set up the signal handlers for controlled exit*/
@@ -528,6 +528,10 @@ int main(int argc,char *argv[])
             }
         }
         if(_connected) {
+            if(running == 0) { /* We'll only do this once */
+                dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+                running = 1;
+            }
             gettimeofday(&start, NULL);
             good_nodes = 0;
             for(node = 0; node < _node_count; node++) {

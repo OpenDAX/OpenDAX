@@ -73,7 +73,8 @@ int main(int argc,char *argv[]) {
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
-    
+    /* Let's say we're running */
+    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
     while(1) {
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {

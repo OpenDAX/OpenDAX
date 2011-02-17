@@ -377,6 +377,8 @@ main(int argc, char *argv[])
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
 
+    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+
     while(1) {
         dax_event_wait(ds, 1000, NULL);
 

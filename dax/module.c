@@ -383,6 +383,11 @@ module_start_all(void)
         ts.tv_sec  = tp.tv_sec;
         ts.tv_nsec = tp.tv_usec * 1000;
         ts.tv_sec += opt_start_timeout();
+        if(tier == x) { /* If we are the last tier we don't need to wait. */
+            done = 1;
+        } else {
+            done = 0;
+        }
         while(!done) {
             result = pthread_cond_timedwait(&_startup_cond, &_startup_mutex, &ts);
             done = 1; /* Let's assume we are done */
@@ -397,14 +402,6 @@ module_start_all(void)
             }
         }
         pthread_mutex_unlock(&_startup_mutex);
-
-        /* TODO: Wait until all the modules of this level have registered. Need to use
-         a global variable to say that we are in the initial startup routine.  Then use
-         a condition variable to block (with timeout) until the module_register function 
-         runs.  The module register function would check the global variable and if it is
-         set then aquire our mutex, register the module then signal our condition variable
-         when all of the modules of that level have been registered then we can move to the
-         next level. Some modules are unregisterable, perhaps another flag is in order. */
     }
 }
 

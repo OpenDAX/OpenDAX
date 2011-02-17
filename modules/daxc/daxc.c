@@ -74,6 +74,8 @@ int main(int argc,char *argv[]) {
         dax_fatal(ds, "Unable to find OpenDAX");
         getout(_quitsignal);
     }
+    /* No setup work to do here.  We'll go straight to running */
+    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
 
     if(dax_get_attr(ds, "quiet")) {
         quiet_mode = 1;
