@@ -23,10 +23,11 @@
 #include <common.h>
 #include <dax/daxtypes.h>
 
-#define MSTATE_RUNNING      0x00 /* Running normally (may not yet be registered) */
-#define MSTATE_WAITING      0x01 /* Waiting for restart */
-#define MSTATE_CHILD        0x02 /* Module was started by this program */
-#define MSTATE_REGISTERED   0x04 /* Is the module registered */
+#define MSTATE_STARTED      0x01 /* Module has been started */
+#define MSTATE_WAITING      0x02 /* Waiting for restart */
+#define MSTATE_CHILD        0x04 /* Module was started by this program */
+#define MSTATE_REGISTERED   0x08 /* Is the module registered */
+#define MSTATE_RUNNING      0x10 /* Module is running */
 
 typedef struct {
     pid_t pid;
@@ -37,8 +38,13 @@ typedef struct {
 dax_module *module_add(char *name, char *path, char *arglist, int startup, unsigned int flags);
 int module_del(dax_module *mod);
 
+/* This function is to initialize module stuff that needs to happen
+ * before the communications is set up. */
+void initialize_module(void);
+
 /* Module runtime functions */
 void module_start_all(void);
+int module_set_running(int fd);
 pid_t module_start (dax_module *mod);
 int module_stop(dax_module *mod);
 dax_module *module_register(char *name, pid_t pid, int fd);

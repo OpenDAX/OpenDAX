@@ -74,7 +74,7 @@ AM_CONDITIONAL([HISTLOG], [test x$histlog = xtrue])
 #These lines will check for the library and add the right stuff to config.h
 AC_CHECK_LIB([pthread], [pthread_create], [got_pthread=true])
 AC_CHECK_LIB([readline], [readline], [got_readline=true])
-AC_CHECK_LIB([mysql], [mysql_init], [got_msyql=true])
+AC_CHECK_LIB([mysqlclient], [mysql_init], [got_msyql=true])
 AC_CHECK_LIB([dl], [dlopen], [got_dl=true])
 AC_CHECK_LIB([ltdl], [lt_dlopen], [got_ltdl=true])
 AC_CHECK_LIB([lua],[luaL_newstate], [got_lua=true], [got_lua=false])
@@ -98,11 +98,11 @@ elif test $got_lua5_1 = true ; then
   LUALIB='-llua5.1'
 else
   LUALIB=
-  echo "--ERROR---------------------------------
+  echo "--ERROR---------------------------------"
   echo "Lua Libraries are Required to"
   echo "Build OpenDAX!  Install Lua development"
   echo "Packages and try again"
-  echo "----------------------------------------
+  echo "----------------------------------------"
   (exit 1); exit 1;
 fi
 
@@ -112,12 +112,12 @@ AC_SUBST(LUALIB)
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/socket.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h signal.h sys/select.h])
-AC_CHECK_HEADERS([mysql.h])
-AC_CHECK_HEADERS([ltdl.h] [dlfcn.h])
-AC_CHECK_HEADERS([lua5.1/lua.h lua5.1/lauxlib.h lua5.1/lualib.h])
-AC_CHECK_HEADERS([lua51/lua.h lua51/lauxlib.h lua51/lualib.h])
-AC_CHECK_HEADERS([lua/lua.h lua/lauxlib.h lua/lualib.h])
-AC_CHECK_HEADERS([lua.h lauxlib.h lualib.h])
+AC_CHECK_HEADERS([mysql/mysql.h])
+AC_CHECK_HEADERS([ltdl.h dlfcn.h])
+AC_CHECK_HEADERS([lua5.1/lua.h lua5.1/lauxlib.h lua5.1/lualib.h], [lua_include = 'lua5.1'])
+AC_CHECK_HEADERS([lua51/lua.h lua51/lauxlib.h lua51/lualib.h], [lua_include = 'lua51'])
+AC_CHECK_HEADERS([lua/lua.h lua/lauxlib.h lua/lualib.h], [lua_include = 'lua'])
+AC_CHECK_HEADERS([lua.h lauxlib.h lualib.h], [lua_include = ''])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -133,9 +133,8 @@ AC_FUNC_REALLOC
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtof strtoul])
-AC_CHECK_FUNCS([mysql_init dlopen lt_dlopen])
 
-CFLAGS="-Wall -arch x86_64 -arch i386 -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
+CFLAGS="-Wall -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
 
 if test $USE_DEBUG = yes ; then
 #   DEBUG=1
@@ -170,7 +169,7 @@ AC_CONFIG_FILES([Makefile
                  modules/skel/Makefile])
 AC_OUTPUT
 
-if test $got_msyql!=true; then
+if test $got_msyql != true; then
 echo "--WARNING----------------------------------"
 echo "Unable to find MySQL Libraries"
 echo "Not building MySQL data plugin for the"

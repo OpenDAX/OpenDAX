@@ -61,7 +61,7 @@ pydax_init(PyObject *pSelf, PyObject *pArgs)
     dax_free_config(ds);
 
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds) ) {
+    if( dax_connect(ds) ) {
         PyErr_SetString(PyExc_IOError, "Unable to Connect to OpenDAX Server");
         return NULL;
     }
@@ -77,7 +77,7 @@ pydax_free(PyObject *pSelf, PyObject *pArgs)
         return NULL;
     }
 
-    if( dax_mod_unregister(ds) ) {
+    if( dax_disconnect(ds) ) {
         PyErr_SetString(PyExc_IOError, "Unable to disconnect from OpenDAX Server");
         return NULL;
     }

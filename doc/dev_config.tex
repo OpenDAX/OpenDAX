@@ -170,17 +170,17 @@ This function simply takes a pointer to the \verb|dax_state| object and frees th
 
 After calling this function any strings that you received from \verb|dax_get_attr()| will no longer be valid, so you don't want to reference those pointers any longer.
 
-\section{Module Registration}
-Before the server will communicate to the module, the module will need to register with the server.
+\section{Module Connection}
+Before we can communicate to the server we must create a connection.
 
 There are two functions that deal with module registration.
 \begin{verbatim}
-int dax_mod_register(dax_state *ds)
-int dax_mod_unregister(dax_state *ds)
+int dax_connect(dax_state *ds)
+int dax_disconnect(dax_state *ds)
 \end{verbatim}
 
-The \verb|dax_mod_register()| function\index{dax\_mod\_register() function} makes the initial connection to the server, identifies the module to the server and takes care of any other initialization issues that need to be handled.  Once the module has successfully been registered it can begin doing it's job.
+The \verb|dax_connect()| function\index{dax\_connect() function} makes the initial connection to the server, identifies the module to the server and takes care of any other initialization issues that need to be handled.  Once the module has successfully connected it can begin doing it's job.
 
-\verb|dax_mod_register()| returns 0 on success and an error code on failure.
+\verb|dax_connect()| returns 0 on success and an error code on failure.
 
-The \verb|dax_mod_unregister()| function\index{dax\_mod\_unregister() function} informs the server that we are through and closes the connection.  It is a bad idea to let a module die without first calling \verb|dax_mod_unregister()|.
+The \verb|dax_disconnect()| function\index{dax\_disconnect() function} informs the server that we are through and closes the connection.  It is a bad idea to let a module die without first calling \verb|dax_disconnect()|.

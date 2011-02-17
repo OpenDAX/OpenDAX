@@ -182,10 +182,10 @@ _get_connection(dax_state *ds)
      
 }
 
-#define REG_HDR_SIZE 8
+#define CON_HDR_SIZE 8
 
 static int
-_mod_register(dax_state *ds, char *name)
+_mod_connect(dax_state *ds, char *name)
 {
     int result, len;
     char buff[DAX_MSGMAX];
@@ -193,17 +193,17 @@ _mod_register(dax_state *ds, char *name)
 /* TODO: Boundary check that a name that is longer than data size will
    be handled correctly. */
     len = strlen(name) + 1;
-    if(len > (MSG_DATA_SIZE - REG_HDR_SIZE)) {
-        len = MSG_DATA_SIZE - REG_HDR_SIZE;
+    if(len > (MSG_DATA_SIZE - CON_HDR_SIZE)) {
+        len = MSG_DATA_SIZE - CON_HDR_SIZE;
         name[len] = '\0';
     }
     
     /* For registration we send the data in network order no matter what */
     *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
-    *((u_int32_t *)&buff[4]) = htonl(REGISTER_SYNC);  /* registration flags */
-    strcpy(&buff[REG_HDR_SIZE], name);                /* The rest is the name */
+    *((u_int32_t *)&buff[4]) = htonl(CONNECT_SYNC);  /* registration flags */
+    strcpy(&buff[CON_HDR_SIZE], name);                /* The rest is the name */
 
-    if((result = _message_send(ds, MSG_MOD_REG, buff, REG_HDR_SIZE + len)))
+    if((result = _message_send(ds, MSG_MOD_REG, buff, CON_HDR_SIZE + len)))
         return result;
     len = DAX_MSGMAX;
     if((result = _message_recv(ds, MSG_MOD_REG, buff, &len, 1)))
@@ -236,20 +236,20 @@ _mod_register(dax_state *ds, char *name)
 }
 
 static int
-_event_register(dax_state *ds)
+_event_connect(dax_state *ds)
 {
     int result, len, tmpfd;
     char buff[DAX_MSGMAX];
     
     *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
-    *((u_int32_t *)&buff[4]) = htonl(REGISTER_EVENT); /* registration flags */
+    *((u_int32_t *)&buff[4]) = htonl(CONNECT_EVENT); /* registration flags */
     
     /* This is to trick the _message_send into sending on the new connection
      * instead of the existing one. */
     tmpfd = ds->sfd;
     ds->sfd = ds->afd;
     /* For registration we pack the data no matter what */
-    if((result = _message_send(ds, MSG_MOD_REG, buff, REG_HDR_SIZE))) {
+    if((result = _message_send(ds, MSG_MOD_REG, buff, CON_HDR_SIZE))) {
         ds->sfd = tmpfd;
         return result;
     }
@@ -263,7 +263,7 @@ _event_register(dax_state *ds)
  * to the server.  *name is the name that we want to give our 
  * module */
 int
-dax_mod_register(dax_state *ds)
+dax_connect(dax_state *ds)
 {
     int fd, result;
     
@@ -279,13 +279,13 @@ dax_mod_register(dax_state *ds)
         return fd;
     }
     
-    result = _mod_register(ds, ds->modulename);
+    result = _mod_connect(ds, ds->modulename);
     if(result) {
         libdax_unlock(ds->lock);
         return result;
     }
     
-    /* This will be the event connection.  This socket recieves
+    /* This will be the event connection.  This socket receives
      * asynchronous messages that are generated in the server */
     fd = _get_connection(ds);
     if(fd > 0) {
@@ -294,7 +294,7 @@ dax_mod_register(dax_state *ds)
         libdax_unlock(ds->lock);
         return fd;
     }
-    result = _event_register(ds); 
+    result = _event_connect(ds); 
     if(result) {
         libdax_unlock(ds->lock);
         return result;
@@ -306,7 +306,7 @@ dax_mod_register(dax_state *ds)
 }
 
 int
-dax_mod_unregister(dax_state *ds)
+dax_disconnect(dax_state *ds)
 {
     int len, result = -1;
     libdax_lock(ds->lock);
@@ -326,8 +326,48 @@ dax_mod_unregister(dax_state *ds)
     return result;
 }
 
+/* Not yet implemented */
+int
+dax_mod_get(dax_state *ds, char *modname)
+{
+    return 0;
+}
+
+/* This is a generic function for setting module parameters.  Right now it is only
+ * capable of setting the RUNNING flag */
+int
+dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
+{
+    int result, size;
+    char buff[1];  /* So far this is as big as we need */
+
+    libdax_lock(ds->lock);
+    buff[0] = cmd;
+    if(cmd == MOD_CMD_RUNNING) {
+        size = 1;
+    } else {
+        return ERR_ARG;
+    }
+        /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
+    result = _message_send(ds, MSG_MOD_SET, buff, size);
+    if(result) {
+        dax_error(ds, "Can't send MSG_MOD_SET message");
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    size = 0;
+    result = _message_recv(ds, MSG_MOD_SET, buff, &size, 1);
+    if(result) {
+        dax_error(ds, "Problem receiving message MSG_MOD_SET : result = %d", result);
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    libdax_unlock(ds->lock);
+    return 0;
+}
+
 /* Sends a message to dax to add a tag.  The payload is basically the
-   tagname without the handle. */
+ * tagname without the handle. */
 
 int
 dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count)
@@ -397,7 +437,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
     int result, size;
     char *buff;
         
-    if(name == NULL) return ERR_ARG; /* Do I really need this?? */
+    if(name == NULL) return ERR_ARG;
     
     if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
     

@@ -81,7 +81,7 @@ main(int argc,char *argv[])
     
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
     
-    if(dax_mod_register(ds))
+    if(dax_connect(ds))
         dax_fatal(ds, "Unable to register with the server");
     
     script = dax_get_attr(ds, "testscript");
@@ -101,7 +101,7 @@ main(int argc,char *argv[])
     }
     
     printf("OpenDAX Test Finished, %d tests run, %d tests failed\n", tests_run(), tests_failed());
-    dax_mod_unregister(ds);
+    dax_disconnect(ds);
     
     return 0;
 }

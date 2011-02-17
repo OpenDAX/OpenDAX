@@ -357,7 +357,7 @@ main(int argc, char *argv[])
     }
 
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds) ) {
+    if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
 
@@ -382,7 +382,7 @@ main(int argc, char *argv[])
 
         if(quitsig) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", quitsig);
-            dax_mod_unregister(ds);
+            dax_disconnect(ds);
             if(quitsig == SIGQUIT) {
                 exit(0);
             } else {

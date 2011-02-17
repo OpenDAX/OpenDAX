@@ -51,7 +51,7 @@ static fd_set _fdset;
 static int _maxfd;
 
 /* This array holds the functions for each message command */
-#define NUM_COMMANDS 15
+#define NUM_COMMANDS 16
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
 /* Macro to check whether or not the command 'x' is valid */
@@ -66,6 +66,7 @@ int msg_tag_read(dax_message *msg);
 int msg_tag_write(dax_message *msg);
 int msg_tag_mask_write(dax_message *msg);
 int msg_mod_get(dax_message *msg);
+int msg_mod_set(dax_message *msg);
 int msg_evnt_add(dax_message *msg);
 int msg_evnt_del(dax_message *msg);
 int msg_evnt_get(dax_message *msg);
@@ -205,6 +206,7 @@ msg_setup(void)
     cmd_arr[MSG_TAG_WRITE]  = &msg_tag_write;
     cmd_arr[MSG_TAG_MWRITE] = &msg_tag_mask_write;
     cmd_arr[MSG_MOD_GET]    = &msg_mod_get;
+    cmd_arr[MSG_MOD_SET]    = &msg_mod_set;
     cmd_arr[MSG_EVNT_ADD]   = &msg_evnt_add;
     cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
     cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
@@ -356,7 +358,7 @@ msg_mod_register(dax_message *msg)
         flags = ntohl(*((u_int32_t *)&msg->data[4]));
         
         /* Is this the initial registration of the synchronous socket */
-        if(flags & REGISTER_SYNC) {
+        if(flags & CONNECT_SYNC) {
             xlog(LOG_MSG, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
             /* TODO: Need to check for errors there */
             mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
@@ -376,7 +378,7 @@ msg_mod_register(dax_message *msg)
                 _message_send(msg->fd, MSG_MOD_REG, buff, 26 + strlen(mod->name) + 1, RESPONSE);
             }
         /* Is this the asynchronous event socket registration */
-        } else if(flags & REGISTER_EVENT) {
+        } else if(flags & CONNECT_EVENT) {
             xlog(LOG_MSG, "Event Socket Registration for Module %s fd = %d", &msg->data[8], msg->fd);
             mod = event_register(pid, msg->fd);
             result = ERR_NOTFOUND;
@@ -555,7 +557,34 @@ msg_tag_mask_write(dax_message *msg)
 int
 msg_mod_get(dax_message *msg)
 {
-    xlog(LOG_MSG | LOG_VERBOSE, "Get Module Handle Message from %d", msg->fd);
+    xlog(LOG_MSG | LOG_VERBOSE, "Get Module Parameter Message from %d", msg->fd);
+    return 0;
+}
+
+int
+msg_mod_set(dax_message *msg)
+{
+    int result;
+    u_int8_t cmd;
+
+    xlog(LOG_MSG | LOG_VERBOSE, "Set Module Parameter Message from %d", msg->fd);
+
+    cmd = msg->data[0];
+
+    if(cmd == MOD_CMD_RUNNING) {
+        xlog(LOG_MSG | LOG_VERBOSE, "Set Module Running Flag from %d", msg->fd);
+        /* Set the flag */
+        result = module_set_running(msg->fd);;
+    } else {
+        result = ERR_ARG;
+    }
+
+    if(result) {
+        _message_send(msg->fd, MSG_MOD_SET, &result, sizeof(result), ERROR);
+        xerror("Stupid Error - %d", result);
+    } else {
+        _message_send(msg->fd, MSG_MOD_SET, NULL, 0, RESPONSE);
+    }
     return 0;
 }
 

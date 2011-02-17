@@ -100,7 +100,7 @@ int main(int argc,char *argv[]) {
     dax_set_debug_topic(ds, LOG_ALL);
 
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds) ) {
+    if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
     
@@ -125,7 +125,9 @@ int main(int argc,char *argv[]) {
     if(result) {
         dax_fatal(ds, "Unable to retrive Handle for tag - %s", tagname);
     }
-    
+
+    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+
     while(1) {
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
@@ -164,6 +166,6 @@ quit_signal(int sig)
 static void
 getout(int exitstatus)
 {
-    dax_mod_unregister(ds);
+    dax_disconnect(ds);
     exit(exitstatus);
 }

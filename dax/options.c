@@ -36,9 +36,10 @@ static int _verbosity;
 static int _daemonize;
 static int _maxstartup;
 static int _min_buffers;
+static int _start_timeout;  /* module startup tier timeout */
 
 
-/* Inititialize the configuration to NULL or 0 for cleanliness */
+/* Initialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
     int length;
     
@@ -56,6 +57,7 @@ static void initconfig(void) {
     _min_buffers = 0;
     _socketname = NULL;
     _serverport = 0;
+    _start_timeout = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
@@ -69,6 +71,7 @@ setdefaults(void)
     if(!_min_buffers) _min_buffers = DEFAULT_MIN_BUFFERS;
     if(!_socketname) _socketname = strdup("/tmp/opendax");
     if(!_serverport) _serverport = DEFAULT_PORT;
+    if(!_start_timeout) _start_timeout = 3;
 }
 
 /* This function parses the command line options and sets
@@ -83,6 +86,7 @@ parsecommandline(int argc, const char *argv[])
         {"deamonize", no_argument, 0, 'D'},
         {"socketname", required_argument, 0, 'S'},
         {"serverport", required_argument, 0, 'P'},
+        {"start_time", required_argument, 0, 'T'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
@@ -93,7 +97,7 @@ parsecommandline(int argc, const char *argv[])
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
-	        break;
+            break;
         case 'S':
             _socketname = strdup(optarg);
             break;
@@ -105,23 +109,26 @@ parsecommandline(int argc, const char *argv[])
         case 'P':
             _serverport = strtol(optarg, NULL, 0);
             break;
+        case 'T':
+            _start_timeout = strtol(optarg, NULL, 0);
+            break;
         case 'V':
-		    printf("%s Version %s\n", PACKAGE, VERSION);
-	        break;
-//	    case 'v':
+            printf("%s Version %s\n", PACKAGE, VERSION);
+            break;
+//      case 'v':
 //            _verbosity++;
-//	        break;
+//          break;
         case 'D': 
             _daemonize = 1;
-	        break;
+            break;
         case '?':
-		    printf("Got the big ?\n");
-	        break;
-	    case -1:
-	    case 0:
-		    break;
-	    default:
-	        printf ("?? getopt returned character code 0%o ??\n", c);
+            printf("Got the big ?\n");
+            break;
+        case -1:
+        case 0:
+            break;
+        default:
+            printf ("?? getopt returned character code 0%o ??\n", c);
         } /* End Switch */
     } /* End While */           
 }
@@ -135,11 +142,11 @@ _add_module(lua_State *L)
     char *name, *path, *arglist;
     unsigned int flags = 0;
     int startup;
-    
+
     if(!lua_istable(L, -1)) {
         luaL_error(L, "add_module() received an argument that is not a table");
     }
-    
+
     lua_getfield(L, -1, "name");
     if( !(name = (char *)lua_tostring(L, -1)) ) {
         xerror("No module name given");
@@ -170,7 +177,7 @@ _add_module(lua_State *L)
     if(lua_toboolean(L, -1) ) {
         flags |= MFLAG_REGISTER;
     }
-    
+
     module_add(name, path, arglist, startup, flags);
     
     return 0;
@@ -231,7 +238,13 @@ readconfigfile(void)
         _min_buffers = (int)lua_tonumber(L, -1);
     }
     lua_pop(L, 1);
-    
+
+    lua_getglobal(L, "start_timeout");
+    if(_start_timeout == 0) {
+        _start_timeout = (int)lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
+
     /* TODO: This needs to be changed to handle the new topic handlers */
     if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
         //_verbosity = (int)lua_tonumber(L, 4);
@@ -301,4 +314,10 @@ int
 opt_min_buffers(void)
 {
     return _min_buffers;
+}
+
+int
+opt_start_timeout(void)
+{
+    return _start_timeout;
 }

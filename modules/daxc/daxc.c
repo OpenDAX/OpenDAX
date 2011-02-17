@@ -70,7 +70,7 @@ int main(int argc,char *argv[]) {
     dax_set_debug_topic(ds, 0);
         
  /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds) ) {
+    if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
         getout(_quitsignal);
     }
@@ -298,6 +298,6 @@ getout(int exitstatus)
         write_history(history_file);
         free(history_file);
     }
-    dax_mod_unregister(ds);
+    dax_disconnect(ds);
     exit(exitstatus);
 }

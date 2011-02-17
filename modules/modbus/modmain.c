@@ -242,7 +242,7 @@ main (int argc, const char * argv[]) {
         dax_fatal(ds, "Unable to initialize the database!");
     }
     
-    if( dax_mod_register(ds) ) {
+    if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to connect to OpenDAX server!");
     }
     
@@ -321,7 +321,7 @@ getout(int exitcode)
 {
     int n;
     dax_debug(ds, 1, "Modbus Module Exiting");
-    dax_mod_unregister(ds);
+    dax_disconnect(ds);
     
     for(n = 0; n < config.portcount; n++) {
     /* TODO: Should probably stop the running threads here and then close the ports */

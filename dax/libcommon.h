@@ -36,21 +36,22 @@
 #define MSG_TAG_READ   0x0005 /* Read the value of a tag */
 #define MSG_TAG_WRITE  0x0006 /* Write the value to a tag */
 #define MSG_TAG_MWRITE 0x0007 /* Masked Write */
-#define MSG_MOD_GET    0x0008 /* Get the module handle by name */
-#define MSG_EVNT_ADD   0x0009 /* Add an event to the taglist */
-#define MSG_EVNT_DEL   0x000A /* Delete an event */
-#define MSG_EVNT_GET   0x000B /* Get an event definition */
-#define MSG_EVNT_MOD   0x000C /* Get an event definition */
-#define MSG_CDT_CREATE 0x000D /* Create a Custom Datatype */
-#define MSG_CDT_GET    0x000E /* Get the definition of a Custom Datatype */
+#define MSG_MOD_GET    0x0008 /* Get the module parameters */
+#define MSG_MOD_SET    0x0009 /* set the module parameters */
+#define MSG_EVNT_ADD   0x000A /* Add an event to the taglist */
+#define MSG_EVNT_DEL   0x000B /* Delete an event */
+#define MSG_EVNT_GET   0x000C /* Get an event definition */
+#define MSG_EVNT_MOD   0x000D /* Get an event definition */
+#define MSG_CDT_CREATE 0x000E /* Create a Custom Datatype */
+#define MSG_CDT_GET    0x000F /* Get the definition of a Custom Datatype */
 /* More to come */
 
 #define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
 #define MSG_ERROR      0x2000000LL /* Flag for defining an error message */
 
 /* These are flags for the registration command */
-#define REGISTER_SYNC  0x01 /* Used to identify the synchronous socket during registration */
-#define REGISTER_EVENT 0x02 /* Identifies the asynchronous event socket during registration */
+#define CONNECT_SYNC  0x01 /* Used to identify the synchronous socket during registration */
+#define CONNECT_EVENT 0x02 /* Identifies the asynchronous event socket during registration */
 
 /* These are the values that the registration system uses to 
    determine whether or not the module will have to reformat

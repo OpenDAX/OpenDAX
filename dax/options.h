@@ -53,6 +53,7 @@ char *opt_pidfile(void);
 int opt_maxstartup(void);
 char *opt_socketname(void);
 /* Minimum number of communication buffers to allocate */
-int opt_min_buffers(void);  
+int opt_min_buffers(void);
+int opt_start_timeout(void);
 
 #endif /* !__OPTIONS_H */

@@ -485,7 +485,7 @@ _dax_init(lua_State *L)
     dax_free_config (ds);
 
     /* Check for OpenDAX and register the module */
-    if( dax_mod_register(ds) ) {
+    if( dax_connect(ds) ) {
         luaL_error(L, "Unable to find OpenDAX Server");
     }
 
@@ -495,7 +495,7 @@ _dax_init(lua_State *L)
 static int
 _dax_free(lua_State *L)
 {
-    if( dax_mod_unregister(ds) ) {
+    if( dax_disconnect(ds) ) {
         luaL_error(L, "Problem Unregistering from the server");
     }
     dax_free(ds);

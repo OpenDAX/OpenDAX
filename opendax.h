@@ -108,6 +108,9 @@
 #define CFG_MODCONF         0x10 /* [module].conf file */
 #define CFG_NO_VALUE        0x20 /* Don't store a value, only call callback */
 
+/* Module parameters */
+#define MOD_CMD_RUNNING     0x01 /* Set/Clearn Modules Running Flag */
+
 /* Event Types */
 #define EVENT_READ     0x01 /* Called before a tag is read - Not implemented */
 #define EVENT_WRITE    0x02 /* When a tag is written whether or not it has changed */
@@ -241,7 +244,6 @@ int dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name
 int dax_free_config(dax_state *ds);
 int dax_free(dax_state *ds);
 
-void dax_set_verbosity(int); /* TODO: This should be deleted eventually */
 void dax_set_debug_topic(dax_state *ds, u_int32_t);
 
 
@@ -265,9 +267,12 @@ void dax_error(dax_state *ds, const char *format, ...);
 void dax_log(dax_state *ds, const char *format, ...);
 void dax_fatal(dax_state *ds, const char *format, ...);
 
-/* Only registered modules will get responses from the server */
-int dax_mod_register(dax_state *ds);   /* Registers the Module with the server */
-int dax_mod_unregister(dax_state *ds);       /* Unregister the Module with the server */
+/* Create and destroy connections to the server */
+int dax_connect(dax_state *ds);      /* Connect to the server */
+int dax_disconnect(dax_state *ds);   /* Disconnect from the server */
+
+int dax_mod_get(dax_state *ds, char *modname);  /* Not implemented yet */
+int dax_mod_set(dax_state *ds, u_int8_t cmd, void *param);  /* Set module parameters in the server */
 
 /* Adds a tag to the opendax server database. */
 int dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count);

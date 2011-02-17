@@ -25,7 +25,10 @@
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/time.h>
 #include <netinet/in.h>
+#include <pthread.h>
+
 
 /* TODO: Module Scanning routine
     Function to scan modules to determine which need restarting
@@ -37,6 +40,8 @@
 
 static dax_module *_current_mod = NULL;
 static int _module_count = 0;
+static pthread_mutex_t _startup_mutex;
+static pthread_cond_t _startup_cond;
 
 /* This array is the dead module list.
    TODO: This should be improved to allow it to grow when needed.
@@ -261,11 +266,8 @@ _print_modules(void)
 dax_module *
 module_add(char *name, char *path, char *arglist, int startup, unsigned int flags)
 {
-    dax_module *new; //, *try;
+    dax_module *new;
     xlog(LOG_MAJOR,"Adding module %s",name);
-    
-//    if((try = _get_module_name(name))) 
-//        return try;
     
     new = xmalloc(sizeof(dax_module));
     if(new) {
@@ -343,11 +345,24 @@ module_del(dax_module *mod)
     return ERR_ARG;
 }
 
+/* This function initializes stuff in the module subsystem that needs to
+ * happen before we launch the communications thread */
+void
+initialize_module(void)
+{
+    pthread_mutex_init(&_startup_mutex, NULL);
+    pthread_cond_init(&_startup_cond, NULL);
+}
+
 void
 module_start_all(void)
 {
     dax_module *last;
-    int i, j, x;
+    int tier, j, x;
+    struct timespec   ts;
+    struct timeval    tp;
+    int result, done = 0;
+
     /* In case we ain't go no list */
     if(_current_mod == NULL) return;
     /* Figure out where we need to stop */
@@ -355,13 +370,34 @@ module_start_all(void)
     
     x = opt_maxstartup();
     
-    for(i = 1; i <= x; i++) {
+    for(tier = 1; tier <= x; tier++) {
+        pthread_mutex_lock(&_startup_mutex);
         for(j = 0; j < _module_count; j++) {
-            if(_current_mod->startup == i) {
+            if(_current_mod->startup == tier) {
                 module_start(_current_mod);
             }
             _current_mod = _current_mod->next;
         }
+        gettimeofday(&tp, NULL);
+        /* Convert from timeval to timespec */
+        ts.tv_sec  = tp.tv_sec;
+        ts.tv_nsec = tp.tv_usec * 1000;
+        ts.tv_sec += opt_start_timeout();
+        while(!done) {
+            result = pthread_cond_timedwait(&_startup_cond, &_startup_mutex, &ts);
+            done = 1; /* Let's assume we are done */
+            if(result != ETIMEDOUT) { /* If we didn't timeout */
+                for(j = 0; j < _module_count; j++) { /* Loop through modules */
+                    /* If the module is in the current startup tier and the running flag is not set then... */
+                    if(_current_mod->startup == tier && !(_current_mod->flags & MSTATE_RUNNING)) {
+                        done = 0; /* ...Lets go again */
+                    }
+                    _current_mod = _current_mod->next;
+                }
+            }
+        }
+        pthread_mutex_unlock(&_startup_mutex);
+
         /* TODO: Wait until all the modules of this level have registered. Need to use
          a global variable to say that we are in the initial startup routine.  Then use
          a condition variable to block (with timeout) until the module_register function 
@@ -370,6 +406,20 @@ module_start_all(void)
          when all of the modules of that level have been registered then we can move to the
          next level. Some modules are unregisterable, perhaps another flag is in order. */
     }
+}
+
+int
+module_set_running(int fd)
+{
+    dax_module *mod;
+
+    mod = _get_module_fd(fd);
+    if(mod == NULL) return ERR_NOTFOUND;
+    pthread_mutex_lock(&_startup_mutex);
+    mod->fd &= MSTATE_RUNNING;
+    pthread_cond_signal(&_startup_cond);
+    pthread_mutex_unlock(&_startup_mutex);
+    return 0;
 }
 
 /* These are only used for the module_start() to handle the pipes.
@@ -411,7 +461,7 @@ module_start(dax_module *mod)
             return child_pid;
         } else if(child_pid == 0) { /* Child */
             if(result) _childpipes(pipes);
-            mod->state = MSTATE_RUNNING | MSTATE_CHILD;
+            mod->state = MSTATE_STARTED | MSTATE_CHILD;
             mod->exit_status = 0;
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
@@ -489,7 +539,6 @@ module_stop(dax_module *mod)
     return 0;
 }
 
-/* TODO: GOTTA RETHINK MODULE REGISTRATION!! THIS DON'T WORK!!*/
 /* The dax server will not send messages to modules that are not registered.
  * Also modules that are not started by the core need a way to announce
  * themselves. name can be NULL for modules that were started from DAX */
@@ -531,7 +580,7 @@ module_register(char *name, pid_t pid, int fd)
     if(mod) {
         mod->pid = pid;
         mod->fd = fd;
-        mod->state |= MSTATE_RUNNING;
+        mod->state |= MSTATE_STARTED;
         mod->state |= MSTATE_REGISTERED;
     } else {
         xerror("Major problem registering module - %s : %d", name, pid);
