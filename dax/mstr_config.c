@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2012 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,28 +15,22 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
- *  Source code file for opendax configuration
+ *  Source code file for opendax master daemon configuration
  */
 
-#include <common.h>
-#include <options.h>
-#include <module.h>
-#include <message.h>
-#include <tagbase.h>
-#include <func.h>
 
+#include <mstr_config.h>
+#include <func.h>
+#include <process.h>
 #include <getopt.h>
 
 static char *_pidfile;
 static char *_configfile;
-static char *_statustag;
-static char *_socketname;
-static unsigned int _serverport;
+static int _daemonize;
 static int _verbosity;
-//static int _daemonize;
-static int _maxstartup;
-static int _min_buffers;
-static int _start_timeout;  /* module startup tier timeout */
+//static int _maxstartup;
+//static int _min_buffers;
+//static int _start_timeout;  /* process startup tier timeout */
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
@@ -49,15 +43,9 @@ static void initconfig(void) {
         if(_configfile) 
             sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
     }
-//    _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
-    _verbosity = 0;
-    _statustag = NULL;
+    _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
+//    _statustag = NULL;
     _pidfile = NULL;
-    _maxstartup = 0;
-    _min_buffers = 0;
-    _socketname = NULL;
-    _serverport = 0;
-    _start_timeout = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
@@ -65,13 +53,9 @@ static void initconfig(void) {
 static void
 setdefaults(void)
 {
-//    if(_daemonize < 0) _daemonize = DEFAULT_DAEMONIZE;
-    if(!_statustag) _statustag = strdup("_status");
+    if(_daemonize < 0) _daemonize = DEFAULT_DAEMONIZE;
     if(!_pidfile) _pidfile = strdup(DEFAULT_PID);
-    if(!_min_buffers) _min_buffers = DEFAULT_MIN_BUFFERS;
-    if(!_socketname) _socketname = strdup("/tmp/opendax");
-    if(!_serverport) _serverport = DEFAULT_PORT;
-    if(!_start_timeout) _start_timeout = 3;
+//    if(!_start_timeout) _start_timeout = 3;
 }
 
 /* This function parses the command line options and sets
@@ -83,10 +67,10 @@ parsecommandline(int argc, const char *argv[])
 
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
-//        {"deamonize", no_argument, 0, 'D'},
+        {"deamonize", no_argument, 0, 'D'},
         {"socketname", required_argument, 0, 'S'},
-        {"serverport", required_argument, 0, 'P'},
-        {"start_time", required_argument, 0, 'T'},
+        //{"serverport", required_argument, 0, 'P'},
+        //{"start_time", required_argument, 0, 'T'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
@@ -98,28 +82,28 @@ parsecommandline(int argc, const char *argv[])
         case 'C':
             _configfile = strdup(optarg);
             break;
-        case 'S':
-            _socketname = strdup(optarg);
-            break;
+//        case 'S':
+//            _socketname = strdup(optarg);
+//            break;
 //        case 'I':
 //            if(! inet_aton(optarg, &_serverip)) {
 //                xerror("Unknown IP address %s", optarg);
 //            }
 //            break;
-        case 'P':
-            _serverport = strtol(optarg, NULL, 0);
-            break;
-        case 'T':
-            _start_timeout = strtol(optarg, NULL, 0);
-            break;
+//        case 'P':
+//            _serverport = strtol(optarg, NULL, 0);
+//            break;
+//        case 'T':
+//            _start_timeout = strtol(optarg, NULL, 0);
+//            break;
         case 'V':
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
 //      case 'v':
 //            _verbosity++;
 //          break;
-//        case 'D': 
-//            _daemonize = 1;
+        case 'D': 
+            _daemonize = 1;
             break;
         case '?':
             printf("Got the big ?\n");
@@ -134,6 +118,53 @@ parsecommandline(int argc, const char *argv[])
     } /* End While */           
 }
 
+/* This is the wrapper for the add module function in the Lua configuration file */
+/* The arguments are a table that consist of all the configuration
+   parameters of a module.  See the opendax.conf for examples */
+static int
+_add_process(lua_State *L)
+{
+    char *name, *path, *arglist;
+    unsigned int flags = 0;
+    int startup;
+	dax_process *proc;
+
+    if(!lua_istable(L, -1)) {
+        luaL_error(L, "add_process() received an argument that is not a table");
+    }
+
+    lua_getfield(L, -1, "name");
+    if( !(name = (char *)lua_tostring(L, -1)) ) {
+        xerror("No process name given");
+        return 0;
+    }
+    
+    lua_getfield(L, -2, "path");
+    path = (char *)lua_tostring(L, -1);
+    
+    lua_getfield(L, -3, "args");
+    arglist = (char *)lua_tostring(L, -1);
+    
+//    lua_getfield(L, -4, "startup");
+//    startup = (int)lua_tonumber(L, -1);
+//    if(startup > _maxstartup) _maxstartup = startup;
+    
+    lua_getfield(L, -5, "openpipes");
+    if(lua_toboolean(L, -1)) {
+        flags = PFLAG_OPENPIPES;
+    }
+    
+    lua_getfield(L, -6, "restart");
+    if(lua_toboolean(L, -1)) {
+        flags |= PFLAG_RESTART;
+    }
+
+    proc = process_add(name, path, arglist, startup, flags);
+    /* TODO: more configuration can be added to the process.  Things
+     *       like UID, chroot stuff etc. */
+    return 0;
+}
+
 static int
 readconfigfile(void)
 {
@@ -146,9 +177,12 @@ readconfigfile(void)
      function calls in the configuration file.  It's just for
      setting a few globals. */
     
+    lua_pushcfunction(L, _add_process);
+    lua_setglobal(L, "add_process");
+    
     luaopen_base(L);
     
-    lua_pushstring(L, "tagserver");
+    lua_pushstring(L, "opendax");
     lua_setglobal(L, CONFIG_GLOBALNAME);
     
     /* load and run the configuration file */
@@ -158,20 +192,20 @@ readconfigfile(void)
     }
     
     /* tell lua to push these variables onto the stack */
-//    lua_getglobal(L, "daemonize");
-//    if(_daemonize < 0) { /* negative if not already set */
-//        _daemonize = lua_toboolean(L, -1);
-//    }
-//    lua_pop(L, 1);
-    
-    lua_getglobal(L, "statustag");
-    /* Do I really need to do this???? */
-    if(_statustag == NULL) {
-        if( (string = (char *)lua_tostring(L, -1)) ) {
-            _statustag = strdup(string);
-        }
+    lua_getglobal(L, "daemonize");
+    if(_daemonize < 0) { /* negative if not already set */
+        _daemonize = lua_toboolean(L, -1);
     }
     lua_pop(L, 1);
+    
+//    lua_getglobal(L, "statustag");
+//    /* Do I really need to do this???? */
+//    if(_statustag == NULL) {
+//        if( (string = (char *)lua_tostring(L, -1)) ) {
+//            _statustag = strdup(string);
+//        }
+//    }
+//    lua_pop(L, 1);
     
     lua_getglobal(L, "pidfile");
     if(_pidfile == NULL) {
@@ -181,17 +215,17 @@ readconfigfile(void)
     }
     lua_pop(L, 1);
     
-    lua_getglobal(L, "min_buffers");
-    if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
-        _min_buffers = (int)lua_tonumber(L, -1);
-    }
-    lua_pop(L, 1);
+//    lua_getglobal(L, "min_buffers");
+//    if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
+//        _min_buffers = (int)lua_tonumber(L, -1);
+//    }
+//    lua_pop(L, 1);
 
-    lua_getglobal(L, "start_timeout");
-    if(_start_timeout == 0) {
-        _start_timeout = (int)lua_tonumber(L, -1);
-    }
-    lua_pop(L, 1);
+//    lua_getglobal(L, "start_timeout");
+//    if(_start_timeout == 0) {
+//        _start_timeout = (int)lua_tonumber(L, -1);
+//    }
+//    lua_pop(L, 1);
 
     /* TODO: This needs to be changed to handle the new topic handlers */
     if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
@@ -228,18 +262,17 @@ opt_configure(int argc, const char *argv[])
     return 0;
 }
  
-//** Shouldn't be needed anymore.
-//int
-//opt_daemonize(void)
-//{
-//    return _daemonize;
-//}
-
-char *
-opt_statustag(void)
+int
+opt_daemonize(void)
 {
-    return _statustag;
+    return _daemonize;
 }
+
+//char *
+//opt_statustag(void)
+//{
+//    return _statustag;
+//}
 
 char *
 opt_pidfile(void)
@@ -247,26 +280,26 @@ opt_pidfile(void)
     return _pidfile;
 }
 
-int
-opt_maxstartup(void)
-{
-    return _maxstartup;
-}
+//int
+//opt_maxstartup(void)
+//{
+//    return _maxstartup;
+//}
 
-char *
-opt_socketname(void)
-{
-    return _socketname;
-}
+//char *
+//opt_socketname(void)
+//{
+//    return _socketname;
+//}
 
-int
-opt_min_buffers(void)
-{
-    return _min_buffers;
-}
+//int
+//opt_min_buffers(void)
+//{
+//    return _min_buffers;
+//}
 
-int
-opt_start_timeout(void)
-{
-    return _start_timeout;
-}
+//int
+//opt_start_timeout(void)
+//{
+//    return _start_timeout;
+//}

@@ -34,18 +34,11 @@
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dax_Module {
     char *name;
-    pid_t pid;          /* the modules process id */
     in_addr_t host;     /* the modules host id */
     //--u_int64_t mid;       /* the modules id (currently the same as the pid) */
     int exit_status;    /* modules exit status */
-    char *path;         /* modules execution */
-    char **arglist;     /* exec() ready array of arguments */
-    int startup;        /* Execution order 0 = no auto start */
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
-    int pipe_in;        /* Redirected to the modules stdin */
-    int pipe_out;       /* Redirected to the modules stdout */
-    int pipe_err;       /* Redirected to the modules stderr */
     int fd;             /* The socket file descriptor for this module */
     int efd;            /* The notification file descriptor */
     time_t starttime;

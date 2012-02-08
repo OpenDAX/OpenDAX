@@ -20,7 +20,6 @@
 #include <message.h>
 #include <tagbase.h>
 #include <common.h>
-#include <module.h>
 #include <func.h>
 #include <pthread.h>
 #include <syslog.h>
@@ -30,7 +29,6 @@
 static int quitflag = 0;
 
 static void messagethread(void);
-void child_signal(int);
 void quit_signal(int);
 void catch_signal(int);
 
@@ -51,43 +49,38 @@ main(int argc, const char *argv[])
     sa.sa_handler = &catch_signal;
     sigaction(SIGHUP, &sa, NULL);
     sigaction(SIGPIPE, &sa, NULL);
-
-    sa.sa_handler = &child_signal;
-    sigaction (SIGCHLD, &sa, NULL);
     
     //set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
     set_log_topic(-1); /*TODO: Needs to be configuration */
     
     /* Read configuration from defaults, file and command line */
     opt_configure(argc, argv);
+	
+// Remove since opendax master will control this.
     /* Go to the background */
-    if(opt_daemonize()) {
-        if(daemonize("OpenDAX")) {
-            xerror("Unable to go to the background");
-        }
-    }
+//    if(opt_daemonize()) {
+//        if(daemonize("OpenDAX")) {
+//            xerror("Unable to go to the background");
+//        }
+//    }
     
     result = msg_setup();    /* This creates and sets up the message sockets */
     if(result) xerror("msg_setup() returned %d", result);
     initialize_tagbase(); /* initialize the tag name database */
-    initialize_module();  /* initialize module stuff */
     /* Start the message handling thread */
     if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
         xfatal("Unable to create message thread");
     }
-        
-    module_start_all(); /* Start all the modules */
     
     /* DO TESTING STUFF HERE */
 
     /* END TESTING STUFF */
     
-    xlog(LOG_MAJOR, "OpenDAX started");
+    xlog(LOG_MAJOR, "OpenDAX Tag Server Started");
     
     while(1) { /* Main loop */
         /* TODO: This might could be some kind of condition
            variable or signal thing instead of just the sleep(). */
-        module_scan();
         sleep(1);
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
@@ -113,20 +106,7 @@ messagethread(void)
     }
 }
 
-/* Clean up any child modules that have shut down */
-void
-child_signal(int sig)
-{
-    int status;
-    pid_t pid;
 
-    do {
-        pid = waitpid(-1, &status, WNOHANG);
-        if(pid > 0) { 
-            module_dmq_add(pid, status);
-        }
-    } while(pid > 0);
-}
 
 /* this handles shutting down of the server */
 /* TODO: There's the easy way out and then there is the hard way out.

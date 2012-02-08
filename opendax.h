@@ -109,7 +109,7 @@
 #define CFG_NO_VALUE        0x20 /* Don't store a value, only call callback */
 
 /* Module parameters */
-#define MOD_CMD_RUNNING     0x01 /* Set/Clearn Modules Running Flag */
+#define MOD_CMD_RUNNING     0x01 /* Set/Clear Modules Running Flag */
 
 /* Event Types */
 #define EVENT_READ     0x01 /* Called before a tag is read - Not implemented */

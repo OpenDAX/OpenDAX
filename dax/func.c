@@ -120,7 +120,7 @@ xfatal(const char *format, ...)
 
 /* Logs an error everytime it's called.  These should be for internal
  * program errors only.  If this function is called it really should
- * be pointing out some serious condition within the server.  For user
+ * be pointing out some serious condition within the program.  For user
  * caused errors the xlog() function should be used with the ERR_LOG
  * flag bit */
 void

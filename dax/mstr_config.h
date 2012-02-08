@@ -18,11 +18,12 @@
  *  Header file for opendax configuration
  */
 
-#ifndef __OPTIONS_H
-#define __OPTIONS_H
+#ifndef __MSTR_CONFIG_H
+#define __MSTR_CONFIG_H
 
 #include <common.h>
-#include <dax/daxtypes.h>
+#include <libcommon.h>
+#include <process.h>
 
 /* If set to zero the program will run in the foreground
  * by default.  Otherwise it will go to the background */
@@ -31,17 +32,7 @@
 #endif
 
 #ifndef DEFAULT_PID
-#  define DEFAULT_PID "/var/run/tagserver.pid"
-#endif
-
-#ifndef DEFAULT_PORT
-# define DEFAULT_PORT 7777
-#endif
-
-/* This is the default minimum number of communcation buffers that
-   will be allocated if none is specified in the configuration */
-#ifndef DEFAULT_MIN_BUFFERS
-#  define DEFAULT_MIN_BUFFERS 5
+#  define DEFAULT_PID "/var/run/opendax.pid"
 #endif
 
 int opt_configure(int argc, const char *argv[]);

@@ -43,7 +43,7 @@
 #endif
 
 /* These are the listening sockets for the local UNIX domain
- *  socket and the remote TCP socekt. */
+ *  socket and the remote TCP socket. */
 static fd_set _listenfdset;
 /* This is the set of all the sockets, both listening and conencted
  * it is used in the select() call in msg_receive() */
@@ -195,7 +195,7 @@ msg_setup(void)
     buff_initialize(); /* This initializes the communications buffers */
     
     /* The functions are added to an array of function pointers with their
-        messsage type used as the index.  This makes it really easy to call
+        message type used as the index.  This makes it really easy to call
         the handler functions from the messaging thread. */
     cmd_arr[MSG_MOD_REG]    = &msg_mod_register;
     cmd_arr[MSG_TAG_ADD]    = &msg_tag_add;
@@ -217,12 +217,12 @@ msg_setup(void)
     return 0;
 }
 
-/* This destroys the queue if it was created */
+/* This deletes the local socket */
 void
 msg_destroy(void)
 {
     unlink(opt_socketname());
-    xlog(LOG_MAJOR, "Resources being destroyed");
+    xlog(LOG_MAJOR | LOG_VERBOSE, "Removed local socket file %s", opt_socketname());
 }
 
 /* These two functions are wrappers to deal with adding and deleting
@@ -241,7 +241,7 @@ msg_del_fd(int fd)
     
     FD_CLR(fd, &_fdset);
     
-    /* If it's the largest one then we need to refigure _maxfd */
+    /* If it's the largest one then we need to re-figure _maxfd */
     if(fd == _maxfd) {
         for(n = 0; n <= _maxfd; n++) {
             if(FD_ISSET(n, &_fdset)) {
@@ -297,7 +297,7 @@ msg_receive(void)
                 } else {
                     result = buff_read(n);
                     if(result == ERR_NO_SOCKET) { /* This is the end of file */
-                        /* TODO: unregister module?? */
+                        //module_unregister(n);
                         xlog(LOG_COMM, "Connection Closed for fd %d", n);
                         msg_del_fd(n);
                     } else if(result < 0) {
@@ -336,7 +336,7 @@ msg_dispatcher(int fd, unsigned char *buff)
 }
 
 /* The rest of the functions in this file are wrappers for other functions
- * in the server.  These each correspond to a messagre command.  They are
+ * in the server.  These each correspond to a message command.  They are
  * called from the cmd_arr with the command number used as the index.
  */
 
@@ -344,7 +344,10 @@ msg_dispatcher(int fd, unsigned char *buff)
  * tells the server which module is on which socket fd and the modules name.
  * When this message is called with a zero size it's an unregister
  * message.  Otherwise the first four bytes are the PID of the calling module
- * and then the rest is the module name. */
+ * the next four bytes are some flags and then the rest is the module name. */
+
+// TODO: Probably get rid of the PID and replace it with a timeout or something
+//       since we aren't starting the modules anymore it's kinda useless.
 int
 msg_mod_register(dax_message *msg)
 {
@@ -359,7 +362,7 @@ msg_mod_register(dax_message *msg)
         
         /* Is this the initial registration of the synchronous socket */
         if(flags & CONNECT_SYNC) {
-            xlog(LOG_MSG, "Registering Module %s fd = %d", &msg->data[8], msg->fd);
+            xlog(LOG_MSG, "Register Module message received for %s fd = %d", &msg->data[8], msg->fd);
             /* TODO: Need to check for errors there */
             mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
             if(!mod) {
@@ -379,7 +382,7 @@ msg_mod_register(dax_message *msg)
             }
         /* Is this the asynchronous event socket registration */
         } else if(flags & CONNECT_EVENT) {
-            xlog(LOG_MSG, "Event Socket Registration for Module %s fd = %d", &msg->data[8], msg->fd);
+            xlog(LOG_MSG, "Event Socket Registration message received for Module %s fd = %d", &msg->data[8], msg->fd);
             mod = event_register(pid, msg->fd);
             result = ERR_NOTFOUND;
             if(!mod) {
@@ -392,7 +395,7 @@ msg_mod_register(dax_message *msg)
             _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
         }
     } else {
-        xlog(4, "Unregistering Module fd = %d", msg->fd);
+        xlog(LOG_MSG, "Unregistering Module fd = %d", msg->fd);
         module_unregister(msg->fd);
         _message_send(msg->fd, MSG_MOD_REG, buff, 0, 1);
     }

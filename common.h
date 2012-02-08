@@ -16,9 +16,12 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  
  
- *  This file contains the global macros, includes and defintions for 
+ *  This file contains the global macros, includes and definitions for
  *  all the files in the entire system.
  */
+
+#ifndef __COMMON_H
+#define __COMMON_H
 
 /* Are we using config.h */
 #ifdef HAVE_CONFIG_H
@@ -110,3 +113,4 @@
 # define DAX_DEBUG2(x, y) 
 #endif
 
+#endif
