@@ -199,7 +199,8 @@ _mod_connect(dax_state *ds, char *name)
     }
     
     /* For registration we send the data in network order no matter what */
-    *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
+    /* TODO: The timeout is not actually implemented */
+    *((u_int32_t *)&buff[0]) = htonl(1000);       /* Timeout  */
     *((u_int32_t *)&buff[4]) = htonl(CONNECT_SYNC);  /* registration flags */
     strcpy(&buff[CON_HDR_SIZE], name);                /* The rest is the name */
 
@@ -209,25 +210,26 @@ _mod_connect(dax_state *ds, char *name)
     if((result = _message_recv(ds, MSG_MOD_REG, buff, &len, 1)))
         return result;
 
+    /* Store the unique ID that the server has sent us. */
+    ds->id =  *((u_int32_t *)&buff[0]);
     /* Here we check to see if the data that we got in the registration message is in the same
        format as we use here on the client module. This should be offloaded to a separate
        function that can determine what needs to be done to the incoming and outgoing data to
        get it to match with the server */
-    if( (*((u_int16_t *)&buff[0]) != REG_TEST_INT) ||     
-        (*((u_int32_t *)&buff[2]) != REG_TEST_DINT) || 
-        (*((u_int64_t *)&buff[6]) != REG_TEST_LINT)) {   
+    if( (*((u_int16_t *)&buff[4]) != REG_TEST_INT) ||
+        (*((u_int32_t *)&buff[6]) != REG_TEST_DINT) ||
+        (*((u_int64_t *)&buff[10]) != REG_TEST_LINT)) {
         /* TODO: right now this is just to show error.  We need to determine if we can
            get the right data from the server by some means. */
         ds->reformat = REF_INT_SWAP;
     } else {
-        ds->reformat = 0; /* this is redunant, already done in dax_init() */
+        ds->reformat = 0; /* this is redundant, already done in dax_init() */
     }
     /* There has got to be a better way to compare that we are getting good floating point numbers */
-    if( fabs(*((float *)&buff[14]) - REG_TEST_REAL) / REG_TEST_REAL   > 0.0000001 || 
-        fabs(*((double *)&buff[18]) - REG_TEST_LREAL) / REG_TEST_REAL > 0.0000001) {   
+    if( fabs(*((float *)&buff[18]) - REG_TEST_REAL) / REG_TEST_REAL   > 0.0000001 ||
+        fabs(*((double *)&buff[22]) - REG_TEST_LREAL) / REG_TEST_REAL > 0.0000001) {
         ds->reformat |= REF_FLT_SWAP;
     }
-    /* TODO: Need to store my name somewhere ??? */
     /* TODO: returning _reformat is only good until we figure out how to reformat the
      * messages. Then we should return 0.  Right now since there isn't any reformating
      * of messages being done we consider it an error and return that so that the module
@@ -241,7 +243,7 @@ _event_connect(dax_state *ds)
     int result, len, tmpfd;
     char buff[DAX_MSGMAX];
     
-    *((u_int32_t *)&buff[0]) = htonl(getpid());       /* 32 bits for the PID */
+    *((u_int32_t *)&buff[0]) = htonl(ds->id); /* Send our ID so that the server knows which module we are */
     *((u_int32_t *)&buff[4]) = htonl(CONNECT_EVENT); /* registration flags */
     
     /* This is to trick the _message_send into sending on the new connection

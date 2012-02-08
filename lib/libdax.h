@@ -107,6 +107,7 @@ struct dax_state {
     lua_State *L;
     char* modulename;
     int msgtimeout;
+    int id;     /* ID uniquely identifies the module to the server */
     int sfd;   /* Server's File Descriptor */
     int afd;   /* Asynchronous File Descriptor */
     unsigned int reformat; /* Flags to show how to reformat the incoming data */

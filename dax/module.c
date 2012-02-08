@@ -85,21 +85,21 @@ _get_host(int fd, in_addr_t *host)
 
 
 /* TODO: Need to look for the PID of the module too. */
-static dax_module *
-_get_module_hostpid(in_addr_t host, pid_t pid)
-{
-    dax_module *last;
-    
-    if(_current_mod == NULL) return NULL;
-    last = _current_mod;
-    do {
-        if(_current_mod->host == host) {
-            return _current_mod;
-        }
-        _current_mod = _current_mod->next;
-    } while(_current_mod != last);
-    return NULL;
-}
+//static dax_module *
+//_get_module_hostpid(in_addr_t host, pid_t pid)
+//{
+//    dax_module *last;
+//
+//    if(_current_mod == NULL) return NULL;
+//    last = _current_mod;
+//    do {
+//        if(_current_mod->host == host) {
+//            return _current_mod;
+//        }
+//        _current_mod = _current_mod->next;
+//    } while(_current_mod != last);
+//    return NULL;
+//}
 
 /* Return a pointer to the module with a matching file descriptor (fd)
  * returns NULL if not found */
@@ -253,11 +253,9 @@ module_set_running(int fd)
  * Also modules that are not started by the core need a way to announce
  * themselves. name can be NULL for modules that were started from DAX */
 dax_module *
-module_register(char *name, pid_t pid, int fd)
+module_register(char *name, u_int32_t timeout, int fd)
 {
     dax_module *mod, *test;
-//    int result;
-//    in_addr_t host;
     
     /* If a module with the given file descriptor already exists
      * then we need to unregister that module.  It must have failed
@@ -267,29 +265,15 @@ module_register(char *name, pid_t pid, int fd)
         module_unregister(test->fd);
     }
     
-    /* First see if we already have a module of the given PID & host
-     * This should happen if DAX started the module */
-    //mod = _get_module_hostpid(host, pid);
-    mod = NULL;
-    /* Check to see if this fd is in use */
-//    test = _get_module_fd(fd);
-//    if(test && test != mod) {
-//        xerror("...WHOA THAT AIN'T RIGHT! WHAT HAPPENED TO %d?\n", fd);
-//        module_unregister(test->fd);
-//        test->fd = 0;
-//        test->efd = 0;
-//    }
-    
-    /* If the module doesn't already exist */
-    if(mod == NULL) {
-        mod = module_add(name, 0);
-    }
+    mod = module_add(name, 0);
     if(mod) {
         mod->fd = fd;
+        mod->timeout = timeout;
+        _get_host(fd, &(mod->host));
         mod->state |= MSTATE_STARTED;
         mod->state |= MSTATE_REGISTERED;
     } else {
-        xerror("Major problem registering module - %s : %d", name, pid);
+        xerror("Major problem registering module - %s:%d", name, fd);
         return NULL;
     }
     xlog(LOG_MAJOR,"Added module '%s' at file descriptor %d", name, fd);
@@ -302,7 +286,7 @@ module_register(char *name, pid_t pid, int fd)
  * event notification socket file descriptor in the module
  * list. */
 dax_module *
-event_register(pid_t pid, int fd)
+event_register(u_int32_t mid, int fd)
 {
     dax_module *mod;
     int result;
@@ -316,10 +300,9 @@ event_register(pid_t pid, int fd)
     result = _get_host(fd, &host);
     if(result) return NULL;
     
-    mod = _get_module_hostpid(host, pid);
+    //mod = _get_module_hostpid(host, pid);
+    mod = _get_module_fd(mid);
     
-    /* TODO: We need to check that the fd doesn't already exist or we'll
-       have some communication trouble */
     if(!mod) {
         return NULL;
     } else {

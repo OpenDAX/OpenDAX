@@ -35,12 +35,12 @@
 typedef struct dax_Module {
     char *name;
     in_addr_t host;     /* the modules host id */
-    //--u_int64_t mid;       /* the modules id (currently the same as the pid) */
     int exit_status;    /* modules exit status */
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
     int fd;             /* The socket file descriptor for this module */
     int efd;            /* The notification file descriptor */
+    u_int32_t timeout;  /* Module communication timeout. */
     time_t starttime;
     int event_count;
     struct dax_Module *next, *prev;

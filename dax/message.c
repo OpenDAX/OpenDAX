@@ -351,39 +351,44 @@ msg_dispatcher(int fd, unsigned char *buff)
 int
 msg_mod_register(dax_message *msg)
 {
-    pid_t pid;
+    u_int32_t parint;
     int flags, result;
     char buff[DAX_MSGMAX];
     dax_module *mod;
     
     if(msg->size > 0) {
-        pid = ntohl(*((u_int32_t *)&msg->data[0]));
+    	/* The first parameter is the timeout if the first registration and
+    	 * the module id if it's the async socket registration. */
+        parint = ntohl(*((u_int32_t *)&msg->data[0]));
         flags = ntohl(*((u_int32_t *)&msg->data[4]));
         
         /* Is this the initial registration of the synchronous socket */
         if(flags & CONNECT_SYNC) {
             xlog(LOG_MSG, "Register Module message received for %s fd = %d", &msg->data[8], msg->fd);
             /* TODO: Need to check for errors there */
-            mod = module_register(&msg->data[MSG_HDR_SIZE], pid, msg->fd);
+            mod = module_register(&msg->data[MSG_HDR_SIZE], parint, msg->fd);
             if(!mod) {
                 result = ERR_NOTFOUND;
                 _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
                 return result;
             } else {
+            	*((u_int32_t *)&buff[0]) = msg->fd;   /* The fd of the module is the unique ID sent back */
                 /* This puts the test data into the buffer for sending. */
-                *((u_int16_t *)&buff[0]) = REG_TEST_INT;    /* 16 bit test data */
-                *((u_int32_t *)&buff[2]) = REG_TEST_DINT;   /* 32 bit integer test data */
-                *((u_int64_t *)&buff[6]) = REG_TEST_LINT;   /* 64 bit integer test data */
-                *((float *)&buff[14])    = REG_TEST_REAL;   /* 32 bit float test data */
-                *((double *)&buff[18])   = REG_TEST_LREAL;  /* 64 bit float test data */
-                strncpy(&buff[26], mod->name, DAX_MSGMAX - 26 - 1);
+                *((u_int16_t *)&buff[4]) = REG_TEST_INT;    /* 16 bit test data */
+                *((u_int32_t *)&buff[6]) = REG_TEST_DINT;   /* 32 bit integer test data */
+                *((u_int64_t *)&buff[10]) = REG_TEST_LINT;   /* 64 bit integer test data */
+                *((float *)&buff[18])    = REG_TEST_REAL;   /* 32 bit float test data */
+                *((double *)&buff[22])   = REG_TEST_LREAL;  /* 64 bit float test data */
+                //Do we really need to send the name back??
+                //strncpy(&buff[30], mod->name, DAX_MSGMAX - 26 - 1);
+                //_message_send(msg->fd, MSG_MOD_REG, buff, 30 + strlen(mod->name) + 1, RESPONSE);
+                _message_send(msg->fd, MSG_MOD_REG, buff, 30 + 1, RESPONSE);
 
-                _message_send(msg->fd, MSG_MOD_REG, buff, 26 + strlen(mod->name) + 1, RESPONSE);
             }
         /* Is this the asynchronous event socket registration */
         } else if(flags & CONNECT_EVENT) {
             xlog(LOG_MSG, "Event Socket Registration message received for Module %s fd = %d", &msg->data[8], msg->fd);
-            mod = event_register(pid, msg->fd);
+            mod = event_register(parint, msg->fd);
             result = ERR_NOTFOUND;
             if(!mod) {
                 _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
