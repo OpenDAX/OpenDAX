@@ -20,7 +20,7 @@
  */
 
 #include <libdax.h>
-#include <dax/libcommon.h>
+#include <libcommon.h>
 #include <getopt.h>
 #include <ctype.h>
 

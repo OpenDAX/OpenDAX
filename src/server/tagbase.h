@@ -18,8 +18,8 @@
  * This is the header file for the tagname database handling routines
  */
 
-#include <dax/daxtypes.h>
-#include <dax/libcommon.h>
+#include <daxtypes.h>
+#include <libcommon.h>
 #include <opendax.h>
 
 #ifndef __TAGBASE_H

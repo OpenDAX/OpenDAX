@@ -19,7 +19,7 @@
  */
 
 #include <libdax.h>
-#include <dax/libcommon.h>
+#include <libcommon.h>
 
 /* Allocate and initialize the state of the dax_state connection
  * object.  The returned object will need to be passed to 

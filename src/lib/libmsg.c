@@ -20,7 +20,7 @@
  */
  
 #include <libdax.h>
-#include <dax/libcommon.h>
+#include <libcommon.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>

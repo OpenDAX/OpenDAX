@@ -25,7 +25,7 @@
 
 #include <common.h>
 #include <opendax.h>
-#include <dax/libcommon.h>
+#include <libcommon.h>
 
 
 /* Compiler Options */

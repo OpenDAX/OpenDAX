@@ -1,11 +1,11 @@
 AC_PREREQ(2.61)
 AC_INIT([opendax],[0.6])
-AC_CONFIG_SRCDIR([dax/master.c])
+AC_CONFIG_SRCDIR([src/master/master.c])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_USE_SYSTEM_EXTENSIONS
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_HEADERS([src/config.h])
 
 AM_INIT_AUTOMAKE($PACKAGE_NAME, $PACKAGE_VERSION)
 
@@ -150,26 +150,28 @@ AC_SUBST(ac_aux_dir)
 #dnl AC_CONFIG_SUBDIRS([modules/hmi])
 
 AC_CONFIG_FILES([Makefile
-                 dax/Makefile
-                 lib/Makefile
-                 lib/lua/Makefile
-                 modules/Makefile
-                 modules/modbus/Makefile
-                 modules/modbus/lib/Makefile
-                 modules/daxc/Makefile
-                 modules/daxlua/Makefile
-                 modules/test/Makefile
-                 modules/wio/Makefile
-                 modules/arduino/Makefile
-                 modules/arduino/lib/Makefile
-                 modules/histlog/Makefile
-                 modules/histlog/plugins/Makefile
-                 modules/histlog/plugins/file/Makefile
-                 modules/histlog/plugins/mysql/Makefile
-                 modules/skel/Makefile])
+                 src/Makefile
+                 src/master/Makefile
+                 src/server/Makefile
+                 src/lib/Makefile
+                 src/lib/lua/Makefile
+                 src/modules/Makefile
+                 src/modules/modbus/Makefile
+                 src/modules/modbus/lib/Makefile
+                 src/modules/daxc/Makefile
+                 src/modules/daxlua/Makefile
+                 src/modules/test/Makefile
+                 src/modules/wio/Makefile
+                 src/modules/arduino/Makefile
+                 src/modules/arduino/lib/Makefile
+                 src/modules/histlog/Makefile
+                 src/modules/histlog/plugins/Makefile
+                 src/modules/histlog/plugins/file/Makefile
+                 src/modules/histlog/plugins/mysql/Makefile
+                 src/modules/skel/Makefile])
 AC_OUTPUT
 
-if test $got_msyql != true; then
+if  test "$got_msyql" != 'true' ; then
 echo "--WARNING----------------------------------"
 echo "Unable to find MySQL Libraries"
 echo "Not building MySQL data plugin for the"

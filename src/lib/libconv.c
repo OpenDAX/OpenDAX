@@ -21,7 +21,7 @@
  */
 
 #include <libdax.h>
-#include <dax/libcommon.h>
+#include <libcommon.h>
 
 /* TODO: All of these functions need to be written.  Right now we just
    assume that all is good and that we don't need any of this. */

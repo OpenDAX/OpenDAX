@@ -30,7 +30,7 @@ static int _daemonize;
 static int _verbosity;
 static char *_server;
 struct in_addr _serverip;
-static unsigned int _server_port
+static unsigned int _serverport;
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */

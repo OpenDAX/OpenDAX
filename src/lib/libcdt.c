@@ -19,7 +19,7 @@
  */
 
 #include <libdax.h>
-#include <dax/libcommon.h>
+#include <libcommon.h>
 #include <ctype.h>
 
 /* The main datatype array for the module's cdt cache */

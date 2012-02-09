@@ -23,8 +23,8 @@
 #define __MESSAGE_H
 
 #include <common.h>
-#include <dax/daxtypes.h>
-#include <dax/libcommon.h>
+#include <daxtypes.h>
+#include <libcommon.h>
 #include <opendax.h>
 
 /* message.c functions */

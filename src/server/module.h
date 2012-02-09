@@ -21,7 +21,7 @@
 #define __MODULE_H
 
 #include <common.h>
-#include <dax/daxtypes.h>
+#include <daxtypes.h>
 
 //TODO: We don't really need all this since we aren't starting the
 //      modules any more.

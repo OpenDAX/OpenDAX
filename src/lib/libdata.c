@@ -20,7 +20,7 @@
  */
 
 #include <libdax.h>
-#include <dax/libcommon.h>
+#include <libcommon.h>
 
 /* Tag Cache Handling Code
  * The tag cache is a doubly linked circular list

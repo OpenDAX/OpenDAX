@@ -22,7 +22,7 @@
 #define __OPTIONS_H
 
 #include <common.h>
-#include <dax/daxtypes.h>
+#include <daxtypes.h>
 
 /* If set to zero the program will run in the foreground
  * by default.  Otherwise it will go to the background */

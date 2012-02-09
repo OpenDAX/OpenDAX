@@ -25,7 +25,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <dax/func.h>
 #include <modopt.h>
 #include <database.h>
 #include <lib/modbus.h>
