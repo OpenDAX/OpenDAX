@@ -25,7 +25,7 @@
 
 static dax_state *ds;
 
-/* This is just a convienience since I need to pass multiple pieces
+/* This is just a convenience since I needs to pass multiple pieces
  * of data back from the cdt_iter callback. */
 struct iter_udata {
     lua_State *L;
@@ -847,6 +847,7 @@ _convert_lua_number(tag_type datatype, void **data, lua_Number x) {
             return;
         default:
             *data = NULL;
+            break;
     }
     return;
 }

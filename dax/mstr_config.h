@@ -35,16 +35,22 @@
 #  define DEFAULT_PID "/var/run/opendax.pid"
 #endif
 
+#ifndef DEFAULT_SERVER
+#  define DEFAULT_SERVER "local";
+#endif
+
+#ifndef DEFAULT_PORT
+#  define DEFAULT_PORT 7777;
+#endif
+
+
 int opt_configure(int argc, const char *argv[]);
 
 /* These functions return the configuration parameters */
 int opt_daemonize(void);    /* Whether or not to go to the background */
 char *opt_statustag(void);
 char *opt_pidfile(void);
-int opt_maxstartup(void);
 char *opt_socketname(void);
-/* Minimum number of communication buffers to allocate */
-int opt_min_buffers(void);
-int opt_start_timeout(void);
+
 
 #endif /* !__OPTIONS_H */

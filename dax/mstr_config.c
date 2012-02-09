@@ -28,9 +28,9 @@ static char *_pidfile;
 static char *_configfile;
 static int _daemonize;
 static int _verbosity;
-//static int _maxstartup;
-//static int _min_buffers;
-//static int _start_timeout;  /* process startup tier timeout */
+static char *_server;
+struct in_addr _serverip;
+static unsigned int _server_port
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
@@ -44,8 +44,10 @@ static void initconfig(void) {
             sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
     }
     _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
-//    _statustag = NULL;
     _pidfile = NULL;
+    _server = NULL;
+    _serverip.s_addr = 0;
+    _serverport = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
@@ -54,8 +56,9 @@ static void
 setdefaults(void)
 {
     if(_daemonize < 0) _daemonize = DEFAULT_DAEMONIZE;
-    if(!_pidfile) _pidfile = strdup(DEFAULT_PID);
-//    if(!_start_timeout) _start_timeout = 3;
+    if(!_pidfile) _pidfile = DEFAULT_PID;
+    if(!_server) _server = DEFAULT_SERVER;
+    if(!_serverport) _serverport = DEFAULT_PORT;
 }
 
 /* This function parses the command line options and sets
@@ -68,34 +71,36 @@ parsecommandline(int argc, const char *argv[])
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
         {"deamonize", no_argument, 0, 'D'},
-        {"socketname", required_argument, 0, 'S'},
-        //{"serverport", required_argument, 0, 'P'},
-        //{"start_time", required_argument, 0, 'T'},
+        {"server", required_argument, 0, 'S'},
+        {"serverip", required_argument, 0, 'I'},
+        {"serverport", required_argument, 0, 'P'},
+        {"pidfile", required_argument, 0, 'p'},
+        {"logger", required_argument, 0, 'L'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
     };
       
 /* Get the command line arguments */ 
-    while ((c = getopt_long (argc, (char * const *)argv, "C:S:VvD",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:S:I:P:p:L:VvD",options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
             break;
-//        case 'S':
-//            _socketname = strdup(optarg);
-//            break;
-//        case 'I':
-//            if(! inet_aton(optarg, &_serverip)) {
-//                xerror("Unknown IP address %s", optarg);
-//            }
-//            break;
-//        case 'P':
-//            _serverport = strtol(optarg, NULL, 0);
-//            break;
-//        case 'T':
-//            _start_timeout = strtol(optarg, NULL, 0);
-//            break;
+        case 'S':
+            _server = strdup(optarg);
+            break;
+        case 'I':
+            if(! inet_aton(optarg, &_serverip)) {
+                xerror("Unknown IP address %s", optarg);
+            }
+            break;
+        case 'P':
+            _serverport = strtol(optarg, NULL, 0);
+            break;
+        case 'p':
+        	_pidfile = strdup(optarg);
+        	break;
         case 'V':
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
@@ -254,11 +259,7 @@ opt_configure(int argc, const char *argv[])
         xerror("Unable to read configuration running with defaults");
     }
     setdefaults();
-    
-//    xlog(LOG_CONFIG, "Daemonize set to %d", _daemonize);
-//    xlog(LOG_CONFIG, "Status Tagname is set to %s", _statustag);
-//    xlog(LOG_CONFIG, "PID File Name set to %s", _pidfile);
-    
+
     return 0;
 }
  
@@ -268,38 +269,9 @@ opt_daemonize(void)
     return _daemonize;
 }
 
-//char *
-//opt_statustag(void)
-//{
-//    return _statustag;
-//}
-
 char *
 opt_pidfile(void)
 {
     return _pidfile;
 }
 
-//int
-//opt_maxstartup(void)
-//{
-//    return _maxstartup;
-//}
-
-//char *
-//opt_socketname(void)
-//{
-//    return _socketname;
-//}
-
-//int
-//opt_min_buffers(void)
-//{
-//    return _min_buffers;
-//}
-
-//int
-//opt_start_timeout(void)
-//{
-//    return _start_timeout;
-//}

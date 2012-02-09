@@ -1,38 +1,126 @@
--- Main configuration file for the OpenDAX system
+-- Main configuration file for the OpenDAX master daemon
 
 --Set to 'false' to run OpenDAX in the foreground
 daemonize = false
 
---Verbosity can be set from 0 to 8
+pidfile = "/var/run/opendax.pid"
+
+--not really used anymore
 verbosity = 10
 
---statustag = "_status"
+--logger = "syslog"      --Always log to syslogd
+--logger = "console"     --Always log to stdout
+logger = "auto"          --log to syslogd when running in background or stdout otherwise
 
---pidfile = "/var/run/opendax.pid"
+--These are some definitions that we reuse throughout the file
+prefix = "/usr/local/"
+binprefix = prefix .. "bin/"
+confprefix = prefix .. "etc/"
+user  = "opendax"
+group = "opendax"
 
-daxroot = "/home/opendax/"
-
---We only run this part when it's the server configuration call
+--We only run this part when it's the master daemon configuration call
 if calling_module == "opendax" then
 
-    m = {}
-    
-    m.startup   = 1
-    m.restart   = false
-    m.openpipes = false
-    
-    --This is the regression test module.
-    m.name      = "test"
-    m.path      = daxroot.."modules/test/daxtest"
-    
-    --add_module(m)
-    
-    
-    --This is an example of setting up the modbus module
-    m.name      = "modbus"
-    m.path      = daxroot.."modules/modbus/modbus"
-    m.args      = "-C " .. daxroot .. "etc/modbus.conf"
-    
-    --add_module(m)
-
 end
+
+-- Each of the following tables represents a process that we want to start
+-- and monitor.
+--
+--    name    = The name used to identify the process.  Used mostly for logging
+--    restart = [true|false] - if true the master will restart the process if it fails
+--    path    = The path to the executable.
+--    args    = A string that represents the arguments to be passed
+--    user    = User that the process will run under.  If not set the master's uid will be used.
+--    group   = Group that the process will run under  If not set the master's gid will be used.
+--    env     = Environment Variable String.  If not set the master's environement will be used.
+--    waitstr = The master waits until it sees this string on the process stdout before
+--              it considers the process started.
+--    timeout = The amount of time that the master will wait for the process to start in mSec.  If
+--              the waitstr doesn't come by this time the master will kill the process and
+--              move on to the next process in the list.  If restart is set the master will
+--              come back and try to restart the process later.  If waitstr is not set or set to an
+--              empty string this will be the delay before the next process is started.
+--   *cpu     = CPU usage threshold (0-1).  If the module's CPU usage averages higher than this then
+--              the master will kill it.  If restart is enabled it will attempt a restart.  If
+--              not set or set to zero the feature will be ignored.
+--   *mem     = Memory usage threshold (kB).  If the modules memory usage surpassees this value then
+--              the master will kill it.  If restart is enabled it will attempt a restart.  If
+--              not set or set to zero the feature will be ignored.
+--
+--    * = Currently not implemented.
+
+server = {}
+
+server.name     = "tagserver"
+server.restart  = true
+server.path     = binprefix.."tagserver"
+server.args     = "-C " .. confprefix .."tagserver.conf"
+server.user     = user
+server.group    = group
+server.waitstr  = "OpenDAX Tag Server Started"
+server.timeout  = 1000
+server.cpu      = 0.1
+server.mem      = 2000
+
+modbus = {}
+    
+modbus.name      = "modbus
+modbus.restart   = true
+modbus.path      = binprefix.."modbus"
+modbus.args      = "-C " .. confprefix .."modbus.conf"
+modbus.user      = user
+modbus.group     = group
+modbus.waitstr   = "Modbus Module Started"
+modbus.timeout   = 1000
+modbus.cpu       = 0.1
+modbus.mem       = 2000
+
+test = {}
+    
+test.name      = "test
+test.restart   = false
+test.path      = binprefix.."test"
+test.args      = "-C " .. confprefix .."test.conf"
+test.user      = user
+test.group     = group
+test.waitstr   = ""
+test.timeout   = 10000
+test.cpu       = 0.5
+test.mem       = 5000
+
+lua = {}
+    
+lua.name      = "lua
+lua.restart   = true
+lua.path      = binprefix.."daxlua"
+lua.args      = "-C " .. confprefix .."daxlua.conf"
+lua.user   = user
+lua.group     = group
+lua.waitstr   = "Lua Module Started"
+lua.timeout   = 1000
+lua.cpu       = 0.1
+lua.mem       = 2000
+
+
+skel = {}
+    
+skel.name      = "skel
+skel.restart   = true
+skel.path      = binprefix.."skel"
+skel.args      = "-C " .. confprefix .."skel.conf"
+skel.user      = user
+skel.group     = group
+skel.waitstr   = "Skeleton Module Started"
+skel.timeout   = 1000
+skel.cpu       = 0.1
+skel.mem       = 2000
+
+-- Uncomment the processes that are to be started.
+
+add_process(server)
+--add_process(modbus)
+--add_process(test)
+--add_process(lua)
+add_process(skel)
+--add_process(arduino)
