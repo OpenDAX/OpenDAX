@@ -460,9 +460,9 @@ _print_config(dax_state *ds)
     }
 }
 
-/* This verifies that the configuratio that we have is valid and won't
+/* This verifies that the configuration that we have is valid and won't
  * get us in too much trouble.  It should also store any information that
- * the libary would need so that the user can free the configuration at
+ * the library would need so that the user can free the configuration at
  * any time. */
 static int
 _verify_config(dax_state *ds)

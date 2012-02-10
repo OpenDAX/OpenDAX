@@ -25,7 +25,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <opendax.h>
-
+#include <mstr_config.h>
 
 static int quitflag = 0;
 
@@ -54,7 +54,11 @@ main(int argc, const char *argv[])
     sa.sa_handler = &child_signal;
     sigaction (SIGCHLD, &sa, NULL);
 
-	printf("master, master\n");
+    /* TODO: We should have individual configuration objects that we retrieve
+     * from this function, instead of the global data in the source file. */
+	opt_configure(argc, argv);
+	process_start_all();
+	_print_process_list();
 
 	while(1) { /* Main loop */
         /* TODO: This might could be some kind of condition
@@ -63,6 +67,7 @@ main(int argc, const char *argv[])
 		sleep(1);
 		       /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
+        	xlog(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
             /* TODO: Need to kill the message_thread */
             /* TODO: Should stop all running modules */
             kill(0, SIGTERM); /* ...this'll do for now */
@@ -81,15 +86,15 @@ main(int argc, const char *argv[])
 void
 quit_signal(int sig)
 {
-    xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
-    quitflag = 1;
+    //xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
+    quitflag = sig;
 }
 
 /* TODO: May need to so something with signals like SIGPIPE etc */
 void
 catch_signal(int sig)
 {
-    xlog(LOG_MINOR, "Received signal %d", sig);    
+    xlog(LOG_MINOR, "Master received signal %d", sig);
 }
 
 

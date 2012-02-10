@@ -86,7 +86,7 @@ main(int argc, const char *argv[])
         if(quitflag) {
             /* TODO: Need to kill the message_thread */
             /* TODO: Should stop all running modules */
-            kill(0, SIGTERM); /* ...this'll do for now */
+            //kill(0, SIGTERM); /* ...this'll do for now */
             /* TODO: Should verify that all the children are dead.  If not
              then send a SIGKILL signal */
             msg_destroy(); /* Destroy the message queue */

@@ -28,11 +28,9 @@
 #include <pthread.h>
 #include <func.h>
 
-#define PSTATE_STARTED      0x01 /* Module has been started */
+#define PSTATE_STARTED      0x01 /* Process has been started */
 #define PSTATE_WAITING      0x02 /* Waiting for restart */
-#define PSTATE_CHILD        0x04 /* Module was started by this program */
-#define PSTATE_REGISTERED   0x08 /* Is the module registered */
-#define PSTATE_RUNNING      0x10 /* Module is running */
+#define PSTATE_RUNNING      0x04 /* Process is running */
 
 /* Process Flags */
 #define PFLAG_RESTART       0x01
@@ -46,9 +44,18 @@ typedef struct dax_process {
     int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
     char **arglist;     /* exec() ready array of arguments */
-    int startup;        /* Execution order 0 = no auto start */
+//    int startup;        /* Execution order 0 = no auto start */
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
+    char *env;          /* Environment to use for process */
+    char *user;         /* Set UID to this user before exec() */
+    char *group;        /* Set GID to this group before exec() */
+    int uid;
+    int gid;
+    int timeout;        /* Time to wait for the process to start */
+    char *waitstr;      /* String to wait for on stdout that indicates process running */
+    double cpu;         /* CPU percentage threshold (0.0 - 1.0) */
+    int mem;            /* Memory Threshold (kB) */
     int pipe_in;        /* Redirected to the modules stdin */
     int pipe_out;       /* Redirected to the modules stdout */
     int pipe_err;       /* Redirected to the modules stderr */
@@ -64,9 +71,11 @@ typedef struct {
 } dead_process;
 
 void process_start_all(void);
+pid_t process_start(dax_process *);
 void process_scan(void);
 void process_dpq_add(pid_t, int);
-dax_process *process_add(char *name, char *path, char *arglist, int startup, unsigned int flags);
+dax_process *process_add(char *name, char *path, char *arglist, unsigned int flags);
+void _print_process_list(void);
 
 
 #endif

@@ -90,17 +90,13 @@ _arglist_tok(char *path, char *str)
 }
 
 dax_process *
-process_add(char *name, char *path, char *arglist, int startup, unsigned int flags)
+process_add(char *name, char *path, char *arglist, unsigned int flags)
 {
     dax_process *new, *this;
     xlog(LOG_MAJOR,"Adding process %s",name);
     
     new = xmalloc(sizeof(dax_process));
     if(new) {
-        new->flags = flags;
-        if(startup > 0) new->startup = startup;
-        else startup = 0;
-        
         new->pipe_in = -1;
         new->pipe_out = -1;
         new->pipe_err = -1;
@@ -190,17 +186,9 @@ process_start_all(void)
     this = _process_list;
     while(this != NULL) {
         printf("Pretend Start - %s: %s\n", this->name, this->path);
+        process_start(this);
+        this = this->next;
     }
-//    /* Figure out where we need to stop */
-//    last = _process_list->prev;
-//
-//    for(tier = 1; tier <= x; tier++) {
-//        for(j = 0; j < _module_count; j++) {
-//            if(_process_list->startup == tier) {
-//                process_start(_process_list);
-//            }
-//            _current_mod = _current_mod->next;
-//        }
 //        gettimeofday(&tp, NULL);
 //        /* Convert from timeval to timespec */
 //        ts.tv_sec  = tp.tv_sec;
@@ -289,16 +277,15 @@ process_start(dax_process *proc)
     int pipes[6];
  
     if(proc) {
-        /* Check the Open Pipes flag of the module */
-        if(proc->flags & PFLAG_OPENPIPES) {
-            /* from here on out if result is TRUE then deal with the pipes */
-            result = _getpipes(pipes);
-        }
+        result = _getpipes(pipes);
 
         child_pid = fork();
         if(child_pid > 0) { /* This is the parent */
             proc->pid = child_pid;
-            xlog(1, "Starting Module - %s - %d",proc->path,child_pid);
+            proc->state = PSTATE_STARTED;
+            proc->exit_status = 0;
+
+            xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
             proc->starttime = time(NULL);
 
             if(result) { /* do we have any pipes set */
@@ -306,7 +293,7 @@ process_start(dax_process *proc)
                 close(pipes[3]); /* close the read pipe on childs stdout */
                 close(pipes[5]); /* close the read pipe on childs stderr */
             
-                /* record the pipes for the module */
+                /* record the pipes for the process */
                 proc->pipe_in  = pipes[1];  /* fd to write childs stdin */
                 proc->pipe_out = pipes[2];  /* fd to read childs stdout */
                 proc->pipe_err = pipes[4];  /* fd to read childs stderr */
@@ -314,8 +301,6 @@ process_start(dax_process *proc)
             return child_pid;
         } else if(child_pid == 0) { /* Child */
             if(result) _childpipes(pipes);
-            proc->state = PSTATE_STARTED | PSTATE_CHILD;
-            proc->exit_status = 0;
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
             if(execvp(proc->path, proc->arglist)) {
@@ -333,32 +318,46 @@ process_start(dax_process *proc)
     return 0;
 }
 
+static dax_process *
+_get_process_pid(pid_t pid)
+{
+	dax_process *this;
+
+	this = _process_list;
+	while(this != NULL) {
+		if(this->pid == pid) return this;
+		this = this->next;
+	}
+	return NULL;
+}
+
 /* This function is called from the scan_modules function and is used 
  * to find and cleanup the module after it has died.  */
 static int
 _cleanup_process(pid_t pid, int status)
 {
-    dax_process *mod;
+    dax_process *proc;
     
     /* Should only be called for local modules so we can assume the
      * upper 32 bits are zero and just use the pid for the mid */
-//    mod = _get_module_pid(pid);
+    proc = _get_process_pid(pid);
+
     /* at this point _current_mod should be pointing to a module with
      * the PID that we passed but we should check because there may not 
      * be a module with our PID */
-    if(mod) {
-        xlog(LOG_MINOR, "Cleaning up Module %d", pid);
+    if(proc) {
+        xlog(LOG_MINOR, "Cleaning up Process %d", pid);
         /* Close the stdio pipe fd's */
         /* TODO: really should fix these */
         //close(mod->pipe_in);
         //close(mod->pipe_out);
         //close(mod->pipe_err);
-        mod->pid = 0;
-        mod->exit_status = status;
-        mod->state = PSTATE_WAITING;
+        proc->pid = 0;
+        proc->exit_status = status;
+        proc->state = PSTATE_WAITING;
         return 0;
     } else {
-        xerror("Module %d not found \n", pid);
+        xerror("Process %d not found \n", pid);
         return ERR_NOTFOUND;
     }
 	return 0;
@@ -399,7 +398,7 @@ process_stop(dax_process *proc)
    TODO: If more than DMQ_SIZE modules dies all at once this will cause
          problems.  Should be fixed. */
 void
-process_dpq_add(pid_t pid,int status)
+process_dpq_add(pid_t pid, int status)
 {
     int n = 0;
     while(_dpq[n].pid != 0 && n < DPQ_SIZE) {
@@ -410,6 +409,32 @@ process_dpq_add(pid_t pid,int status)
     _dpq[n].status = status;
 }
 
+void
+_print_process_list(void)
+{
+	dax_process *this;
+	this = _process_list;
+	char **args;
+	int n = 0;
 
+	while(this != NULL) {
+		printf("Process %s\n", this->name);
+		printf("  path = %s\n", this->path);
+		args = this->arglist;
+		while(args[n] != NULL) {
+			printf("  arg[%d] = %s\n", n, args[n]);
+			n++;
+		}
+		printf("  user = %s\n", this->user);
+		printf("  group = %s\n", this->group);
+		printf("  env = %s\n", this->env);
+		printf("  waitstr = %s\n", this->waitstr);
+		printf("  timeout = %d\n", this->timeout);
+		printf("  cpu = %f\n", this->cpu);
+		printf("  mem = %d kB\n", this->mem);
+		printf("  pid = %d\n", this->pid);
+        this = this->next;
+	}
+}
 
 

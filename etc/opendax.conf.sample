@@ -65,7 +65,7 @@ server.mem      = 2000
 
 modbus = {}
     
-modbus.name      = "modbus
+modbus.name      = "modbus"
 modbus.restart   = true
 modbus.path      = binprefix.."modbus"
 modbus.args      = "-C " .. confprefix .."modbus.conf"
@@ -78,7 +78,7 @@ modbus.mem       = 2000
 
 test = {}
     
-test.name      = "test
+test.name      = "test"
 test.restart   = false
 test.path      = binprefix.."test"
 test.args      = "-C " .. confprefix .."test.conf"
@@ -91,7 +91,7 @@ test.mem       = 5000
 
 lua = {}
     
-lua.name      = "lua
+lua.name      = "lua"
 lua.restart   = true
 lua.path      = binprefix.."daxlua"
 lua.args      = "-C " .. confprefix .."daxlua.conf"
@@ -105,7 +105,7 @@ lua.mem       = 2000
 
 skel = {}
     
-skel.name      = "skel
+skel.name      = "skel"
 skel.restart   = true
 skel.path      = binprefix.."skel"
 skel.args      = "-C " .. confprefix .."skel.conf"

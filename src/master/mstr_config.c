@@ -28,9 +28,9 @@ static char *_pidfile;
 static char *_configfile;
 static int _daemonize;
 static int _verbosity;
-static char *_server;
-struct in_addr _serverip;
-static unsigned int _serverport;
+//static char *_server;
+//struct in_addr _serverip;
+//static unsigned int _serverport;
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
@@ -38,16 +38,16 @@ static void initconfig(void) {
     int length;
     
     if(!_configfile) {
-        length = strlen(ETC_DIR) + strlen("/tagserver.conf") +1;
+        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
         _configfile = (char *)malloc(sizeof(char) * length);
         if(_configfile) 
-            sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
+            sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
     }
     _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
     _pidfile = NULL;
-    _server = NULL;
-    _serverip.s_addr = 0;
-    _serverport = 0;
+//    _server = NULL;
+//    _serverip.s_addr = 0;
+//    _serverport = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
@@ -57,8 +57,8 @@ setdefaults(void)
 {
     if(_daemonize < 0) _daemonize = DEFAULT_DAEMONIZE;
     if(!_pidfile) _pidfile = DEFAULT_PID;
-    if(!_server) _server = DEFAULT_SERVER;
-    if(!_serverport) _serverport = DEFAULT_PORT;
+//    if(!_server) _server = DEFAULT_SERVER;
+//    if(!_serverport) _serverport = DEFAULT_PORT;
 }
 
 /* This function parses the command line options and sets
@@ -71,9 +71,9 @@ parsecommandline(int argc, const char *argv[])
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
         {"deamonize", no_argument, 0, 'D'},
-        {"server", required_argument, 0, 'S'},
-        {"serverip", required_argument, 0, 'I'},
-        {"serverport", required_argument, 0, 'P'},
+//        {"server", required_argument, 0, 'S'},
+//        {"serverip", required_argument, 0, 'I'},
+//        {"serverport", required_argument, 0, 'P'},
         {"pidfile", required_argument, 0, 'p'},
         {"logger", required_argument, 0, 'L'},
         {"version", no_argument, 0, 'V'},
@@ -82,31 +82,31 @@ parsecommandline(int argc, const char *argv[])
     };
       
 /* Get the command line arguments */ 
-    while ((c = getopt_long (argc, (char * const *)argv, "C:S:I:P:p:L:VvD",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:p:L:VvD",options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
             break;
-        case 'S':
-            _server = strdup(optarg);
-            break;
-        case 'I':
-            if(! inet_aton(optarg, &_serverip)) {
-                xerror("Unknown IP address %s", optarg);
-            }
-            break;
-        case 'P':
-            _serverport = strtol(optarg, NULL, 0);
-            break;
-        case 'p':
-        	_pidfile = strdup(optarg);
-        	break;
+//        case 'S':
+//            _server = strdup(optarg);
+//            break;
+//        case 'I':
+//            if(! inet_aton(optarg, &_serverip)) {
+//                xerror("Unknown IP address %s", optarg);
+//            }
+//            break;
+//        case 'P':
+//            _serverport = strtol(optarg, NULL, 0);
+//            break;
+//        case 'p':
+//        	_pidfile = strdup(optarg);
+//        	break;
         case 'V':
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
-//      case 'v':
-//            _verbosity++;
-//          break;
+        case 'v':
+            _verbosity++;
+            break;
         case 'D': 
             _daemonize = 1;
             break;
@@ -143,28 +143,58 @@ _add_process(lua_State *L)
         xerror("No process name given");
         return 0;
     }
+    lua_pop(L, 1);
     
-    lua_getfield(L, -2, "path");
+    path = NULL;
+    lua_getfield(L, -1, "path");
     path = (char *)lua_tostring(L, -1);
-    
-    lua_getfield(L, -3, "args");
-    arglist = (char *)lua_tostring(L, -1);
-    
-//    lua_getfield(L, -4, "startup");
-//    startup = (int)lua_tonumber(L, -1);
-//    if(startup > _maxstartup) _maxstartup = startup;
-    
-    lua_getfield(L, -5, "openpipes");
-    if(lua_toboolean(L, -1)) {
-        flags = PFLAG_OPENPIPES;
+    if(path == NULL) {
+    	xerror("No path given for process %s", name);
+    	return 0;
     }
+    lua_pop(L, 1);
+
     
-    lua_getfield(L, -6, "restart");
+    lua_getfield(L, -1, "args");
+    arglist = (char *)lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "restart");
     if(lua_toboolean(L, -1)) {
         flags |= PFLAG_RESTART;
     }
+    lua_pop(L, 1);
 
-    proc = process_add(name, path, arglist, startup, flags);
+    proc = process_add(name, path, arglist, flags);
+
+    lua_getfield(L, -1, "user");
+    proc->user = (char *)lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "group");
+    proc->group = (char *)lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "env");
+    proc->env = (char *)lua_tostring(L, -1);
+    lua_pop(L, 1);
+    
+    lua_getfield(L, -1, "waitstr");
+    proc->waitstr = (char *)lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "timeout");
+    proc->timeout = (int)lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "cpu");
+    proc->cpu = lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "mem");
+    proc->mem = (int)lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
     /* TODO: more configuration can be added to the process.  Things
      *       like UID, chroot stuff etc. */
     return 0;
