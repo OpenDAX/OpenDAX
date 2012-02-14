@@ -24,9 +24,10 @@
 
 #include <common.h>
 #include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <func.h>
 
 #define PSTATE_STARTED      0x01 /* Process has been started */
 #define PSTATE_WAITING      0x02 /* Waiting for restart */

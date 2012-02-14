@@ -53,8 +53,5 @@ void xlog(u_int32_t ,const char *, ...);
 char *xstrcpy(const char *);
 char *xstrdup(char *);
 
-/* Stuff */
-
-int daemonize(char *);
 
 #endif /* !__FUNC_H */

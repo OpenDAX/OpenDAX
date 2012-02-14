@@ -18,4 +18,6 @@ config/ltmain.sh
 libtool
 m4/l*
 stamp-h1
-
+.cproject
+.project
+.settings/

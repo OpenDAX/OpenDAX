@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2012 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,45 +16,21 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#include <common.h>
 #include <opendax.h>
 
-#ifndef __FUNC_H
-#define __FUNC_H
+#ifndef __LOGGER_H
+#define __LOGGER_H
 
-#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
-#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
-#define ABS(a)     (((a) < 0) ? -(a) : (a))
-
-
-/* Wrappers for system calls */
-ssize_t xwrite(int fd, const void *buff, size_t nbyte);
-
-/* Memory management functions.  These are just to override the
- * standard memory management functions in case I decide to do
- * something createive with them later. */
-
-void *xmalloc(size_t);
-void *xrealloc(void *, size_t);
-void *xcalloc(size_t, size_t);
-void xfree(void *);
+#define LOG_TYPE_STDOUT 0
+#define LOG_TYPE_SYSLOG 1
 
 /* Error handling and logging functions */
-/* If this is defined the output goes to the system log otherwise it
-   goes to STDOUT and STDERR */
-//#define DAX_LOGGER
-
+void logger_init(int, char *);
+void set_log_topic(u_int32_t);
 void xfatal(const char *, ...);
 void xerror(const char *, ...);
-void set_log_topic(u_int32_t);
 void xlog(u_int32_t ,const char *, ...);
 
-/* Portability functions */
 
-char *xstrcpy(const char *);
-char *xstrdup(char *);
-
-/* Stuff */
-
-int daemonize(char *);
-
-#endif /* !__FUNC_H */
+#endif /* !__LOGGER_H */

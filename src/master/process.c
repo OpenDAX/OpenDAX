@@ -21,6 +21,7 @@
 
 #include <process.h>
 #include <sys/time.h>
+#include <logger.h>
 
 /* Global Variables */
 
@@ -62,7 +63,7 @@ _arglist_tok(char *path, char *str)
     }
     /* Allocate the array, 1 extra for the NULL */
     if(path || temp) {
-        arr = xmalloc((count + 1) * sizeof(char*));
+        arr = malloc((count + 1) * sizeof(char*));
         if(arr == NULL) return NULL; /* OOOPS No Memory left */
     } else { /* No path supplied either */
         return NULL;
@@ -95,7 +96,7 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
     dax_process *new, *this;
     xlog(LOG_MAJOR,"Adding process %s",name);
     
-    new = xmalloc(sizeof(dax_process));
+    new = malloc(sizeof(dax_process));
     if(new) {
         new->pipe_in = -1;
         new->pipe_out = -1;
@@ -175,33 +176,26 @@ void
 process_start_all(void)
 {
     dax_process *this;
-//    int tier, j, x;
-//    struct timespec   ts;
-//    struct timeval    tp;
-//    int result, done = 0;
+    struct timeval start, left;
+    int result, done = 0;
 
     /* In case we ain't go no list */
     if(_process_list == NULL) return;
 
     this = _process_list;
     while(this != NULL) {
-        printf("Pretend Start - %s: %s\n", this->name, this->path);
         process_start(this);
         this = this->next;
-    }
-//        gettimeofday(&tp, NULL);
-//        /* Convert from timeval to timespec */
-//        ts.tv_sec  = tp.tv_sec;
-//        ts.tv_nsec = tp.tv_usec * 1000;
+
+        gettimeofday(&start, NULL);
+        /* Convert from timeval to timespec */
+        start.tv_sec;
+        start.tv_usec;
 //        ts.tv_sec += opt_start_timeout();
-//        if(tier == x) { /* If we are the last tier we don't need to wait. */
-//            done = 1;
-//        } else {
-//            done = 0;
-//        }
-//        while(!done) {
+        while(!done) {
+            usleep(100);
 //            //result = pthread_cond_timedwait(&_startup_cond, &_startup_mutex, &ts);
-//            done = 1; /* Let's assume we are done */
+            done = 1; /* Let's assume we are done */
 //            if(result != ETIMEDOUT) { /* If we didn't timeout */
 //                for(j = 0; j < _module_count; j++) { /* Loop through modules */
 //                    /* If the module is in the current startup tier and the running flag is not set then... */
@@ -211,7 +205,8 @@ process_start_all(void)
 //                    _current_mod = _current_mod->next;
 //                }
 //            }
-//        }
+        }
+    }
 //        pthread_mutex_unlock(&_startup_mutex);
 //    }
 }
@@ -412,29 +407,31 @@ process_dpq_add(pid_t pid, int status)
 void
 _print_process_list(void)
 {
-	dax_process *this;
-	this = _process_list;
-	char **args;
-	int n = 0;
+    dax_process *this;
+    this = _process_list;
+    char **args;
+    int n = 0;
 
-	while(this != NULL) {
-		printf("Process %s\n", this->name);
-		printf("  path = %s\n", this->path);
-		args = this->arglist;
-		while(args[n] != NULL) {
-			printf("  arg[%d] = %s\n", n, args[n]);
-			n++;
-		}
-		printf("  user = %s\n", this->user);
-		printf("  group = %s\n", this->group);
-		printf("  env = %s\n", this->env);
-		printf("  waitstr = %s\n", this->waitstr);
-		printf("  timeout = %d\n", this->timeout);
-		printf("  cpu = %f\n", this->cpu);
-		printf("  mem = %d kB\n", this->mem);
-		printf("  pid = %d\n", this->pid);
+    while(this != NULL) {
+        printf("Process %s\n", this->name);
+        printf("  path    = %s\n", this->path);
+        args = this->arglist;
+        while(args[n] != NULL) {
+            printf("  arg[%d]    = %s\n", n, args[n]);
+            n++;
+        }
+        printf("  user    = %s\n", this->user);
+        printf("  uid     = %d\n", this->uid);
+        printf("  group   = %s\n", this->group);
+        printf("  gid     = %d\n", this->gid);
+        printf("  env     = %s\n", this->env);
+        printf("  waitstr = %s\n", this->waitstr);
+        printf("  timeout = %d\n", this->timeout);
+        printf("  cpu     = %f\n", this->cpu);
+        printf("  mem     = %d kB\n", this->mem);
+        printf("  pid     = %d\n", this->pid);
         this = this->next;
-	}
+    }
 }
 
 

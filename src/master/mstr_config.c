@@ -20,7 +20,7 @@
 
 
 #include <mstr_config.h>
-#include <func.h>
+#include <logger.h>
 #include <process.h>
 #include <getopt.h>
 
@@ -28,10 +28,6 @@ static char *_pidfile;
 static char *_configfile;
 static int _daemonize;
 static int _verbosity;
-//static char *_server;
-//struct in_addr _serverip;
-//static unsigned int _serverport;
-
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
@@ -45,9 +41,6 @@ static void initconfig(void) {
     }
     _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
     _pidfile = NULL;
-//    _server = NULL;
-//    _serverip.s_addr = 0;
-//    _serverport = 0;
 }
 
 /* This function sets the defaults if nothing else has been done 
@@ -57,8 +50,6 @@ setdefaults(void)
 {
     if(_daemonize < 0) _daemonize = DEFAULT_DAEMONIZE;
     if(!_pidfile) _pidfile = DEFAULT_PID;
-//    if(!_server) _server = DEFAULT_SERVER;
-//    if(!_serverport) _serverport = DEFAULT_PORT;
 }
 
 /* This function parses the command line options and sets
@@ -71,9 +62,6 @@ parsecommandline(int argc, const char *argv[])
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
         {"deamonize", no_argument, 0, 'D'},
-//        {"server", required_argument, 0, 'S'},
-//        {"serverip", required_argument, 0, 'I'},
-//        {"serverport", required_argument, 0, 'P'},
         {"pidfile", required_argument, 0, 'p'},
         {"logger", required_argument, 0, 'L'},
         {"version", no_argument, 0, 'V'},
@@ -87,20 +75,9 @@ parsecommandline(int argc, const char *argv[])
         case 'C':
             _configfile = strdup(optarg);
             break;
-//        case 'S':
-//            _server = strdup(optarg);
-//            break;
-//        case 'I':
-//            if(! inet_aton(optarg, &_serverip)) {
-//                xerror("Unknown IP address %s", optarg);
-//            }
-//            break;
-//        case 'P':
-//            _serverport = strtol(optarg, NULL, 0);
-//            break;
-//        case 'p':
-//        	_pidfile = strdup(optarg);
-//        	break;
+        case 'p':
+            _pidfile = strdup(optarg);
+            break;
         case 'V':
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
@@ -121,6 +98,47 @@ parsecommandline(int argc, const char *argv[])
             break;
         } /* End Switch */
     } /* End While */           
+}
+
+/* If the uid was not set in the configuration but the user string was
+ * then we find the uid for that user.  If we can't find the uid for the
+ * user then we set the uid to negative.  If the uid is negative then we
+ * will not start the process.  If it's zero then the process get's the
+ * master's uid.  Same for gid. */
+static void
+_set_uid_gid(dax_process *proc)
+{
+    struct passwd *pw;
+    struct group *gr;
+
+    /* If the actual 'uid' is set then we'll let that override
+     * the .user field. */
+    if(proc->uid < 0  && proc->user != NULL) {
+        pw = getpwnam(proc->user);
+        if(pw != NULL) {
+            proc->uid = pw->pw_uid;
+        } else {
+            xlog(LOG_ERROR, "Unable to find uid for user %s", proc->user);
+        }
+    }
+    /* Neither the uid or the username were set */
+    if(proc->uid < 0 && proc->user == NULL) {
+        proc->uid = 0;
+    }
+
+    if(proc->gid < 0 && proc->group != NULL) {
+        gr = getgrnam(proc->group);
+        if(gr != NULL) {
+            proc->gid = gr->gr_gid;
+        } else {
+            xlog(LOG_ERROR, "Unable to find gid for group %s", proc->group);
+        }
+    }
+    /* Neither the gid or the groupname were set */
+    if(proc->gid < 0 && proc->group == NULL) {
+        proc->gid = 0;
+    }
+
 }
 
 /* This is the wrapper for the add module function in the Lua configuration file */
@@ -154,7 +172,6 @@ _add_process(lua_State *L)
     }
     lua_pop(L, 1);
 
-    
     lua_getfield(L, -1, "args");
     arglist = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
@@ -175,10 +192,26 @@ _add_process(lua_State *L)
     proc->group = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
 
+    lua_getfield(L, -1, "uid");
+    if(! lua_isnil(L, -1)) {
+        proc->uid = (int)lua_tointeger(L, -1);
+    } else {
+        proc->uid = -1;
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "gid");
+    if(! lua_isnil(L, -1)) {
+        proc->gid = (int)lua_tointeger(L, -1);
+    } else {
+        proc->gid = -1;
+    }
+    lua_pop(L, 1);
+
     lua_getfield(L, -1, "env");
     proc->env = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
-    
+
     lua_getfield(L, -1, "waitstr");
     proc->waitstr = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
@@ -195,8 +228,8 @@ _add_process(lua_State *L)
     proc->mem = (int)lua_tonumber(L, -1);
     lua_pop(L, 1);
 
-    /* TODO: more configuration can be added to the process.  Things
-     *       like UID, chroot stuff etc. */
+    _set_uid_gid(proc);
+
     return 0;
 }
 

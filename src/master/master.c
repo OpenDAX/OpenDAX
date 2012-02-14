@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/*  Source code file for the daxmaster process handling application */
+/*  Source code file for the dax master process handling application */
 
 #include <common.h>
 #include <process.h>
@@ -26,6 +26,8 @@
 #include <sys/wait.h>
 #include <opendax.h>
 #include <mstr_config.h>
+#include <logger.h>
+#include <daemon.h>
 
 static int quitflag = 0;
 
@@ -37,8 +39,8 @@ int
 main(int argc, const char *argv[])
 {
     struct sigaction sa;
-    pthread_t message_thread;
-	int result;
+//    pthread_t message_thread;
+//    int result;
     
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
@@ -54,28 +56,38 @@ main(int argc, const char *argv[])
     sa.sa_handler = &child_signal;
     sigaction (SIGCHLD, &sa, NULL);
 
+    /* Set this first in case we need to output some data */
+    /* If we ever open the logger with syslog instead, we'll have to
+     * make sure and close the logger before we deamonize and then
+     * call logger_init() again afterwards */
+    logger_init(LOG_TYPE_STDOUT, "opendax");
     /* TODO: We should have individual configuration objects that we retrieve
      * from this function, instead of the global data in the source file. */
-	opt_configure(argc, argv);
-	process_start_all();
-	_print_process_list();
+    opt_configure(argc, argv);
 
-	while(1) { /* Main loop */
+    if(opt_daemonize()) {
+//        daemonize("opendax");
+//        logger_init(LOG_TYPE_SYSLOG, "opendax");
+    }
+
+    process_start_all();
+    _print_process_list();
+
+    while(1) { /* Main loop */
         /* TODO: This might could be some kind of condition
            variable or signal thing instead of just the sleep(). */
         process_scan();
-		sleep(1);
-		       /* If the quit flag is set then we clean up and get out */
+        sleep(1);
+        /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
-        	xlog(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
+            xlog(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
             /* TODO: Need to kill the message_thread */
             /* TODO: Should stop all running modules */
             kill(0, SIGTERM); /* ...this'll do for now */
             exit(-1);
         }
  
-	}
-	
+    }
     exit(0);
 }
 
