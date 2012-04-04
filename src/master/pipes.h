@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2012 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -16,13 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/* Header file for the stdio pipe handling thread for the master process
+ * handling program. */
+
 #include <common.h>
-#include <opendax.h>
-
-#ifndef __CPU_H
-#define __CPU_H
-
-float get_cpu_usage(pid_t pid);
-unsigned int get_mem_usage(pid_t pid);
-
-#endif /* !__CPU_H */
+#include <pthread.h>

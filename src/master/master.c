@@ -43,6 +43,7 @@ main(int argc, const char *argv[])
 //    int result;
     
     /* Set up the signal handlers */
+    /* TODO: We need to handle every signal that could possibly kill us */
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
     sigaction (SIGQUIT, &sa, NULL);
@@ -66,8 +67,8 @@ main(int argc, const char *argv[])
     opt_configure(argc, argv);
 
     if(opt_daemonize()) {
-//        daemonize("opendax");
-//        logger_init(LOG_TYPE_SYSLOG, "opendax");
+        daemonize("opendax");
+        logger_init(LOG_TYPE_SYSLOG, "opendax");
     }
 
     process_start_all();
@@ -98,7 +99,6 @@ main(int argc, const char *argv[])
 void
 quit_signal(int sig)
 {
-    //xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
     quitflag = sig;
 }
 
@@ -106,6 +106,7 @@ quit_signal(int sig)
 void
 catch_signal(int sig)
 {
+    // TODO: No printfs in signal handlers
     xlog(LOG_MINOR, "Master received signal %d", sig);
 }
 

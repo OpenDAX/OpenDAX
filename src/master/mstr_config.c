@@ -167,8 +167,8 @@ _add_process(lua_State *L)
     lua_getfield(L, -1, "path");
     path = (char *)lua_tostring(L, -1);
     if(path == NULL) {
-    	xerror("No path given for process %s", name);
-    	return 0;
+        xerror("No path given for process %s", name);
+        return 0;
     }
     lua_pop(L, 1);
 
@@ -184,12 +184,14 @@ _add_process(lua_State *L)
 
     proc = process_add(name, path, arglist, flags);
 
+    /* for some reason not doing this strdup() would cause the username
+     * 'opendax' to be read as 'openda'???*/
     lua_getfield(L, -1, "user");
-    proc->user = (char *)lua_tostring(L, -1);
+    proc->user = strdup((char *)lua_tostring(L, -1));
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "group");
-    proc->group = (char *)lua_tostring(L, -1);
+    proc->group = strdup((char *)lua_tostring(L, -1));
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "uid");

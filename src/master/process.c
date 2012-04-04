@@ -22,6 +22,7 @@
 #include <process.h>
 #include <sys/time.h>
 #include <logger.h>
+#include <poll.h>
 
 /* Global Variables */
 
@@ -176,8 +177,10 @@ void
 process_start_all(void)
 {
     dax_process *this;
-    struct timeval start, left;
+    struct timeval start, interval, end;
+    int timeout;
     int result, done = 0;
+    struct pollfd fds[2];
 
     /* In case we ain't go no list */
     if(_process_list == NULL) return;
@@ -188,14 +191,37 @@ process_start_all(void)
         this = this->next;
 
         gettimeofday(&start, NULL);
-        /* Convert from timeval to timespec */
-        start.tv_sec;
-        start.tv_usec;
-//        ts.tv_sec += opt_start_timeout();
-        while(!done) {
-            usleep(100);
-//            //result = pthread_cond_timedwait(&_startup_cond, &_startup_mutex, &ts);
-            done = 1; /* Let's assume we are done */
+        this->starttime = start.tv_sec;
+        if(this->waitstr != NULL) {
+            interval.tv_sec = this->timeout / 1000;
+            interval.tv_usec = (this->timeout % 1000)*1000;
+            timeradd(&start, &interval, &end);
+            timeout = this->timeout;
+            fds[0].fd = this->pipe_in;
+            fds[0].events = POLLRDNORM;
+            // Let's just deal with stdout for now
+            //fds[1].fd = this->pipe_err;
+            //fds[1].events = POLLRDNORM;
+            while(!done) {
+                result = poll(fds, 1, timeout);
+                if(result == 0) {
+                    done = 1; /* Timeout */
+                } else if(result < 0) {
+                    /* Any error besides interruption */
+                    if(errno != EINTR) {
+                        /* TODO: Deal with the rest of the errors */
+                        done = 1;
+                    }
+                } else { /* We've got some data here */
+
+                }
+
+            }
+        }
+//        while(!done) {
+//            result = read(proc->pipe_in,)
+//            result = pthread_cond_timedwait(&_startup_cond, &_startup_mutex, &ts);
+//            done = 1; /* Let's assume we are done */
 //            if(result != ETIMEDOUT) { /* If we didn't timeout */
 //                for(j = 0; j < _module_count; j++) { /* Loop through modules */
 //                    /* If the module is in the current startup tier and the running flag is not set then... */
@@ -205,7 +231,7 @@ process_start_all(void)
 //                    _current_mod = _current_mod->next;
 //                }
 //            }
-        }
+//        }
     }
 //        pthread_mutex_unlock(&_startup_mutex);
 //    }
@@ -349,7 +375,7 @@ _cleanup_process(pid_t pid, int status)
         //close(mod->pipe_err);
         proc->pid = 0;
         proc->exit_status = status;
-        proc->state = PSTATE_WAITING;
+        proc->state = PSTATE_DEAD;
         return 0;
     } else {
         xerror("Process %d not found \n", pid);
@@ -367,6 +393,8 @@ void
 process_scan(void)
 {
     int n;
+    dax_process *this;
+
     /* Check the dead module queue for pid's that need cleaning */
     for(n = 0; n < DPQ_SIZE; n++) {
         if(_dpq[n].pid != 0) {
@@ -374,11 +402,13 @@ process_scan(void)
             _dpq[n].pid = 0;
         }
     }
-    /* TODO: do a waitpid(-1, NULL, WNOHANG); to clean up any zombies */
+
+    this = _process_list;
+    while(this != NULL) {
+
+    }
     /* TODO: Restart modules if necessary */
 }
-
-
 
 
 /* TODO: Program process_stop() */

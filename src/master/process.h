@@ -30,7 +30,7 @@
 #include <pthread.h>
 
 #define PSTATE_STARTED      0x01 /* Process has been started */
-#define PSTATE_WAITING      0x02 /* Waiting for restart */
+#define PSTATE_DEAD         0x02 /* Waiting for restart */
 #define PSTATE_RUNNING      0x04 /* Process is running */
 
 /* Process Flags */

@@ -33,7 +33,7 @@ get_cpu_usage(pid_t pid)
 }
 
 /* Returns the memory usage in kB of the process indicated by pid */
-int
+unsigned int
 get_mem_usage(pid_t pid)
 {
     return 0;
