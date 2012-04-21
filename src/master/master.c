@@ -39,8 +39,7 @@ int
 main(int argc, const char *argv[])
 {
     struct sigaction sa;
-//    pthread_t message_thread;
-//    int result;
+    int result;
     
     /* Set up the signal handlers */
     /* TODO: We need to handle every signal that could possibly kill us */
@@ -62,6 +61,10 @@ main(int argc, const char *argv[])
      * make sure and close the logger before we deamonize and then
      * call logger_init() again afterwards */
     logger_init(LOG_TYPE_STDOUT, "opendax");
+    result = process_init();
+    if(result) {
+        xfatal("Unable to start process monitor thread.  Error code = %d", result);
+    }
     /* TODO: We should have individual configuration objects that we retrieve
      * from this function, instead of the global data in the source file. */
     opt_configure(argc, argv);

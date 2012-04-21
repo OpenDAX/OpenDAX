@@ -22,14 +22,19 @@
 #include <process.h>
 #include <sys/time.h>
 #include <logger.h>
-#include <poll.h>
+#include <sys/select.h>
 
 /* Global Variables */
+static pthread_t proc_thread;
+static pthread_mutex_t proc_mutex;
+/* These are used for coordination between the process monitoring thread
+ * and the startup routines.*/
+static pthread_mutex_t pipe_mutex;
+static pthread_cond_t  pipe_cond;
 
 /* This array is the dead process list.
    TODO: This should be improved to allow it to grow when needed.
 */
-
 #ifndef DPQ_SIZE
   #define DPQ_SIZE 10
 #endif
@@ -116,6 +121,7 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
         /* name the module */
         new->name = strdup(name);
         new->next = NULL;
+        pthread_mutex_lock(&proc_mutex);
         if(_process_list == NULL) { /* List is empty */
             _process_list = new;
         } else {
@@ -123,6 +129,7 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
             while(this->next != NULL);
             this->next = new;
         }
+        pthread_mutex_unlock(&proc_mutex);
         return new;
     } else {
         return NULL;
@@ -155,6 +162,7 @@ process_del(dax_process *proc)
     dax_process *last, *this;
 
     if(proc) {
+        pthread_mutex_lock(&proc_mutex);
         if(proc == _process_list) { /* If this is the first process */
             _process_list = _process_list->next;
         } else {
@@ -163,16 +171,109 @@ process_del(dax_process *proc)
                 this = proc->next;
                 if(this == proc) {
                     _free_process(proc);
+                    pthread_mutex_unlock(&proc_mutex);
                     return 0;
                 }
                 last = this;
                 this = this->next;
             }
         }
+        pthread_mutex_unlock(&proc_mutex);
     }
     return ERR_ARG;
 }
 
+#define PIPE_BUFF_MAX 1024
+
+/* This function watches the file descriptors for each child process
+ * and sends the output to the system logger.  It will also signal the
+ * process starting routines when the startup string has been detected. */
+static void
+_process_monitor_thread(void)
+{
+    dax_process *this;
+    fd_set fds;
+    int max_fd, result;
+    struct timeval tv;
+    char rbuff[PIPE_BUFF_MAX];
+
+    while(1) {
+        //fprintf(stderr,"Thread Running\n");
+        FD_ZERO(&fds);
+        max_fd = 0;
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        pthread_mutex_lock(&proc_mutex);
+        this = _process_list;
+        while(this != NULL) {
+            if(this->state &= PSTATE_STARTED) {
+                if(this->pipe_out > 0) FD_SET(this->pipe_out, &fds);
+                if(this->pipe_out > max_fd) max_fd = this->pipe_out;
+                if(this->pipe_err > 0) FD_SET(this->pipe_err, &fds);
+                if(this->pipe_err > max_fd) max_fd = this->pipe_err;
+            }
+            this = this->next;
+        }
+        pthread_mutex_unlock(&proc_mutex);
+        if(max_fd > 0) {
+            result = select(max_fd+1, &fds, NULL, NULL, &tv);
+            printf("select() returned %d\n", result);
+            if(result > 0) {
+                printf("lock wait\n");
+                pthread_mutex_lock(&proc_mutex);
+                printf("passed the lock\n");
+                this = _process_list;
+                while(this != NULL) {
+                    if(FD_ISSET(this->pipe_out, &fds)) {
+                        printf("read stdout for module %s\n", this->name);
+                        result = read(this->pipe_out, rbuff, PIPE_BUFF_MAX);
+                        if(result > 0) {
+                            rbuff[result] = '\0';
+                            xlog(LOG_ALL, "%s: %s", this->name, rbuff);
+                        } else if(result < 0) {
+                            xerror("master: error reading stdout for %s", this->name);
+                        } else { /* result == 0 */
+                            xerror("master: don't know what to do with read() returning 0");
+                        }
+                    }
+                    if(FD_ISSET(this->pipe_err, &fds)) {
+                        printf("read stderr for module %s\n", this->name);
+                        result = read(this->pipe_err, rbuff, PIPE_BUFF_MAX);
+                        if(result > 0) {
+                            rbuff[result] = '\0';
+                            xerror("%s: %s", this->name, rbuff);
+                        } else if(result < 0) {
+                            xerror("master: error reading stderr for %s", this->name);
+                        } else { /* result == 0 */
+                            xerror("master: don't know what to do with read() returning 0");
+                        }
+                    }
+                    this = this->next;
+                }
+                pthread_mutex_unlock(&proc_mutex);
+            }
+        }
+        sleep(1);
+    }
+
+}
+
+
+/* Initialize the global data and start the monitoring thread */
+int
+process_init(void)
+{
+    int result;
+
+    pthread_mutex_init(&proc_mutex, NULL);
+    pthread_mutex_init(&pipe_mutex, NULL);
+    pthread_cond_init(&pipe_cond, NULL);
+
+    result = pthread_create(&proc_thread, NULL, (void *)&_process_monitor_thread, NULL);
+    return result;
+}
+
+/* Start all of the processes in the process list */
 void
 process_start_all(void)
 {
@@ -180,44 +281,44 @@ process_start_all(void)
     struct timeval start, interval, end;
     int timeout;
     int result, done = 0;
-    struct pollfd fds[2];
 
     /* In case we ain't go no list */
     if(_process_list == NULL) return;
 
+    pthread_mutex_lock(&proc_mutex);
     this = _process_list;
     while(this != NULL) {
         process_start(this);
         this = this->next;
 
-        gettimeofday(&start, NULL);
-        this->starttime = start.tv_sec;
-        if(this->waitstr != NULL) {
-            interval.tv_sec = this->timeout / 1000;
-            interval.tv_usec = (this->timeout % 1000)*1000;
-            timeradd(&start, &interval, &end);
-            timeout = this->timeout;
-            fds[0].fd = this->pipe_in;
-            fds[0].events = POLLRDNORM;
-            // Let's just deal with stdout for now
-            //fds[1].fd = this->pipe_err;
-            //fds[1].events = POLLRDNORM;
-            while(!done) {
-                result = poll(fds, 1, timeout);
-                if(result == 0) {
-                    done = 1; /* Timeout */
-                } else if(result < 0) {
-                    /* Any error besides interruption */
-                    if(errno != EINTR) {
-                        /* TODO: Deal with the rest of the errors */
-                        done = 1;
-                    }
-                } else { /* We've got some data here */
-
-                }
-
-            }
-        }
+//        gettimeofday(&start, NULL);
+//        this->starttime = start.tv_sec;
+//        if(this->waitstr != NULL) {
+//            interval.tv_sec = this->timeout / 1000;
+//            interval.tv_usec = (this->timeout % 1000)*1000;
+//            timeradd(&start, &interval, &end);
+//            timeout = this->timeout;
+//            fds[0].fd = this->pipe_in;
+//            fds[0].events = POLLRDNORM;
+//            // Let's just deal with stdout for now
+//            //fds[1].fd = this->pipe_err;
+//            //fds[1].events = POLLRDNORM;
+//            while(!done) {
+//                result = poll(fds, 1, timeout);
+//                if(result == 0) {
+//                    done = 1; /* Timeout */
+//                } else if(result < 0) {
+//                    /* Any error besides interruption */
+//                    if(errno != EINTR) {
+//                        /* TODO: Deal with the rest of the errors */
+//                        done = 1;
+//                    }
+//                } else { /* We've got some data here */
+//
+//                }
+//
+//            }
+//        }
 //        while(!done) {
 //            result = read(proc->pipe_in,)
 //            result = pthread_cond_timedwait(&_startup_cond, &_startup_mutex, &ts);
@@ -232,6 +333,7 @@ process_start_all(void)
 //                }
 //            }
 //        }
+        pthread_mutex_unlock(&proc_mutex);
     }
 //        pthread_mutex_unlock(&_startup_mutex);
 //    }
@@ -251,13 +353,13 @@ _getpipes(int *pipes)
 
     if(pipe(&pipes[0])) {
         xerror("Unable to create pipe - %s",strerror(errno));
-        return 0;
+        return -1;
     }
     if(pipe(&pipes[2])) {
         xerror("Unable to create pipe - %s",strerror(errno));
         close(pipes[0]);
         close(pipes[1]);
-        return 0;
+        return -1;
     }
     if(pipe(&pipes[4])) {
         xerror("Unable to create pipe - %s",strerror(errno));
@@ -265,9 +367,9 @@ _getpipes(int *pipes)
         close(pipes[1]);
         close(pipes[2]);
         close(pipes[3]);
-        return 0;
+        return -1;
     }
-    return 1;
+    return 0;
 }
 
 /* This function handles the dup()ing and closing of
@@ -297,13 +399,12 @@ process_start(dax_process *proc)
     int result = 0;
     int pipes[6];
  
-    if(proc) {
+    if(proc) { /* We are the parent */
         result = _getpipes(pipes);
-
+        if(result) xerror("Unable to properly set up pipes for %s\n", proc->name);
         child_pid = fork();
         if(child_pid > 0) { /* This is the parent */
             proc->pid = child_pid;
-            proc->state = PSTATE_STARTED;
             proc->exit_status = 0;
 
             xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
@@ -319,6 +420,7 @@ process_start(dax_process *proc)
                 proc->pipe_out = pipes[2];  /* fd to read childs stdout */
                 proc->pipe_err = pipes[4];  /* fd to read childs stderr */
             }
+            proc->state = PSTATE_STARTED;
             return child_pid;
         } else if(child_pid == 0) { /* Child */
             if(result) _childpipes(pipes);
@@ -359,8 +461,6 @@ _cleanup_process(pid_t pid, int status)
 {
     dax_process *proc;
     
-    /* Should only be called for local modules so we can assume the
-     * upper 32 bits are zero and just use the pid for the mid */
     proc = _get_process_pid(pid);
 
     /* at this point _current_mod should be pointing to a module with
@@ -370,9 +470,12 @@ _cleanup_process(pid_t pid, int status)
         xlog(LOG_MINOR, "Cleaning up Process %d", pid);
         /* Close the stdio pipe fd's */
         /* TODO: really should fix these */
-        //close(mod->pipe_in);
-        //close(mod->pipe_out);
-        //close(mod->pipe_err);
+        close(proc->pipe_in);
+        close(proc->pipe_out);
+        close(proc->pipe_err);
+        proc->pipe_in = 0;
+        proc->pipe_out = 0;
+        proc->pipe_err = 0;
         proc->pid = 0;
         proc->exit_status = status;
         proc->state = PSTATE_DEAD;
@@ -405,7 +508,7 @@ process_scan(void)
 
     this = _process_list;
     while(this != NULL) {
-
+        this = this->next;
     }
     /* TODO: Restart modules if necessary */
 }
@@ -442,6 +545,7 @@ _print_process_list(void)
     char **args;
     int n = 0;
 
+    pthread_mutex_lock(&proc_mutex);
     while(this != NULL) {
         printf("Process %s\n", this->name);
         printf("  path    = %s\n", this->path);
@@ -450,18 +554,23 @@ _print_process_list(void)
             printf("  arg[%d]    = %s\n", n, args[n]);
             n++;
         }
-        printf("  user    = %s\n", this->user);
-        printf("  uid     = %d\n", this->uid);
-        printf("  group   = %s\n", this->group);
-        printf("  gid     = %d\n", this->gid);
-        printf("  env     = %s\n", this->env);
-        printf("  waitstr = %s\n", this->waitstr);
-        printf("  timeout = %d\n", this->timeout);
-        printf("  cpu     = %f\n", this->cpu);
-        printf("  mem     = %d kB\n", this->mem);
-        printf("  pid     = %d\n", this->pid);
+        printf("  user     = %s\n", this->user);
+        printf("  uid      = %d\n", this->uid);
+        printf("  group    = %s\n", this->group);
+        printf("  gid      = %d\n", this->gid);
+        printf("  env      = %s\n", this->env);
+        printf("  waitstr  = %s\n", this->waitstr);
+        printf("  timeout  = %d\n", this->timeout);
+        printf("  cpu      = %f\n", this->cpu);
+        printf("  mem      = %d kB\n", this->mem);
+        printf("  pid      = %d\n", this->pid);
+        printf("  pipe_in  = %d\n", this->pipe_in);
+        printf("  pipe_err = %d\n", this->pipe_err);
+        printf("  pipe_out = %d\n", this->pipe_out);
+
         this = this->next;
     }
+    pthread_mutex_unlock(&proc_mutex);
 }
 
 

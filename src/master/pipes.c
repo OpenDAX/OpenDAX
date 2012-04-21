@@ -21,3 +21,11 @@
 
 #include <pipes.h>
 
+/* Initialize the data structures for the pipe handling system */
+int
+pipe_init(void)
+{
+
+    return 0;
+}
+

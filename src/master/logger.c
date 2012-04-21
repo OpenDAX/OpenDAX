@@ -58,9 +58,11 @@ void
 logger_init(int type, char *progname)
 {
     if(type == LOG_TYPE_SYSLOG) {
+        printf("Opening Syslog\n");
         write_log = log_syslog;
         openlog(progname, LOG_NDELAY, LOG_DAEMON);
     } else {
+        printf("Logging to STDOUT\n");
         write_log = log_stdout;
     }
 }

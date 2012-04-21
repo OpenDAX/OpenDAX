@@ -29,9 +29,12 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
-#define PSTATE_STARTED      0x01 /* Process has been started */
-#define PSTATE_DEAD         0x02 /* Waiting for restart */
-#define PSTATE_RUNNING      0x04 /* Process is running */
+/* The difference between STARTED and RUNNING is whether or not the master
+ * has either seen the startup string on the modules stdout or the wait timer
+ * has elapsed. */
+#define PSTATE_STARTED      0x01 /* Process has been started by master*/
+#define PSTATE_RUNNING      0x02 /* Process is running */
+#define PSTATE_DEAD         0x04 /* Waiting for restart or deletion */
 
 /* Process Flags */
 #define PFLAG_RESTART       0x01
@@ -71,6 +74,7 @@ typedef struct {
     int status;
 } dead_process;
 
+int process_init(void);
 void process_start_all(void);
 pid_t process_start(dax_process *);
 void process_scan(void);

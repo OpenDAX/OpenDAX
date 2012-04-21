@@ -21,3 +21,5 @@
 
 #include <common.h>
 #include <pthread.h>
+
+int pipe_init(void);
