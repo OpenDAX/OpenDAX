@@ -88,6 +88,7 @@ main(int argc, const char *argv[])
             /* TODO: Need to kill the message_thread */
             /* TODO: Should stop all running modules */
             kill(0, SIGTERM); /* ...this'll do for now */
+            closelog();
             exit(-1);
         }
  

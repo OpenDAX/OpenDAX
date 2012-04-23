@@ -25,7 +25,7 @@
 #include <syslog.h>
 #include <signal.h>
 
-static u_int32_t _logflags = 0;
+static u_int32_t _logflags = LOG_ALL;
 
 static void (*write_log)(int priority, const char *format, va_list val) = {NULL};
 //static void

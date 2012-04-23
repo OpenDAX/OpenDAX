@@ -100,7 +100,7 @@ dax_process *
 process_add(char *name, char *path, char *arglist, unsigned int flags)
 {
     dax_process *new, *this;
-    xlog(LOG_MAJOR,"Adding process %s",name);
+    xlog(LOG_CONFIG,"Adding process %s to configuration",name);
     
     new = malloc(sizeof(dax_process));
     if(new) {
@@ -197,8 +197,13 @@ _process_monitor_thread(void)
     struct timeval tv;
     char rbuff[PIPE_BUFF_MAX];
 
+    // TODO remove this if we can? does it even work.
+    //logger_init(LOG_TYPE_SYSLOG, "opendax");
+
     while(1) {
         //fprintf(stderr,"Thread Running\n");
+        xlog(LOG_ALL, "Thread Running");
+        //xerror("Thread Running\n");
         FD_ZERO(&fds);
         max_fd = 0;
         tv.tv_sec = 1;
