@@ -183,7 +183,23 @@ process_del(dax_process *proc)
     return ERR_ARG;
 }
 
-#define PIPE_BUFF_MAX 1024
+#define PTY_BUFF_MAX 1024
+
+static void
+_process_log(char *buff, dax_process *proc)
+{
+    char *save;
+    char *token;
+
+    token = strtok_r(buff, "\r\n", &save);
+    while(token != NULL ) {
+        /* TODO: Check for "ERROR" in string */
+        /* TODO: Change to logging functions */
+        printf("%s: ", proc->name);
+        printf("%s\n", token);
+        token = strtok_r(NULL, "\r\n", &save);
+    }
+}
 
 /* This function watches the file descriptors for each child process
  * and sends the output to the system logger.  It will also signal the
@@ -195,7 +211,7 @@ _process_monitor_thread(void)
     fd_set fds;
     int max_fd, result;
     struct timeval tv;
-    char rbuff[PIPE_BUFF_MAX];
+    char rbuff[PTY_BUFF_MAX];
 
     // TODO remove this if we can? does it even work.
     //logger_init(LOG_TYPE_SYSLOG, "opendax");
@@ -222,10 +238,11 @@ _process_monitor_thread(void)
                 this = _process_list;
                 while(this != NULL) {
                     if(FD_ISSET(this->pty_fd, &fds)) {
-                        result = read(this->pty_fd, rbuff, PIPE_BUFF_MAX);
+                        result = read(this->pty_fd, rbuff, PTY_BUFF_MAX);
                         if(result > 0) {
                             rbuff[result-1] = '\0'; /* Remove the linefeed */
-                            xlog(LOG_ALL, "%s: %s", this->name, rbuff);
+                            _process_log(rbuff, this);
+                            //xlog(LOG_ALL, "%s: %s", this->name, rbuff);
                         } else if(result < 0) {
                             xerror("master: error reading stdout for %s", this->name);
                         } else { /* result == 0 */
@@ -348,7 +365,6 @@ process_start(dax_process *proc)
             if(execvp(proc->path, proc->arglist)) {
                 xerror("start_module exec failed - %s - %s",
                        proc->path, strerror(errno));
-
                 exit(errno);
             }
         } else { /* Error on the fork */
@@ -396,7 +412,7 @@ _cleanup_process(pid_t pid, int status)
         xerror("Process %d not found \n", pid);
         return ERR_NOTFOUND;
     }
-	return 0;
+    return 0;
 }
 
 
