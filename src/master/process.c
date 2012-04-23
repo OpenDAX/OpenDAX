@@ -206,7 +206,7 @@ _process_monitor_thread(void)
         pthread_mutex_lock(&proc_mutex);
         this = _process_list;
         while(this != NULL) {
-            if(this->state &= PSTATE_STARTED) {
+            if(this->state & PSTATE_STARTED) {
                 if(this->pipe_out > 0) FD_SET(this->pipe_out, &fds);
                 if(this->pipe_out > max_fd) max_fd = this->pipe_out;
                 if(this->pipe_err > 0) FD_SET(this->pipe_err, &fds);
@@ -215,9 +215,10 @@ _process_monitor_thread(void)
             this = this->next;
         }
         pthread_mutex_unlock(&proc_mutex);
+        printf("maxfd = %d\n", max_fd);
         if(max_fd > 0) {
             result = select(max_fd+1, &fds, NULL, NULL, &tv);
-            printf("select() returned %d\n", result);
+            fprintf(stderr, "select() returned %d\n", result);
             if(result > 0) {
                 printf("lock wait\n");
                 pthread_mutex_lock(&proc_mutex);
@@ -410,7 +411,7 @@ process_start(dax_process *proc)
             xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
             proc->starttime = time(NULL);
 
-            if(result) { /* do we have any pipes set */
+            if(!result) { /* do we have any pipes set */
                 close(pipes[0]); /* close the write pipe on childs stdin */
                 close(pipes[3]); /* close the read pipe on childs stdout */
                 close(pipes[5]); /* close the read pipe on childs stderr */
@@ -423,7 +424,7 @@ process_start(dax_process *proc)
             proc->state = PSTATE_STARTED;
             return child_pid;
         } else if(child_pid == 0) { /* Child */
-            if(result) _childpipes(pipes);
+            if(!result) _childpipes(pipes);
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
             if(execvp(proc->path, proc->arglist)) {
