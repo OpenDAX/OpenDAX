@@ -28,13 +28,6 @@
 static u_int32_t _logflags = LOG_ALL;
 
 static void (*write_log)(int priority, const char *format, va_list val) = {NULL};
-//static void
-//write_log(int priority, const char *format, va_list val)
-//{
-//    vfprintf(stdout, format, val);
-//    fprintf(stdout, "\n");
-//}
-
 
 void
 log_syslog(int priority, const char *format, va_list val)
@@ -66,7 +59,6 @@ logger_init(int type, char *progname)
         write_log = log_stdout;
     }
 }
-
 
 /* logs the string if any of the bits in flags matches _logflags */
 void

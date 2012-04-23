@@ -45,9 +45,9 @@ main(int argc, const char *argv[])
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
+    sigaction(SIGHUP, &sa, NULL);
     
     sa.sa_handler = &catch_signal;
-    sigaction(SIGHUP, &sa, NULL);
     sigaction(SIGPIPE, &sa, NULL);
     
     //set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
@@ -79,18 +79,12 @@ main(int argc, const char *argv[])
     xlog(LOG_MAJOR, "OpenDAX Tag Server Started");
     
     while(1) { /* Main loop */
-        /* TODO: This might could be some kind of condition
-           variable or signal thing instead of just the sleep(). */
-        sleep(1);
+        sleep(10); /* A signal should interrupt this */
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
-            /* TODO: Need to kill the message_thread */
-            /* TODO: Should stop all running modules */
-            //kill(0, SIGTERM); /* ...this'll do for now */
-            /* TODO: Should verify that all the children are dead.  If not
-             then send a SIGKILL signal */
+            xlog(LOG_MAJOR, "Quitting due to signal %d", quitflag);
             msg_destroy(); /* Destroy the message queue */
-            exit(-1);
+            exit(0);
         }
     }
 }
@@ -115,13 +109,13 @@ messagethread(void)
 void
 quit_signal(int sig)
 {
-    xlog(LOG_MAJOR, "Quitting due to signal %d", sig);
-    quitflag = 1;
+    quitflag = sig;
 }
 
 /* TODO: May need to so something with signals like SIGPIPE etc */
 void
 catch_signal(int sig)
 {
+    /* TODO: Shouldn't really have printfs in signal handlers */
     xlog(LOG_MINOR, "Received signal %d", sig);    
 }

@@ -23,6 +23,8 @@
 #include <sys/time.h>
 #include <logger.h>
 #include <sys/select.h>
+/* TODO: This next file might have to be pty.h in Linux. Configuration directive? */
+#include <util.h>
 
 /* Global Variables */
 static pthread_t proc_thread;
@@ -104,9 +106,7 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
     
     new = malloc(sizeof(dax_process));
     if(new) {
-        new->pipe_in = -1;
-        new->pipe_out = -1;
-        new->pipe_err = -1;
+        new->pty_fd = 0;
         new->fd = 0;
         new->efd = 0;
         new->pid = 0;
@@ -201,9 +201,6 @@ _process_monitor_thread(void)
     //logger_init(LOG_TYPE_SYSLOG, "opendax");
 
     while(1) {
-        //fprintf(stderr,"Thread Running\n");
-        xlog(LOG_ALL, "Thread Running");
-        //xerror("Thread Running\n");
         FD_ZERO(&fds);
         max_fd = 0;
         tv.tv_sec = 1;
@@ -212,44 +209,25 @@ _process_monitor_thread(void)
         this = _process_list;
         while(this != NULL) {
             if(this->state & PSTATE_STARTED) {
-                if(this->pipe_out > 0) FD_SET(this->pipe_out, &fds);
-                if(this->pipe_out > max_fd) max_fd = this->pipe_out;
-                if(this->pipe_err > 0) FD_SET(this->pipe_err, &fds);
-                if(this->pipe_err > max_fd) max_fd = this->pipe_err;
+                if(this->pty_fd > 0) FD_SET(this->pty_fd, &fds);
+                if(this->pty_fd > max_fd) max_fd = this->pty_fd;
             }
             this = this->next;
         }
         pthread_mutex_unlock(&proc_mutex);
-        printf("maxfd = %d\n", max_fd);
         if(max_fd > 0) {
             result = select(max_fd+1, &fds, NULL, NULL, &tv);
-            fprintf(stderr, "select() returned %d\n", result);
             if(result > 0) {
-                printf("lock wait\n");
                 pthread_mutex_lock(&proc_mutex);
-                printf("passed the lock\n");
                 this = _process_list;
                 while(this != NULL) {
-                    if(FD_ISSET(this->pipe_out, &fds)) {
-                        printf("read stdout for module %s\n", this->name);
-                        result = read(this->pipe_out, rbuff, PIPE_BUFF_MAX);
+                    if(FD_ISSET(this->pty_fd, &fds)) {
+                        result = read(this->pty_fd, rbuff, PIPE_BUFF_MAX);
                         if(result > 0) {
-                            rbuff[result] = '\0';
+                            rbuff[result-1] = '\0'; /* Remove the linefeed */
                             xlog(LOG_ALL, "%s: %s", this->name, rbuff);
                         } else if(result < 0) {
                             xerror("master: error reading stdout for %s", this->name);
-                        } else { /* result == 0 */
-                            xerror("master: don't know what to do with read() returning 0");
-                        }
-                    }
-                    if(FD_ISSET(this->pipe_err, &fds)) {
-                        printf("read stderr for module %s\n", this->name);
-                        result = read(this->pipe_err, rbuff, PIPE_BUFF_MAX);
-                        if(result > 0) {
-                            rbuff[result] = '\0';
-                            xerror("%s: %s", this->name, rbuff);
-                        } else if(result < 0) {
-                            xerror("master: error reading stderr for %s", this->name);
                         } else { /* result == 0 */
                             xerror("master: don't know what to do with read() returning 0");
                         }
@@ -284,9 +262,9 @@ void
 process_start_all(void)
 {
     dax_process *this;
-    struct timeval start, interval, end;
-    int timeout;
-    int result, done = 0;
+//    struct timeval start, interval, end;
+//    int timeout;
+//    int result, done = 0;
 
     /* In case we ain't go no list */
     if(_process_list == NULL) return;
@@ -344,92 +322,27 @@ process_start_all(void)
 //        pthread_mutex_unlock(&_startup_mutex);
 //    }
 }
-
-/* Gets the three sets of pipes for stdin stdout and stderr 
-   pipes[0]=stdin  read fd
-   pipes[1]=stdin  write fd
-   pipes[2]=stdout read fd
-   pipes[3]=stdout write fd
-   pipes[4]=stderr read fd
-   pipes[5]=stderr write fd
-*/
-inline static int 
-_getpipes(int *pipes)
-{
-
-    if(pipe(&pipes[0])) {
-        xerror("Unable to create pipe - %s",strerror(errno));
-        return -1;
-    }
-    if(pipe(&pipes[2])) {
-        xerror("Unable to create pipe - %s",strerror(errno));
-        close(pipes[0]);
-        close(pipes[1]);
-        return -1;
-    }
-    if(pipe(&pipes[4])) {
-        xerror("Unable to create pipe - %s",strerror(errno));
-        close(pipes[0]);
-        close(pipes[1]);
-        close(pipes[2]);
-        close(pipes[3]);
-        return -1;
-    }
-    return 0;
-}
-
-/* This function handles the dup()ing and closing of
- * the stdin/stdout/stderr file descriptors in the child */
-/* TODO: check for errors and return appropriately. */
-inline static int
-_childpipes(int *pipes)
-{
-    close(pipes[1]);
-    close(pipes[2]);
-    close(pipes[4]);
-    dup2(pipes[0],0);
-    dup2(pipes[3],1);
-    dup2(pipes[5],2);
-    close(pipes[0]);
-    close(pipes[3]);
-    close(pipes[5]);
-    return 1;
-}
-
-
 /* This function is used to start a module */
 pid_t
 process_start(dax_process *proc)
 {
     pid_t child_pid;
     int result = 0;
-    int pipes[6];
+    int pty_fd;
  
     if(proc) { /* We are the parent */
-        result = _getpipes(pipes);
         if(result) xerror("Unable to properly set up pipes for %s\n", proc->name);
-        child_pid = fork();
+        child_pid = forkpty(&pty_fd, NULL, NULL, NULL);
         if(child_pid > 0) { /* This is the parent */
             proc->pid = child_pid;
             proc->exit_status = 0;
 
             xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
             proc->starttime = time(NULL);
-
-            if(!result) { /* do we have any pipes set */
-                close(pipes[0]); /* close the write pipe on childs stdin */
-                close(pipes[3]); /* close the read pipe on childs stdout */
-                close(pipes[5]); /* close the read pipe on childs stderr */
-            
-                /* record the pipes for the process */
-                proc->pipe_in  = pipes[1];  /* fd to write childs stdin */
-                proc->pipe_out = pipes[2];  /* fd to read childs stdout */
-                proc->pipe_err = pipes[4];  /* fd to read childs stderr */
-            }
+            proc->pty_fd = pty_fd;
             proc->state = PSTATE_STARTED;
             return child_pid;
         } else if(child_pid == 0) { /* Child */
-            if(!result) _childpipes(pipes);
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
             if(execvp(proc->path, proc->arglist)) {
@@ -447,17 +360,18 @@ process_start(dax_process *proc)
     return 0;
 }
 
+/* Finds and returns a pointer to the process with the given PID */
 static dax_process *
 _get_process_pid(pid_t pid)
 {
-	dax_process *this;
+    dax_process *this;
 
-	this = _process_list;
-	while(this != NULL) {
-		if(this->pid == pid) return this;
-		this = this->next;
-	}
-	return NULL;
+    this = _process_list;
+    while(this != NULL) {
+        if(this->pid == pid) return this;
+        this = this->next;
+    }
+    return NULL;
 }
 
 /* This function is called from the scan_modules function and is used 
@@ -474,14 +388,6 @@ _cleanup_process(pid_t pid, int status)
      * be a module with our PID */
     if(proc) {
         xlog(LOG_MINOR, "Cleaning up Process %d", pid);
-        /* Close the stdio pipe fd's */
-        /* TODO: really should fix these */
-        close(proc->pipe_in);
-        close(proc->pipe_out);
-        close(proc->pipe_err);
-        proc->pipe_in = 0;
-        proc->pipe_out = 0;
-        proc->pipe_err = 0;
         proc->pid = 0;
         proc->exit_status = status;
         proc->state = PSTATE_DEAD;
@@ -538,7 +444,6 @@ process_dpq_add(pid_t pid, int status)
     while(_dpq[n].pid != 0 && n < DPQ_SIZE) {
         n++;
     }
-    //xlog(10,"Adding Dead Module pid=%d index=%d",pid,n);
     _dpq[n].pid = pid;
     _dpq[n].status = status;
 }
@@ -570,9 +475,7 @@ _print_process_list(void)
         printf("  cpu      = %f\n", this->cpu);
         printf("  mem      = %d kB\n", this->mem);
         printf("  pid      = %d\n", this->pid);
-        printf("  pipe_in  = %d\n", this->pipe_in);
-        printf("  pipe_err = %d\n", this->pipe_err);
-        printf("  pipe_out = %d\n", this->pipe_out);
+        printf("  pty_fd = %d\n", this->pty_fd);
 
         this = this->next;
     }

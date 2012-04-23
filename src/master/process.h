@@ -60,9 +60,10 @@ typedef struct dax_process {
     char *waitstr;      /* String to wait for on stdout that indicates process running */
     double cpu;         /* CPU percentage threshold (0.0 - 1.0) */
     int mem;            /* Memory Threshold (kB) */
-    int pipe_in;        /* Redirected to the modules stdin */
-    int pipe_out;       /* Redirected to the modules stdout */
-    int pipe_err;       /* Redirected to the modules stderr */
+//    int pipe_in;        /* Redirected to the modules stdin */
+//    int pipe_out;       /* Redirected to the modules stdout */
+//    int pipe_err;       /* Redirected to the modules stderr */
+    int pty_fd;         /* The file descriptor to the child processes pty */
     int fd;             /* The socket file descriptor for this module */
     int efd;            /* The notification file descriptor */
     time_t starttime;
