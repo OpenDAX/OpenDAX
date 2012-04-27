@@ -23,8 +23,14 @@
 #include <sys/time.h>
 #include <logger.h>
 #include <sys/select.h>
-/* TODO: This next file might have to be pty.h in Linux. Configuration directive? */
+#ifdef HAVE_UTIL_H
 #include <util.h>
+#elif HAVE_PTY_H
+#include <pty.h>
+#endif
+#ifdef HAVE_UTMP_H
+#include <utmp.h>
+#endif
 
 /* Global Variables */
 static pthread_t proc_thread;

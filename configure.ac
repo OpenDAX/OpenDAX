@@ -111,7 +111,7 @@ AC_SUBST(LUALIB)
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/socket.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h signal.h sys/select.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/socket.h sys/ioctl.h sys/param.h sys/time.h syslog.h termios.h unistd.h readline/readline.h signal.h sys/select.h util.h pty.h utmp.h])
 AC_CHECK_HEADERS([mysql/mysql.h])
 AC_CHECK_HEADERS([ltdl.h dlfcn.h])
 AC_CHECK_HEADERS([lua5.1/lua.h lua5.1/lauxlib.h lua5.1/lualib.h], [lua_include = 'lua5.1'])
@@ -125,6 +125,11 @@ AC_C_INLINE
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_INT8_T
+AC_TYPE_SSIZE_T
 
 # Checks for library functions.
 AC_FUNC_FORK
@@ -132,7 +137,26 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([dup2 gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtof strtoul])
+AC_CHECK_FUNCS([gettimeofday memmove memset socket strcasecmp strdup strerror strpbrk strtol strtof strtoul])
+
+#Might be able to do this with AC_SEARCH_LIBS
+AC_CHECK_LIB([util],[forkpty],[got_forkpty=true],[got_forkpty=false])
+if test "$got_forkpty" = 'true' ; then
+    UTILLIB='-lutil'
+else
+    UTILLIB=' '
+    AC_CHECK_FUNC([forkpty],[got_forkpty=true])
+fi
+
+if test $got_forkpty = false ; then
+  echo "--ERROR------------------------------------"
+  echo "Function forkpty() not found this function"
+  echo "is required to build OpenDAX!"
+  echo "-------------------------------------------"
+  (exit 1); exit 1;
+fi  
+
+AC_SUBST(UTILLIB)
 
 CFLAGS="-Wall -DETC_DIR=\\\"$sysconfdir/$PACKAGE\\\"   "
 
