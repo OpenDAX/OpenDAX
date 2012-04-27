@@ -29,10 +29,7 @@
 /* Global Variables */
 static pthread_t proc_thread;
 static pthread_mutex_t proc_mutex;
-/* These are used for coordination between the process monitoring thread
- * and the startup routines.*/
-static pthread_mutex_t pipe_mutex;
-static pthread_cond_t  pipe_cond;
+static pthread_cond_t  state_cond;
 
 /* This array is the dead process list.
    TODO: This should be improved to allow it to grow when needed.
@@ -201,6 +198,23 @@ _process_log(char *buff, dax_process *proc)
     }
 }
 
+
+/* Here we check to see if our startup string has
+ * come from the child process.  If so we set the
+ * running flag */
+static inline void
+_check_waitstr(char *rbuff, dax_process *proc)
+{
+    if(proc->waitstr && !(proc->state & PSTATE_RUNNING) ) {
+        if(strstr(rbuff, proc->waitstr)) {
+            //xlog(LOG_VERBOSE, "Found starup string for process %d", proc->name);
+            printf("Found startup string for process %s", proc->name);
+            proc->state |= PSTATE_RUNNING;
+            pthread_cond_signal(&state_cond);
+        }
+    }
+}
+
 /* This function watches the file descriptors for each child process
  * and sends the output to the system logger.  It will also signal the
  * process starting routines when the startup string has been detected. */
@@ -221,6 +235,7 @@ _process_monitor_thread(void)
         max_fd = 0;
         tv.tv_sec = 1;
         tv.tv_usec = 0;
+        printf("locking - thread\n");
         pthread_mutex_lock(&proc_mutex);
         this = _process_list;
         while(this != NULL) {
@@ -230,19 +245,20 @@ _process_monitor_thread(void)
             }
             this = this->next;
         }
+        printf("unlocking - thread\n");
         pthread_mutex_unlock(&proc_mutex);
         if(max_fd > 0) {
             result = select(max_fd+1, &fds, NULL, NULL, &tv);
             if(result > 0) {
+                printf("locking - thread 2\n");
                 pthread_mutex_lock(&proc_mutex);
                 this = _process_list;
                 while(this != NULL) {
                     if(FD_ISSET(this->pty_fd, &fds)) {
                         result = read(this->pty_fd, rbuff, PTY_BUFF_MAX);
                         if(result > 0) {
-                            rbuff[result-1] = '\0'; /* Remove the linefeed */
+                            _check_waitstr(rbuff, this);
                             _process_log(rbuff, this);
-                            //xlog(LOG_ALL, "%s: %s", this->name, rbuff);
                         } else if(result < 0) {
                             xerror("master: error reading stdout for %s", this->name);
                         } else { /* result == 0 */
@@ -251,6 +267,7 @@ _process_monitor_thread(void)
                     }
                     this = this->next;
                 }
+                printf("locking - thread 2\n");
                 pthread_mutex_unlock(&proc_mutex);
             }
         }
@@ -267,11 +284,28 @@ process_init(void)
     int result;
 
     pthread_mutex_init(&proc_mutex, NULL);
-    pthread_mutex_init(&pipe_mutex, NULL);
-    pthread_cond_init(&pipe_cond, NULL);
+    pthread_cond_init(&state_cond, NULL);
 
     result = pthread_create(&proc_thread, NULL, (void *)&_process_monitor_thread, NULL);
     return result;
+}
+
+/* This function returns a timespec structure that is 'timeout' milliseconds
+ * later than right now */
+static struct timespec
+_get_timeout(int timeout)
+{
+    struct timeval time, interval, result;
+    struct timespec answer;
+
+    gettimeofday(&time, NULL);
+    interval.tv_sec = timeout / 1000;
+    interval.tv_usec = (timeout % 1000)*1000;
+    timeradd(&time, &interval, &result);
+    /* Now convert to timespec */
+    answer.tv_sec = result.tv_sec;
+    answer.tv_nsec = result.tv_usec * 1000;
+    return answer;
 }
 
 /* Start all of the processes in the process list */
@@ -279,66 +313,55 @@ void
 process_start_all(void)
 {
     dax_process *this;
-//    struct timeval start, interval, end;
-//    int timeout;
-//    int result, done = 0;
+    struct timeval time;
+    struct timespec timeout, rem;
+    int result;
 
     /* In case we ain't go no list */
     if(_process_list == NULL) return;
-
+    printf("locking - start_all\n");
     pthread_mutex_lock(&proc_mutex);
     this = _process_list;
     while(this != NULL) {
         process_start(this);
-        this = this->next;
 
-//        gettimeofday(&start, NULL);
-//        this->starttime = start.tv_sec;
-//        if(this->waitstr != NULL) {
-//            interval.tv_sec = this->timeout / 1000;
-//            interval.tv_usec = (this->timeout % 1000)*1000;
-//            timeradd(&start, &interval, &end);
-//            timeout = this->timeout;
-//            fds[0].fd = this->pipe_in;
-//            fds[0].events = POLLRDNORM;
-//            // Let's just deal with stdout for now
-//            //fds[1].fd = this->pipe_err;
-//            //fds[1].events = POLLRDNORM;
-//            while(!done) {
-//                result = poll(fds, 1, timeout);
-//                if(result == 0) {
-//                    done = 1; /* Timeout */
-//                } else if(result < 0) {
-//                    /* Any error besides interruption */
-//                    if(errno != EINTR) {
-//                        /* TODO: Deal with the rest of the errors */
-//                        done = 1;
-//                    }
-//                } else { /* We've got some data here */
-//
-//                }
-//
-//            }
-//        }
-//        while(!done) {
-//            result = read(proc->pipe_in,)
-//            result = pthread_cond_timedwait(&_startup_cond, &_startup_mutex, &ts);
-//            done = 1; /* Let's assume we are done */
-//            if(result != ETIMEDOUT) { /* If we didn't timeout */
-//                for(j = 0; j < _module_count; j++) { /* Loop through modules */
-//                    /* If the module is in the current startup tier and the running flag is not set then... */
-//                    if(_current_mod->startup == tier && !(_current_mod->flags & PSTATE_RUNNING)) {
-//                        done = 0; /* ...Lets go again */
-//                    }
-//                    _current_mod = _current_mod->next;
-//                }
-//            }
-//        }
-        pthread_mutex_unlock(&proc_mutex);
+        gettimeofday(&time, NULL);
+        this->starttime = time.tv_sec;
+
+        if(this->waitstr != NULL) {
+            while((this->state & PSTATE_RUNNING) == 0) {
+                if(this->timeout > 0) {
+                    timeout = _get_timeout(this->timeout);
+                } else {
+                    /*TODO: for now we default to 30 seconds.  Probably should be configurable */
+                    timeout = _get_timeout(30000);
+                }
+                printf("wait - start_all\n");
+                result = pthread_cond_timedwait(&state_cond, &proc_mutex, &timeout);
+                if(result == ETIMEDOUT) {
+                    xlog(LOG_MODULE, "Startup string not found for %s", this->name);
+                    this->state |= PSTATE_RUNNING;
+                }
+                printf("pthread_cond_timedwait() returned %d\n", result);
+            }
+        } else { /* If we aren't waiting for a string we'll just go with the timeout */
+            rem.tv_sec = this->timeout / 1000;
+            rem.tv_nsec = (this->timeout % 1000) * 1000000;
+            result = 1;
+            while(result) {
+                timeout = rem;
+                result = nanosleep(&timeout, &rem);
+                if(errno == EFAULT)
+                    xfatal("Serious problem with nanosleep in function process_start_all()");
+                assert(errno != EINVAL);
+            }
+        }
+        this = this->next;
     }
-//        pthread_mutex_unlock(&_startup_mutex);
-//    }
+    printf("unlocking - start_all exiting\n");
+    pthread_mutex_unlock(&proc_mutex);
 }
+
 /* This function is used to start a module */
 pid_t
 process_start(dax_process *proc)
