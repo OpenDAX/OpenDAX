@@ -75,7 +75,7 @@ daemonize(char *progname)
     result=setsid();
    
     if(result<0) {
-        xerror("Unable to dump controling terminal");
+        xerror("Unable to dump controlling terminal");
         return(-1);
     }
 

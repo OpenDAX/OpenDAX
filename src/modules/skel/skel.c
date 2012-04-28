@@ -55,7 +55,7 @@ int main(int argc,char *argv[]) {
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-
+    dax_log(ds, "Just seeing if I can print");
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("skel"); /* Replace 'skel' with your module name */
     if(ds == NULL) {
@@ -74,7 +74,7 @@ int main(int argc,char *argv[]) {
     result += dax_add_attribute(ds, "tagname","tagname", 't', flags, "skel");
     result += dax_add_attribute(ds, "event_tag","event_tag", 'e', flags, "skel_event");
     /* For these attributes we add the opendax.conf configuration file as a
-     * place where the attrubute can be set. No good reason for this other than
+     * place where the attribute can be set. No good reason for this other than
      * as an illustration. */
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_DAXCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "event_type","event_type", 'y', flags, "poll");
@@ -127,7 +127,7 @@ int main(int argc,char *argv[]) {
     }
 
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
-
+    dax_log(ds, "Skeleton Module Starting");
     while(1) {
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {

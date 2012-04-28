@@ -129,7 +129,7 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
             _process_list = new;
         } else {
             this = _process_list;
-            while(this->next != NULL);
+            while(this->next != NULL) this = this->next;
             this->next = new;
         }
         pthread_mutex_unlock(&proc_mutex);
@@ -241,7 +241,6 @@ _process_monitor_thread(void)
         max_fd = 0;
         tv.tv_sec = 1;
         tv.tv_usec = 0;
-        printf("locking - thread\n");
         pthread_mutex_lock(&proc_mutex);
         this = _process_list;
         while(this != NULL) {
@@ -251,12 +250,10 @@ _process_monitor_thread(void)
             }
             this = this->next;
         }
-        printf("unlocking - thread\n");
         pthread_mutex_unlock(&proc_mutex);
         if(max_fd > 0) {
             result = select(max_fd+1, &fds, NULL, NULL, &tv);
             if(result > 0) {
-                printf("locking - thread 2\n");
                 pthread_mutex_lock(&proc_mutex);
                 this = _process_list;
                 while(this != NULL) {
@@ -273,7 +270,6 @@ _process_monitor_thread(void)
                     }
                     this = this->next;
                 }
-                printf("locking - thread 2\n");
                 pthread_mutex_unlock(&proc_mutex);
             }
         }
@@ -287,12 +283,11 @@ _process_monitor_thread(void)
 int
 process_init(void)
 {
-    int result;
+    int result=0;
 
     pthread_mutex_init(&proc_mutex, NULL);
     pthread_cond_init(&state_cond, NULL);
 
-    result = pthread_create(&proc_thread, NULL, (void *)&_process_monitor_thread, NULL);
     return result;
 }
 
@@ -325,7 +320,7 @@ process_start_all(void)
 
     /* In case we ain't go no list */
     if(_process_list == NULL) return;
-    printf("locking - start_all\n");
+
     pthread_mutex_lock(&proc_mutex);
     this = _process_list;
     while(this != NULL) {
@@ -342,13 +337,11 @@ process_start_all(void)
                     /*TODO: for now we default to 30 seconds.  Probably should be configurable */
                     timeout = _get_timeout(30000);
                 }
-                printf("wait - start_all\n");
                 result = pthread_cond_timedwait(&state_cond, &proc_mutex, &timeout);
                 if(result == ETIMEDOUT) {
                     xlog(LOG_MODULE, "Startup string not found for %s", this->name);
                     this->state |= PSTATE_RUNNING;
                 }
-                printf("pthread_cond_timedwait() returned %d\n", result);
             }
         } else { /* If we aren't waiting for a string we'll just go with the timeout */
             rem.tv_sec = this->timeout / 1000;
@@ -364,7 +357,6 @@ process_start_all(void)
         }
         this = this->next;
     }
-    printf("unlocking - start_all exiting\n");
     pthread_mutex_unlock(&proc_mutex);
 }
 
@@ -444,6 +436,11 @@ _cleanup_process(pid_t pid, int status)
     return 0;
 }
 
+int
+start_process_thread(void)
+{
+    return pthread_create(&proc_thread, NULL, (void *)&_process_monitor_thread, NULL);
+}
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called

@@ -61,10 +61,7 @@ main(int argc, const char *argv[])
      * make sure and close the logger before we deamonize and then
      * call logger_init() again afterwards */
     logger_init(LOG_TYPE_STDOUT, "opendax");
-    result = process_init();
-    if(result) {
-        xfatal("Unable to start process monitor thread.  Error code = %d", result);
-    }
+    process_init();
     /* TODO: We should have individual configuration objects that we retrieve
      * from this function, instead of the global data in the source file. */
     opt_configure(argc, argv);
@@ -73,7 +70,10 @@ main(int argc, const char *argv[])
         daemonize("opendax");
         logger_init(LOG_TYPE_SYSLOG, "opendax");
     }
-
+    result = start_process_thread();
+    if(result) {
+        xfatal("Unable to start process monitor thread.  Error code = %d", result);
+    }
     process_start_all();
     _print_process_list();
 
