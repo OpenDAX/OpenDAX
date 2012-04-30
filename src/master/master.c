@@ -30,6 +30,7 @@
 #include <daemon.h>
 
 static int quitflag = 0;
+static pthread_t proc_thread;
 
 void child_signal(int);
 void quit_signal(int);
@@ -70,17 +71,17 @@ main(int argc, const char *argv[])
         daemonize("opendax");
         logger_init(LOG_TYPE_SYSLOG, "opendax");
     }
-    result = start_process_thread();
+    result = pthread_create(&proc_thread, NULL, process_start_all, NULL);
     if(result) {
         xfatal("Unable to start process monitor thread.  Error code = %d", result);
     }
-    process_start_all();
     _print_process_list();
 
     while(1) { /* Main loop */
         /* TODO: This might could be some kind of condition
            variable or signal thing instead of just the sleep(). */
         process_scan();
+
         sleep(1);
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {

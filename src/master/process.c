@@ -33,7 +33,6 @@
 #endif
 
 /* Global Variables */
-static pthread_t proc_thread;
 static pthread_mutex_t proc_mutex;
 static pthread_cond_t  state_cond;
 
@@ -224,8 +223,8 @@ _check_waitstr(char *rbuff, dax_process *proc)
 /* This function watches the file descriptors for each child process
  * and sends the output to the system logger.  It will also signal the
  * process starting routines when the startup string has been detected. */
-static void
-_process_monitor_thread(void)
+void
+process_monitor_io(void)
 {
     dax_process *this;
     fd_set fds;
@@ -236,47 +235,44 @@ _process_monitor_thread(void)
     // TODO remove this if we can? does it even work.
     //logger_init(LOG_TYPE_SYSLOG, "opendax");
 
-    while(1) {
-        FD_ZERO(&fds);
-        max_fd = 0;
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
-        pthread_mutex_lock(&proc_mutex);
-        this = _process_list;
-        while(this != NULL) {
-            if(this->state & PSTATE_STARTED) {
-                if(this->pty_fd > 0) FD_SET(this->pty_fd, &fds);
-                if(this->pty_fd > max_fd) max_fd = this->pty_fd;
-            }
-            this = this->next;
+    FD_ZERO(&fds);
+    max_fd = 0;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    pthread_mutex_lock(&proc_mutex);
+    this = _process_list;
+    while(this != NULL) {
+        if(this->state & PSTATE_STARTED) {
+            if(this->pty_fd > 0) FD_SET(this->pty_fd, &fds);
+            if(this->pty_fd > max_fd) max_fd = this->pty_fd;
         }
-        pthread_mutex_unlock(&proc_mutex);
-        if(max_fd > 0) {
-            result = select(max_fd+1, &fds, NULL, NULL, &tv);
-            if(result > 0) {
-                pthread_mutex_lock(&proc_mutex);
-                this = _process_list;
-                while(this != NULL) {
-                    if(FD_ISSET(this->pty_fd, &fds)) {
-                        result = read(this->pty_fd, rbuff, PTY_BUFF_MAX);
-                        if(result > 0) {
-                            _check_waitstr(rbuff, this);
-                            _process_log(rbuff, this);
-                        } else if(result < 0) {
-                            xerror("master: error reading stdout for %s", this->name);
-                        } else { /* result == 0 */
-                            xerror("master: don't know what to do with read() returning 0");
-                        }
-                    }
-                    this = this->next;
-                }
-                pthread_mutex_unlock(&proc_mutex);
-            }
-        }
-        sleep(1);
+        this = this->next;
     }
-
+    pthread_mutex_unlock(&proc_mutex);
+    if(max_fd > 0) {
+        result = select(max_fd+1, &fds, NULL, NULL, &tv);
+        if(result > 0) {
+            pthread_mutex_lock(&proc_mutex);
+            this = _process_list;
+            while(this != NULL) {
+                if(FD_ISSET(this->pty_fd, &fds)) {
+                    result = read(this->pty_fd, rbuff, PTY_BUFF_MAX);
+                    if(result > 0) {
+                        _check_waitstr(rbuff, this);
+                        _process_log(rbuff, this);
+                    } else if(result < 0) {
+                        xerror("master: error reading stdout for %s", this->name);
+                    } else { /* result == 0 */
+                        xerror("master: don't know what to do with read() returning 0");
+                    }
+                }
+                this = this->next;
+            }
+            pthread_mutex_unlock(&proc_mutex);
+        }
+    }
 }
+
 
 
 /* Initialize the global data and start the monitoring thread */
@@ -436,11 +432,11 @@ _cleanup_process(pid_t pid, int status)
     return 0;
 }
 
-int
-start_process_thread(void)
-{
-    return pthread_create(&proc_thread, NULL, (void *)&_process_monitor_thread, NULL);
-}
+//int
+//start_process_thread(void)
+//{
+//    return pthread_create(&proc_thread, NULL, (void *)&process_monitor_io, NULL);
+//}
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called
