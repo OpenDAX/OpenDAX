@@ -81,7 +81,7 @@ main(int argc, const char *argv[])
         /* TODO: This might could be some kind of condition
            variable or signal thing instead of just the sleep(). */
         process_scan();
-
+        process_monitor_io();
         sleep(1);
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
