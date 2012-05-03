@@ -95,7 +95,6 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
     
     new = malloc(sizeof(dax_process));
     if(new) {
-        new->pty_fd = 0;
         new->fd = 0;
         new->efd = 0;
         new->pid = 0;
@@ -208,8 +207,7 @@ process_start(dax_process *proc)
 {
     pid_t child_pid;
     int result = 0;
-    int pty_fd;
- 
+
     if(proc) { /* We are the parent */
         if(result) xerror("Unable to properly set up pipes for %s\n", proc->name);
         child_pid = fork();
@@ -219,7 +217,6 @@ process_start(dax_process *proc)
 
             xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
             proc->starttime = time(NULL);
-            proc->pty_fd = pty_fd;
             proc->state = PSTATE_STARTED;
             return child_pid;
         } else if(child_pid == 0) { /* Child */
@@ -266,7 +263,7 @@ _cleanup_process(pid_t pid, int status)
      * the PID that we passed but we should check because there may not 
      * be a module with our PID */
     if(proc) {
-        xlog(LOG_MINOR, "Cleaning up Process %d", pid);
+        xlog(LOG_MINOR, "Cleaning up Process %d - Returned Status %d", pid, status);
         proc->pid = 0;
         proc->exit_status = status;
         proc->state = PSTATE_DEAD;
@@ -352,7 +349,6 @@ _print_process_list(void)
         printf("  cpu      = %f\n", this->cpu);
         printf("  mem      = %d kB\n", this->mem);
         printf("  pid      = %d\n", this->pid);
-        printf("  pty_fd = %d\n", this->pty_fd);
 
         this = this->next;
     }

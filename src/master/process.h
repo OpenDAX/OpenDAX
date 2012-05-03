@@ -62,7 +62,7 @@ typedef struct dax_process {
 //    int pipe_in;        /* Redirected to the modules stdin */
 //    int pipe_out;       /* Redirected to the modules stdout */
 //    int pipe_err;       /* Redirected to the modules stderr */
-    int pty_fd;         /* The file descriptor to the child processes pty */
+//    int pty_fd;         /* The file descriptor to the child processes pty */
     int fd;             /* The socket file descriptor for this module */
     int efd;            /* The notification file descriptor */
     time_t starttime;
