@@ -27,7 +27,6 @@
 #include <pwd.h>
 #include <grp.h>
 #include <netinet/in.h>
-#include <pthread.h>
 
 /* The difference between STARTED and RUNNING is whether or not the master
  * has either seen the startup string on the modules stdout or the wait timer
@@ -56,8 +55,8 @@ typedef struct dax_process {
     char *group;        /* Set GID to this group before exec() */
     int uid;
     int gid;
-    int timeout;        /* Time to wait for the process to start */
-    char *waitstr;      /* String to wait for on stdout that indicates process running */
+    int delay;          /* Time to wait for the process to start */
+//    char *waitstr;      /* String to wait for on stdout that indicates process running */
     double cpu;         /* CPU percentage threshold (0.0 - 1.0) */
     int mem;            /* Memory Threshold (kB) */
 //    int pipe_in;        /* Redirected to the modules stdin */
@@ -75,10 +74,8 @@ typedef struct {
     int status;
 } dead_process;
 
-int process_init(void);
 void process_start_all(void);
 pid_t process_start(dax_process *);
-void process_monitor_io(void);
 void process_scan(void);
 void process_dpq_add(pid_t, int);
 dax_process *process_add(char *name, char *path, char *arglist, unsigned int flags);

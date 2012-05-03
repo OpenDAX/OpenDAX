@@ -20,7 +20,6 @@
 
 #include <common.h>
 #include <process.h>
-#include <pthread.h>
 #include <syslog.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -30,7 +29,6 @@
 #include <daemon.h>
 
 static int quitflag = 0;
-static pthread_t proc_thread;
 
 void child_signal(int);
 void quit_signal(int);
@@ -40,7 +38,6 @@ int
 main(int argc, const char *argv[])
 {
     struct sigaction sa;
-    int result;
     
     /* Set up the signal handlers */
     /* TODO: We need to handle every signal that could possibly kill us */
@@ -62,7 +59,6 @@ main(int argc, const char *argv[])
      * make sure and close the logger before we deamonize and then
      * call logger_init() again afterwards */
     logger_init(LOG_TYPE_STDOUT, "opendax");
-    process_init();
     /* TODO: We should have individual configuration objects that we retrieve
      * from this function, instead of the global data in the source file. */
     opt_configure(argc, argv);
@@ -71,17 +67,14 @@ main(int argc, const char *argv[])
         daemonize("opendax");
         logger_init(LOG_TYPE_SYSLOG, "opendax");
     }
-    result = pthread_create(&proc_thread, NULL, process_start_all, NULL);
-    if(result) {
-        xfatal("Unable to start process monitor thread.  Error code = %d", result);
-    }
+    process_start_all();
+
     _print_process_list();
 
     while(1) { /* Main loop */
         /* TODO: This might could be some kind of condition
            variable or signal thing instead of just the sleep(). */
         process_scan();
-        process_monitor_io();
         sleep(1);
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {

@@ -34,9 +34,7 @@ end
 --    user    = User that the process will run under.  If not set the master's uid will be used.
 --    group   = Group that the process will run under  If not set the master's gid will be used.
 --    env     = Environment Variable String.  If not set the master's environement will be used.
---    waitstr = The master waits until it sees this string on the process stdout before
---              it considers the process started.
---    timeout = The amount of time that the master will wait for the process to start in mSec.  If
+--    delay   = The amount of time that the master will wait for the process to start in mSec.  If
 --              the waitstr doesn't come by this time the master will kill the process and
 --              move on to the next process in the list.  If restart is set the master will
 --              come back and try to restart the process later.  If waitstr is not set or set to an
@@ -58,8 +56,7 @@ server.path     = binprefix.."tagserver"
 server.args     = "-C " .. confprefix .."tagserver.conf"
 server.user     = user
 server.group    = group
-server.waitstr  = "OpenDAX Tag Server Started"
-server.timeout  = 1000
+server.delay    = 1000
 server.cpu      = 0.1
 server.mem      = 2000
 
@@ -71,8 +68,7 @@ modbus.path      = binprefix.."modbus"
 modbus.args      = "-C " .. confprefix .."modbus.conf"
 modbus.user      = user
 modbus.group     = group
-modbus.waitstr   = "Modbus Module Started"
-modbus.timeout   = 1000
+modbus.delay     = 0
 modbus.cpu       = 0.1
 modbus.mem       = 2000
 
@@ -84,8 +80,7 @@ test.path      = binprefix.."test"
 test.args      = "-C " .. confprefix .."test.conf"
 test.user      = user
 test.group     = group
-test.waitstr   = ""
-test.timeout   = 10000
+test.delay     = 10000
 test.cpu       = 0.5
 test.mem       = 5000
 
@@ -95,10 +90,9 @@ lua.name      = "lua"
 lua.restart   = true
 lua.path      = binprefix.."daxlua"
 lua.args      = "-C " .. confprefix .."daxlua.conf"
-lua.user   = user
+lua.user      = user
 lua.group     = group
-lua.waitstr   = "Lua Module Started"
-lua.timeout   = 1000
+lua.delay     = 1000
 lua.cpu       = 0.1
 lua.mem       = 2000
 
@@ -111,8 +105,7 @@ skel.path      = binprefix.."skel"
 skel.args      = "-C " .. confprefix .."skel.conf"
 skel.user      = user
 skel.group     = group
-skel.waitstr   = "Skeleton Module Started"
-skel.timeout   = 1000
+skel.delay     = 1000
 skel.cpu       = 0.1
 skel.mem       = 2000
 

@@ -149,8 +149,7 @@ _add_process(lua_State *L)
 {
     char *name, *path, *arglist;
     unsigned int flags = 0;
-    int startup;
-	dax_process *proc;
+    dax_process *proc;
 
     if(!lua_istable(L, -1)) {
         luaL_error(L, "add_process() received an argument that is not a table");
@@ -214,12 +213,12 @@ _add_process(lua_State *L)
     proc->env = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
 
-    lua_getfield(L, -1, "waitstr");
-    proc->waitstr = (char *)lua_tostring(L, -1);
-    lua_pop(L, 1);
+//    lua_getfield(L, -1, "waitstr");
+//    proc->waitstr = (char *)lua_tostring(L, -1);
+//    lua_pop(L, 1);
 
-    lua_getfield(L, -1, "timeout");
-    proc->timeout = (int)lua_tonumber(L, -1);
+    lua_getfield(L, -1, "delay");
+    proc->delay = (int)lua_tonumber(L, -1);
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "cpu");

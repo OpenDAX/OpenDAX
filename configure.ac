@@ -147,14 +147,14 @@ else
     UTILLIB=' '
     AC_CHECK_FUNC([forkpty],[got_forkpty=true])
 fi
-
-if test $got_forkpty = false ; then
-  echo "--ERROR------------------------------------"
-  echo "Function forkpty() not found this function"
-  echo "is required to build OpenDAX!"
-  echo "-------------------------------------------"
-  (exit 1); exit 1;
-fi  
+# forkpty() is no longer required.  May be required for a wrapper module in the future.
+#if test $got_forkpty = false ; then
+#  echo "--ERROR------------------------------------"
+#  echo "Function forkpty() not found this function"
+#  echo "is required to build OpenDAX!"
+#  echo "-------------------------------------------"
+#  (exit 1); exit 1;
+#fi  
 
 AC_SUBST(UTILLIB)
 
