@@ -131,6 +131,10 @@ AC_TYPE_INT64_T
 AC_TYPE_INT8_T
 AC_TYPE_SSIZE_T
 
+# See if we have the /proc filesystem
+AH_TEMPLATE([HAVE_PROCDIR],['shows whether we have the proc file system for Linux'])
+AC_CHECK_FILE([/proc/meminfo],[AC_DEFINE([HAVE_PROCDIR])])
+
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MALLOC
