@@ -33,6 +33,16 @@ static dead_process _dpq[DPQ_SIZE];
 
 static dax_process *_process_list = NULL;
 
+/* Return the difference between the two times in mSec */
+static long
+_difftimeval(struct timeval *start, struct timeval *end)
+{
+    long result;
+    result = (end->tv_sec-start->tv_sec) * 1000;
+    result += (end->tv_usec-start->tv_usec) / 1000;
+    return result;
+}
+
 
 /* Convert a string like "-d -x -y" to a NULL terminated array of
  * strings suitable as an arg list for the arg_list of an exec??()
@@ -108,6 +118,13 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
         }
         /* name the module */
         new->name = strdup(name);
+        new->starttime.tv_sec = 0;
+        new->starttime.tv_usec = 0;
+        new->deadtime.tv_sec = 0;
+        new->deadtime.tv_usec = 0;
+        new->restartinterval = 0;
+        new->restartcount = 0;
+
         new->next = NULL;
 
         if(_process_list == NULL) { /* List is empty */
@@ -216,7 +233,7 @@ process_start(dax_process *proc)
             proc->exit_status = 0;
 
             xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
-            proc->starttime = time(NULL);
+            gettimeofday(&proc->starttime, NULL);
             proc->state = PSTATE_STARTED;
             return child_pid;
         } else if(child_pid == 0) { /* Child */
@@ -267,6 +284,7 @@ _cleanup_process(pid_t pid, int status)
         proc->pid = 0;
         proc->exit_status = status;
         proc->state = PSTATE_DEAD;
+        gettimeofday(&proc->deadtime, NULL);
         return 0;
     } else {
         xerror("Process %d not found \n", pid);
@@ -275,16 +293,26 @@ _cleanup_process(pid_t pid, int status)
     return 0;
 }
 
+static inline void
+_process_restart(dax_process *proc)
+{
+    xlog(LOG_MAJOR, "Restarting Process - %s", proc->name);
+    process_start(proc);
+}
 
 /* This function scans the modules to see if there are any that need
    to be cleaned up or restarted.  This function should never be called
    from the start_module process or the child signal handler to avoid a
    race condition. */
+/* TODO: Make this function return the number of milliseconds to sleep for the main
+ * routine so that we can more precisely control the restart timing. */
 void
 process_scan(void)
 {
-    int n;
+    int n, restart;
+    long runtime;
     dax_process *this;
+    struct timeval now;
 
     /* Check the dead module queue for pid's that need cleaning */
     for(n = 0; n < DPQ_SIZE; n++) {
@@ -296,6 +324,29 @@ process_scan(void)
 
     this = _process_list;
     while(this != NULL) {
+        restart = 0;
+        /* See if the process needs restarting. */
+        if((this->flags & PFLAG_RESTART) && this->state == PSTATE_DEAD ) {
+            gettimeofday(&now, NULL);
+            if(_difftimeval(&this->deadtime, &now) > this->restartdelay) {
+                runtime = _difftimeval(&this->starttime, &this->deadtime);
+                if(runtime < this->restartinterval) {
+                    this->restartcount++;
+                    if(this->restartcount > 5) {
+                        this->restartinterval *= 2;
+                        this->restartcount = 0;
+                    } else {
+                        _process_restart(this);
+                    }
+                } else {
+                    if(runtime > this->restartinterval * 2) {
+                        this->restartinterval /= 2;
+                        this->restartcount = 0;
+                    }
+                _process_restart(this);
+                }
+            }
+        }
         this = this->next;
     }
     /* TODO: Restart modules if necessary */

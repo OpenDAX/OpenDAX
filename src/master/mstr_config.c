@@ -213,12 +213,12 @@ _add_process(lua_State *L)
     proc->env = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
 
-//    lua_getfield(L, -1, "waitstr");
-//    proc->waitstr = (char *)lua_tostring(L, -1);
-//    lua_pop(L, 1);
-
     lua_getfield(L, -1, "delay");
     proc->delay = (int)lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "restartdelay");
+    proc->restartdelay = (int)lua_tonumber(L, -1);
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "cpu");

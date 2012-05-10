@@ -24,6 +24,7 @@
 
 #include <common.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <pwd.h>
 #include <grp.h>
 #include <netinet/in.h>
@@ -47,7 +48,6 @@ typedef struct dax_process {
     int exit_status;    /* modules exit status */
     char *path;         /* modules execution */
     char **arglist;     /* exec() ready array of arguments */
-//    int startup;        /* Execution order 0 = no auto start */
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
     char *env;          /* Environment to use for process */
@@ -55,17 +55,16 @@ typedef struct dax_process {
     char *group;        /* Set GID to this group before exec() */
     int uid;
     int gid;
-    int delay;          /* Time to wait for the process to start */
-//    char *waitstr;      /* String to wait for on stdout that indicates process running */
+    int delay;          /* Time to wait after the process starts mS*/
     double cpu;         /* CPU percentage threshold (0.0 - 1.0) */
     int mem;            /* Memory Threshold (kB) */
-//    int pipe_in;        /* Redirected to the modules stdin */
-//    int pipe_out;       /* Redirected to the modules stdout */
-//    int pipe_err;       /* Redirected to the modules stderr */
-//    int pty_fd;         /* The file descriptor to the child processes pty */
     int fd;             /* The socket file descriptor for this module */
-    int efd;            /* The notification file descriptor */
-    time_t starttime;
+    int efd;            /* The event notification file descriptor */
+    long restartdelay;   /* Time to wait before restarting the process mS*/
+    long restartinterval;     /* Used to keep bad processes from starting too often mS*/
+    int restartcount;   /* Used to control restart frequency */
+    struct timeval starttime; /* Time that the process was started */
+    struct timeval deadtime;  /* Time the process was cleaned up */
     struct dax_process *next;
 } dax_process;
 

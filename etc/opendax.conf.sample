@@ -34,11 +34,9 @@ end
 --    user    = User that the process will run under.  If not set the master's uid will be used.
 --    group   = Group that the process will run under  If not set the master's gid will be used.
 --    env     = Environment Variable String.  If not set the master's environement will be used.
---    delay   = The amount of time that the master will wait for the process to start in mSec.  If
---              the waitstr doesn't come by this time the master will kill the process and
---              move on to the next process in the list.  If restart is set the master will
---              come back and try to restart the process later.  If waitstr is not set or set to an
---              empty string this will be the delay before the next process is started.
+--    delay   = The amount of time that the master will wait for the process to start in mSec.
+--    restartdelay = The amount of time that the master will wait before restarting the process
+--                   if it dies
 --   *cpu     = CPU usage threshold (0-1).  If the module's CPU usage averages higher than this then
 --              the master will kill it.  If restart is enabled it will attempt a restart.  If
 --              not set or set to zero the feature will be ignored.
@@ -57,6 +55,7 @@ server.args     = "-C " .. confprefix .."tagserver.conf"
 server.user     = user
 server.group    = group
 server.delay    = 1000
+server.restartdelay  = 1000
 server.cpu      = 0.1
 server.mem      = 2000
 
@@ -69,6 +68,7 @@ modbus.args      = "-C " .. confprefix .."modbus.conf"
 modbus.user      = user
 modbus.group     = group
 modbus.delay     = 0
+modbus.restartdelay = 0
 modbus.cpu       = 0.1
 modbus.mem       = 2000
 
@@ -93,6 +93,7 @@ lua.args      = "-C " .. confprefix .."daxlua.conf"
 lua.user      = user
 lua.group     = group
 lua.delay     = 1000
+lua.restartdelay = 1000
 lua.cpu       = 0.1
 lua.mem       = 2000
 
@@ -108,6 +109,21 @@ skel.group     = group
 skel.delay     = 1000
 skel.cpu       = 0.1
 skel.mem       = 2000
+
+badmodule = {}
+
+badmodule.name           = "badmodule"
+badmodule.restart        = true
+badmodule.path           = binprefix.."badmodule"
+badmodule.args           = "-C " .. confprefix .."badmodule.conf"
+badmodule.user           = user
+badmodule.group          = group
+badmodule.delay          = 1000
+badmodule.restartdelay   = 1000
+badmodule.cpu            = 0.1
+badmodule.mem            = 2000
+
+
 
 -- Uncomment the processes that are to be started.
 
