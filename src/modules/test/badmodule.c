@@ -34,7 +34,7 @@ static Handle cpu_tag;
 static Handle mem_tag;
 static Handle msg_tag;
 static dax_dint quit_time;
-static dax_real cpu_percent;
+static dax_int cpu_percent;
 static dax_dint mem_usage;
 static dax_dint msg_storm;
 
@@ -43,8 +43,8 @@ static long
 __difftimeval(struct timeval *start, struct timeval *end)
 {
     long result;
-    result = (end->tv_sec-start->tv_sec) * 1000;
-    result += (end->tv_usec-start->tv_usec) / 1000;
+    result = (end->tv_sec - start->tv_sec) * 1000;
+    result += (end->tv_usec - start->tv_usec) / 1000;
     return result;
 }
 
@@ -54,6 +54,8 @@ __update_tags(void *x)
 {
     dax_read_tag(ds, quit_tag, &quit_time);
     dax_read_tag(ds, cpu_tag, &cpu_percent);
+    if(cpu_percent > 100) cpu_percent = 100;
+    if(cpu_percent < 0) cpu_percent = 0;
     dax_read_tag(ds, mem_tag, &mem_usage);
     dax_read_tag(ds, msg_tag, &msg_storm);
 }
@@ -67,7 +69,7 @@ __add_tags(void)
     snprintf(tagname, 256, "%s_quit", dax_get_attr(ds, "tagprefix"));
     result = dax_tag_add(ds,&quit_tag, tagname, DAX_DINT, 1);
     snprintf(tagname, 256, "%s_cpu", dax_get_attr(ds, "tagprefix"));
-    result += dax_tag_add(ds,&cpu_tag, tagname, DAX_REAL, 1);
+    result += dax_tag_add(ds,&cpu_tag, tagname, DAX_INT, 1);
     snprintf(tagname, 256, "%s_mem", dax_get_attr(ds, "tagprefix"));
     result += dax_tag_add(ds,&mem_tag, tagname, DAX_DINT, 1);
     snprintf(tagname, 256, "%s_msg", dax_get_attr(ds, "tagprefix"));
@@ -87,11 +89,20 @@ __add_tags(void)
 static inline void
 __waste_memory(size_t size)
 {
-    static char *waste;
+    static int *waste, *result;
     static size_t current_size;
+    size_t n;
+
     /* if it's not a new size then we do nothing */
     if(current_size != size) {
-        waste = realloc(waste, size * 1024);
+        result = realloc(waste, size * 1024);
+        if(result != NULL) {
+            waste = result;
+            /* exercise the memory so the kernel doesn't cheat us */
+            for(n = 0; n < ((size * 1024) / sizeof(int)); n++) {
+                waste[n] = n;
+            }
+        }
         current_size = size;
     }
 }
@@ -100,8 +111,8 @@ int
 main(int argc,char *argv[])
 {
     int result=0, flags;
-    struct timeval start, now;
-    
+    struct timeval start, now, last;
+
     ds = dax_init("badmodule");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
@@ -131,6 +142,7 @@ main(int argc,char *argv[])
         dax_fatal(ds, "Quiting because I'm out of time");
     }
     gettimeofday(&start, NULL);
+    last = start;
     while(1) {
         gettimeofday(&now, NULL);
         /* Here we check the quit time again in case it has changed since we started */
@@ -138,8 +150,16 @@ main(int argc,char *argv[])
             dax_fatal(ds, "Quiting because I'm out of time");
         }
         __waste_memory(mem_usage);
+        if(cpu_percent > 0) {
+            while(__difftimeval(&last, &now) < (cpu_percent *10)) {
+                gettimeofday(&now, NULL);
+            }
+            last = now;
+            usleep((100 - cpu_percent)*10000);
+        } else {
+            sleep(1);
+        }
         dax_event_poll(ds, NULL);
-        sleep(1);
 	}
     dax_disconnect(ds);
     
