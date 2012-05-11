@@ -79,8 +79,8 @@ main(int argc, const char *argv[])
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
             xlog(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
-            /* TODO: Need to kill the message_thread */
-            /* TODO: Should stop all running modules */
+            /* TODO: Should stop all running modules and wait for them
+               to exit.  If they fail then kill -9 those rascals*/
             kill(0, SIGTERM); /* ...this'll do for now */
             closelog();
             exit(-1);

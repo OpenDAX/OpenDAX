@@ -335,21 +335,18 @@ process_scan(void)
                     if(this->restartcount > 5) {
                         this->restartinterval *= 2;
                         this->restartcount = 0;
-                    } else {
-                        _process_restart(this);
                     }
                 } else {
                     if(runtime > this->restartinterval * 2) {
                         this->restartinterval /= 2;
                         this->restartcount = 0;
                     }
-                _process_restart(this);
                 }
+                _process_restart(this);
             }
         }
         this = this->next;
     }
-    /* TODO: Restart modules if necessary */
 }
 
 
@@ -396,7 +393,9 @@ _print_process_list(void)
         printf("  group    = %s\n", this->group);
         printf("  gid      = %d\n", this->gid);
         printf("  env      = %s\n", this->env);
+        printf("  flags    = 0x%X\n", this->flags);
         printf("  delay    = %d\n", this->delay);
+        printf("  rsdelay  = %d\n", this->restartdelay);
         printf("  cpu      = %f\n", this->cpu);
         printf("  mem      = %d kB\n", this->mem);
         printf("  pid      = %d\n", this->pid);

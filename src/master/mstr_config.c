@@ -230,7 +230,7 @@ _add_process(lua_State *L)
     lua_pop(L, 1);
 
     _set_uid_gid(proc);
-
+    proc->flags = flags;
     return 0;
 }
 
