@@ -48,6 +48,7 @@ __difftimeval(struct timeval *start, struct timeval *end)
     return result;
 }
 
+/* This is our event callback.  It is called whenever one of our tags has changed */
 static void
 __update_tags(void *x)
 {
@@ -57,6 +58,7 @@ __update_tags(void *x)
     dax_read_tag(ds, msg_tag, &msg_storm);
 }
 
+/* Build tagnames, create tags and add the events */
 static int
 __add_tags(void)
 {
@@ -76,6 +78,22 @@ __add_tags(void)
     dax_event_add(ds, &mem_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
     dax_event_add(ds, &msg_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
     return result;
+}
+
+/* This function is to waste memory.  If it fails we don't really care.  That
+ * just means that we've got all we can get.  The right thing to do is keep running
+ * because that might be the misbehaviour that we are looling for.
+ */
+static inline void
+__waste_memory(size_t size)
+{
+    static char *waste;
+    static size_t current_size;
+    /* if it's not a new size then we do nothing */
+    if(current_size != size) {
+        waste = realloc(waste, size * 1024);
+        current_size = size;
+    }
 }
 
 int
@@ -105,15 +123,21 @@ main(int argc,char *argv[])
     
     /* Free the configuration memory once we are done with it */
     dax_free_config(ds);
-    
+    /* Read all the tags from the server */
     __update_tags(NULL);
-
+    /* If we have a quit time in the server then we'll just wait it out then bail */
+    if(quit_time > 0) {
+        usleep(quit_time);
+        dax_fatal(ds, "Quiting because I'm out of time");
+    }
     gettimeofday(&start, NULL);
     while(1) {
         gettimeofday(&now, NULL);
+        /* Here we check the quit time again in case it has changed since we started */
         if(quit_time > 0 && __difftimeval(&start, &now) > quit_time) {
             dax_fatal(ds, "Quiting because I'm out of time");
         }
+        __waste_memory(mem_usage);
         dax_event_poll(ds, NULL);
         sleep(1);
 	}
