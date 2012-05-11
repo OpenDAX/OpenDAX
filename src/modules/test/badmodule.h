@@ -19,6 +19,7 @@
 
 #include <common.h>
 #include <opendax.h>
+#include <sys/time.h>
 
 #ifndef __BADMODULE_H
 #define __BADMODULE_H
