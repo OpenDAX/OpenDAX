@@ -154,8 +154,8 @@ main(int argc,char *argv[])
             while(__difftimeval(&last, &now) < (cpu_percent *10)) {
                 gettimeofday(&now, NULL);
             }
-            last = now;
             usleep((100 - cpu_percent)*10000);
+            gettimeofday(&last, NULL);
         } else {
             sleep(1);
         }
