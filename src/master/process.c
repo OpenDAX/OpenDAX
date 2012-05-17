@@ -122,7 +122,7 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
         new->starttime.tv_usec = 0;
         new->deadtime.tv_sec = 0;
         new->deadtime.tv_usec = 0;
-        new->restartinterval = 0;
+        new->restartdelay = 0;
         new->restartcount = 0;
 
         new->next = NULL;
@@ -296,8 +296,19 @@ _cleanup_process(pid_t pid, int status)
 static inline void
 _process_restart(dax_process *proc)
 {
-    xlog(LOG_MAJOR, "Restarting Process - %s", proc->name);
+    xlog(LOG_MAJOR, "Restarting Process - %s - Delay = %d mSec", proc->name, proc->restartdelay);
+    proc->restartcount++;
     process_start(proc);
+    /* Now we increase the restart delay */
+    if(proc->restartdelay == 0) {
+        proc->restartdelay = 100;
+    } else {
+        proc->restartdelay *= 2;
+    }
+    /* Maximum of one minute */
+    if(proc->restartdelay > 60000) {
+        proc->restartdelay = 60000;
+    }
 }
 
 /* This function scans the modules to see if there are any that need
@@ -306,10 +317,10 @@ _process_restart(dax_process *proc)
    race condition. */
 /* TODO: Make this function return the number of milliseconds to sleep for the main
  * routine so that we can more precisely control the restart timing. */
-void
+int
 process_scan(void)
 {
-    int n, restart;
+    int n, restart, interval;
     long runtime;
     dax_process *this;
     struct timeval now;
@@ -323,30 +334,26 @@ process_scan(void)
     }
 
     this = _process_list;
+    restart = 60000;
     while(this != NULL) {
-        restart = 0;
         /* See if the process needs restarting. */
         if((this->flags & PFLAG_RESTART) && this->state == PSTATE_DEAD ) {
             gettimeofday(&now, NULL);
-            if(_difftimeval(&this->deadtime, &now) > this->restartdelay) {
-                runtime = _difftimeval(&this->starttime, &this->deadtime);
-                if(runtime < this->restartinterval) {
-                    this->restartcount++;
-                    if(this->restartcount > 5) {
-                        this->restartinterval *= 2;
-                        this->restartcount = 0;
-                    }
-                } else {
-                    if(runtime > this->restartinterval * 2) {
-                        this->restartinterval /= 2;
-                        this->restartcount = 0;
-                    }
-                }
+            runtime = _difftimeval(&this->starttime, &this->deadtime);
+            if(runtime > 60000) this->restartdelay = 0;
+            /* interval is how long it's been since the process died */
+            interval = _difftimeval(&this->deadtime, &now);
+            if(interval > this->restartdelay) {
                 _process_restart(this);
+            } else {
+                if((this->restartdelay - interval) < restart) {
+                    restart = this->restartdelay - interval;
+                }
             }
         }
         this = this->next;
     }
+    return restart;
 }
 
 

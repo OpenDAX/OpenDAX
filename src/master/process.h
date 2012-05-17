@@ -75,7 +75,7 @@ typedef struct {
 
 void process_start_all(void);
 pid_t process_start(dax_process *);
-void process_scan(void);
+int process_scan(void);
 void process_dpq_add(pid_t, int);
 dax_process *process_add(char *name, char *path, char *arglist, unsigned int flags);
 void _print_process_list(void);

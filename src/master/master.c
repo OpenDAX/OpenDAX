@@ -38,6 +38,7 @@ int
 main(int argc, const char *argv[])
 {
     struct sigaction sa;
+    int restart;
     
     /* Set up the signal handlers */
     /* TODO: We need to handle every signal that could possibly kill us */
@@ -74,8 +75,12 @@ main(int argc, const char *argv[])
     while(1) { /* Main loop */
         /* TODO: This might could be some kind of condition
            variable or signal thing instead of just the sleep(). */
-        process_scan();
-        sleep(1);
+        restart = process_scan();
+        if(restart < 1000) {
+            usleep(restart * 1000);
+        } else {
+            sleep(1);
+        }
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
             xlog(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
