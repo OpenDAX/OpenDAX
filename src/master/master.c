@@ -60,6 +60,7 @@ main(int argc, const char *argv[])
      * make sure and close the logger before we deamonize and then
      * call logger_init() again afterwards */
     logger_init(LOG_TYPE_STDOUT, "opendax");
+    process_init();
     /* TODO: We should have individual configuration objects that we retrieve
      * from this function, instead of the global data in the source file. */
     opt_configure(argc, argv);

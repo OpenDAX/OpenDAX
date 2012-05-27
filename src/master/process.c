@@ -22,6 +22,7 @@
 #include <process.h>
 #include <sys/time.h>
 #include <logger.h>
+#include <unistd.h>
 
 /* This array is the dead process list.
    TODO: This should be improved to allow it to grow when needed.
@@ -30,8 +31,14 @@
   #define DPQ_SIZE 10
 #endif
 static dead_process _dpq[DPQ_SIZE];
-
 static dax_process *_process_list = NULL;
+
+static long pagesize;
+
+void
+process_init(void) {
+    pagesize = sysconf(_SC_PAGESIZE);
+}
 
 /* Return the difference between the two times in mSec */
 static long
@@ -42,7 +49,6 @@ _difftimeval(struct timeval *start, struct timeval *end)
     result += (end->tv_usec-start->tv_usec) / 1000;
     return result;
 }
-
 
 /* Convert a string like "-d -x -y" to a NULL terminated array of
  * strings suitable as an arg list for the arg_list of an exec??()
@@ -124,6 +130,10 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
         new->deadtime.tv_usec = 0;
         new->restartdelay = 0;
         new->restartcount = 0;
+        new->pcpu = 0.0;
+        new->rss = 0;
+        new->last_ptime = 0;
+        new->last_etime = 0;
 
         new->next = NULL;
 
@@ -293,6 +303,49 @@ _cleanup_process(pid_t pid, int status)
     return 0;
 }
 
+/* reads the /proc/stat and proc/[pid]/stat files and gets the relevant
+ * process information and writes it into the process pointed to by proc */
+static int
+_process_get_cpu_stat(dax_process *proc)
+{
+    FILE *f;
+    char filename[128];
+    char line[1024];
+    int pid, result;
+    unsigned long utime, stime, ptime, etime, times[4];
+    long rss;
+
+    snprintf(filename, 128, "/proc/%d/stat", proc->pid);
+    f = fopen(filename, "r");
+    if(f == NULL) {
+        xerror("Unable to open file %s", filename);
+        return errno;
+    }
+    result = fscanf(f, "%d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %*d %*d %*d %*d %*u %*u %ld", &pid, &utime, &stime, &rss);
+    if(result < 4) return -1;
+    ptime = utime + stime;
+    fclose(f);
+    /* Now read and parse the cpu stat file */
+    f = fopen("/proc/stat", "r");
+    if(f == NULL) {
+        xerror("Unable to open file proc/stat for pid %d", proc->pid);
+        return errno;
+    }
+    fgets(line, 1024, f); /* For now we are ignoring the first line of the file. */
+    /* TODO: We should determine which cpu we are running on and read that line from the file.
+     * For now we are just going to assume that all the cpus run at the same rate */
+    result = fscanf(f, "%*s %lu %lu %lu %lu", &times[0], &times[1], &times[2], &times[3]);
+    fclose(f);
+    if(result < 4) return -1;
+    etime = times[0] + times[1]+ times[2] + times[3];
+    proc->pcpu = ((float)ptime - (float)proc->last_ptime) / ((float)etime - (float)proc->last_etime) * 100.0;
+
+    proc->last_ptime = ptime;
+    proc->last_etime = etime;
+    proc->rss = rss * pagesize / 1024;
+    return 0;
+}
+
 static inline void
 _process_restart(dax_process *proc)
 {
@@ -350,6 +403,9 @@ process_scan(void)
                     restart = this->restartdelay - interval;
                 }
             }
+        } else {
+            _process_get_cpu_stat(this);
+            fprintf(stderr, "CPU = %f\%, Memory = %ld kb\n", this->pcpu, this->rss);
         }
         this = this->next;
     }
@@ -402,7 +458,7 @@ _print_process_list(void)
         printf("  env      = %s\n", this->env);
         printf("  flags    = 0x%X\n", this->flags);
         printf("  delay    = %d\n", this->delay);
-        printf("  rsdelay  = %d\n", this->restartdelay);
+        printf("  rsdelay  = %ld\n", this->restartdelay);
         printf("  cpu      = %f\n", this->cpu);
         printf("  mem      = %d kB\n", this->mem);
         printf("  pid      = %d\n", this->pid);

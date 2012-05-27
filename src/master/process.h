@@ -25,6 +25,7 @@
 #include <common.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <time.h>
 #include <pwd.h>
 #include <grp.h>
 #include <netinet/in.h>
@@ -43,28 +44,35 @@
 
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dax_process {
+    /* configuration data */
     char *name;
-    pid_t pid;          /* the modules process id */
-    int exit_status;    /* modules exit status */
-    char *path;         /* modules execution */
+    pid_t pid;          /* process id */
+    int exit_status;    /* exit status */
+    char *path;         /* process executable path */
     char **arglist;     /* exec() ready array of arguments */
-    unsigned int flags; /* Configuration Flags for the module */
-    unsigned int state; /* Modules Current Running State */
+    unsigned int flags; /* Configuration Flags for the process */
     char *env;          /* Environment to use for process */
     char *user;         /* Set UID to this user before exec() */
     char *group;        /* Set GID to this group before exec() */
-    int uid;
-    int gid;
     int delay;          /* Time to wait after the process starts mS*/
     double cpu;         /* CPU percentage threshold (0.0 - 1.0) */
     int mem;            /* Memory Threshold (kB) */
+    /* internal usage data */
     int fd;             /* The socket file descriptor for this module */
     int efd;            /* The event notification file descriptor */
+    int uid;
+    int gid;
     long restartdelay;   /* Time to wait before restarting the process mS*/
-    long restartinterval;     /* Used to keep bad processes from starting too often mS*/
+    unsigned long last_ptime; /* jiffy time for process last time by */
+    unsigned long last_etime; /* total cpu jiffy time last time by */
+    /* status */
+    unsigned int state; /* Process' Current Running State */
+    long rss;           /* Current memory usage */
+    float pcpu;         /* Current cpu percentage */
     int restartcount;   /* Used to control restart frequency */
     struct timeval starttime; /* Time that the process was started */
     struct timeval deadtime;  /* Time the process was cleaned up */
+    /* next */
     struct dax_process *next;
 } dax_process;
 
@@ -73,6 +81,7 @@ typedef struct {
     int status;
 } dead_process;
 
+void process_init(void);
 void process_start_all(void);
 pid_t process_start(dax_process *);
 int process_scan(void);
