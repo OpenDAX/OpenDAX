@@ -396,6 +396,7 @@ process_scan(void)
     long runtime;
     dax_process *this;
     struct timeval now;
+    static unsigned int count;
 
     /* Check the dead module queue for pid's that need cleaning */
     for(n = 0; n < DPQ_SIZE; n++) {
@@ -423,11 +424,17 @@ process_scan(void)
                 }
             }
         } else {
-            _process_get_cpu_stat(this);
-            fprintf(stderr, "CPU = %f%%, Memory = %ld kb\n", this->pcpu, this->rss);
+            /* approximately every minute we'll get cpu stats and deal with
+             * the processes that misbehave.  We add the pid so that we don't
+             * do every process in the same scan */
+            if((count + this->pid) % 64 == 0) {
+                _process_get_cpu_stat(this);
+                fprintf(stderr, "%s: PID = %d, CPU = %f%%, Memory = %ld kb\n", this->name, this->pid, this->pcpu, this->rss);
+            }
         }
         this = this->next;
     }
+    count++;
     return restart;
 }
 
