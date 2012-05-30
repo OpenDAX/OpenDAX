@@ -33,12 +33,19 @@
 static dead_process _dpq[DPQ_SIZE];
 static dax_process *_process_list = NULL;
 
+#ifdef PROCDIR
 static long pagesize;
 
 void
 process_init(void) {
     pagesize = sysconf(_SC_PAGESIZE);
 }
+#else
+void
+process_init(void) {
+    return;
+}
+#endif
 
 /* Return the difference between the two times in mSec */
 static long
@@ -297,12 +304,13 @@ _cleanup_process(pid_t pid, int status)
         gettimeofday(&proc->deadtime, NULL);
         return 0;
     } else {
-        xerror("Process %d not found \n", pid);
+        xerror("Process %d not found for cleanup", pid);
         return ERR_NOTFOUND;
     }
     return 0;
 }
 
+#ifdef PROCDIR
 /* reads the /proc/stat and proc/[pid]/stat files and gets the relevant
  * process information and writes it into the process pointed to by proc */
 static int
@@ -345,6 +353,44 @@ _process_get_cpu_stat(dax_process *proc)
     proc->rss = rss * pagesize / 1024;
     return 0;
 }
+#else
+/* Instead of reading the /proc directory we use the popen() function to run 'ps' */
+static int
+_process_get_cpu_stat(dax_process *proc)
+{
+    FILE *f;
+    int result;
+    char line[128];
+    char cmd[1024];
+    char *cresult;
+    pid_t pid;
+    float cpu;
+    long rss;
+    snprintf(cmd, 1024, "ps -o pid,pcpu,rss -p %d", proc->pid);
+    f = popen(cmd, "r");
+    if(f == NULL) {
+        fprintf(stderr, "Couldn't execute command\n");
+        return -1;
+    }
+    while(fgets(line,sizeof(line),f) != NULL) {
+        fprintf(stderr, "%s", line);
+        result = sscanf(line, "%d %f %ld", &pid, &cpu, &rss);
+        fprintf(stderr, "result = %d\n", result);
+    }
+    if(result != 3) {
+        fprintf(stderr, "fscanf() problem\n");
+        return -1;
+    }
+    pclose(f);
+    if(pid != proc->pid) {
+        fprintf(stderr, "Houston we have a problem\n");
+        return -1;
+    }
+    fprintf(stderr, "Process %s [%d]: cpu = %f, rss = %ld\n", proc->name, pid, cpu, rss);
+    return 0;
+}
+#endif
+
 
 static inline void
 _process_restart(dax_process *proc)
@@ -405,7 +451,7 @@ process_scan(void)
             }
         } else {
             _process_get_cpu_stat(this);
-            fprintf(stderr, "CPU = %f\%, Memory = %ld kb\n", this->pcpu, this->rss);
+            fprintf(stderr, "CPU = %f%%, Memory = %ld kb\n", this->pcpu, this->rss);
         }
         this = this->next;
     }
