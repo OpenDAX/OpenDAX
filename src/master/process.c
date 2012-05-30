@@ -310,7 +310,7 @@ _cleanup_process(pid_t pid, int status)
     return 0;
 }
 
-#ifdef PROCDIR
+#ifdef HAVE_PROCDIR
 /* reads the /proc/stat and proc/[pid]/stat files and gets the relevant
  * process information and writes it into the process pointed to by proc */
 static int
@@ -354,39 +354,12 @@ _process_get_cpu_stat(dax_process *proc)
     return 0;
 }
 #else
-/* Instead of reading the /proc directory we use the popen() function to run 'ps' */
+/* San's a good alternative we'll just set everything to zero. */
 static int
 _process_get_cpu_stat(dax_process *proc)
 {
-    FILE *f;
-    int result;
-    char line[128];
-    char cmd[1024];
-    char *cresult;
-    pid_t pid;
-    float cpu;
-    long rss;
-    snprintf(cmd, 1024, "ps -o pid,pcpu,rss -p %d", proc->pid);
-    f = popen(cmd, "r");
-    if(f == NULL) {
-        fprintf(stderr, "Couldn't execute command\n");
-        return -1;
-    }
-    while(fgets(line,sizeof(line),f) != NULL) {
-        fprintf(stderr, "%s", line);
-        result = sscanf(line, "%d %f %ld", &pid, &cpu, &rss);
-        fprintf(stderr, "result = %d\n", result);
-    }
-    if(result != 3) {
-        fprintf(stderr, "fscanf() problem\n");
-        return -1;
-    }
-    pclose(f);
-    if(pid != proc->pid) {
-        fprintf(stderr, "Houston we have a problem\n");
-        return -1;
-    }
-    fprintf(stderr, "Process %s [%d]: cpu = %f, rss = %ld\n", proc->name, pid, cpu, rss);
+    proc->pcpu = 0.0;
+    proc->rss = 0;
     return 0;
 }
 #endif
