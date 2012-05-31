@@ -23,6 +23,7 @@
 #include <sys/time.h>
 #include <logger.h>
 #include <unistd.h>
+#include <signal.h>
 
 /* This array is the dead process list.
    TODO: This should be improved to allow it to grow when needed.
@@ -33,7 +34,7 @@
 static dead_process _dpq[DPQ_SIZE];
 static dax_process *_process_list = NULL;
 
-#ifdef PROCDIR
+#ifdef HAVE_PROCDIR
 static long pagesize;
 
 void
@@ -299,6 +300,8 @@ _cleanup_process(pid_t pid, int status)
     if(proc) {
         xlog(LOG_MINOR, "Cleaning up Process %d - Returned Status %d", pid, status);
         proc->pid = 0;
+        proc->last_etime = 0;
+        proc->last_ptime = 0;
         proc->exit_status = status;
         proc->state = PSTATE_DEAD;
         gettimeofday(&proc->deadtime, NULL);
@@ -428,8 +431,30 @@ process_scan(void)
              * the processes that misbehave.  We add the pid so that we don't
              * do every process in the same scan */
             if((count + this->pid) % 64 == 0) {
+                /* If we come back around and have been condemned then we
+                 * need to kill it the hard way.*/
+                if(this->state == PSTATE_CONDEMNED) {
+                    xlog(LOG_MODULE, "Killing process %s [%d]", this->name, this->pid);
+                    kill(this->pid, SIGKILL);
+                }
                 _process_get_cpu_stat(this);
-                fprintf(stderr, "%s: PID = %d, CPU = %f%%, Memory = %ld kb\n", this->name, this->pid, this->pcpu, this->rss);
+                if(this->cpu > 0.0 && this->pcpu > this->cpu) {
+                    xlog(LOG_MODULE, "Process %s [%d] has exceeded CPU usage of %f",
+                            this->name, this->pid, this->cpu);
+                    this->state = PSTATE_CONDEMNED;
+                }
+                if(this->mem > 0 && this->rss > this->mem) {
+                    xlog(LOG_MODULE, "Process %s [%d] has exceeded Memory usage of %ld",
+                            this->name, this->pid, this->mem);
+                    this->state = PSTATE_CONDEMNED;
+                }
+                /* The first time through we terminate the process the easy way */
+                if(this->state == PSTATE_CONDEMNED) {
+                    xlog(LOG_MODULE, "Commanding process %s [%d] to quit",
+                            this->name, this->pid);
+                    kill(this->pid, SIGQUIT);
+                }
+                xlog(LOG_VERBOSE | LOG_MODULE, "%s: PID = %d, CPU = %f%%, Memory = %ld kb\n", this->name, this->pid, this->pcpu, this->rss);
             }
         }
         this = this->next;

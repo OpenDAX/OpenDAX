@@ -35,7 +35,8 @@
  * has elapsed. */
 #define PSTATE_STARTED      0x01 /* Process has been started by master*/
 #define PSTATE_RUNNING      0x02 /* Process is running */
-#define PSTATE_DEAD         0x04 /* Waiting for restart or deletion */
+#define PSTATE_CONDEMNED    0X04 /* Killed by master */
+#define PSTATE_DEAD         0x08 /* Waiting for restart or deletion */
 
 /* Process Flags */
 #define PFLAG_RESTART       0x01
