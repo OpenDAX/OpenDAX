@@ -27,16 +27,24 @@
  */
 
 #include <badmodule.h>
+#include <signal.h>
 
 static dax_state *ds;
 static Handle quit_tag;
 static Handle cpu_tag;
 static Handle mem_tag;
 static Handle msg_tag;
+static Handle noquit_tag;
 static dax_dint quit_time;
 static dax_int cpu_percent;
 static dax_dint mem_usage;
 static dax_dint msg_storm;
+static char no_quit;
+
+static int _caught_signal;
+
+void catchsignal(int sig);
+
 
 /* Return the difference between the two times in mSec */
 static long
@@ -74,7 +82,9 @@ __add_tags(void)
     result += dax_tag_add(ds,&mem_tag, tagname, DAX_DINT, 1);
     snprintf(tagname, 256, "%s_msg", dax_get_attr(ds, "tagprefix"));
     result += dax_tag_add(ds,&msg_tag, tagname, DAX_DINT, 1);
-    if(result) dax_fatal(ds, "Can't Add Tags");
+    snprintf(tagname, 256, "%s_noquit", dax_get_attr(ds, "tagprefix"));
+	result += dax_tag_add(ds,&noquit_tag, tagname, DAX_BOOL, 1);
+	if(result) dax_fatal(ds, "Can't Add Tags");
     dax_event_add(ds, &quit_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
     dax_event_add(ds, &cpu_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
     dax_event_add(ds, &mem_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
@@ -112,26 +122,32 @@ main(int argc,char *argv[])
 {
     int result=0, flags;
     struct timeval start, now, last;
+    struct sigaction sa;
+
+    /* Set up the signal handlers */
+    memset (&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = &catchsignal;
+    sigaction(SIGQUIT, &sa, NULL);
 
     ds = dax_init("badmodule");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
         return ERR_ALLOC;
     }
-    
+
     dax_log(ds, "Starting bad module");
     dax_set_debug_topic(ds, 0xFFFF); /* This should get them all out there */
-        
+
     dax_init_config(ds, "badmodule");
     flags = CFG_CMDLINE | CFG_DAXCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagprefix","tagprefix", 't', flags, "bad");
-    
+
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
-    
+
     if(dax_connect(ds))
         dax_fatal(ds, "Unable to register with the server");
     __add_tags();
-    
+
     /* Free the configuration memory once we are done with it */
     dax_free_config(ds);
     /* Read all the tags from the server */
@@ -144,6 +160,16 @@ main(int argc,char *argv[])
     gettimeofday(&start, NULL);
     last = start;
     while(1) {
+        if(_caught_signal == SIGQUIT) {
+            dax_read_tag(ds, noquit_tag, &no_quit);
+            if(!no_quit) {
+                dax_debug(ds, LOG_MAJOR, "Gotta Go");
+                exit(0);
+            } else {
+                dax_debug(ds, LOG_MAJOR, "I don't think so scooter");
+            }
+            _caught_signal = 0;
+        }
         gettimeofday(&now, NULL);
         /* Here we check the quit time again in case it has changed since we started */
         if(quit_time > 0 && __difftimeval(&start, &now) > quit_time) {
@@ -165,3 +191,10 @@ main(int argc,char *argv[])
     
     return 0;
 }
+
+/* This function is used as the signal handler for all the signals
+ * that are going to be caught by the program */
+void catchsignal(int sig) {
+    _caught_signal = sig;
+}
+

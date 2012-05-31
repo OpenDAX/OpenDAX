@@ -454,7 +454,7 @@ process_scan(void)
                             this->name, this->pid);
                     kill(this->pid, SIGQUIT);
                 }
-                xlog(LOG_VERBOSE | LOG_MODULE, "%s: PID = %d, CPU = %f%%, Memory = %ld kb\n", this->name, this->pid, this->pcpu, this->rss);
+                xlog(LOG_VERBOSE | LOG_MODULE, "%s: PID = %d, CPU = %f%%, Memory = %ld kb", this->name, this->pid, this->pcpu, this->rss);
             }
         }
         this = this->next;
