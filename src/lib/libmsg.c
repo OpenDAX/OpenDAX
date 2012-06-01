@@ -278,6 +278,7 @@ dax_connect(dax_state *ds)
     if(fd > 0) {
         ds->sfd = fd;
     } else {
+        libdax_unlock(ds->lock);
         return fd;
     }
     
