@@ -237,7 +237,7 @@ _run_config(int argc, char *argv[])
     }
     dax_set_luafunction(ds, (void *)_add_node, "add_node");
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
     /* Get the results of the configuration */
     _device = strdup(dax_get_attr(ds, "device"));

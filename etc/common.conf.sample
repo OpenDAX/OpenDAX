@@ -1,0 +1,13 @@
+-- Common Configuration file.
+
+--logger = "syslog"  --Always log to syslogd
+--logger = "console" --Always log to stdout
+logger = "auto"      --log to syslogd when running in background or stdout otherwise
+
+--socketname = "/tmp/opendax"
+--serverip = "127.0.0.1"
+--serverport = "7777"
+--server = "LOCAL"
+--debugtopic = "MAJOR"
+--cachesize = 8
+--msgtimeout = 1000

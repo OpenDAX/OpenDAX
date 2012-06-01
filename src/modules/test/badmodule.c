@@ -139,10 +139,10 @@ main(int argc,char *argv[])
     dax_set_debug_topic(ds, 0xFFFF); /* This should get them all out there */
 
     dax_init_config(ds, "badmodule");
-    flags = CFG_CMDLINE | CFG_DAXCONF | CFG_ARG_REQUIRED;
+    flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagprefix","tagprefix", 't', flags, "bad");
 
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
     if(dax_connect(ds))
         dax_fatal(ds, "Unable to register with the server");

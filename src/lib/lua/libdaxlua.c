@@ -479,7 +479,7 @@ _dax_init(lua_State *L)
     /* We don't really do any custom configuration at this point */
     
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE);
 
     /* Free the configuration data */
     dax_free_config (ds);

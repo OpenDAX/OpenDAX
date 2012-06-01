@@ -58,7 +58,7 @@ int main(int argc,char *argv[]) {
     result += dax_add_attribute(ds, "storage","storage", 's', flags, "file");
     result += dax_add_attribute(ds, "event_tag","event_tag", 'e', flags, "skel_event");
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE);
 
     /* Get the results of the configuration */
     storage = strdup(dax_get_attr(ds, "storage"));

@@ -76,10 +76,10 @@ int main(int argc,char *argv[]) {
     /* For these attributes we add the opendax.conf configuration file as a
      * place where the attribute can be set. No good reason for this other than
      * as an illustration. */
-    flags = CFG_CMDLINE | CFG_MODCONF | CFG_DAXCONF | CFG_ARG_REQUIRED;
+    flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "event_type","event_type", 'y', flags, "poll");
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE);
 
     /* Get the results of the configuration */
     tagname = strdup(dax_get_attr(ds, "tagname"));

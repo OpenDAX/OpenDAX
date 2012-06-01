@@ -1,4 +1,6 @@
 -- Main configuration file for the OpenDAX tag server
 
+require "common.conf"
+
 statustag = "_status"
 

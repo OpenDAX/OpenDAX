@@ -64,7 +64,7 @@ int main(int argc,char *argv[]) {
     result += dax_add_attribute(ds, "quiet","quiet", 'q', flags, NULL);
     result += dax_add_attribute(ds, "interactive","interactive", 'i', flags, NULL);
 
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE);
     
     /* TODO: These have got to move to the configuration */
     dax_set_debug_topic(ds, 0);

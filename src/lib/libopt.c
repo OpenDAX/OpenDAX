@@ -39,7 +39,7 @@ dax_init_config(dax_state *ds, char *name)
         ds->L = lua_open();
     }
     /* This sets up the configuration that is common to all modules */
-    flags = CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF | CFG_ARG_REQUIRED;
+    flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "socketname","socketname", 'U', flags, "/tmp/opendax");
     result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
@@ -302,7 +302,7 @@ _parse_commandline(dax_state *ds, int argc, char **argv) {
  * script that is passed by *L.  type indicates whether it's
  * the module configuration or the main opendax.conf */
 static int
-_get_lua_globals(dax_state *ds, int type) {
+_get_lua_globals(dax_state *ds) {
     optattr *this;
     const char *s;
     
@@ -312,68 +312,25 @@ _get_lua_globals(dax_state *ds, int type) {
         /* If the value has not already been set and we
          * are actually looking for the attribute in this
          * configuration file */
-        if((this->flags & type)) {
-            lua_getglobal(ds->L, this->name);
-            if(lua_isboolean(ds->L, -1)) {
-                if(lua_toboolean(ds->L, -1)) {
-                    s = "true";
-                } else {
-                    s = "false";    
-                }
+        lua_getglobal(ds->L, this->name);
+        if(lua_isboolean(ds->L, -1)) {
+            if(lua_toboolean(ds->L, -1)) {
+                s = "true";
             } else {
-                s = lua_tostring(ds->L, -1);
+                s = "false";
             }
-            if(s) {
-                /* We only set the value if it has not already been set */
-                if(this->value == NULL) {
-                    _set_attr(this, (char *)s);
-                }
-            }
-            lua_pop(ds->L, 1);
+        } else {
+            s = lua_tostring(ds->L, -1);
         }
+        if(s) {
+            /* We only set the value if it has not already been set */
+            if(this->value == NULL) {
+                _set_attr(this, (char *)s);
+            }
+        }
+        lua_pop(ds->L, 1);
         this = this->next;
     }
-    return 0;
-}
-
-/* This function tries to open the main configuration file,
- * typically opendax.conf and run it. */
-static inline int
-_main_config_file(dax_state *ds) {
-    int length, result = 0;
-    char *cfile, *cdir;
-    lua_State *L;
-    
-    cdir = dax_get_attr(ds, "confdir");
-    length = strlen(cdir) + strlen("/opendax.conf") + 1;
-    cfile = malloc(sizeof(char) * length);
-    if(cfile) {
-        sprintf(cfile, "%s/opendax.conf", cdir);
-    } else {
-        return ERR_ALLOC;
-    }
-
-    L = lua_open();
-    /* We don't open any librarires because we don't really want any
-     * function calls in the configuration file.  It's just for
-     * setting a few globals. */
-    
-    /* register the libraries that we need*/
-    luaopen_base(L);
-    
-    lua_pushstring(L, ds->modulename);
-    lua_setglobal(L, CONFIG_GLOBALNAME);
-
-    /* load and run the configuration file */
-    if(luaL_loadfile(L, cfile)  || lua_pcall(L, 0, 0, 0)) {
-        dax_error(ds, "Problem executing configuration file %s - %s", cfile, lua_tostring(L, -1));
-        result = ERR_GENERIC;
-    } else {
-        /* tell lua to push these variables onto the stack */
-        _get_lua_globals(ds, CFG_DAXCONF);
-    }
-    
-    free(cfile);
     return 0;
 }
 
@@ -412,7 +369,7 @@ _mod_config_file(dax_state *ds) {
         dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         return ERR_GENERIC;
     } else {
-        _get_lua_globals(ds, CFG_MODCONF);
+        _get_lua_globals(ds);
     }
     
     free(cfile);
@@ -499,8 +456,6 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
     }
     if(flags & CFG_MODCONF)
         _mod_config_file(ds);
-    if(flags & CFG_DAXCONF)
-        _main_config_file(ds);
 
     _set_defaults(ds);
     //--_print_config(ds);

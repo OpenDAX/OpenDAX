@@ -185,7 +185,7 @@ configure(int argc, char *argv[])
     
     dax_set_luafunction(ds, (void *)_add_script, "add_script");
     
-    dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_DAXCONF | CFG_MODCONF);
+    dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
     initscript = strdup(dax_get_attr(ds, "initscript"));
     

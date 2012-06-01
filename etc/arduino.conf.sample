@@ -1,3 +1,5 @@
+require "common.conf"
+
 device = "/dev/tty.usbserial"
 baudrate = 9600
 retries = 3
