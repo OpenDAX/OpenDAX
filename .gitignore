@@ -15,6 +15,9 @@ config/config.guess
 config/config.sub
 config/depcomp
 config/ltmain.sh
+config/compile
+.kde4/
+*.kdev4
 libtool
 m4/l*
 stamp-h1

@@ -149,7 +149,7 @@ dax_fatal(dax_state *ds, const char *format, ...)
 
 #ifdef USE_PTHREAD_LOCK
 
-inline int
+int
 libdax_lock(dax_lock *lock) {
     int result;
     result = pthread_mutex_lock(lock);
@@ -157,7 +157,7 @@ libdax_lock(dax_lock *lock) {
     return 0;
 }
 
-inline int
+int
 libdax_unlock(dax_lock *lock) {
     int result;
     result = pthread_mutex_unlock(lock);
@@ -165,7 +165,7 @@ libdax_unlock(dax_lock *lock) {
     return 0;
 }
 
-inline int
+int
 libdax_init_lock(dax_lock *lock) {
     int result;
     result = pthread_mutex_init(lock, NULL);
@@ -173,7 +173,7 @@ libdax_init_lock(dax_lock *lock) {
     return 0;
 }
 
-inline int
+int
 libdax_destroy_lock(dax_lock *lock) {
     int result;
     result = pthread_mutex_destroy(lock);
@@ -185,22 +185,22 @@ libdax_destroy_lock(dax_lock *lock) {
  * to return nothing and hope that the optimizer will eliminate them */
 #else
 
-inline int
+int
 libdax_lock(dax_lock *lock) {
     return 0;
 }
 
-inline int
+int
 libdax_unlock(dax_lock *lock) {
     return 0;
 }
 
-inline int
+int
 libdax_init_lock(dax_lock *lock) {
     return 0;
 }
 
-inline int
+int
 libdax_destroy_lock(dax_lock *lock) {
     return 0;
 }

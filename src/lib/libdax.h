@@ -86,10 +86,10 @@ typedef int dax_lock;
 
 #endif
 
-inline int libdax_lock(dax_lock *lock);
-inline int libdax_unlock(dax_lock *lock);
-inline int libdax_init_lock(dax_lock *lock);
-inline int libdax_destroy_lock(dax_lock *lock);
+int libdax_lock(dax_lock *lock);
+int libdax_unlock(dax_lock *lock);
+int libdax_init_lock(dax_lock *lock);
+int libdax_destroy_lock(dax_lock *lock);
 
 /* Right now the event_db is stored within the dax_state as an array. */
 typedef struct event_db {
