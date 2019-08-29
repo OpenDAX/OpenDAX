@@ -108,8 +108,11 @@ list_tags(char **tokens)
     
     argcount = 0;
     
-    arg[0] = strtok(NULL, " ");
-    
+    if(tokens) {
+    	arg[0] = tokens[0];
+    	if(arg[0] != NULL) arg[1] = tokens[1];
+    }
+
     if(arg[0]) {
         start = strtol(arg[0], &end_ptr, 0);
         /* If arg[0] is text then it's a tagname instead of an index */

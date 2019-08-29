@@ -25,7 +25,7 @@
 int master_loop(mb_port *);
 
 /* Calculates the difference between the two times */
-inline unsigned long long
+unsigned long long
 timediff(struct timeval oldtime,struct timeval newtime)
 {
     return (newtime.tv_sec - oldtime.tv_sec) * 1000 + 

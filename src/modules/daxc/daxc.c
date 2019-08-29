@@ -182,8 +182,10 @@ runcmd(char *instr)
     } else if( !strncasecmp(tokens[0], "add", 1)) {
         result = tag_add(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "list", 4)) {
-        if(tokens[1] == NULL || !strncasecmp(tokens[1], "tag", 3)) {
-            result = list_tags(&tokens[2]);
+        if(tokens[1] == NULL) {
+        	result = list_tags(NULL);
+        } else if(!strncasecmp(tokens[1], "tag", 3)) {
+        	result = list_tags(&tokens[2]);
         } else if(!strncasecmp(tokens[1], "type", 3)) {
             result = list_types(&tokens[2]);
         } else {
