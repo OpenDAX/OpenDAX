@@ -6,6 +6,7 @@ Makefile
 .deps
 .libs
 configure
+.autotools
 aclocal.m4
 autom4te.cache/
 config.h
@@ -24,3 +25,9 @@ stamp-h1
 .cproject
 .project
 .settings/
+doc/*.dvi
+doc/*.aux
+doc/*.idx
+doc/*.log
+doc/*.pdf
+doc/*.toc

@@ -21,9 +21,11 @@
 #include <libdax.h>
 #include <libcommon.h>
 
-/* Allocate and initialize the state of the dax_state connection
- * object.  The returned object will need to be passed to 
- * dax_free() when finished. */
+/*!
+ *  Allocate and initialize the state of the dax_state connection
+ *  object.  The returned object will need to be passed to
+ *  dax_free() when finished.
+ */
 dax_state *
 dax_init(char *name)
 {

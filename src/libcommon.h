@@ -106,6 +106,10 @@ struct dax_message{
     int fd;             /* We'll use the fd to identify the module*/
 };
 
+/*
+ * This is the name that is used to write the module's name
+ * into the Lua configuration scripts global namespace
+ */
 #define CONFIG_GLOBALNAME "calling_module"
 
 typedef struct dax_message dax_message;
