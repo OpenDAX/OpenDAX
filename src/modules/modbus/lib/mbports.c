@@ -176,7 +176,7 @@ openIPport(mb_port *mp)
     
     DEBUGMSG("Opening IP Port");
     if(mp->socket == TCP_SOCK) {
-        fd = socket(AF_INET, SOCK_STREAM, 0);
+    	fd = socket(AF_INET, SOCK_STREAM, 0);
     } else if (mp->socket == UDP_SOCK) {
         fd = socket(AF_INET, SOCK_DGRAM, 0);
     }

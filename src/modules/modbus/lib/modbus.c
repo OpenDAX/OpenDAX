@@ -114,14 +114,14 @@ master_loop(mb_port *mp)
     struct mb_cmd *mc;
     struct timeval start, end;
     unsigned char bail = 0;
-    
+
     mp->running = 1; /* Tells the world that we are going */
     mp->attempt = 0;
     mp->dienow = 0;
    
     /* If enable goes negative we bail at the next scan */
     while(1) {
-        gettimeofday(&start, NULL);
+    	gettimeofday(&start, NULL);
         if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
             while(mc != NULL && !bail) {
@@ -171,7 +171,7 @@ master_loop(mb_port *mp)
     return MB_ERR_PORTFAIL; 
 }
 
-/* This function formulates and sends the modbus master request */
+/* This function formulates and sends the Modbus RTU master request */
 static int
 sendRTUrequest(mb_port *mp, mb_cmd *cmd)
 {
@@ -236,7 +236,8 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
     return write(mp->fd, buff, length + 2);
 }
 
-/* This function waits for one interbyte timeout (wait) period and then
+/*
+ * This function waits for one interbyte timeout (wait) period and then
  * checks to see if there is data on the port.  If there is no data and
  * we still have not received any data then it compares the current time
  * against the time the loop was started to see about the timeout.  If there
@@ -246,7 +247,8 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
  
  * Returns 0 on timeout
  * Returns -1 on CRC fail
- * Returns the length of the message on success */
+ * Returns the length of the message on success
+ */
 static int
 getRTUresponse(u_int8_t *buff, mb_port *mp)
 {
@@ -296,13 +298,136 @@ getASCIIresponse(u_int8_t *buff, mb_port *mp)
     return 0;
 }
 
-/* This function takes the message buffer and the current command and
+/* This function formulates and sends the Modbus TCP client request */
+static int
+sendTCPrequest(mb_port *mp, mb_cmd *cmd)
+{
+    u_int8_t buff[MB_FRAME_LEN], length;
+    u_int16_t crc, temp;
+
+    /* build the request message */
+    /* MBAP Header minus the length.  We'll set it later */
+    buff[0] = 0x77;  /* Transaction ID */
+    buff[1] = 0x70;  /* Transaction ID */
+    buff[2] = 0x00;  /* Protocol ID */
+    buff[3] = 0x00;  /* Protocol ID */
+    /* Modbus RTU PDU */
+    buff[6] = cmd->node;     /* Unit ID */
+    buff[7] = cmd->function; /* Function Code */
+    printf("Sending TCP Request\n");
+
+    switch (cmd->function) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+            COPYWORD(&buff[8], &cmd->m_register);
+            COPYWORD(&buff[10], &cmd->length);
+            length = 6;
+            break;
+        case 5:
+            temp = *cmd->data;
+            if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc) || !cmd->firstrun ) {
+                COPYWORD(&buff[8], &cmd->m_register);
+                if(temp) buff[10] = 0xff;
+                else     buff[10] = 0x00;
+                buff[5] = 0x00;
+                cmd->firstrun = 1;
+                cmd->lastcrc = temp;
+                length = 6;
+                break;
+            } else {
+                return 0;
+            }
+            break;
+        case 6:
+            temp = *cmd->data;
+            /* If the command is continuous go, if conditional then
+             check the last checksum against the current datatable[] */
+            if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
+                COPYWORD(&buff[8], &cmd->m_register);
+                COPYWORD(&buff[10], &temp);
+                cmd->lastcrc = temp; /* Since it's a single just store the word */
+                length = 6;
+                break;
+            } else {
+                return 0;
+            }
+        /* TODO: Add the rest of the function codes */
+        default:
+            break;
+    }
+    /* Go back and put the length in the MBAP Header */
+    COPYWORD(&buff[4], &length);
+    /* Send Request */
+    cmd->requests++; /* Increment the request counter */
+    tcflush(mp->fd, TCIOFLUSH);
+    /* Send the buffer to the callback routine. */
+    if(mp->out_callback) {
+        mp->out_callback(mp, buff, length + 6);
+    }
+
+    return write(mp->fd, buff, length + 6);
+}
+
+/*
+ * This function immediately tries to read data from the file handle.
+
+ * Returns 0 on timeout
+ * Returns the length of the message on success
+ */
+static int
+getTCPresponse(u_int8_t *buff, mb_port *mp)
+{
+    unsigned int buffindex = 0;
+    u_int8_t tempbuff[MB_FRAME_LEN];
+    struct timeval oldtime, thistime;
+    int result;
+
+    gettimeofday(&oldtime, NULL);
+
+    while(1) {
+        result = read(mp->fd, &tempbuff[buffindex], MB_FRAME_LEN);
+        if(result > 0) { /* Get some data */
+            buffindex += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
+        } else { /* Message is finished, good or bad */
+            if(buffindex > 0) { /* Is there any data in buffer? */
+            	/* We have to convert the TCP message to it's RTU equivalent,
+            	 * because that is what the calling function is expecting. */
+            	buffindex -= 6;
+            	memcpy(buff, &tempbuff[6], buffindex);
+
+                if(mp->in_callback) {
+                    mp->in_callback(mp, buff, buffindex);
+                }
+                return buffindex;
+
+            } else { /* No data in the buffer */
+                gettimeofday(&thistime,NULL);
+                if(timediff(oldtime, thistime) > mp->timeout) {
+                    return 0;
+                }
+            }
+        }
+        // TODO: Probably change this to the timeout value or something
+        usleep(mp->frame * 1000);
+
+    }
+    return 0; /* Should never get here */
+}
+
+
+
+
+/*!
+ * This function takes the message buffer and the current command and
  * determines what to do with the message.  It may write data to the 
  * datatable or just return if the message is an acknowledge of a write.
  * This function is protocol indifferent so the checksums should be
  * checked before getting here.  This function assumes that *buff looks
  * like an RTU message so the ASCII & TCP response functions should translate
- * the their responses into RTUish messages */
+ * the their responses into RTUish messages
+ */
 /* TODO: There is all kinds of buffer overflow potential here.  It should all be checked */
 static int
 handleresponse(u_int8_t *buff, mb_cmd *cmd)
@@ -340,11 +465,13 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
 }
 
 
-/* External function to send a Modbus commaond (mc) to port (mp).  The function
+/*!
+ * External function to send a Modbus commaond (mc) to port (mp).  The function
  * sets some function pointers to the functions that handle the port protocol and
  * then uses those functions generically.  The retry loop tries the command for the
  * configured number of times and if successful returns 0.  If not, an error code
- * is returned. mb_buff should be at least MB_FRAME_LEN in length */
+ * is returned. mb_buff should be at least MB_FRAME_LEN in length
+ */
 
 int
 mb_send_command(mb_port *mp, mb_cmd *mc)
@@ -354,7 +481,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     int result, msglen;
     static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
     static int (*getresponse)(u_int8_t *,struct mb_port *) = NULL;
-    
+    printf("mb_send_command() mp->protocol = %d\n", mp->protocol);
   /* This sets up the function pointers so we don't have to constantly check
    *  which protocol we are using for communication.  From this point on the
    *  code is generic for RTU or ASCII */
@@ -364,6 +491,9 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     } else if(mp->protocol == MB_ASCII) {
         sendrequest = sendASCIIrequest;
         getresponse = getASCIIresponse;
+    } else if(mp->protocol == MB_TCP) {
+        sendrequest = sendTCPrequest;
+        getresponse = getTCPresponse;
     } else {
         return -1;
     }
@@ -385,7 +515,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
         }
         
         if(msglen > 0) {
-            result = handleresponse(buff,mc); /* Returns 0 on success + on failure */
+            result = handleresponse(buff, mc); /* Returns 0 on success + on failure */
             if(result > 0) {
                 if(mc->send_fail != NULL) {
                     mc->send_fail(mc, mc->userdata);

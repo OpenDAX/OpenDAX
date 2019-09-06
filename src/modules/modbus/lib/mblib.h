@@ -103,7 +103,7 @@ int __mb_mutex_unlock(mb_port *, _mb_mutex_t *);
 #  define mb_mutex_unlock(port,mutex)
 #endif   
 
-#define MB_FRAME_LEN 255
+#define MB_FRAME_LEN 1024
 
 #ifndef MAX_RETRIES
 #  define MAX_RETRIES 100

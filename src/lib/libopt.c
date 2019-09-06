@@ -362,6 +362,8 @@ _mod_config_file(dax_state *ds) {
     
     lua_pushstring(ds->L, ds->modulename);
     lua_setglobal(ds->L, CONFIG_GLOBALNAME);
+    lua_pushstring(ds->L, cdir);
+    lua_setglobal(ds->L, "configdir");
 
 
     /* load and run the configuration file */

@@ -150,6 +150,7 @@ mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_i
         case 5:
             /* Single bit function code */
             newsize = 1;
+            break;
         case 6:
             /* Single word function code */
             newsize = 2;

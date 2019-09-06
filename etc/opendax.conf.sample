@@ -15,7 +15,7 @@ logger = "auto"          --log to syslogd when running in background or stdout o
 --These are some definitions that we reuse throughout the file
 prefix = "/usr/local/"
 binprefix = prefix .. "bin/"
-confprefix = prefix .. "etc/"
+confprefix = prefix .. "etc/opendax/"
 user  = "opendax"
 group = "opendax"
 
