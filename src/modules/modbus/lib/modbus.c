@@ -48,7 +48,7 @@ mb_run_port(struct mb_port *m_port)
         m_port->inhibit = 1;
     }
     printf("mb_run_port() - Port type = %d\n", m_port->type);
-            
+
     if(m_port->type == MB_MASTER) {
         printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
         return master_loop(m_port);
@@ -73,7 +73,7 @@ mb_scan_port(mb_port *mp)
     int cmds_sent = 0;
     int result;
     mb_cmd *mc;
-    
+
     mc = mp->commands;
     while(mc != NULL && mp->inhibit == 0) {
         /* Only if the command is enabled and the interval counter is over */
@@ -89,7 +89,7 @@ mb_scan_port(mb_port *mp)
                 cmds_sent++;
                 if(mp->delay > 0) usleep(mp->delay * 1000);
             } else if( result == 0 ) mp->maxattempts--; /* Conditional command that was not sent */
-            
+
             if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
                 mp->inhibit_temp = 0;
                 mp->inhibit = 1;
@@ -118,10 +118,10 @@ master_loop(mb_port *mp)
     mp->running = 1; /* Tells the world that we are going */
     mp->attempt = 0;
     mp->dienow = 0;
-   
+
     /* If enable goes negative we bail at the next scan */
     while(1) {
-    	gettimeofday(&start, NULL);
+        gettimeofday(&start, NULL);
         if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
             while(mc != NULL && !bail) {
@@ -153,7 +153,7 @@ master_loop(mb_port *mp)
                 if(result == 0) mp->inhibit = 0;
             } else {
                 return MB_ERR_PORTFAIL;
-            }    
+            }
         }
         /* This calculates the length of time that it took to send the messages on this port
            and then subtracts that time from the port's scanrate and calls usleep to hold
@@ -219,6 +219,25 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
             } else {
                 return 0;
             }
+        case 15: /* Write multiple output coils */
+        	break;
+        case 16: /* Write multiple holding registers */
+            if(cmd->enable != MB_CONTINUOUS) {
+                crc = crc16(cmd->data, cmd->datasize);
+            }
+            if(cmd->enable == MB_CONTINUOUS || (crc != cmd->lastcrc)) {
+                COPYWORD(&buff[2], &cmd->m_register);
+                COPYWORD(&buff[4], &cmd->length);
+                buff[6] = cmd->length*2;
+                for(int n = 0; n < cmd->length; n++) {
+                    COPYWORD(&buff[7+n*2], &cmd->data[n*2]);
+                }
+                cmd->lastcrc = crc; /* Store for next time */
+                length = 7 + cmd->length*2;
+                break;
+            } else {
+                return 0;
+            }
         /* TODO: Add the rest of the function codes */
         default:
             break;
@@ -255,9 +274,9 @@ getRTUresponse(u_int8_t *buff, mb_port *mp)
     unsigned int buffptr = 0;
     struct timeval oldtime, thistime;
     int result;
-    
+
     gettimeofday(&oldtime, NULL);
-    
+
     while(1) {
         usleep(mp->frame * 1000);
         result = read(mp->fd, &buff[buffptr], MB_FRAME_LEN);
@@ -265,16 +284,16 @@ getRTUresponse(u_int8_t *buff, mb_port *mp)
             buffptr += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
         } else { /* Message is finished, good or bad */
             if(buffptr > 0) { /* Is there any data in buffer? */
-                
+
                 if(mp->in_callback) {
                     mp->in_callback(mp, buff, buffptr);
                 }
                 /* Check the checksum here. */
                 result = crc16check(buff, buffptr);
-                
+
                 if(!result) return -1;
                 else return buffptr;
-                
+
             } else { /* No data in the buffer */
                 gettimeofday(&thistime,NULL); 
                 if(timediff(oldtime, thistime) > mp->timeout) {
@@ -286,6 +305,7 @@ getRTUresponse(u_int8_t *buff, mb_port *mp)
     return 0; /* Should never get here */
 }
 
+/* We haven't implemented ASCII yet */
 static int
 sendASCIIrequest(mb_port *mp, mb_cmd *cmd)
 {
@@ -302,8 +322,8 @@ getASCIIresponse(u_int8_t *buff, mb_port *mp)
 static int
 sendTCPrequest(mb_port *mp, mb_cmd *cmd)
 {
-    u_int8_t buff[MB_FRAME_LEN], length;
-    u_int16_t crc, temp;
+    u_int8_t buff[MB_FRAME_LEN];
+    u_int16_t crc, temp, length;
 
     /* build the request message */
     /* MBAP Header minus the length.  We'll set it later */
@@ -314,18 +334,17 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
     /* Modbus RTU PDU */
     buff[6] = cmd->node;     /* Unit ID */
     buff[7] = cmd->function; /* Function Code */
-    printf("Sending TCP Request\n");
 
     switch (cmd->function) {
-        case 1:
-        case 2:
-        case 3:
-        case 4:
+        case 1: /* Read Coils */
+        case 2: /* Read Input Contacts */
+        case 3: /* Read Holding Registers */
+        case 4: /* Read Analog Inputs */
             COPYWORD(&buff[8], &cmd->m_register);
             COPYWORD(&buff[10], &cmd->length);
             length = 6;
             break;
-        case 5:
+        case 5: /* Write single coil */
             temp = *cmd->data;
             if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc) || !cmd->firstrun ) {
                 COPYWORD(&buff[8], &cmd->m_register);
@@ -340,7 +359,7 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
                 return 0;
             }
             break;
-        case 6:
+        case 6: /* Write single Holding Register */
             temp = *cmd->data;
             /* If the command is continuous go, if conditional then
              check the last checksum against the current datatable[] */
@@ -349,6 +368,26 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
                 COPYWORD(&buff[10], &temp);
                 cmd->lastcrc = temp; /* Since it's a single just store the word */
                 length = 6;
+                break;
+            } else {
+                return 0;
+            }
+        case 15: /* Write multiple output coils */
+
+            break;
+        case 16: /* Write multiple holding registers */
+            if(cmd->enable != MB_CONTINUOUS) {
+                crc = crc16(cmd->data, cmd->datasize);
+            }
+            if(cmd->enable == MB_CONTINUOUS || (crc != cmd->lastcrc)) {
+                COPYWORD(&buff[8], &cmd->m_register);
+                COPYWORD(&buff[10], &cmd->length);
+                buff[12] = cmd->length*2;
+                for(int n = 0; n < cmd->length; n++) {
+                    COPYWORD(&buff[13+n*2], &cmd->data[n*2]);
+                }
+                cmd->lastcrc = crc; /* Store for next time */
+                length = 7 + cmd->length*2;
                 break;
             } else {
                 return 0;
@@ -392,10 +431,10 @@ getTCPresponse(u_int8_t *buff, mb_port *mp)
             buffindex += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
         } else { /* Message is finished, good or bad */
             if(buffindex > 0) { /* Is there any data in buffer? */
-            	/* We have to convert the TCP message to it's RTU equivalent,
-            	 * because that is what the calling function is expecting. */
-            	buffindex -= 6;
-            	memcpy(buff, &tempbuff[6], buffindex);
+                /* We have to convert the TCP message to it's RTU equivalent,
+                 * because that is what the calling function is expecting. */
+                buffindex -= 6;
+                memcpy(buff, &tempbuff[6], buffindex);
 
                 if(mp->in_callback) {
                     mp->in_callback(mp, buff, buffindex);
@@ -433,7 +472,7 @@ static int
 handleresponse(u_int8_t *buff, mb_cmd *cmd)
 {
     int n;
-    
+
     cmd->responses++;
     if(buff[1] >= 0x80) 
         return buff[2];
@@ -456,7 +495,10 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
             break;
         case 5:
         case 6:
-            COPYWORD(cmd->data, &buff[2]);
+            //COPYWORD(cmd->data, &buff[2]);
+            break;
+        case 15:
+        case 16:
             break;
         default:
             break;
@@ -497,7 +539,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     } else {
         return -1;
     }
-    
+
     if(mc->pre_send != NULL) {
         mc->pre_send(mc, mc->userdata, mc->data, mc->datasize);
         /* This is in case the pre_send() callback disables the command */
@@ -513,7 +555,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
         } else {
             return -1;
         }
-        
+
         if(msglen > 0) {
             result = handleresponse(buff, mc); /* Returns 0 on success + on failure */
             if(result > 0) {

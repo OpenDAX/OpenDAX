@@ -73,7 +73,7 @@
 #endif
 
 /* Used to insert a 16bit value into the modbus buffer 
- another endian machine would simply use memcpy() */
+ * another endian machine would simply use memcpy() */
 #ifndef __MB_BIG_ENDIAN
 # define COPYWORD(OUT,IN) swab((const void *)(IN),(void *)(OUT),(ssize_t)2)
 #else
