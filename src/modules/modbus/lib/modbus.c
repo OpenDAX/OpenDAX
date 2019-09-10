@@ -220,7 +220,30 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
                 return 0;
             }
         case 15: /* Write multiple output coils */
-        	break;
+            if(cmd->enable != MB_CONTINUOUS) {
+                /* If we have more than one word then do a crc otherwise just copy the data */
+                if(cmd->length > 16) {
+                    crc = crc16(cmd->data, cmd->datasize);
+                } else if(cmd->length > 8) {
+                    crc = *(u_int16_t *)cmd->data;
+                } else {
+                    crc = *cmd->data;
+                }
+            }
+            if(cmd->enable == MB_CONTINUOUS || (crc != cmd->lastcrc)) {
+                COPYWORD(&buff[2], &cmd->m_register);
+                COPYWORD(&buff[4], &cmd->length);
+                buff[6] = (cmd->length-1)/8 + 1;
+                printf("Bytes = %d\n", buff[7]);
+                for(int n = 0; n < buff[7]; n++) {
+                    buff[7+n] = cmd->data[n];
+                }
+                cmd->lastcrc = crc; /* Store for next time */
+                length = 7 + buff[7];
+                break;
+            } else {
+                return 0;
+            }
         case 16: /* Write multiple holding registers */
             if(cmd->enable != MB_CONTINUOUS) {
                 crc = crc16(cmd->data, cmd->datasize);
@@ -373,8 +396,30 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
                 return 0;
             }
         case 15: /* Write multiple output coils */
-
-            break;
+            if(cmd->enable != MB_CONTINUOUS) {
+                /* If we have more than one word then do a crc otherwise just copy the data */
+                if(cmd->length > 16) {
+                    crc = crc16(cmd->data, cmd->datasize);
+                } else if(cmd->length > 8) {
+                    crc = *(u_int16_t *)cmd->data;
+                } else {
+                    crc = *cmd->data;
+                }
+            }
+            if(cmd->enable == MB_CONTINUOUS || (crc != cmd->lastcrc)) {
+                COPYWORD(&buff[8], &cmd->m_register);
+                COPYWORD(&buff[10], &cmd->length);
+                buff[12] = (cmd->length-1)/8 + 1;
+                printf("Bytes = %d\n", buff[12]);
+                for(int n = 0; n < buff[12]; n++) {
+                    buff[13+n] = cmd->data[n];
+                }
+                cmd->lastcrc = crc; /* Store for next time */
+                length = 7 + buff[12];
+                break;
+            } else {
+                return 0;
+            }
         case 16: /* Write multiple holding registers */
             if(cmd->enable != MB_CONTINUOUS) {
                 crc = crc16(cmd->data, cmd->datasize);
