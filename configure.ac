@@ -17,58 +17,58 @@ AC_ARG_ENABLE([debug],[  --enable-debug    Enable debugging information],
               USE_DEBUG="yes", USE_DEBUG="no")
 
 # These lines are used for the conditional compilation of different modules
-AC_ARG_ENABLE([modbus], 
-[  --disable-modbus   Do Not Compile Modbus Module], 
-[case "${enableval}" in 
-    yes) modbus=true ;; 
+AC_ARG_ENABLE([modbus],
+[  --disable-modbus   Do Not Compile Modbus Module],
+[case "${enableval}" in
+    yes) modbus=true ;;
     no) modbus=false ;;
-    *) AC_MSG_ERROR([bad value ${enableval} for --enable-modbus]) ;; 
-    esac],[modbus=true]) 
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-modbus]) ;;
+    esac],[modbus=true])
 AM_CONDITIONAL([MODBUS], [test x$modbus = xtrue])
 
-AC_ARG_ENABLE([test], 
-[  --disable-test   Do Not Compile Test Module], 
-[case "${enableval}" in 
-    yes) test=true ;; 
+AC_ARG_ENABLE([test],
+[  --disable-test   Do Not Compile Test Module],
+[case "${enableval}" in
+    yes) test=true ;;
     no) test=false ;;
-    *) AC_MSG_ERROR([bad value ${enableval} for --enable-test]) ;; 
-    esac],[test=true]) 
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-test]) ;;
+    esac],[test=true])
 AM_CONDITIONAL([TEST], [test x$test = xtrue])
 
-AC_ARG_ENABLE([wio], 
-[  --disable-wio   Do Not Compile Wireless I/O Module], 
-[case "${enableval}" in 
-    yes) wio=true ;; 
+AC_ARG_ENABLE([wio],
+[  --disable-wio   Do Not Compile Wireless I/O Module],
+[case "${enableval}" in
+    yes) wio=true ;;
     no) wio=false ;;
-    *) AC_MSG_ERROR([bad value ${enableval} for --enable-wio]) ;; 
-    esac],[wio=true]) 
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-wio]) ;;
+    esac],[wio=true])
 AM_CONDITIONAL([WIO], [test x$wio = xtrue])
 
-AC_ARG_ENABLE([daxlua], 
-[  --disable-daxlua   Do Not Compile Dax Lua Module], 
-[case "${enableval}" in 
-    yes) daxlua=true ;; 
+AC_ARG_ENABLE([daxlua],
+[  --disable-daxlua   Do Not Compile Dax Lua Module],
+[case "${enableval}" in
+    yes) daxlua=true ;;
     no) daxlua=false ;;
-    *) AC_MSG_ERROR([bad value ${enableval} for --enable-daxlua]) ;; 
-    esac],[daxlua=true]) 
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-daxlua]) ;;
+    esac],[daxlua=true])
 AM_CONDITIONAL([DAXLUA], [test x$daxlua = xtrue])
 
-AC_ARG_ENABLE([arduino], 
-[  --disable-arduino   Do Not Compile Arduino Module], 
-[case "${enableval}" in 
-    yes) arduino=true ;; 
+AC_ARG_ENABLE([arduino],
+[  --disable-arduino   Do Not Compile Arduino Module],
+[case "${enableval}" in
+    yes) arduino=true ;;
     no) arduino=false ;;
-    *) AC_MSG_ERROR([bad value ${enableval} for --enable-arduino]) ;; 
-    esac],[arduino=true]) 
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-arduino]) ;;
+    esac],[arduino=true])
 AM_CONDITIONAL([ARDUINO], [test x$arduino = xtrue])
 
-AC_ARG_ENABLE([histlog], 
-[  --disable-histlog   Do Not Compile Historical Logging Module], 
-[case "${enableval}" in 
-    yes) histlog=true ;; 
+AC_ARG_ENABLE([histlog],
+[  --disable-histlog   Do Not Compile Historical Logging Module],
+[case "${enableval}" in
+    yes) histlog=true ;;
     no) histlog=false ;;
-    *) AC_MSG_ERROR([bad value ${enableval} for --enable-histlog]) ;; 
-    esac],[histlog=true]) 
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-histlog]) ;;
+    esac],[histlog=true])
 AM_CONDITIONAL([HISTLOG], [test x$histlog = xtrue])
 
 #These lines will check for the library and add the right stuff to config.h
@@ -158,7 +158,7 @@ fi
 #  echo "is required to build OpenDAX!"
 #  echo "-------------------------------------------"
 #  (exit 1); exit 1;
-#fi  
+#fi
 
 AC_SUBST(UTILLIB)
 
@@ -196,7 +196,8 @@ AC_CONFIG_FILES([Makefile
                  src/modules/histlog/plugins/Makefile
                  src/modules/histlog/plugins/file/Makefile
                  src/modules/histlog/plugins/mysql/Makefile
-                 src/modules/skel/Makefile])
+                 src/modules/skel/Makefile
+                 tests/Makefile])
 AC_OUTPUT
 
 if  test "$got_msyql" != 'true' ; then
@@ -225,7 +226,7 @@ echo \
    wio:     ${wio}
    arduino: ${arduino}
    histlog: ${histlog}
-   
+
  Now type 'make @<:@<target>@:>@'
    where the optional <target> is:
      all                - build all binaries
@@ -236,4 +237,3 @@ echo \
  lib/python/README for more information.
 
 --------------------------------------------------"
-

@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = src 
+SUBDIRS = src tests
 
 AUX_DIST = $(ac_aux_dir)/install-sh
 
