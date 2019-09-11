@@ -18,7 +18,7 @@ import unittest
 import subprocess
 import signal
 import time
-from ctypes import *
+import tests.util.daxwrapper as daxwrapper
 
 class TestBasic(unittest.TestCase):
 
@@ -29,56 +29,34 @@ class TestBasic(unittest.TestCase):
         time.sleep(0.1)
         x = self.server.poll()
         self.assertIsNone(x)
-        self.libdax = cdll.LoadLibrary("src/lib/.libs/libdax.so")
+        self.dax = daxwrapper.LibDaxWrapper()
+        #self.libdax = cdll.LoadLibrary("src/lib/.libs/libdax.so")
 
     def tearDown(self):
         self.server.terminate()
         self.server.wait()
 
-    def dax_init(self, name):
-        self.name = name.encode('utf-8')
-        dax_init = self.libdax.dax_init
-        dax_init.restype = c_void_p
-        return dax_init(name)
-
-    def dax_init_config(self, ds, name):
-        return self.libdax.dax_init_config(ds, name.encode('utf-8'))
-
-    def dax_configure(self, ds, argv, flags):
-        arr = (c_char_p * (len(argv)+1))()
-        idx = 0
-        for each in argv:
-            arr[idx] = each.encode('utf-8')
-            idx += 1
-        arr[idx] = None
-        return self.libdax.dax_configure(ds, len(argv), arr, flags)
-
-    def dax_connect(self, ds):
-        return self.libdax.dax_connect(ds)
-
-    def dax_disconnect(self, ds):
-        return self.libdax.dax_disconnect(ds)
 
     def test_libdax_connect(self):
         """Initialize, connect and disconnect from the server"""
-        ds = self.dax_init("test")
-        x = self.dax_init_config(ds, "test")
+        ds = self.dax.dax_init("test")
+        x = self.dax.dax_init_config(ds, "test")
         self.assertEqual(x, 0)
-        x = self.dax_configure(ds, ["test"], 4)
-        self.assertEqual(x, 0)
-
-        x = self.dax_connect(ds)
+        x = self.dax.dax_configure(ds, ["test"], 4)
         self.assertEqual(x, 0)
 
-        x = self.libdax.dax_disconnect(ds)
+        x = self.dax.dax_connect(ds)
+        self.assertEqual(x, 0)
+
+        x = self.dax.dax_disconnect(ds)
         self.assertEqual(x, 0)
 
     def test_libdax_connect_no_configuration(self):
         """Connect without first initializing the ds object"""
-        ds = self.dax_init("test")
-        x = self.dax_init_config(ds, "test")
+        ds = self.dax.dax_init("test")
+        x = self.dax.dax_init_config(ds, "test")
         self.assertEqual(x, 0)
-        x = self.dax_connect(ds)
+        x = self.dax.dax_connect(ds)
         self.assertLess(x, 0)
 
 

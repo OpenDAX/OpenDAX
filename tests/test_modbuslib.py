@@ -19,9 +19,8 @@ import unittest
 import subprocess
 import signal
 import time
-from ctypes import *
-
 import tests.util as util
+import tests.util.mbwrapper as mbwrapper
 
 defines = util.read_defines("src/modules/modbus/lib/modbus.h")
 
@@ -35,21 +34,16 @@ class TestRTUMaster(unittest.TestCase):
         time.sleep(0.1)
         x = self.socat.poll()
         self.assertIsNone(x)
-        self.libmodbus = cdll.LoadLibrary("src/modules/modbus/lib/.libs/libmodbus.so")
+        self.mb = mbwrapper.ModbusWrapper()
 
     def tearDown(self):
         self.socat.terminate()
         self.socat.wait()
 
-    def mb_new_port(self, name, flags):
-        name = name.encode('utf-8')
-        func = self.libmodbus.mb_new_port
-        func.restype = c_void_p
-        return func(name, flags)
 
     def test_modbus_RTU_master_connect(self):
         """Initialize, connect and disconnect from the slave"""
-        port = self.mb_new_port("test", 0)
+        port = self.mb.mb_new_port("test", 0)
 
 
 
