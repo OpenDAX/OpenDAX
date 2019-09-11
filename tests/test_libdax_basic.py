@@ -26,7 +26,7 @@ class TestBasic(unittest.TestCase):
         self.server = subprocess.Popen(["src/server/tagserver",
                                         "-C",
                                         "tests/config/tagserver_basic.conf"])
-        time.sleep(0.5)
+        time.sleep(0.1)
         x = self.server.poll()
         self.assertIsNone(x)
         self.libdax = cdll.LoadLibrary("src/lib/.libs/libdax.so")

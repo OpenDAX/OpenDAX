@@ -31,3 +31,4 @@ doc/*.idx
 doc/*.log
 doc/*.pdf
 doc/*.toc
+*.pyc

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 #  Copyright (c) 2019 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
