@@ -115,7 +115,10 @@ mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_i
 {
     u_int8_t *newdata;
     int newsize = 0;
-    
+
+    if(node < 1 || node > 247) {
+        return MB_ERR_BAD_ARG;
+    }
     cmd->node = node;
     switch(function) {
         case 1:
