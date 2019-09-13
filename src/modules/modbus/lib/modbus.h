@@ -163,16 +163,18 @@ void mb_enable_cmd(mb_cmd *cmd);
 int mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_int16_t length);
 int mb_set_interval(mb_cmd *cmd, int interval);
 void mb_set_mode(mb_cmd *cmd, unsigned char mode);
-void mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd *, void *));
+void mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd *cmd, void *userdata));
+u_int8_t *mb_get_cmd_data(mb_cmd *cmd);
+int mb_get_cmd_datasize(mb_cmd *cmd);
 int mb_is_write_cmd(mb_cmd *cmd);
 int mb_is_read_cmd(mb_cmd *cmd);
 
 
-void mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *, void *, u_int8_t *, int));
-void mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *, void *, u_int8_t *, int));
-void mb_send_fail_callback(mb_cmd *cmd, void (*send_fail)(struct mb_cmd *, void *));
+void mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *cmd, void *userdata, u_int8_t *data, int datasize));
+void mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *cmd, void *userdata, u_int8_t *data, int datasize));
+void mb_send_fail_callback(mb_cmd *cmd, void (*send_fail)(struct mb_cmd *cmd, void *userdata));
 //void mb_userdata_free_callback(mb_cmd *cmd, void (*userdata_free)(struct mb_cmd *, void *));
-    
+
 int mb_scan_port(mb_port *mp);
 
 /* Functions to add...

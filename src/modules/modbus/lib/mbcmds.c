@@ -192,6 +192,19 @@ mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd
     }
 }
 
+u_int8_t *
+mb_get_cmd_data(mb_cmd *cmd)
+{
+    return cmd->data;
+}
+
+int
+mb_get_cmd_datasize(mb_cmd *cmd)
+{
+    return cmd->datasize;
+}
+
+
 /* Returns true (1) if the function code for cmd will read from the node */
 int
 mb_is_read_cmd(mb_cmd *cmd)
