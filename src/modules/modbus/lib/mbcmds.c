@@ -68,7 +68,7 @@ mb_new_cmd(mb_port *port)
 {
     int result;
     mb_cmd *mcmd;
-    
+
     mcmd = (mb_cmd *)malloc(sizeof(mb_cmd));
     if(mcmd != NULL) {
         initcmd(mcmd);
@@ -80,15 +80,15 @@ mb_new_cmd(mb_port *port)
             }
         }
     }
-    return mcmd;    
+    return mcmd;
 }
 
 void
 mb_destroy_cmd(mb_cmd *cmd) {
-    
+
 /* This frees the userdata if it is set.  If there is
  * a userdata_free callback assigned it will call that
- * otherwise it just calls free */    
+ * otherwise it just calls free */
     if(cmd->userdata != NULL) {
         if(cmd->userdata_free != NULL) {
             cmd->userdata_free(cmd, cmd->userdata);
@@ -132,9 +132,18 @@ mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_i
             cmd->function = function;
             break;
         default:
-            return MB_ERR_FUNCTION; 
+            return MB_ERR_FUNCTION;
     }
     cmd->m_register = reg;
+    if(function == 1 || function == 2 || function == 15) {
+        if(length < 1 || length > 2000) {
+            return MB_ERR_BAD_ARG;
+        }
+    } else if(function == 3 || function == 4 || function == 16) {
+        if(length < 1 || length > 125) {
+            return MB_ERR_BAD_ARG;
+        }
+    }
     cmd->length = length;
     /* This will even reallocate the *data area if this command is called again */
     switch(function) {
@@ -142,7 +151,7 @@ mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_i
         case 2:
         case 15:
             /* These are multiple bit function codes */
-            newsize = (length - 1) / 8 +1; 
+            newsize = (length - 1) / 8 +1;
             break;
         case 3:
         case 4:
@@ -237,7 +246,7 @@ mb_is_write_cmd(mb_cmd *cmd)
         default:
             return 0;
     }
-    
+
 }
 
 
@@ -281,11 +290,8 @@ mb_userdata_free_callback(mb_cmd *cmd, void (*userdata_free)(struct mb_cmd *, vo
 {
     cmd->userdata_free = userdata_free;
 }
-    
-    
+
+
 /*********************/
 /* Utility Functions */
 /*********************/
-
-
- 

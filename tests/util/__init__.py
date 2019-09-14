@@ -95,11 +95,16 @@ def validatecrc(st):
     else:
         return None
 
-def sendRTUResponse(ser, fc, node, len, data=None):
+def sendRTUResponse(ser, fc, node, count, data=None):
     if fc == 0x01 or fc == 0x02:
-        y = bytearray([node, fc, (len-1)//8 + 1])
+        y = bytearray([node, fc, (count-1)//8 + 1])
         for each in data:
             y.append(each)
+    elif fc == 0x03 or fc == 0x04:
+        y = bytearray([node, fc, count*2])
+        for n in range(count):
+            y.append(data[n]>>8)
+            y.append(data[n]&0xff)
 
     crc = crc16(y)
     y.append(crc & 0x00FF)

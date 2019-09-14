@@ -79,6 +79,13 @@ class TestRTUMaster(unittest.TestCase):
             {"fc":2, "node":247, "reg":0, "len":8, "data":[0xAA], "bytes":1},
             {"fc":2, "node":247, "reg":0, "len":9, "data":[0, 0], "bytes":2},
             {"fc":2, "node":247, "reg":0, "len":9, "data":[1, 0x55], "bytes":2},
+            {"fc":3, "node":2, "reg":0, "len":1, "data":[1200], "bytes":2},
+            {"fc":3, "node":2, "reg":0, "len":4, "data":[1200, 0, 34000, 10], "bytes":8},
+            {"fc":3, "node":2, "reg":0, "len":5, "data":[0x1234, 65535, 12, 100, 200], "bytes":10},
+            {"fc":4, "node":2, "reg":0, "len":1, "data":[1200], "bytes":2},
+            {"fc":4, "node":2, "reg":0, "len":4, "data":[1200, 0, 34000, 10], "bytes":8},
+            {"fc":4, "node":2, "reg":0, "len":5, "data":[0x1234, 65535, 12, 100, 200], "bytes":10},
+            {"fc":4, "node":2, "reg":0, "len":100, "data":[0x1234]*100, "bytes":200},
         ]
         port = self.openRTUMasterPort()
         ser = Serial(self.slave, 9600, timeout=0.1)
@@ -89,30 +96,56 @@ class TestRTUMaster(unittest.TestCase):
             fc = tc["fc"]
             reg = tc["reg"]
             count = tc["len"]
+            data = tc["data"]
             x = self.mb.mb_set_command(cmd, node, fc, reg, count)
             self.assertEqual(x, 0)
             t = threading.Thread(target=self.mb.mb_send_command, args=[port, cmd])
             t.start()
-            x = ser.read(255)
+            x = ser.read(8)
             self.assertIsNotNone(util.validatecrc(x))
             self.assertEqual(x[:-2], bytearray([node, fc, reg>>8, reg & 0xFF, count>>8, count & 0xFF]))
-            util.sendRTUResponse(ser, fc, node, count, data=tc['data'])
+            util.sendRTUResponse(ser, fc, node, count, data=data)
             t.join() # Wait on send_command to return
             x = 0
-            for each in tc["data"]:
-                self.assertEqual(self.mb.mb_get_cmd_data(cmd)[x], each)
-                x += 1
+            if fc in [0x01, 0x02]:
+                cmd_data = self.mb.mb_get_cmd_data(cmd)
+                for each in data:
+                    self.assertEqual(cmd_data[x], each)
+                    x += 1
+            elif fc in [0x03, 0x04]:
+                cmd_data = self.mb.mb_get_cmd_data(cmd)
+                for x in range(count):
+                    num = cmd_data[x*2] + (cmd_data[x*2+1] << 8)
+                    self.assertEqual(data[x], num)
             self.assertEqual(self.mb.retval, 5+tc["bytes"])
 
         self.closeRTUMasterPort(port)
 
     def test_modbus_invalid_node_numbers(self):
+        """Test that we get a proper error when we try to assign illegal node numbers to commands"""
         port = self.openRTUMasterPort()
-        ser = Serial(self.slave, 9600, timeout=0.1)
+        # ser = Serial(self.slave, 9600, timeout=0.1)
         cmd = self.mb.mb_new_cmd(port)
         for node in [0, 248, 249, 250, 251, 252, 253, 254, 255]:
             x = self.mb.mb_set_command(cmd, node, 3, 0, 1)
             self.assertEqual(x, defines["MB_ERR_BAD_ARG"])
+
+    def test_modbus_invalid_register_counts(self):
+        """Test that we get a proper error when we try to use illegal lengths"""
+        port = self.openRTUMasterPort()
+        # ser = Serial(self.slave, 9600, timeout=0.1)
+        cmd = self.mb.mb_new_cmd(port)
+        for fc in [1, 2, 15]:
+            x = self.mb.mb_set_command(cmd, 1, fc, 0, 0)
+            self.assertEqual(x, defines["MB_ERR_BAD_ARG"])
+            x = self.mb.mb_set_command(cmd, 1, fc, 0, 2001)
+            self.assertEqual(x, defines["MB_ERR_BAD_ARG"])
+        for fc in [3, 4, 16]:
+            x = self.mb.mb_set_command(cmd, 1, fc, 0, 0)
+            self.assertEqual(x, defines["MB_ERR_BAD_ARG"])
+            x = self.mb.mb_set_command(cmd, 1, fc, 0, 126)
+            self.assertEqual(x, defines["MB_ERR_BAD_ARG"])
+
 
 
 
