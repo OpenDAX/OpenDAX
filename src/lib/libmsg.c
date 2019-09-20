@@ -524,7 +524,8 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
     return 0;
 }
 
-/* The following three functions are the core of the data handling
+/*! 
+ * The following three functions are the core of the data handling
  * system in Dax.  They are the raw reading and writing functions.
  * 'handle' is the handle of the tag as returned by the dax_tag_add()
  * function, 'offset' is the byte offset into the data area of the tag
@@ -571,7 +572,8 @@ dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
     return 0;
 }
 
-/* This is a type neutral way to just write bytes to the data table.
+/*!
+ * This is a type neutral way to just write bytes to the data table.
  * It is assumed that the data is already in the servers number format.
  * size is the total number of bytes to send, the offset is the byte
  * offset into the data area of the tag.

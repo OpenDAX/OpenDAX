@@ -1,4 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
+AUTOMAKE_OPTIONS = foreign
 SUBDIRS = src tests
 
 AUX_DIST = $(ac_aux_dir)/install-sh

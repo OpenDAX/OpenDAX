@@ -17,7 +17,7 @@
  *
 
  * This file contains the function definitions that are used internally
- * by the libarary.  Public functions should go in opendax.h
+ * by the library.  Public functions should go in opendax.h
  */
 
 #ifndef __LIBDAX_H

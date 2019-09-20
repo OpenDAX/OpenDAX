@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -46,14 +46,14 @@ tag_add(char **tokens)
     tag_type type;
     Handle handle;
     const char usage[] = "Usage: add type count\n";
-    
+
     /* Make sure that name is not NULL and we get the tagname */
     if( tokens[0] == NULL) {
         fprintf(stderr, "ERROR: No tagname given\n");
         fprintf(stderr, usage);
         return 1;
     }
-    
+
     if( tokens[1] ) {
         type = dax_string_to_type(ds, tokens[1]);
         if( type < 0 ) {
@@ -65,18 +65,19 @@ tag_add(char **tokens)
         fprintf(stderr, usage);
         return 1;
     }
-        
+
     if( tokens[2] ) {
         count = strtol(tokens[2], NULL, 0);
         if( count == 0 ) {
             fprintf(stderr, "ERROR: Invalid Count Given\n");
         }
-    } else {
-        fprintf(stderr, "ERROR: No Count Given\n");
-        fprintf(stderr, usage);
+    } else { // If no count is given make it one
+        count = 1;
+        //fprintf(stderr, "ERROR: No Count Given\n");
+        //fprintf(stderr, usage);
         return 1;
     }
-    
+
     result = dax_tag_add(ds, &handle, tokens[0], type, count);
     if(result == 0) {
         if(!quiet_mode) printf("Tag Added at index %d\n", handle.index);
@@ -87,7 +88,7 @@ tag_add(char **tokens)
     return 0;
 }
 
-/* TAG LIST command function 
+/* TAG LIST command function
  * If we have no arguments then we list all the tags
  * If we have a single argument then we see if it's a tagname
  * or a number.  If a tagname then we list that tag if it's a number
@@ -105,9 +106,9 @@ list_tags(char **tokens)
     char *arg[] = {NULL, NULL};
     char *end_ptr;
     int n, argcount, start, count;
-    
+
     argcount = 0;
-    
+
     if(tokens) {
     	arg[0] = tokens[0];
     	if(arg[0] != NULL) arg[1] = tokens[1];
@@ -216,7 +217,7 @@ dax_to_string(tag_type type, void *buff, int index)
 /* TODO: Check for overflow */
 static void
 string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
-{   
+{
     long temp;
 
     switch (type) {
@@ -296,20 +297,20 @@ tag_read(char **tokens)
         fprintf(stderr, "ERROR: No Tagname Given\n");
         return ERR_NOTFOUND;
     }
-    
+
     result = dax_tag_handle(ds, &handle, name, count);
     if(result) {
         /* TODO: More descriptive error messages here based on result */
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
         return ERR_ARG;
     }
-    
+
     buff = malloc(handle.size);
     if(buff == NULL) {
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
         return ERR_ALLOC;
     }
-    
+
     result = dax_read_tag(ds, handle, buff);
     if(result == 0) {
         if(IS_CUSTOM(handle.type)) {
@@ -337,14 +338,14 @@ tag_write(char **tokens, int tcount) {
     long temp;
     char *name;
     void *buff, *mask;
-    
+
     if(tokens[0]) {
         name = tokens[0];
     } else {
         fprintf(stderr, "ERROR: No Tagname Given\n");
         return ERR_NOTFOUND;
     }
-    /* TODO: Should probably get a count based on how many tokens we have */ 
+    /* TODO: Should probably get a count based on how many tokens we have */
     result = dax_tag_handle(ds, &handle, name, 0);
     if(result) {
         /* TODO: More descriptive error messages here based on result */
@@ -362,20 +363,20 @@ tag_write(char **tokens, int tcount) {
     }
     bzero(buff, handle.size);
     bzero(mask, handle.size);
-    
+
     points = tcount - 1;
     if(handle.count < points) {
         points = handle.count;
     }
     /* TODO: I might want to add the ability to skip points with a '-'
      * I'd have to search for any '-' and then use dax_mask_tag() instead. */
-        
+
     for(n = 0; n < points; n++) {
         string_to_dax(tokens[n + 1], handle.type, buff, mask, n);
     }
     /* TODO: Check if the mask is all 1s and if so just use the dax_write_tag() function */
     result = dax_mask_tag(ds, handle, buff, mask);
-                
+
     if(result) {
         fprintf(stderr, "ERROR: Unable to Write to tag %s\n", name);
     }
@@ -395,13 +396,13 @@ cdt_add(char **tokens, int tcount)
     tag_type memtype;
     int count, n;
     int result;
-    
+
     if(tcount < 4 || (tcount - 1) % 3 != 0) {
         fprintf(stderr, "ERROR: Wrong number of arguments\n");
         return ERR_ARG;
     }
     type = dax_cdt_new(tokens[0], &result);
-    
+
     if(type == 0) {
         fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
         return result;
@@ -410,12 +411,12 @@ cdt_add(char **tokens, int tcount)
         memtype = dax_string_to_type(ds, tokens[n+1]);
         count = strtol(tokens[n+2], NULL, 0);
         result = dax_cdt_member(ds, type, tokens[n], memtype, count);
-    
+
         if(result) {
             fprintf(stderr, "ERROR: Unable to add member %s\n", tokens[n]);
         }
     }
-  
+
     result = dax_cdt_create(ds, type, NULL);
     if(result) {
         fprintf(stderr, "ERROR: Unable to create type %s\n", tokens[0]);
@@ -442,7 +443,7 @@ int
 list_types(char **tokens)
 {
     tag_type type;
-    
+
     if(tokens[0] == NULL) {
         dax_cdt_iter(ds, 0, NULL, _print_cdt_callback);
     } else {

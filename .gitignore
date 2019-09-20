@@ -38,4 +38,5 @@ doc/*.idx
 doc/*.log
 doc/*.pdf
 doc/*.toc
+doc/doxygen/*
 *.pyc
