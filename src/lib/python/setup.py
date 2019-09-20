@@ -19,7 +19,8 @@
 #
 #  This is the setup script for the extension module
 
-from distutils.core import setup, Extension
+# from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
 PackageName = 'PyDAX'
 Description = 'Python Interface Module to the OpenDAX API'

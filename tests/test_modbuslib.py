@@ -79,13 +79,15 @@ class TestRTUMaster(unittest.TestCase):
             {"fc":2, "node":247, "reg":0, "len":8, "data":[0xAA], "bytes":1},
             {"fc":2, "node":247, "reg":0, "len":9, "data":[0, 0], "bytes":2},
             {"fc":2, "node":247, "reg":0, "len":9, "data":[1, 0x55], "bytes":2},
+            {"fc":2, "node":247, "reg":0, "len":2000, "data":[0x55]*250, "bytes":250},
             {"fc":3, "node":2, "reg":0, "len":1, "data":[1200], "bytes":2},
             {"fc":3, "node":2, "reg":0, "len":4, "data":[1200, 0, 34000, 10], "bytes":8},
             {"fc":3, "node":2, "reg":0, "len":5, "data":[0x1234, 65535, 12, 100, 200], "bytes":10},
+            {"fc":3, "node":2, "reg":0, "len":125, "data":[0xAA55]*125, "bytes":250},
             {"fc":4, "node":2, "reg":0, "len":1, "data":[1200], "bytes":2},
             {"fc":4, "node":2, "reg":0, "len":4, "data":[1200, 0, 34000, 10], "bytes":8},
             {"fc":4, "node":2, "reg":0, "len":5, "data":[0x1234, 65535, 12, 100, 200], "bytes":10},
-            {"fc":4, "node":2, "reg":0, "len":100, "data":[0x1234]*100, "bytes":200},
+            {"fc":4, "node":2, "reg":0, "len":125, "data":[0x1234]*125, "bytes":250},
         ]
         port = self.openRTUMasterPort()
         ser = Serial(self.slave, 9600, timeout=0.1)

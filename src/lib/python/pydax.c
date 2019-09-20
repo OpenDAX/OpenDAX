@@ -1,5 +1,5 @@
-/*  PyDAX - A Python extension module for OpenDAX 
- *  OpenDAX - An open source data acquisition and control system 
+/*  PyDAX - A Python extension module for OpenDAX
+ *  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2011 Phil Birkelbach
  *
  *  This library is free software; you can redistribute it and/or
@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- * 
+ *
  *  This is the main source code file for the Python extension module
  */
 
@@ -41,7 +41,7 @@ pydax_init(PyObject *pSelf, PyObject *pArgs)
     /* TODO: Get command line arguments and process them too */
     int argc = 1;
     char *argv[] = {modname};
-    
+
     if(!PyArg_ParseTuple(pArgs, "s", &modname)) return NULL;
     ds = dax_init(modname);
 
@@ -55,7 +55,7 @@ pydax_init(PyObject *pSelf, PyObject *pArgs)
         PyErr_SetString(PyExc_IOError, "Unable to Allocate Configuration");
         return NULL;
     }
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_DAXCONF);
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
     /* Free the configuration data */
     dax_free_config(ds);
@@ -99,7 +99,7 @@ pydax_cdt_create(PyObject *pSelf, PyObject *pArgs)
     tag_type type;
     int m_count, result, n;
     Py_ssize_t count;
-    
+
     if(ds == NULL) {
         PyErr_SetString(PyExc_Exception, "OpenDAX is not initialized");
         return NULL;
@@ -149,7 +149,7 @@ struct _cdt_iter_item {
     Py_ssize_t pos;
 };
 
-/* This is the cdt iterator callback that we are using 
+/* This is the cdt iterator callback that we are using
  * to build the tuple for pydax.cdt_get() */
 static void
 _cdt_get_callback_tuple(cdt_iter member, void *data)
@@ -211,7 +211,7 @@ pydax_cdt_get(PyObject *pSelf, PyObject *pArgs)
     dax_cdt_iter(ds, index, &item, _cdt_get_callback_tuple);
     return t;
 }
-    
+
 
 /* This function adds a tag to OpenDAX.  It is called as
  * pydax.add("Tagname", "Type", count) */
@@ -245,7 +245,7 @@ pydax_get(PyObject *pSelf, PyObject *pArgs)
     dax_tag tag;
     tag_index index = 0;
     char *tagname = NULL;
-    
+
     if(ds == NULL) {
         PyErr_SetString(PyExc_Exception, "OpenDAX is not initialized");
         return NULL;
@@ -294,7 +294,7 @@ pydax_get(PyObject *pSelf, PyObject *pArgs)
 static int
 _pyton_to_dax(tag_type type, dax_type_union *value, PyObject *po)
 {
-    
+
     switch (type) {
         case DAX_BYTE:
             value->dax_byte = (dax_byte)PyInt_AsLong(po);
@@ -351,7 +351,7 @@ static PyObject *
 _dax_to_python(tag_type type, dax_type_union value)
 {
     PyObject *po = NULL;
-    
+
     switch (type) {
         case DAX_BYTE:
             po = PyInt_FromLong((long)value.dax_byte);
@@ -477,7 +477,7 @@ _create_py_object(void *buff, tag_type type, u_int32_t count)
     int n, offset;
     PyObject *po, *item;
     struct iter_udata udata;
-    
+
     if(type == DAX_BOOL) {
         if(count > 1) {
             po = PyList_New(count);
@@ -540,7 +540,7 @@ denied:
     PyErr_SetString(PyExc_Exception, "Denied");
     return NULL; /* If we make it this far we have a problem */
 }
-        
+
 static PyObject *
 pydax_read(PyObject *pSelf, PyObject *pArgs)
 {
@@ -586,7 +586,7 @@ pydax_write(PyObject *pSelf, PyObject *pArgs)
     int count, result;
     Handle h;
     dax_type_union value;
-    
+
     if(ds == NULL) {
         PyErr_SetString(PyExc_Exception, "OpenDAX is not initialized");
         return NULL;

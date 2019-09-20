@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
+ *
  * Source code file that contains all of the modbus protocol stuff.
  */
 
@@ -28,7 +28,7 @@ int master_loop(mb_port *);
 unsigned long long
 timediff(struct timeval oldtime,struct timeval newtime)
 {
-    return (newtime.tv_sec - oldtime.tv_sec) * 1000 + 
+    return (newtime.tv_sec - oldtime.tv_sec) * 1000 +
            (newtime.tv_usec / 1000)-(oldtime.tv_usec / 1000);
 };
 
@@ -77,7 +77,7 @@ mb_scan_port(mb_port *mp)
     mc = mp->commands;
     while(mc != NULL && mp->inhibit == 0) {
         /* Only if the command is enabled and the interval counter is over */
-        if(mc->enable && (++mc->icount >= mc->interval)) { 
+        if(mc->enable && (++mc->icount >= mc->interval)) {
             mc->icount = 0;
             if(mp->maxattempts) {
                 mp->attempt++;
@@ -126,7 +126,7 @@ master_loop(mb_port *mp)
             mc = mp->commands;
             while(mc != NULL && !bail) {
                 /* Only if the command is enabled and the interval counter is over */
-                if(mc->enable && (++mc->icount >= mc->interval)) { 
+                if(mc->enable && (++mc->icount >= mc->interval)) {
                     mc->icount = 0;
                     if(mp->maxattempts) {
                         mp->attempt++;
@@ -165,10 +165,10 @@ master_loop(mb_port *mp)
             usleep((mp->scanrate - time_spent) * 1000);
     }
     /* Close the port */
-    mb_close_port(mp); 
+    mb_close_port(mp);
     mp->dienow = 0;
     mp->running = 0;
-    return MB_ERR_PORTFAIL; 
+    return MB_ERR_PORTFAIL;
 }
 
 /* This function formulates and sends the Modbus RTU master request */
@@ -177,11 +177,11 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
 {
     u_int8_t buff[MB_FRAME_LEN], length;
     u_int16_t crc, temp;
-    
+
     /* build the request message */
     buff[0]=cmd->node;
     buff[1]=cmd->function;
-    
+
     switch (cmd->function) {
         case 1:
         case 2:
@@ -208,7 +208,7 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
             break;
         case 6:
             temp = *cmd->data;
-            /* If the command is contiunous go, if conditional then 
+            /* If the command is contiunous go, if conditional then
              check the last checksum against the current datatable[] */
             if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
                 COPYWORD(&buff[2], &cmd->m_register);
@@ -285,8 +285,8 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
  * against the time the loop was started to see about the timeout.  If there
  * is data then it is written into the buffer.  If there is no data on the
  * read() and we have received some data already then the full message should
- * have been received and the function exits. 
- 
+ * have been received and the function exits.
+
  * Returns 0 on timeout
  * Returns -1 on CRC fail
  * Returns the length of the message on success
@@ -318,7 +318,7 @@ getRTUresponse(u_int8_t *buff, mb_port *mp)
                 else return buffptr;
 
             } else { /* No data in the buffer */
-                gettimeofday(&thistime,NULL); 
+                gettimeofday(&thistime,NULL);
                 if(timediff(oldtime, thistime) > mp->timeout) {
                     return 0;
                 }
@@ -505,7 +505,7 @@ getTCPresponse(u_int8_t *buff, mb_port *mp)
 
 /*!
  * This function takes the message buffer and the current command and
- * determines what to do with the message.  It may write data to the 
+ * determines what to do with the message.  It may write data to the
  * datatable or just return if the message is an acknowledge of a write.
  * This function is protocol indifferent so the checksums should be
  * checked before getting here.  This function assumes that *buff looks
@@ -519,7 +519,7 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
     int n;
 
     cmd->responses++;
-    if(buff[1] >= 0x80) 
+    if(buff[1] >= 0x80)
         return buff[2];
     if(buff[0] != cmd->node)
         return ME_WRONG_DEVICE;
@@ -568,7 +568,6 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     int result, msglen;
     static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
     static int (*getresponse)(u_int8_t *,struct mb_port *) = NULL;
-    printf("mb_send_command() mp->protocol = %d\n", mp->protocol);
   /* This sets up the function pointers so we don't have to constantly check
    *  which protocol we are using for communication.  From this point on the
    *  code is generic for RTU or ASCII */
@@ -670,7 +669,7 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
         reg = port->discreg;
         regsize = port->discsize;
     }
-    
+
     if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
         return MB_ERR_OVERFLOW;
     }
@@ -748,7 +747,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
     int word, bit, n;
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
-    
+
     /* If we're TCP then node doesn't matter yet.  Other wise return 0 if
      * this message isn't for us. */
     if(port->protocol != MB_TCP) {
@@ -831,6 +830,6 @@ create_response(mb_port *port, unsigned char *buff, int size)
         default:
             break;
     }
-    
+
     return 0;
 }

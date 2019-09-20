@@ -14,10 +14,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
+ *
  * Source file for mb_port handling functions
  */
- 
+
 #include <modbus.h>
 #include <mblib.h>
 
@@ -30,22 +30,22 @@ initport(mb_port *p)
     p->device = NULL;
     p->fd = 0;
     p->enable = 1;
-    p->type = 0; 
+    p->type = 0;
     p->protocol = 0;
     p->devtype = MB_SERIAL;
-    p->slaveid = 1;      
+    p->slaveid = 1;
     p->baudrate = B9600;
     p->databits = 8;
     p->stopbits = 1;
-    p->timeout = 1000;      
+    p->timeout = 1000;
     p->frame = 10;
-    p->delay = 0;     
+    p->delay = 0;
     p->retries = 3;
-    p->parity = MB_NONE;  
+    p->parity = MB_NONE;
     p->bindport = 5001;
-    p->scanrate = 1000; 
-    p->holdreg = NULL;  
-    p->holdsize = 0; 
+    p->scanrate = 1000;
+    p->holdreg = NULL;
+    p->holdsize = 0;
     p->inputreg = NULL;
     p->inputsize = 0;
     p->coilreg = NULL;
@@ -113,7 +113,7 @@ openport(mb_port *m_port)
 {
     int fd;
     struct termios options;
-    
+
     /* the port is opened RW and reads will not block */
     fd = open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(fd == -1)  {
@@ -128,12 +128,12 @@ openport(mb_port *m_port)
         options.c_cflag |= (CLOCAL | CREAD);
         /* Set the parity */
         if(m_port->parity == MB_ODD) {
-            options.c_cflag |= PARENB;        
-            options.c_cflag |= PARODD;        
+            options.c_cflag |= PARENB;
+            options.c_cflag |= PARODD;
         } else if(m_port->parity == MB_EVEN) {
-            options.c_cflag |= PARENB;        
-            options.c_cflag &= ~PARODD;        
-        } else { /* No Parity */ 
+            options.c_cflag |= PARENB;
+            options.c_cflag &= ~PARODD;
+        } else { /* No Parity */
             options.c_cflag &= ~PARENB;
         }
         /* Set stop bits */
@@ -145,13 +145,13 @@ openport(mb_port *m_port)
         /* Set databits */
         options.c_cflag &= ~CSIZE;
         if(m_port->databits == 5) {
-            options.c_cflag |= CS5;    
+            options.c_cflag |= CS5;
         } else if(m_port->databits == 6) {
             options.c_cflag |= CS6;
         } else if(m_port->databits == 7) {
             options.c_cflag |= CS7;
         } else {
-            options.c_cflag |= CS8;    
+            options.c_cflag |= CS8;
         }
         options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
         options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
@@ -160,7 +160,7 @@ openport(mb_port *m_port)
         options.c_cc[VTIME] = 0;
         /* TODO: Should check for errors here */
         tcsetattr(fd, TCSANOW, &options);
-    } 
+    }
     m_port->fd = fd;
     return fd;
 }
@@ -173,18 +173,18 @@ openIPport(mb_port *mp)
     int fd = 0;
     struct sockaddr_in addr;
     int result;
-    
+
     DEBUGMSG("Opening IP Port");
     if(mp->socket == TCP_SOCK) {
     	fd = socket(AF_INET, SOCK_STREAM, 0);
     } else if (mp->socket == UDP_SOCK) {
         fd = socket(AF_INET, SOCK_DGRAM, 0);
     }
-    
+
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr(mp->ipaddress);
     addr.sin_port = htons(mp->bindport);
-    
+
     result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
     DEBUGMSG2("Connect returned %d", result);
     if(result == -1) {
@@ -206,7 +206,7 @@ openIPport(mb_port *mp)
 /* Public Functions */
 /********************/
 
-/* This allocates and initializes a port.  Returns the pointer to the port on 
+/* This allocates and initializes a port.  Returns the pointer to the port on
  * success or NULL on failure.  'name' can either be the name to give the port
  * or NULL if not needed. */
 mb_port *
@@ -223,7 +223,7 @@ mb_new_port(const char *name, unsigned int flags)
             mport->flags = flags;
         }
     }
-    return mport;    
+    return mport;
 }
 
 /* recursive function that destroys all of the commands */
@@ -242,15 +242,15 @@ void
 mb_destroy_port(mb_port *port)
 {
     mb_close_port(port);
-    
+
     if(port->name != NULL) free(port->name);
     if(port->device != NULL) free(port->device);
-    
+
     /* destroys all of the commands */
     _free_cmd(port->commands);
 }
 
-/* This function sets the port up as a normal serial port. 'device' is the system device file that represents 
+/* This function sets the port up as a normal serial port. 'device' is the system device file that represents
  * the serial port to use.  baudrate is an integer representation of the baudrate, 'parity' can either be
  * MB_NONE, MB_EVEN, or MB_ODD, and 'stopbits' is either 0, 1 or 2. */
 int
@@ -262,7 +262,7 @@ mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databi
         DEBUGMSG("mb_set_serial_port() - Unable to allocate space for port");
         return MB_ERR_ALLOC;
     }
-    
+
     port->baudrate = getbaudrate(baudrate);
     if(port->baudrate == 0) {
         DEBUGMSG("mb_set_serial_port() - Bad baudrate passed");
@@ -283,9 +283,9 @@ mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databi
     return 0;
 }
 
-/* This function sets the port up a network port instead of a serial port.  Normally this would be 
+/* This function sets the port up a network port instead of a serial port.  Normally this would be
  * used for Modbus TCP but with this library it can also be used for the RTU and ASCII protocols
- * as well.  Using a network port for these protocols will allow this library to talk to device 
+ * as well.  Using a network port for these protocols will allow this library to talk to device
  * servers over the network. 'ipaddress' is a string representing the ipaddress i.e. "10.10.10.2"
  * 'port' is an integer representing the port to connect too, and 'socket' is either UDP_SOCK or
  * TCP_SOCK.  If the port is a master or client the ipaddress is the server/slave to connect too
@@ -294,13 +294,13 @@ int
 mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket)
 {
     port->devtype = MB_NETWORK;
-    
+
     if(ipaddress == NULL) {
         strcpy(port->ipaddress, "0.0.0.0");
     } else {
         strncpy(port->ipaddress, ipaddress, 15);
     }
-    
+
     port->bindport = bindport;
     if(socket == UDP_SOCK || socket == TCP_SOCK) {
         port->socket = socket;
@@ -345,7 +345,7 @@ int
 mb_open_port(mb_port *m_port)
 {
     int fd;
-    
+
     /* A TCP Server will open it's socket when the event loop is called */
     if(m_port->devtype == MB_NETWORK && m_port->type == MB_SERVER) {
     	return 0;
@@ -363,7 +363,7 @@ int
 mb_close_port(mb_port *port)
 {
     int result;
-    
+
     result = close(port->fd);
     port->fd = 0;
     return result;
@@ -387,21 +387,21 @@ int
 mb_set_scan_rate(mb_port *port, int rate)
 {
     port->scanrate = rate;
-    return 0;    
+    return 0;
 }
 
 int
 mb_set_timeout(mb_port *port, int timeout)
 {
     port->timeout = timeout;
-    return 0;    
+    return 0;
 }
 
 int
 mb_set_retries(mb_port *port, int retries)
 {
     port->retries = retries;
-    return 0;    
+    return 0;
 }
 
 int
@@ -429,7 +429,7 @@ u_int8_t
 mb_get_port_slaveid(mb_port *port) {
     return port->slaveid;
 }
-                                 
+
 
 /* These four functions allocate the data areas for a slave port
  * A valid port pointer and size should be passed.  The new pointer
@@ -444,8 +444,8 @@ u_int16_t *
 mb_alloc_holdreg(mb_port *port, unsigned int size)
 {
     void *new;
-    
-    mb_mutex_lock(port, &port->hold_mutex);	
+
+    mb_mutex_lock(port, &port->hold_mutex);
     new = realloc(port->holdreg, size * 2);
     if(new != NULL) {
         port->holdsize = size;
@@ -454,7 +454,7 @@ mb_alloc_holdreg(mb_port *port, unsigned int size)
     /* TODO: At some point we should only zero the new memory but this
      * will do for now. */
     bzero(port->holdreg, size * 2);
-    mb_mutex_unlock(port, &port->hold_mutex);	
+    mb_mutex_unlock(port, &port->hold_mutex);
     return new;
 }
 
@@ -463,14 +463,14 @@ mb_alloc_inputreg(mb_port *port, unsigned int size)
 {
     void *new;
 
-    mb_mutex_lock(port, &port->input_mutex);	
+    mb_mutex_lock(port, &port->input_mutex);
     new = realloc(port->inputreg, size * 2);
     if(new != NULL) {
         port->inputsize = size;
         port->inputreg = new;
     }
     bzero(port->inputreg, size * 2);
-    mb_mutex_unlock(port, &port->input_mutex);	
+    mb_mutex_unlock(port, &port->input_mutex);
     return new;
 }
 
@@ -479,7 +479,7 @@ mb_alloc_coil(mb_port *port, unsigned int size)
 {
     void *new;
 
-    mb_mutex_lock(port, &port->coil_mutex);	
+    mb_mutex_lock(port, &port->coil_mutex);
     new = realloc(port->coilreg, (size - 1)/8 + 1);
     if(new != NULL) {
         port->coilsize = size;
@@ -495,14 +495,14 @@ mb_alloc_discrete(mb_port *port, unsigned int size)
 {
     void *new;
 
-    mb_mutex_lock(port, &port->disc_mutex);	
+    mb_mutex_lock(port, &port->disc_mutex);
     new = realloc(port->discreg, (size - 1)/8 + 1);
     if(new != NULL) {
         port->discsize = size;
         port->discreg = new;
     }
     bzero(port->coilreg, (size - 1)/8 + 1);
-    mb_mutex_unlock(port, &port->disc_mutex);	
+    mb_mutex_unlock(port, &port->disc_mutex);
     return new;
 }
 
@@ -708,7 +708,7 @@ mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, in
 /* Utility Functions */
 /*********************/
 
-/* Adds a new command to the linked list of commands on port p 
+/* Adds a new command to the linked list of commands on port p
    This is the master port threads list of commands that it sends
    while running.  If all commands are to be asynchronous then this
    would not be necessary.  Slave ports would never use this.
@@ -717,9 +717,9 @@ int
 add_cmd(mb_port *p, mb_cmd *mc)
 {
     mb_cmd *node;
-    
+
     if(p == NULL || mc == NULL) return -1;
-    
+
     if(p->commands == NULL) {
         p->commands = mc;
     } else {
@@ -731,7 +731,7 @@ add_cmd(mb_port *p, mb_cmd *mc)
     }
     return 0;
 }
-    
+
 /****************************/
 /*  Debugging Functions     */
 /****************************/
@@ -743,7 +743,7 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
 {
     int i;
     mb_cmd *mc;
-    
+
     fprintf(fd, "Port %s\n", mp->name);
     /* Serial Port Specific Configuration */
     if(mp->devtype == MB_SERIAL) {
@@ -762,7 +762,7 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
     else if(mp->protocol == MB_ASCII) fprintf(fd, "ASCII - ");
     else if(mp->protocol == MB_TCP) fprintf(fd, "TCP - ");
     else fprintf(fd, "* - ");
-    
+
     if(mp->devtype == MB_SERIAL) {
         if(mp->type == MB_MASTER) fprintf(fd, "Master");
         else if(mp->type == MB_SLAVE) fprintf(fd, "Slave");
@@ -782,7 +782,7 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
     fprintf(fd, "Timeout: %d mSec\n", mp->timeout);
     fprintf(fd, "Max Failures: %d\n", mp->maxattempts);
     fprintf(fd, "Inhibit Time: %d Seconds\n", mp->inhibit_time);
-        
+
     mc = mp->commands;
     if(mc == NULL) fprintf(fd, "No commands configured for this port\n");
     else {
