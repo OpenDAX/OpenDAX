@@ -70,12 +70,12 @@ tag_add(char **tokens)
         count = strtol(tokens[2], NULL, 0);
         if( count == 0 ) {
             fprintf(stderr, "ERROR: Invalid Count Given\n");
+            return 1;
         }
     } else { // If no count is given make it one
         count = 1;
         //fprintf(stderr, "ERROR: No Count Given\n");
         //fprintf(stderr, usage);
-        return 1;
     }
 
     result = dax_tag_add(ds, &handle, tokens[0], type, count);
