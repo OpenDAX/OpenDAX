@@ -141,7 +141,7 @@ runcmd(char *instr)
     int tcount = 0, n, result = 0;
     char *last, *temp, *tok;
     char **tokens;
-    
+
     /* Store the string to protect if from strtok_r() */
     temp = strdup(instr);
     if(temp == NULL) {
@@ -156,17 +156,17 @@ runcmd(char *instr)
             tcount++;
         }
     }
-    
+
     /* Now that we know how many tokens we can allocate the array 
      * We get one more than needed so that we can add the NULL */
     tokens = malloc(sizeof(char *) * tcount+1);
-    
+
     if(tokens == NULL) {
         fprintf(stderr, "ERROR: Unable to allocate memory\n");
         free(temp);
         return -1;
     }
-    
+
     /* Since strtok_r() will mess up our string we need to copy it again */
     strcpy(temp, instr);
     tokens[0] = strtok_r(temp, " ", &last);
@@ -175,7 +175,7 @@ runcmd(char *instr)
         tokens[n] = strtok_r(NULL, " ", &last);
     }
     tokens[tcount] = NULL; /* Terminate the array with a NULL */    
-    
+
     /* test the command in sequential if's once found call function and continue */
     if( !strcasecmp(tokens[0],"dax")) {
         printf("Haven't done 'dax' yet\n");
@@ -183,9 +183,9 @@ runcmd(char *instr)
         result = tag_add(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "list", 4)) {
         if(tokens[1] == NULL) {
-        	result = list_tags(NULL);
+            result = list_tags(NULL);
         } else if(!strncasecmp(tokens[1], "tag", 3)) {
-        	result = list_tags(&tokens[2]);
+            result = list_tags(&tokens[2]);
         } else if(!strncasecmp(tokens[1], "type", 3)) {
             result = list_types(&tokens[2]);
         } else {

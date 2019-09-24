@@ -178,6 +178,8 @@ dax_to_string(tag_type type, void *buff, int index)
             }
             break;
         case DAX_BYTE:
+            printf("%u\n", ((dax_byte *)buff)[index]);
+            break;
         case DAX_SINT:
             printf("%hhd\n", ((dax_sint *)buff)[index]);
             break;
