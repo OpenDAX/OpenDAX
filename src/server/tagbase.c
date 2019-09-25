@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  * This is the source file for the tagname database handling routines
  */
 
@@ -28,17 +28,17 @@
  * The tags are stored in the server in two different arrays.  Both
  * of these arrays are alloated at runtime and the size is increased
  * as needed.
- * 
+ *
  * The first array is the actual tag array. It contains a pointer to
  * the name of the tag, the type of tag and the number of items.  It
  * also contains any status flags as well as the data area itself. The
  * tags are stored in this array in the order that they were created.
  * The index of the tag in this array is used as the identifier for
  * that tag for the duration of the program.
- * 
+ *
  * The second array is the index.  Each item in the index contains a pointer
  * to the name of the tag and the index where the tag data can be found in the
- * first array.  This array is kept sorted in alphabetical order for quicker 
+ * first array.  This array is kept sorted in alphabetical order for quicker
  * searching by name.  The name pointer in both arrays point to the same
  * address so the string is not duplicated.
  */
@@ -58,7 +58,7 @@ static int
 _checktype(tag_type type)
 {
     int index;
-    
+
     if(type & DAX_BOOL)
         return 0;
     if(type & DAX_BYTE)
@@ -139,10 +139,10 @@ static int
 _get_by_name(char *name)
 {
     int i, min, max, try;
-    
+
     min = 0;
     max = _tagcount - 1;
-    
+
     while(min <= max) {
         try = min + ((max - min) / 2);
         i = strcmp(name, _index[try].name);
@@ -209,18 +209,18 @@ _add_index(char *name, int index)
     int n;
     char *temp;
     int i, min, max, try;
-    
+
     /* Let's allocate the memory for the string first in case it fails */
     temp = strdup(name);
     if(temp == NULL)
         return ERR_ALLOC;
-    
+
     if(_tagcount == 0) {
         n = 0;
     } else {
         min = 0;
         max = _tagcount - 1;
-        
+
         while(min <= max) {
             try = min + ((max - min) / 2);
             i = strcmp(name, _index[try].name);
@@ -242,7 +242,7 @@ _add_index(char *name, int index)
     /* The name pointer in the __index and the __db point to the same string */
     _index[n].name = temp;
     _db[index].name = temp;
-    
+
     /**** TESTING STUFF ******/
 //    for(n=0;n<_tagcount;n++) {
 //        printf("_index[%d] = %s\n", n, _index[n].name);
@@ -258,7 +258,7 @@ initialize_tagbase(void)
     tag_type type;
     int result;
     char *str;
-    
+
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!_db) {
         xfatal("Unable to allocate the database");
@@ -303,7 +303,7 @@ tag_add(char *name, tag_type type, unsigned int count)
     void *newdata;
     unsigned int size;
     int result;
-    
+
     if(count == 0) {
         xlog(LOG_ERROR, "tag_add() called with count = 0");
         return ERR_ARG;
@@ -333,7 +333,7 @@ tag_add(char *name, tag_type type, unsigned int count)
         size = count / 8 + 1;
     } else {
         size = type_size(type) * count;
-    }   
+    }
 
     /* Check for an existing tagname in the database */
     if( (n = _get_by_name(name)) >= 0) {
@@ -417,7 +417,7 @@ tag_get_name(char *name, dax_tag *tag)
     }
 }
 
-/* Finds a tag based on it's index in the array.  Returns a pointer to 
+/* Finds a tag based on it's index in the array.  Returns a pointer to
  the tag give by index, NULL if index is out of range.  Index should
  not be assumed to remain constant throughout the programs lifetime. */
 int
@@ -442,7 +442,7 @@ long int tag_get_count(void) {
 
 /* These are the low level tag reading / writing interface to the
  * database.
- * 
+ *
  * This function reads the data from the tag given by handle at
  * the byte offset.  It will write size bytes into data and will
  * return 0 on success and some negative number on failure.
@@ -450,7 +450,6 @@ long int tag_get_count(void) {
 int
 tag_read(tag_index idx, int offset, void *data, int size)
 {
-//    int n;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
@@ -461,11 +460,6 @@ tag_read(tag_index idx, int offset, void *data, int size)
     }
     /* Copy the data into the right place. */
     memcpy(data, &(_db[idx].data[offset]), size);
-//    printf("Read %s = ", _db[idx].name);
-//    for(n = 0;n < size; n++) {
-//        printf("[0x%02X] ", ((u_int8_t *)data)[offset + n]);
-//    }
-//    printf("\n");
 
     return 0;
 }
@@ -474,7 +468,6 @@ tag_read(tag_index idx, int offset, void *data, int size)
 int
 tag_write(tag_index idx, int offset, void *data, int size)
 {
-    int n;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagcount) {
         return ERR_ARG;
@@ -486,11 +479,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
     /* Copy the data into the right place. */
     memcpy(&(_db[idx].data[offset]), data, size);
     event_check(idx, offset, size);
-    printf("Write %s = ", _db[idx].name);
-    for(n = 0;n < size; n++) {
-        printf("[0x%02X] ", ((u_int8_t *)data)[n]);
-    }
-    printf("\n");
+
     return 0;
 }
 
@@ -513,13 +502,10 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     db = &_db[idx].data[offset];
     newdata = (u_int8_t *)data;
     newmask = (u_int8_t *)mask;
-//    printf("%s = ", _db[idx].name);
     for(n = 0; n < size; n++) {
         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
-//        printf("[0x%02X|0x%02X] ", ((u_int8_t *)data)[n],((u_int8_t *)mask)[n]);
     }
     event_check(idx, offset, size);
-//    printf("\n");
     return 0;
 }
 
@@ -539,7 +525,7 @@ _cdt_destroy(datatype *cdt) {
     if(cdt->name != NULL ) xfree(cdt->name);
 }
 
-/* Recieves a definition string in the form of "Name,Type,Count" and 
+/* Recieves a definition string in the form of "Name,Type,Count" and
  * appends that member to the compound datatype passed as *cdt.  Returns
  * 0 on success and dax error code on failure */
 static int
@@ -549,7 +535,7 @@ cdt_append(datatype *cdt, char *str)
     cdt_member *this, *new;
     char *name, *typestr, *countstr, *last;
     tag_type type;
-    
+
     /* Parse the description string */
     name = strtok_r(str, ",", &last);
     if(name == NULL) return ERR_ARG;
@@ -558,7 +544,7 @@ cdt_append(datatype *cdt, char *str)
     countstr = strtok_r(NULL, ",", &last);
     if(countstr == NULL) return ERR_ARG;
     count = strtol(countstr, NULL, 0);
-    
+
     /* Check that the name is okay */
     if( (retval = _validate_name(name)) ) {
         return retval;
@@ -578,7 +564,7 @@ cdt_append(datatype *cdt, char *str)
         }
         this = this->next;
     }
-    
+
     /* Allocate the new member */
     new = xmalloc(sizeof(cdt_member));
     if(new == NULL) {
@@ -607,7 +593,7 @@ cdt_append(datatype *cdt, char *str)
         }
         this->next = new;
     }
-    
+
     return 0;
 }
 
@@ -615,7 +601,7 @@ cdt_append(datatype *cdt, char *str)
 /* Creates a compound datatype using the definition string in *str.
  * Returns the positive index of the newly created datatype if
  * sucessful or 0 on failure. If *error is not NULL any error codes
- * will be placed there otherwise zero will assigned to error. This 
+ * will be placed there otherwise zero will assigned to error. This
  * function uses strtok_r so the passed string can't be constant. */
 tag_type
 cdt_create(char *str, int *error) {
@@ -624,7 +610,7 @@ cdt_create(char *str, int *error) {
     datatype cdt;
     datatype *new_datatype;
     tag_type type;
-    
+
     /* We need a duplicate of the string to help check if this exact
      * CDT has been added before.  In that case we don't return error */
     tmp = strdup(str);
@@ -661,7 +647,7 @@ cdt_create(char *str, int *error) {
         return 0;
     }
     cdt.members = NULL;
-    
+
     while((member = strtok_r(NULL, ":", &last))) {
         result = cdt_append(&cdt, member);
         if(result) {
@@ -670,7 +656,7 @@ cdt_create(char *str, int *error) {
             return 0;
         }
     }
-    
+
     /* Do we have space in the array */
     if(_datatype_index == _datatype_size) {
         /* Allocate more space for the array */
@@ -750,7 +736,7 @@ char *
 cdt_get_name(tag_type type)
 {
     int index;
-    
+
     if(IS_CUSTOM(type)) {
         index = CDT_TO_INDEX(type);
         if(index >= 0 && index < _datatype_index) {
@@ -797,14 +783,14 @@ cdt_get_name(tag_type type)
 }
 
 
-/* Adds a member to the datatype referenced by it's array index 'cdt_index'. 
+/* Adds a member to the datatype referenced by it's array index 'cdt_index'.
  * Returns 0 on success, nonzero error code on failure. */
 int
 cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
 {
     int retval;
     cdt_member *this, *new;
-    
+
     /* Check that the name is okay */
     if( (retval = _validate_name(name)) ) {
         return retval;
@@ -824,7 +810,7 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
         }
         this = this->next;
     }
-    
+
     /* Allocate the new member */
     new = xmalloc(sizeof(cdt_member));
     if(new == NULL) {
@@ -853,7 +839,7 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
         }
         this->next = new;
     }
-    
+
     return 0;
 }
 
@@ -869,7 +855,7 @@ serialize_datatype(tag_type type, char **str)
     char test[DAX_TAGNAME_SIZE + 1];
     cdt_member *this;
     int cdt_index;
-    
+
     cdt_index = CDT_TO_INDEX(type);
 
     if(cdt_index < 0 || cdt_index >= _datatype_index) {
@@ -890,7 +876,7 @@ serialize_datatype(tag_type type, char **str)
         this = this->next;
     }
     size += 1; /* For Trailing NULL */
-    
+
     *str = xmalloc(size);
     if(*str == NULL)
         return ERR_ALLOC;
@@ -924,14 +910,14 @@ type_size(tag_type type)
     if( (result = _checktype(type)) ) {
         return result;
     }
-    
+
     if(IS_CUSTOM(type)) {
         this = _datatypes[CDT_TO_INDEX(type)].members;
         while (this != NULL) {
             if(this->type == DAX_BOOL) {
                 pos += this->count; /* BOOLs are easy just add the number of bits */
             } else {
-                /* Since it's not a bool we need to align to the next byte. 
+                /* Since it's not a bool we need to align to the next byte.
                  * To align it we set all the lower three bits to 1 and then
                  * increment. */
                 if(pos % 8 != 0) { /* Do nothing if already aligned */

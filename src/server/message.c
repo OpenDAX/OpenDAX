@@ -516,7 +516,7 @@ msg_tag_write(dax_message *msg)
     int result, offset;
     void *data;
     size_t size;
-    	
+
     size = msg->size - sizeof(tag_index) - sizeof(int);
     handle = *((tag_index *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);

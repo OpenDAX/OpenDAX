@@ -83,7 +83,7 @@ typedef struct {
     char *name;
     int nextevent;
     _dax_event *events;
-    char *data;
+    u_int8_t *data;
 } _dax_tag_db;
 
 typedef struct {

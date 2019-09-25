@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -149,12 +149,12 @@
 #define DAX_TIME_MIN    DAX_DWORD_MIN
 #define DAX_TIME_MAX    DAX_DWORD_MAX
 /* 64 Bit */
-#define DAX_LWORD_MIN  -9223372036854775808LL
-#define DAX_LWORD_MAX   9223372036854775807LL
-#define DAX_LINT_MIN    DAX_LWORD_MIN
-#define DAX_LINT_MAX    DAX_LWORD_MAX
-#define DAX_ULINT_MIN   0
-#define DAX_ULINT_MAX   18446744073709551615ULL
+#define DAX_LWORD_MIN    0
+#define DAX_LWORD_MAX    18446744073709551615ULL
+#define DAX_LINT_MIN    -9223372036854775808LL
+#define DAX_LINT_MAX     9223372036854775807LL
+#define DAX_ULINT_MIN    DAX_LWORD_MIN
+#define DAX_ULINT_MAX    DAX_LWORD_MAX
 /* Floating Point */
 #define DAX_REAL_MIN   -FLT_MAX
 #define DAX_REAL_MAX    FLT_MAX
@@ -290,7 +290,7 @@ int dax_tag_handle(dax_state *ds, Handle *h, char *str, int count);
 /* Returns the size of the datatype in bytes */
 int dax_get_typesize(dax_state *ds, tag_type type);
 
-/* The following functions are for reading and writing data.  These 
+/* The following functions are for reading and writing data.  These
  * are generic functions and are used by other functions within the
  * library.  They can be used by the modules as well but they don't
  * do any bounds checking of the tag handles.  This will make them
@@ -324,7 +324,7 @@ int dax_write_tag(dax_state *ds, Handle handle, void *data);
 int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 
 /* Event handling functions */
-int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data, 
+int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data,
                   dax_event_id *id, void (*callback)(void *udata), void *udata,
                   void (*free_callback)(void *udata));
 int dax_event_del(dax_state *ds, dax_event_id id);

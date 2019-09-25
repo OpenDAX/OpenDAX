@@ -10,3 +10,6 @@ Actually that looks a lot like math so maybe I need to pick another character bu
 the same idea.
 
 Much testing needs to be done.
+
+Use subprocess module in Python to test all the corner cases of writing
+and reading.

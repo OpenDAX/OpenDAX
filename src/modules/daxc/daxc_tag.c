@@ -193,7 +193,7 @@ dax_to_string(tag_type type, void *buff, int index)
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
-            printf("%d\n", ((dax_udint *)buff)[index]);
+            printf("%u\n", ((dax_udint *)buff)[index]);
             break;
         case DAX_DINT:
             printf("%d\n", ((dax_dint *)buff)[index]);
@@ -203,10 +203,10 @@ dax_to_string(tag_type type, void *buff, int index)
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            printf("%lld\n", ((dax_ulint *)buff)[index]);
+            printf("%lu\n", ((dax_ulint *)buff)[index]);
             break;
         case DAX_LINT:
-            printf("%lld\n", ((dax_lint *)buff)[index]);
+            printf("%ld\n", ((dax_lint *)buff)[index]);
             break;
         case DAX_LREAL:
             printf("%g\n", ((dax_lreal *)buff)[index]);
@@ -264,11 +264,11 @@ string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            ((dax_ulint *)buff)[index] = (dax_ulint)strtol(val, NULL, 0);
+            ((dax_ulint *)buff)[index] = (dax_ulint)strtoull(val, NULL, 0);
             if(mask) ((dax_ulint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LINT:
-            ((dax_lint *)buff)[index] = (dax_lint)strtol(val, NULL, 0);
+            ((dax_lint *)buff)[index] = (dax_lint)strtoll(val, NULL, 0);
             if(mask) ((dax_lint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LREAL:

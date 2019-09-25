@@ -26,19 +26,23 @@
 #include <opendax.h>
 #include <signal.h>
 
-void quit_signal(int sig);
-static void getout(int exitstatus);
+// void quit_signal(int sig);
+// static void getout(int exitstatus);
 
 dax_state *ds;
-static int _quitsignal;
+// static int _quitsignal;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
-    ds = dax_init("debug");
-    if( dax_connect(ds) ) {
-        dax_fatal(ds, "Unable to find OpenDAX");
-    }
-    exit(0);
+    dax_lword dummy;
+    dummy = 0xFFFFFFFFFFFFFFFF;
+    printf("%lu\n", dummy);
+
+    // ds = dax_init("debug");
+    // if( dax_connect(ds) ) {
+    //     dax_fatal(ds, "Unable to find OpenDAX");
+    // }
+    // exit(0);
 }
 
 //     struct sigaction sa;

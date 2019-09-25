@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ main(int argc, const char *argv[])
     struct sigaction sa;
     pthread_t message_thread;
 	int result;
-    
+
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -46,16 +46,16 @@ main(int argc, const char *argv[])
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
     sigaction(SIGHUP, &sa, NULL);
-    
+
     sa.sa_handler = &catch_signal;
     sigaction(SIGPIPE, &sa, NULL);
-    
+
     //set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
     set_log_topic(-1); /*TODO: Needs to be configuration */
-    
+
     /* Read configuration from defaults, file and command line */
     opt_configure(argc, argv);
-	
+
 // Remove since opendax master will control this.
     /* Go to the background */
 //    if(opt_daemonize()) {
@@ -63,7 +63,7 @@ main(int argc, const char *argv[])
 //            xerror("Unable to go to the background");
 //        }
 //    }
-    
+
     result = msg_setup();    /* This creates and sets up the message sockets */
     if(result) xerror("msg_setup() returned %d", result);
     initialize_tagbase(); /* initialize the tag name database */
@@ -71,13 +71,13 @@ main(int argc, const char *argv[])
     if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
         xfatal("Unable to create message thread");
     }
-    
+
     /* DO TESTING STUFF HERE */
 
     /* END TESTING STUFF */
-    
+
     xlog(LOG_MAJOR, "OpenDAX Tag Server Started");
-    
+
     while(1) { /* Main loop */
         sleep(10); /* A signal should interrupt this */
         /* If the quit flag is set then we clean up and get out */
@@ -117,5 +117,5 @@ void
 catch_signal(int sig)
 {
     /* TODO: Shouldn't really have printfs in signal handlers */
-    xlog(LOG_MINOR, "Received signal %d", sig);    
+    xlog(LOG_MINOR, "Received signal %d", sig);
 }
