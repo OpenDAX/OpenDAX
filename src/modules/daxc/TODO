@@ -14,5 +14,5 @@ daxc>write TagName[1] 21 ~ 22
 
 Much testing needs to be done.
 
-Use subprocess module in Python to test all the corner cases of writing
-and reading.
+Move the string to/from dax functions to the libdax library.  They are probably
+generally useful.
