@@ -25,7 +25,8 @@ class TestBasic(unittest.TestCase):
     def setUp(self):
         self.server = subprocess.Popen(["src/server/tagserver",
                                         "-C",
-                                        "tests/config/tagserver_basic.conf"])
+                                        "tests/config/tagserver_basic.conf"],
+                                        stdout=subprocess.DEVNULL)
         time.sleep(0.1)
         x = self.server.poll()
         self.assertIsNone(x)

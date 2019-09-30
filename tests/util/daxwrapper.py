@@ -16,6 +16,25 @@
 
 # This class uses ctypes to wrap the modbus library for testing
 from ctypes import *
+import tests.util as util
+
+defines = util.read_defines("src/opendax.h")
+
+class Handle(Structure):
+    _fields_ = [
+        ("index", c_uint),
+        ("byte", c_uint),
+        ("bit", c_ubyte),
+        ("count", c_uint),
+        ("size", c_uint),
+        ("type", c_uint)]
+
+class DaxTag(Structure):
+    _fields_ = [
+        ("index", c_uint),
+        ("type", c_uint),
+        ("count", c_uint),
+        ("name", ARRAY(c_char, 33))]
 
 class LibDaxWrapper:
     def __init__(self):
@@ -44,3 +63,26 @@ class LibDaxWrapper:
 
     def dax_disconnect(self, ds):
         return self.libdax.dax_disconnect(ds)
+
+    def dax_tag_byname(self, ds, name):
+        t = DaxTag()
+        x = self.libdax.dax_tag_byname(ds, byref(t), name.encode('utf-8'))
+        if x < 0:
+            raise RuntimeError
+        return t
+
+    def dax_tag_handle(self, ds, name, count=0):
+        h = Handle()
+        x = self.libdax.dax_tag_handle(ds, byref(h), name.encode('utf-8'), count)
+        if x < 0:
+            raise RuntimeError
+        return h
+
+
+    def dax_read_tag(self, ds, h):
+        b = bytearray(h.size)
+        data = c_char * len(b)
+        x = self.libdax.dax_read_tag(ds, h, data.from_buffer(b))
+        if x < 0:
+            raise RuntimeError
+        return b

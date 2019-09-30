@@ -33,7 +33,7 @@ def read_defines(file):
                 if tokens[0] == "#define":
                     if len(tokens) > 2:
                         try: # try to convert it to an int
-                            tokens[2] = int(tokens[2])
+                            tokens[2] = int(tokens[2], 0)
                         except:
                             pass # just ignore it if it doesn't work
                         if isinstance(tokens[2], str):

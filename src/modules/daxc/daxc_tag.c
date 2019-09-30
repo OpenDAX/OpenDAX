@@ -221,6 +221,7 @@ static void
 string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
 {
     long temp;
+    long long ltemp;
 
     switch (type) {
         case DAX_BOOL:
@@ -235,27 +236,67 @@ string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
             }
             break;
         case DAX_BYTE:
+            temp =  strtol(val, NULL, 0);
+            if(temp < DAX_BYTE_MIN)
+                ((dax_byte *)buff)[index] = DAX_BYTE_MIN;
+            else if(temp > DAX_BYTE_MAX)
+                ((dax_byte *)buff)[index] = DAX_BYTE_MAX;
+            else
+                ((dax_byte *)buff)[index] = temp;
+            if(mask) ((dax_byte *)mask)[index] = 0xFF;
+            break;
         case DAX_SINT:
-            ((dax_sint *)buff)[index] = (dax_sint)strtol(val, NULL, 0);
+            temp =  strtol(val, NULL, 0);
+            if(temp < DAX_SINT_MIN)
+                ((dax_sint *)buff)[index] = DAX_SINT_MIN;
+            else if(temp > DAX_SINT_MAX)
+                ((dax_sint *)buff)[index] = DAX_SINT_MAX;
+            else
+                ((dax_sint *)buff)[index] = temp;
             if(mask) ((dax_sint *)mask)[index] = 0xFF;
             break;
         case DAX_WORD:
         case DAX_UINT:
-            ((dax_uint *)buff)[index] = (dax_uint)strtol(val, NULL, 0);
+            temp =  strtoul(val, NULL, 0);
+            if(temp < DAX_UINT_MIN)
+                ((dax_uint *)buff)[index] = DAX_UINT_MIN;
+            else if(temp > DAX_UINT_MAX)
+                ((dax_uint *)buff)[index] = DAX_UINT_MAX;
+            else
+                ((dax_uint *)buff)[index] = temp;
             if(mask) ((dax_uint *)mask)[index] = 0xFFFF;
             break;
         case DAX_INT:
-            ((dax_int *)buff)[index] = (dax_int)strtol(val, NULL, 0);
+            temp =  strtol(val, NULL, 0);
+            if(temp < DAX_INT_MIN)
+                ((dax_int *)buff)[index] = DAX_INT_MIN;
+            else if(temp > DAX_INT_MAX)
+                ((dax_int *)buff)[index] = DAX_INT_MAX;
+            else
+                ((dax_int *)buff)[index] = temp;
             if(mask) ((dax_int *)mask)[index] = 0xFFFF;
             break;
         case DAX_DWORD:
         case DAX_UDINT:
+        // TODO: Make a special case for time
         case DAX_TIME:
-            ((dax_udint *)buff)[index] = (dax_udint)strtol(val, NULL, 0);
+        ltemp =  strtol(val, NULL, 0);
+            if(ltemp < DAX_UDINT_MIN)
+                ((dax_udint *)buff)[index] = DAX_UDINT_MIN;
+            else if(ltemp > DAX_UDINT_MAX)
+                ((dax_udint *)buff)[index] = DAX_UDINT_MAX;
+            else
+                ((dax_udint *)buff)[index] = ltemp;
             if(mask) ((dax_udint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_DINT:
-            ((dax_dint *)buff)[index] = (dax_dint)strtol(val, NULL, 0);
+            temp =  strtol(val, NULL, 0);
+            if(temp < DAX_DINT_MIN)
+                ((dax_dint *)buff)[index] = DAX_DINT_MIN;
+            else if(temp > DAX_DINT_MAX)
+                ((dax_dint *)buff)[index] = DAX_DINT_MAX;
+            else
+                ((dax_dint *)buff)[index] = temp;
             if(mask) ((dax_dint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_REAL:
