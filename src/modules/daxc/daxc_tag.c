@@ -305,6 +305,9 @@ string_to_dax(char *val, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_LWORD:
         case DAX_ULINT:
+            if(val[0]=='-')
+                ((dax_ulint *)buff)[index] 0x0000000000000000;
+                break;
             ((dax_ulint *)buff)[index] = (dax_ulint)strtoull(val, NULL, 0);
             if(mask) ((dax_ulint *)mask)[index] = DAX_64_ONES;
             break;
