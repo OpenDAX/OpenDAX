@@ -98,6 +98,8 @@
 #define ERR_EMPTY     -20 /* Empty */
 #define ERR_BADTYPE   -21 /* Bad Datatype */
 #define ERR_AUTH      -22 /* Not Authorized */
+#define ERR_OVERFLOW  -23 /* Overflow Error */
+#define ERR_UNDERFLOW -24 /* Underflow Error */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */
@@ -364,5 +366,9 @@ struct cdt_iter {
 typedef struct cdt_iter cdt_iter;
 
 int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
+
+/* Convenience functions for converting strings to basic DAX values and back */
+int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);
+int dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index);
 
 #endif /* !__OPENDAX_H */

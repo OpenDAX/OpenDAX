@@ -20,6 +20,12 @@ import tests.util as util
 
 defines = util.read_defines("src/opendax.h")
 
+class Underflow(Exception):
+    pass
+
+class Overflow(Exception):
+    pass
+
 class Handle(Structure):
     _fields_ = [
         ("index", c_uint),
@@ -35,6 +41,10 @@ class DaxTag(Structure):
         ("type", c_uint),
         ("count", c_uint),
         ("name", ARRAY(c_char, 33))]
+
+def typesize(datatype):
+    return (0x0001 << (datatype & 0x0F))
+
 
 class LibDaxWrapper:
     def __init__(self):
@@ -78,7 +88,6 @@ class LibDaxWrapper:
             raise RuntimeError
         return h
 
-
     def dax_read_tag(self, ds, h):
         b = bytearray(h.size)
         data = c_char * len(b)
@@ -86,3 +95,27 @@ class LibDaxWrapper:
         if x < 0:
             raise RuntimeError
         return b
+
+    def dax_val_to_string(self, datatype, val, size=32, index=0):
+        data = c_char_p()
+        data.value = b""
+        x = self.libdax.dax_val_to_string(data, size, datatype, val, index)
+        return data.value.decode('utf-8')
+
+    def dax_string_to_val(self, instr, datatype, buff=None, mask=None, index=0):
+        if datatype == defines["DAX_BOOL"]:
+            if buff is None:
+                buff = bytes(typesize(datatype)//8+1+(index//8))
+            if mask is None:
+                mask = bytes(typesize(datatype)//8+1+(index//8))
+        else:
+            if buff is None:
+                buff = bytes(typesize(datatype)//8*(index+1))
+            if mask is None:
+                mask = bytes(typesize(datatype)//8*(index+1))
+        result = self.libdax.dax_string_to_val(instr.encode(), datatype, buff, mask, index)
+        if result == defines["ERR_UNDERFLOW"]:
+            raise Underflow
+        if result == defines["ERR_OVERFLOW"]:
+            raise Overflow
+        return buff, mask

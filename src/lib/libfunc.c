@@ -73,7 +73,7 @@ dax_debug(dax_state *ds, int level, const char *format, ...)
 {
     char output[DEBUG_STRING_SIZE];
     va_list val;
-    
+
     /* check if the callback has been set and _verbosity is set high enough */
     if(level & ds->logflags) {
         va_start(val, format);
@@ -96,7 +96,7 @@ dax_error(dax_state *ds, const char *format, ...)
     char output[DEBUG_STRING_SIZE];
     va_list val;
     va_start(val, format);
-    
+
     /* Check whether the callback has been set */
     if(_dax_error) {
         vsnprintf(output, DEBUG_STRING_SIZE, format, val);
@@ -117,7 +117,7 @@ dax_log(dax_state *ds, const char *format, ...)
     char output[DEBUG_STRING_SIZE];
     va_list val;
     va_start(val, format);
-    
+
     if(_dax_log) {
         vsnprintf(output, DEBUG_STRING_SIZE, format, val);
         _dax_log(format);
@@ -134,7 +134,7 @@ dax_fatal(dax_state *ds, const char *format, ...)
     char output[DEBUG_STRING_SIZE];
     va_list val;
     va_start(val, format);
-    
+
     /* Check whether the callback has been set */
     if(_dax_error) {
         vsnprintf(output, DEBUG_STRING_SIZE, format, val);
@@ -146,6 +146,209 @@ dax_fatal(dax_state *ds, const char *format, ...)
     va_end(val);
     kill(getpid(), SIGQUIT);
 }
+
+/* The following two functions are utility functions for converting dax
+   values to strings and strings to dax values.
+
+/* Used to printf a dax tag value. Size is the size of buff to keep from being
+ * overflowed.  The index indicates where in val we'll look for the data. */
+int
+dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
+{
+    switch (type) {
+     /* Each number has to be cast to the right datatype then dereferenced */
+        case DAX_BOOL:
+            if((0x01 << (index % 8)) & ((u_int8_t *)val)[index / 8]) {
+                snprintf(buff, size, "1");
+            } else {
+                snprintf(buff, size, "0");
+            }
+            break;
+        case DAX_BYTE:
+            snprintf(buff, size, "%u", ((dax_byte *)val)[index]);
+            break;
+        case DAX_SINT:
+            snprintf(buff, size, "%hhd", ((dax_sint *)val)[index]);
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            snprintf(buff, size, "%d", ((dax_uint *)val)[index]);
+            break;
+        case DAX_INT:
+            snprintf(buff, size, "%hd", ((dax_int *)val)[index]);
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+        case DAX_TIME:
+            snprintf(buff, size, "%u", ((dax_udint *)val)[index]);
+            break;
+        case DAX_DINT:
+            snprintf(buff, size, "%d", ((dax_dint *)val)[index]);
+            break;
+        case DAX_REAL:
+            snprintf(buff, size, "%.8g", ((dax_real *)val)[index]);
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            snprintf(buff, size, "%lu", ((dax_ulint *)val)[index]);
+            break;
+        case DAX_LINT:
+            snprintf(buff, size, "%ld", ((dax_lint *)val)[index]);
+            break;
+        case DAX_LREAL:
+            snprintf(buff, size, "%.16g", ((dax_lreal *)val)[index]);
+            break;
+    }
+}
+
+/* This function figures out how to format the data from the string given
+ * by *val and places the result in *buff.  If *mask is NULL it is ignored.
+ * index is where the data will be wrtitten in buff */
+int
+dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
+{
+    long temp;
+    long long ltemp;
+    int retval = 0;
+
+    switch (type) {
+        case DAX_BOOL:
+            temp = strtol(instr, NULL, 0);
+            if(temp == 0) {
+                ((u_int8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
+            } else {
+                ((u_int8_t *)buff)[index / 8] |= (0x01 << (index % 8));
+            }
+            if(mask) {
+                ((u_int8_t *)mask)[index / 8] |= (0x01 << (index % 8));
+            }
+            break;
+        case DAX_BYTE:
+            temp =  strtol(instr, NULL, 0);
+            if(temp < DAX_BYTE_MIN) {
+                ((dax_byte *)buff)[index] = DAX_BYTE_MIN;
+                retval = ERR_UNDERFLOW;
+            }
+            else if(temp > DAX_BYTE_MAX) {
+                ((dax_byte *)buff)[index] = DAX_BYTE_MAX;
+                retval = ERR_OVERFLOW;
+            }
+            else
+                ((dax_byte *)buff)[index] = temp;
+            if(mask) ((dax_byte *)mask)[index] = 0xFF;
+            break;
+        case DAX_SINT:
+            temp =  strtol(instr, NULL, 0);
+            if(temp < DAX_SINT_MIN) {
+                ((dax_sint *)buff)[index] = DAX_SINT_MIN;
+                retval = ERR_UNDERFLOW;
+            }
+            else if(temp > DAX_SINT_MAX) {
+                ((dax_sint *)buff)[index] = DAX_SINT_MAX;
+                retval = ERR_OVERFLOW;
+            }
+            else
+                ((dax_sint *)buff)[index] = temp;
+            if(mask) ((dax_sint *)mask)[index] = 0xFF;
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            temp =  strtoul(instr, NULL, 0);
+            if(temp < DAX_UINT_MIN) {
+                ((dax_uint *)buff)[index] = DAX_UINT_MIN;
+                retval = ERR_UNDERFLOW;
+            }
+            else if(temp > DAX_UINT_MAX) {
+                ((dax_uint *)buff)[index] = DAX_UINT_MAX;
+                retval = ERR_OVERFLOW;
+            }
+            else
+                ((dax_uint *)buff)[index] = temp;
+            if(mask) ((dax_uint *)mask)[index] = 0xFFFF;
+            break;
+        case DAX_INT:
+            temp =  strtol(instr, NULL, 0);
+            if(temp < DAX_INT_MIN) {
+                ((dax_int *)buff)[index] = DAX_INT_MIN;
+                retval = ERR_UNDERFLOW;
+            }
+            else if(temp > DAX_INT_MAX) {
+                ((dax_int *)buff)[index] = DAX_INT_MAX;
+                retval = ERR_OVERFLOW;
+            }
+            else
+                ((dax_int *)buff)[index] = temp;
+            if(mask) ((dax_int *)mask)[index] = 0xFFFF;
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+        // TODO: Make a special case for time
+        case DAX_TIME:
+        ltemp =  strtol(instr, NULL, 0);
+            if(ltemp < DAX_UDINT_MIN) {
+                ((dax_udint *)buff)[index] = DAX_UDINT_MIN;
+                retval = ERR_UNDERFLOW;
+            }
+            else if(ltemp > DAX_UDINT_MAX) {
+                ((dax_udint *)buff)[index] = DAX_UDINT_MAX;
+                retval = ERR_OVERFLOW;
+            }
+            else
+                ((dax_udint *)buff)[index] = ltemp;
+            if(mask) ((dax_udint *)mask)[index] = 0xFFFFFFFF;
+            break;
+        case DAX_DINT:
+            temp =  strtol(instr, NULL, 0);
+            if(temp < DAX_DINT_MIN) {
+                ((dax_dint *)buff)[index] = DAX_DINT_MIN;
+                retval = ERR_UNDERFLOW;
+            }
+            else if(temp > DAX_DINT_MAX) {
+                ((dax_dint *)buff)[index] = DAX_DINT_MAX;
+                retval = ERR_OVERFLOW;
+            }
+            else
+                ((dax_dint *)buff)[index] = temp;
+            if(mask) ((dax_dint *)mask)[index] = 0xFFFFFFFF;
+            break;
+        case DAX_REAL:
+            ((dax_real *)buff)[index] = strtof(instr, NULL);
+            if(mask) ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            if(instr[0]=='-') {
+                ((dax_ulint *)buff)[index] = 0x0000000000000000;
+                retval = ERR_UNDERFLOW;
+                break;
+            }
+            errno = 0;
+            ((dax_ulint *)buff)[index] = (dax_ulint)strtoull(instr, NULL, 0);
+            if(mask) ((dax_ulint *)mask)[index] = DAX_64_ONES;
+            if(errno == ERANGE) {
+                retval = ERR_OVERFLOW;
+            }
+            break;
+        case DAX_LINT:
+            errno = 0;
+            ((dax_lint *)buff)[index] = (dax_lint)strtoll(instr, NULL, 0);
+            if(mask) ((dax_lint *)mask)[index] = DAX_64_ONES;
+            if(errno == ERANGE) {
+                if(instr[0]=='-') {
+                    retval = ERR_UNDERFLOW;
+                } else {
+                    retval = ERR_OVERFLOW;
+                }
+            }
+            break;
+        case DAX_LREAL:
+            ((dax_lreal *)buff)[index] = strtod(instr, NULL);
+            if(mask) ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            break;
+    }
+    return retval;
+}
+
 
 #ifdef USE_PTHREAD_LOCK
 
