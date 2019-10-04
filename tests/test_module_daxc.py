@@ -40,9 +40,9 @@ class TestDaxc(unittest.TestCase):
         x = self.dax.dax_connect(self.ds)
 
     def tearDown(self):
+        x = self.dax.dax_disconnect(self.ds)
         self.server.terminate()
         self.server.wait()
-        x = self.dax.dax_disconnect(self.ds)
 
 
     def test_create_single_tag(self):
@@ -94,11 +94,14 @@ class TestDaxc(unittest.TestCase):
         for each in l:
             uc = each
             lc = uc.lower()
-            tag = f"dummy_{lc}"
+            tag = "dummy_{}".format(lc)
             p.sendline("add {} {}".format(tag, uc))
             p.expect('dax>')
             t = self.dax.dax_tag_byname(self.ds, tag)
-            self.assertEqual(t.type, daxwrapper.defines[f"DAX_{uc}"])
+            self.assertEqual(t.type, daxwrapper.defines["DAX_{}".format(uc)])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
 
     def test_write_bool(self):
         p = pexpect.spawn(daxc_path)
@@ -131,6 +134,9 @@ class TestDaxc(unittest.TestCase):
         h = self.dax.dax_tag_handle(self.ds, "dummy2")
         data = self.dax.dax_read_tag(self.ds, h)
         self.assertEqual(data, b'\xaa\x01')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
 
     def test_write_byte(self):
         """check the corner cases for writing to a BYTE"""
@@ -151,6 +157,9 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
 
     def test_write_sint(self):
         """check the corner cases for writing to a SINT"""
@@ -173,6 +182,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_word(self):
         """check the corner cases for writing to a WORD"""
@@ -194,6 +205,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_uint(self):
         """check the corner cases for writing to a UINT"""
@@ -215,6 +228,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_int(self):
         """check the corner cases for writing to an INT"""
@@ -239,6 +254,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_dword(self):
         """check the corner cases for writing to a DWORD"""
@@ -262,6 +279,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_udint(self):
         """check the corner cases for writing to a UDINT"""
@@ -285,6 +304,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
 
     def test_write_dint(self):
@@ -310,6 +331,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_lword(self):
         """check the corner cases for writing to a LWORD"""
@@ -333,6 +356,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_ulint(self):
         """check the corner cases for writing to a ULINT"""
@@ -356,6 +381,8 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
     def test_write_lint(self):
         """check the corner cases for writing to a LINT"""
@@ -381,6 +408,264 @@ class TestDaxc(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "dummy")
             data = self.dax.dax_read_tag(self.ds, h)
             self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_write_real(self):
+        """make sure that we can write real values properly"""
+        tests = [
+            ("0", b'\x00\x00\x00\x00'),
+            ("0.23", b'\x1F\x85\x6B\x3E'),
+            ("3.141592", b'\xD8\x0F\x49\x40'),
+            ("1e+08", b'\x20\xbc\xbe\x4c'),
+            ("3.123456e+23", b'\x94\x48\x84\x66'),
+            ("-3.123456e+23", b'\x94\x48\x84\xe6'),
+        ]
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        for test in tests:
+            p.sendline('add dummy real')
+            p.expect('dax>')
+            p.sendline('write dummy {}'.format(test[0]))
+            p.expect('dax>')
+            h = self.dax.dax_tag_handle(self.ds, "dummy")
+            data = self.dax.dax_read_tag(self.ds, h)
+            self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_write_lreal(self):
+        """make sure that we can write lreal values properly"""
+        tests = [
+            ("0", b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            ("3.12345678911234e+23", b'\xe0\xdb\x7e\xc3\x12\x89\xd0\x44'),
+            ("-3.12345678911234e+23", b'\xe0\xdb\x7e\xc3\x12\x89\xd0\xc4'),
+            ("0.1", b'\x9a\x99\x99\x99\x99\x99\xb9\x3f'),
+        ]
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        for test in tests:
+            p.sendline('add dummy lreal')
+            p.expect('dax>')
+            p.sendline('write dummy {}'.format(test[0]))
+            p.expect('dax>')
+            h = self.dax.dax_tag_handle(self.ds, "dummy")
+            data = self.dax.dax_read_tag(self.ds, h)
+            self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_bool(self):
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy bool')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        answer = p.readline()
+        p.expect('dax>')
+        answer = p.before
+        self.assertEqual(answer, b'0\r\n')
+        p.sendline('add dummy2 bool 16')
+        p.expect('dax>')
+        p.sendline('write dummy2 0 1 0 1 0 1 0 1')
+        p.expect('dax>')
+        p.sendline('read dummy2')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy2\r\n0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n0\r\n0\r\n0\r\n0\r\n0\r\n0\r\n0\r\n')
+        p.sendline('write dummy2[8] 1')
+        p.expect('dax>')
+        p.sendline('read dummy2[8]')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy2[8]\r\n1\r\n')
+        p.sendline('write dummy2[8] 0')
+        p.expect('dax>')
+        p.sendline('read dummy2[8]')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy2[8]\r\n0\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_byte(self):
+        """check that we can read a BYTE"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy byte')
+        p.expect('dax>')
+        p.sendline('write dummy 57')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n57\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_sint(self):
+        """check that we can read a SINT"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy sint')
+        p.expect('dax>')
+        p.sendline('write dummy -57')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n-57\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_word(self):
+        """check that we can read a WORD"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy word')
+        p.expect('dax>')
+        p.sendline('write dummy 31234')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n31234\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_uint(self):
+        """check that we can read a UINT"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy UINT')
+        p.expect('dax>')
+        p.sendline('write dummy 31235')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n31235\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_int(self):
+        """check that we can read a INT"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy INT')
+        p.expect('dax>')
+        p.sendline('write dummy -31235')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n-31235\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_dword(self):
+        """check that we can read a DWORD"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy dword')
+        p.expect('dax>')
+        p.sendline('write dummy 31235000')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n31235000\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_udint(self):
+        """check that we can read a UDINT"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy udint')
+        p.expect('dax>')
+        p.sendline('write dummy 312350001')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n312350001\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_dint(self):
+        """check that we can read a DINT"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy dint')
+        p.expect('dax>')
+        p.sendline('write dummy -312350001')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n-312350001\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_lword(self):
+        """check that we can read a LWORD"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy lword')
+        p.expect('dax>')
+        p.sendline('write dummy 312350001000')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n312350001000\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_ulint(self):
+        """check that we can read a ULINT"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy ulint')
+        p.expect('dax>')
+        p.sendline('write dummy 312350001001')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n312350001001\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_lint(self):
+        """check that we can read a LINT"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy lint')
+        p.expect('dax>')
+        p.sendline('write dummy -312350001001')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n-312350001001\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_real(self):
+        """check that we can read a REAL"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy real')
+        p.expect('dax>')
+        p.sendline('write dummy 3.141592')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n3.141592\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
+    def test_read_lreal(self):
+        """check that we can read a LREAL"""
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        p.sendline('add dummy lreal')
+        p.expect('dax>')
+        p.sendline('write dummy -312351234567.123456789')
+        p.expect('dax>')
+        p.sendline('read dummy')
+        p.expect('dax>')
+        self.assertEqual(p.before, b'read dummy\r\n-312351234567.1235\r\n')
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
 
 
 if __name__ == '__main__':
