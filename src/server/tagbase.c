@@ -291,6 +291,9 @@ initialize_tagbase(void)
     str = strdup("System:StartTime,TIME,1:ModuleCount,INT,1");
     assert(str != NULL);
     type = cdt_create(str, NULL);
+    if(type == 0) {
+        xfatal("Unable to create default datatypes");
+    }
     free(str);
 }
 
