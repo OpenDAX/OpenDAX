@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  * This is the source file for the event notification handling routines
  */
 
@@ -35,7 +35,7 @@ _send_event(tag_index idx, _dax_event *event)
 {
     int result;
     char buff[EVENT_MSGSIZE];
-    
+
     *(u_int32_t *)(&buff[0])  = htonl(event->eventtype);
     *(u_int32_t *)(&buff[4])  = htonl(idx);
     *(u_int32_t *)(&buff[8])  = htonl(event->id);
@@ -43,7 +43,7 @@ _send_event(tag_index idx, _dax_event *event)
     *(u_int32_t *)(&buff[16]) = htonl(event->count);
     *(u_int32_t *)(&buff[20]) = htonl(event->datatype);
     *(u_int8_t *)(&buff[24])  = event->bit;
-    
+
     xlog(LOG_MSG, "Sending %d event to module %d",
          event->eventtype, event->notify->efd);
     result = xwrite(event->notify->efd, buff, EVENT_MSGSIZE);
@@ -51,7 +51,7 @@ _send_event(tag_index idx, _dax_event *event)
         xerror("_send_event: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
-    return 0;    
+    return 0;
 }
 
 static inline int
@@ -61,7 +61,7 @@ _event_change(_dax_event *event, tag_index idx, int offset, int size) {
     u_int8_t mask;
     result = 0;
 
-    
+
     if(event->datatype == DAX_BOOL) {
         /* TODO: Only check the bits that have changed.  For now we are just
          * looping through each bit in the event to see if anything has
@@ -82,7 +82,7 @@ _event_change(_dax_event *event, tag_index idx, int offset, int size) {
                 i++;
             }
         }
-        
+
     } else {
         this = (u_int8_t *)event->test + MAX(0, offset - event->byte);
         that = (u_int8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
@@ -168,7 +168,7 @@ _event_reset(_dax_event *event, tag_index idx, int offset, int size) {
 static inline int
 _generic_compare(tag_type datatype, void *data1, void *data2) {
     dax_type_union u1, u2;
-    
+
     switch(datatype) {
         case DAX_BYTE:
             u1.dax_byte = *(dax_byte *)data1;
@@ -258,7 +258,7 @@ _event_compare(_dax_event *event, tag_index idx, int offset, int size, int compa
             if(!(this[bit/8] & mask)) {
                 this[bit/8] |= mask;
                 result = 1;
-            } 
+            }
         } else {
             this[bit/8] &= ~mask; /* Unset flag so event will fire next time */
         }
@@ -272,60 +272,60 @@ _event_compare(_dax_event *event, tag_index idx, int offset, int size, int compa
 static inline int
 _generic_deadband(_dax_event *event, void *data1, void *data2) {
     dax_type_union diff, db;
-    
+
     switch(event->datatype) {
         case DAX_BYTE:
             db.dax_byte = *(dax_byte *)event->data;
-            diff.dax_int = *(dax_byte *)data1 - *(dax_byte *)data2;         
+            diff.dax_int = *(dax_byte *)data1 - *(dax_byte *)data2;
             if(ABS(diff.dax_int) >= db.dax_byte) return 1;
             else return 0;
         case DAX_SINT:
             db.dax_sint = *(dax_sint *)event->data;
-            diff.dax_sint = *(dax_sint *)data1 - *(dax_sint *)data2;         
+            diff.dax_sint = *(dax_sint *)data1 - *(dax_sint *)data2;
             if(ABS(diff.dax_sint) >= db.dax_sint) return 1;
             else return 0;
         case DAX_UINT:
         case DAX_WORD:
             db.dax_uint = *(dax_uint *)event->data;
-            diff.dax_dint = *(dax_uint *)data1 - *(dax_uint *)data2;         
+            diff.dax_dint = *(dax_uint *)data1 - *(dax_uint *)data2;
             if(ABS(diff.dax_dint) >= db.dax_uint) return 1;
             else return 0;
         case DAX_INT:
             db.dax_int = *(dax_int *)event->data;
-            diff.dax_int = *(dax_int *)data1 - *(dax_int *)data2;         
+            diff.dax_int = *(dax_int *)data1 - *(dax_int *)data2;
             if(ABS(diff.dax_int) >= db.dax_int) return 1;
             else return 0;
         case DAX_UDINT:
         case DAX_DWORD:
         case DAX_TIME:
             db.dax_udint = *(dax_udint *)event->data;
-            diff.dax_lint = *(dax_udint *)data1 - *(dax_udint *)data2;         
+            diff.dax_lint = *(dax_udint *)data1 - *(dax_udint *)data2;
             if(ABS(diff.dax_lint) >= db.dax_udint) return 1;
             else return 0;
         case DAX_DINT:
             db.dax_dint = *(dax_dint *)event->data;
-            diff.dax_dint = *(dax_dint *)data1 - *(dax_dint *)data2;         
+            diff.dax_dint = *(dax_dint *)data1 - *(dax_dint *)data2;
             if(ABS(diff.dax_dint) >= db.dax_dint) return 1;
             else return 0;
         case DAX_ULINT:
         case DAX_LWORD:
             db.dax_ulint = *(dax_ulint *)event->data;
-            diff.dax_lint = *(dax_ulint *)data1 - *(dax_ulint *)data2;         
+            diff.dax_lint = *(dax_ulint *)data1 - *(dax_ulint *)data2;
             if(ABS(diff.dax_lint) >= db.dax_ulint) return 1;
             else return 0;
         case DAX_LINT:
             db.dax_lint = *(dax_lint *)event->data;
-            diff.dax_lint = *(dax_lint *)data1 - *(dax_lint *)data2;         
+            diff.dax_lint = *(dax_lint *)data1 - *(dax_lint *)data2;
             if(ABS(diff.dax_lint) >= db.dax_lint) return 1;
             else return 0;
         case DAX_REAL:
             db.dax_real = *(dax_real *)event->data;
-            diff.dax_real = *(dax_real *)data1 - *(dax_real *)data2;         
+            diff.dax_real = *(dax_real *)data1 - *(dax_real *)data2;
             if(ABS(diff.dax_real) >= db.dax_real) return 1;
             else return 0;
         case DAX_LREAL:
             db.dax_lreal = *(dax_lreal *)event->data;
-            diff.dax_lreal = *(dax_lreal *)data1 - *(dax_lreal *)data2;         
+            diff.dax_lreal = *(dax_lreal *)data1 - *(dax_lreal *)data2;
             if(ABS(diff.dax_lreal) >= db.dax_lreal) return 1;
             else return 0;
     }
@@ -395,7 +395,7 @@ _event_hit(_dax_event *event, tag_index idx, int offset, int size) {
 void
 event_check(tag_index idx, int offset, int size) {
     _dax_event *this;
-    
+
     //fprintf(stderr, "Event Check Called: idx = %d, offset = %d, size = %d\n",idx, offset, size);
     this = _db[idx].events;
 
@@ -405,12 +405,12 @@ event_check(tag_index idx, int offset, int size) {
          * test passes then we have manipulated the data associated with
          * this event. */
         if(offset <= (this->byte + this->size - 1) && (offset + size -1 ) >= this->byte) {
-            fprintf(stderr, "Event Hit offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
+            fprintf(stdout, "Event Hit offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
             if(_event_hit(this, idx, offset, size)) {
                 _send_event(idx, this);
             }
         } else {
-            fprintf(stderr, "Event Miss offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
+            fprintf(stdout, "Event Miss offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
         }
         this = this->next;
     }
@@ -467,7 +467,7 @@ _verify_event_type(tag_type ttype, int etype)
 int
 _set_event_data(_dax_event *event, tag_index index, void *data) {
     int datasize = 0, testsize = 0, size;
-    
+
     /* Figure out how much memory to allocate */
     switch(event->eventtype) {
         case EVENT_WRITE: /* We don't need any of this to detect write events */
@@ -509,7 +509,7 @@ _set_event_data(_dax_event *event, tag_index index, void *data) {
     } else {
         event->data = NULL;
     }
-    
+
     if(testsize > 0) {
         event->test = malloc(testsize);
         if(event->test == NULL) {
@@ -544,7 +544,7 @@ _set_event_data(_dax_event *event, tag_index index, void *data) {
             break;
     }
 
-    
+
     return 0;
 }
 
@@ -557,7 +557,7 @@ event_add(Handle h, int event_type, void *data, dax_module *module)
 {
     _dax_event *head, *new;
     int result;
-    
+
     /* Bounds check handle */
     if(h.index < 0 || h.index >= tag_get_count()) {
         xlog(LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
@@ -623,7 +623,7 @@ event_del(int index, int id, dax_module *module)
 {
     _dax_event *this, *last;
     int result = ERR_NOTFOUND;
-    
+
     if(index >= tag_get_count() || index < 0) {
         xerror("event_del() - index %d is out of range\n", index);
     }
