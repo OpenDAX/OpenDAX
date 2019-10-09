@@ -64,8 +64,8 @@ static int
 _message_recv(dax_state *ds, int command, void *payload, int *size, int response)
 {
     char buff[DAX_MSGMAX];
-    int index, done, msg_size, result;
-    done = index = msg_size = 0;
+    int index, msg_size, result;
+    index = msg_size = 0;
 
     while( index < msg_size || index < MSG_HDR_SIZE) {
         result = read(ds->sfd, &buff[index], DAX_MSGMAX);
@@ -524,7 +524,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
     return 0;
 }
 
-/*! 
+/*!
  * The following three functions are the core of the data handling
  * system in Dax.  They are the raw reading and writing functions.
  * 'handle' is the handle of the tag as returned by the dax_tag_add()

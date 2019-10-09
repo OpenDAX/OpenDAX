@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -64,26 +64,26 @@ main(int argc,char *argv[])
     int result=0, flags;
     char *script;
     lua_State *L;
-    
+
     ds = dax_init("daxlua");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
         return ERR_ALLOC;
     }
-    
+
     dax_log(ds, "Starting module test");
     dax_set_debug_topic(ds, 0xFFFF); /* This should get them all out there */
-        
+
     dax_init_config(ds, "daxtest");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "exitonfail","exitonfail", 'x', flags, "0");
     result += dax_add_attribute(ds, "testscript","testscript", 't', flags, "daxtest.lua");
-    
+
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
-    
+
     if(dax_connect(ds))
         dax_fatal(ds, "Unable to register with the server");
-    
+
     script = dax_get_attr(ds, "testscript");
 
     /* Free the configuration memory once we are done with it */
@@ -93,15 +93,15 @@ main(int argc,char *argv[])
     /* This adds all of the Lua functions to the lua_State */
     add_test_functions(L);
     daxlua_set_state(L, ds);
-    
+
     /* load and run the configuration file */
     if(luaL_loadfile(L, script)  || lua_pcall(L, 0, 0, 0)) {
         dax_error(ds, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return ERR_GENERIC;
     }
-    
+
     printf("OpenDAX Test Finished, %d tests run, %d tests failed\n", tests_run(), tests_failed());
     dax_disconnect(ds);
-    
-    return 0;
+
+    return tests_run();
 }

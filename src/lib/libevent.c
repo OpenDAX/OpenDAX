@@ -16,11 +16,12 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
 
- * This file contains the event database and dispatching functions 
+ * This file contains the event database and dispatching functions
  */
 
 #include <libdax.h>
 #include <common.h>
+#include <arpa/inet.h>
 
 /* This function returns the proper event type that matches the string.
  * Returns 0 for error */
@@ -79,7 +80,7 @@ add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *ud
     event_db *new_db;
 
     /* TODO: Should find holes in the array from previous deletions and add new ones there. */
-    
+
     /* check to see if we need to grow the database */
     if(ds->event_count == ds->event_size) {
         /* For now we just double the size */
@@ -99,7 +100,7 @@ add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *ud
     ds->events[ds->event_count].udata = udata;
     ds->events[ds->event_count].callback = callback;
     ds->events[ds->event_count].free_callback = free_callback;
-        
+
     ds->event_count++;
     return 0;
 }
@@ -126,7 +127,7 @@ del_event(dax_state *ds, dax_event_id id)
 
 
 /* Blocks waiting for an event to happen.  If an event is found it
- * will run the callback function for that event.  Returns ERR_TIMEOUT 
+ * will run the callback function for that event.  Returns ERR_TIMEOUT
  * if the time expires.  Returns zero on success.  If 0 is passed
  * as the timeout it will wait forever. */
 int
@@ -136,7 +137,7 @@ dax_event_wait(dax_state *ds, int timeout, dax_event_id *id)
     struct timeval tval;
     fd_set fds;
     int done = 0;
-    
+
     while(!done) {
         FD_ZERO(&fds);
         FD_SET(ds->afd, &fds);
@@ -169,7 +170,7 @@ dax_event_poll(dax_state *ds, dax_event_id *id)
     int result;
     struct timeval tval;
     fd_set fds;
-    
+
     FD_ZERO(&fds);
     FD_SET(ds->afd, &fds);
     tval.tv_sec = 0;
@@ -209,7 +210,7 @@ dax_event_dispatch(dax_state *ds, dax_event_id *id)
     int result, n;
     u_int32_t etype, idx, eid, byte, count, datatype;
     u_int8_t bit;
-    
+
 //    fprintf(stderr, "dax_event_dispatch() called\n");
     result = read(ds->afd, &(ds->ebuff[ds->eindex]), EVENT_MSGSIZE - ds->eindex);
     ds->eindex += result;

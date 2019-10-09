@@ -667,6 +667,77 @@ class TestDaxc(unittest.TestCase):
         p.sendline('exit')
         p.expect(pexpect.EOF)
 
+    def test_write_lword(self):
+        """check the corner cases for writing to a LWORD"""
+        tests = [
+            (128, b'\x80\x00\x00\x00\x00\x00\x00\x00'),
+            (0, b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            (-128, b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            (-1, b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            (255, b'\xFF\x00\x00\x00\x00\x00\x00\x00'),
+            (256, b'\x00\x01\x00\x00\x00\x00\x00\x00'),
+            (18446744073709551615, b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'),
+            (18446744073709551616, b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'),
+        ]
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        for test in tests:
+            p.sendline('add dummy lword')
+            p.expect('dax>')
+            p.sendline('write dummy {}'.format(test[0]))
+            p.expect('dax>')
+            h = self.dax.dax_tag_handle(self.ds, "dummy")
+            data = self.dax.dax_read_tag(self.ds, h)
+            self.assertEqual(data, test[1])
+
+    def test_write_ulint(self):
+        """check the corner cases for writing to a ULINT"""
+        tests = [
+            (128, b'\x80\x00\x00\x00\x00\x00\x00\x00'),
+            (0, b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            (-128, b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            (-1, b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            (255, b'\xFF\x00\x00\x00\x00\x00\x00\x00'),
+            (256, b'\x00\x01\x00\x00\x00\x00\x00\x00'),
+            (18446744073709551615, b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'),
+            (18446744073709551616, b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'),
+        ]
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        for test in tests:
+            p.sendline('add dummy ulint')
+            p.expect('dax>')
+            p.sendline('write dummy {}'.format(test[0]))
+            p.expect('dax>')
+            h = self.dax.dax_tag_handle(self.ds, "dummy")
+            data = self.dax.dax_read_tag(self.ds, h)
+            self.assertEqual(data, test[1])
+
+    def test_write_lint(self):
+        """check the corner cases for writing to a LINT"""
+        tests = [
+            (128, b'\x80\x00\x00\x00\x00\x00\x00\x00'),
+            (0, b'\x00\x00\x00\x00\x00\x00\x00\x00'),
+            (-1, b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF'),
+            (-128, b'\x80\xFF\xFF\xFF\xFF\xFF\xFF\xFF'),
+            (255, b'\xFF\x00\x00\x00\x00\x00\x00\x00'),
+            (256, b'\x00\x01\x00\x00\x00\x00\x00\x00'),
+            (-9223372036854775808, b'\x00\x00\x00\x00\x00\x00\x00\x80'),
+            (-9223372036854775809, b'\x00\x00\x00\x00\x00\x00\x00\x80'),
+            (9223372036854775807, b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x7F'),
+            (9223372036854775808, b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x7F'),
+        ]
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        for test in tests:
+            p.sendline('add dummy lint')
+            p.expect('dax>')
+            p.sendline('write dummy {}'.format(test[0]))
+            p.expect('dax>')
+            h = self.dax.dax_tag_handle(self.ds, "dummy")
+            data = self.dax.dax_read_tag(self.ds, h)
+            self.assertEqual(data, test[1])
+
 
 if __name__ == '__main__':
     unittest.main()

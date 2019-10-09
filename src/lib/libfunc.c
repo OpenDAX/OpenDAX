@@ -150,7 +150,7 @@ dax_fatal(dax_state *ds, const char *format, ...)
 /* The following two functions are utility functions for converting dax
    values to strings and strings to dax values.
 
-/* Used to printf a dax tag value. Size is the size of buff to keep from being
+ * Used to printf a dax tag value. Size is the size of buff to keep from being
  * overflowed.  The index indicates where in val we'll look for the data. */
 int
 dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
@@ -199,6 +199,8 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
             snprintf(buff, size, "%.16g", ((dax_lreal *)val)[index]);
             break;
     }
+    // TODO: return errors if needed
+    return 0;
 }
 
 /* This function figures out how to format the data from the string given

@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -32,7 +32,7 @@ int main(int argc,char *argv[]) {
     struct sigaction sa;
     int flags, result = 0;
     char *storage;
-    
+
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -43,7 +43,7 @@ int main(int argc,char *argv[]) {
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("histlog"); /* Replace 'skel' with your module name */
     if(ds == NULL) {
-        /* dax_fatal() logs an errlr and causes a quit 
+        /* dax_fatal() logs an errlr and causes a quit
          * signal to be sent to the module */
         dax_fatal(ds, "Unable to Allocate DaxState Object\n");
     }
@@ -62,7 +62,7 @@ int main(int argc,char *argv[]) {
 
     /* Get the results of the configuration */
     storage = strdup(dax_get_attr(ds, "storage"));
-    
+
     /* Free the configuration data */
     dax_free_config (ds);
 
@@ -81,10 +81,10 @@ int main(int argc,char *argv[]) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
- 
+
         sleep(1);
     }
-    
+
  /* This is just to make the compiler happy */
     return(0);
 }
