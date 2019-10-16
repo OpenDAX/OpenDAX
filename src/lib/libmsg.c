@@ -661,7 +661,7 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
 
 int
 dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
-              dax_event_id *id, void (*callback)(void *udata),
+              dax_id *id, void (*callback)(void *udata),
               void *udata, void (*free_callback)(void *udata))
 {
     int test;
@@ -669,16 +669,16 @@ dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
     dax_dint temp;
     dax_udint u_temp;
     int size;
-    dax_event_id eid;
+    dax_id eid;
     char buff[MSG_DATA_SIZE];
 
     temp = mtos_dint(h->index);      /* Index */
     memcpy(buff, &temp, 4);
-    temp = mtos_dint(h->byte);       /* Byte ofset */
+    temp = mtos_dint(h->byte);       /* Byte offset */
     memcpy(&buff[4], &temp, 4);
     temp = mtos_dint(h->count);      /* Tag Count */
     memcpy(&buff[8], &temp, 4);
-    temp = mtos_dint(h->type);       /* Datatype */
+    temp = mtos_dint(h->type);       /* Data type */
     memcpy(&buff[12], &temp, 4);
     temp = mtos_dint(event_type);    /* Event Type */
     memcpy(&buff[16], &temp, 4);
@@ -721,7 +721,7 @@ dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
 }
 
 int
-dax_event_del(dax_state *ds, dax_event_id id)
+dax_event_del(dax_state *ds, dax_id id)
 {
     int test, size;
     dax_dint result;
@@ -755,14 +755,14 @@ dax_event_del(dax_state *ds, dax_event_id id)
 }
 
 int
-dax_event_get(dax_state *ds, dax_event_id id)
+dax_event_get(dax_state *ds, dax_id id)
 {
 
     return 0;
 }
 
 int
-dax_event_mod(dax_state *ds, dax_event_id id, Handle *h, int event_type, void *data,
+dax_event_mod(dax_state *ds, dax_id id, Handle *h, int event_type, void *data,
               void (*callback)(void *udata), void *udata)
 {
 
@@ -880,6 +880,66 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
     if(result == 0) {
         type = stom_udint(*((tag_type *)buff));
         result = add_cdt_to_cache(ds, type, &(buff[4]));
+    }
+    libdax_unlock(ds->lock);
+    return result;
+}
+
+/* This function sends a message to add a data mapping to the server.
+ * It takes two Handles as arguments.  The first is for the source data
+ * point and the second is for the destination.  The id pointer will have
+ * the unique id of the mapping if the function returns successfully.
+ */
+int
+dax_map_add(dax_state *ds, Handle *src, Handle *dest, dax_id *id)
+{
+    int result, size;
+    dax_dint temp;
+    dax_udint u_temp;
+
+    char buff[MSG_DATA_SIZE];
+
+    temp = mtos_dint(src->index);      /* Index */
+    memcpy(buff, &temp, 4);
+    temp = mtos_dint(src->byte);       /* Byte offset */
+    memcpy(&buff[4], &temp, 4);
+    buff[8] = src->bit;                /* Bit offset */
+    temp = mtos_dint(src->count);      /* Tag Count */
+    memcpy(&buff[9], &temp, 4);
+    u_temp = mtos_udint(src->size);    /* Size in Bytes */
+    memcpy(&buff[13], &u_temp, 4);
+    temp = mtos_dint(src->type);       /* Data type */
+    memcpy(&buff[17], &temp, 4);
+
+    temp = mtos_dint(dest->index);      /* Index */
+    memcpy(&buff[21], &temp, 4);
+    temp = mtos_dint(dest->byte);       /* Byte offset */
+    memcpy(&buff[25], &temp, 4);
+    buff[29] = dest->bit;               /* Bit offset */
+    temp = mtos_dint(dest->count);      /* Tag Count */
+    memcpy(&buff[30], &temp, 4);
+    u_temp = mtos_udint(dest->size);    /* Size in Bytes */
+    memcpy(&buff[34], &u_temp, 4);
+    temp = mtos_dint(dest->type);       /* Data type */
+    memcpy(&buff[38], &temp, 4);
+
+    size = sizeof(Handle) * 2;
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_MAP_ADD, buff, size);
+
+    if(result) {
+        libdax_unlock(ds->lock);
+        return ERR_MSG_SEND;
+    }
+
+    size = MSG_DATA_SIZE;
+    result = _message_recv(ds, MSG_MAP_ADD, buff, &size, 1);
+    if(result == 0) {
+        if(id != NULL) {
+            id->id = *(tag_index *)buff;
+            id->index = src->index;
+        }
     }
     libdax_unlock(ds->lock);
     return result;

@@ -96,6 +96,25 @@ class LibDaxWrapper:
             raise RuntimeError
         return b
 
+    def dax_write_tag(self, ds, h, b):
+        data = c_char * len(b)
+        x = self.libdax.dax_write_tag(ds, h, b)
+        if x < 0:
+            raise RuntimeError
+        return b
+
+    def dax_tag_add(self, ds, name, datatype, count=1):
+        h = Handle()
+        x = self.libdax.dax_tag_add(ds, byref(h), name.encode('utf-8'), datatype, count)
+        if x < 0:
+            raise RuntimeError
+        return h
+
+    def dax_map_add(self, ds, src, dest):
+        x = self.libdax.dax_map_add(ds, byref(src), byref(dest), 0)
+        if x < 0:
+            raise RuntimeError
+
     def dax_val_to_string(self, datatype, val, size=32, index=0):
         data = c_char_p()
         data.value = b""

@@ -54,7 +54,7 @@ typedef struct cmd_temp_data {
 typedef struct port_ud_item {
     char *mbreg;        /* OpenDAX Tagname */
     Handle h;           /* OpenDAX Handle */
-    dax_event_id event; /* Event identification */
+    dax_id event; /* Event identification */
 } port_ud_item;
 
 #define HOLD_REG 0

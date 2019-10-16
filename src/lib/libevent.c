@@ -74,12 +74,10 @@ dax_event_type_to_string(int type) {
 }
 
 int
-add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *udata),
+add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(void *udata),
           void (*free_callback)(void *udata))
 {
     event_db *new_db;
-
-    /* TODO: Should find holes in the array from previous deletions and add new ones there. */
 
     /* check to see if we need to grow the database */
     if(ds->event_count == ds->event_size) {
@@ -108,7 +106,7 @@ add_event(dax_state *ds, dax_event_id id, void *udata, void (*callback)(void *ud
 /* Finds the event in the list and removes it.  It also calls the free_callback()
  * function if it is assigned */
 int
-del_event(dax_state *ds, dax_event_id id)
+del_event(dax_state *ds, dax_id id)
 {
     int n;
 
@@ -131,7 +129,7 @@ del_event(dax_state *ds, dax_event_id id)
  * if the time expires.  Returns zero on success.  If 0 is passed
  * as the timeout it will wait forever. */
 int
-dax_event_wait(dax_state *ds, int timeout, dax_event_id *id)
+dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 {
     int result;
     struct timeval tval;
@@ -165,7 +163,7 @@ dax_event_wait(dax_state *ds, int timeout, dax_event_id *id)
  * 0 if it services an event and ERR_NOTFOUND if there are no
  * events pending to service */
 int
-dax_event_poll(dax_state *ds, dax_event_id *id)
+dax_event_poll(dax_state *ds, dax_id *id)
 {
     int result;
     struct timeval tval;
@@ -205,7 +203,7 @@ dax_event_get_fd(dax_state *ds)
  * the event, ERR_NOTFOUND if it only received a partial event message from
  * the server and other errors if necessary. */
 int
-dax_event_dispatch(dax_state *ds, dax_event_id *id)
+dax_event_dispatch(dax_state *ds, dax_id *id)
 {
     int result, n;
     u_int32_t etype, idx, eid, byte, count, datatype;
@@ -216,6 +214,7 @@ dax_event_dispatch(dax_state *ds, dax_event_id *id)
     ds->eindex += result;
 //    fprintf(stderr, "ds->eindex = %d\n", ds->eindex);
     if(ds->eindex == EVENT_MSGSIZE) { /* We have a full message now */
+        ds->eindex = 0; /* Reset for the next time */
 //        fprintf(stderr, "dax_event_dispatch() firing event\n");
         etype =    ntohl(*(u_int32_t *)(&ds->ebuff[0]));
         idx =      ntohl(*(u_int32_t *)(&ds->ebuff[4]));
@@ -231,7 +230,6 @@ dax_event_dispatch(dax_state *ds, dax_event_id *id)
 //        fprintf(stderr, "event bit   = %d\n", bit);
 //        fprintf(stderr, "event count = %d\n", count);
 //        fprintf(stderr, "event datatype = %s\n", dax_type_to_string(ds, datatype));
-        ds->eindex = 0; /* Reset for the next time */
         for(n = 0; n < ds->event_count; n ++) {
 //            fprintf(stderr, "checking for event at n = %d, idx = %d, id = %d\n", n, ds->events[n].idx, ds->events[n].id );
             if(ds->events[n].idx == idx && ds->events[n].id == eid) {
@@ -245,7 +243,7 @@ dax_event_dispatch(dax_state *ds, dax_event_id *id)
                 return 0;
             }
         }
-        dax_error(ds, "dax_event_dispatch() recieved an event that does not exist in database");
+        dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
         return ERR_GENERIC;
     } else {
         return ERR_NOTFOUND;

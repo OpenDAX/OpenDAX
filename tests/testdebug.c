@@ -34,12 +34,20 @@ dax_state *ds;
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
-    dax_byte buff[8];
-    dax_byte mask[8];
+    // dax_byte buff[8];
+    // dax_byte mask[8];
+    Handle src, dest;
+    dax_id id;
 
-    dax_string_to_val("256", DAX_INT, buff, mask, 0);
-    for(int n=0; n < 2; n++) {
-        printf("0x%02x\n", buff[n]);
-    }
+    ds = dax_init("test");
+    dax_init_config(ds, "test");
+
+    dax_configure(ds, argc, argv, CFG_CMDLINE);
+    dax_connect(ds);
+
+    dax_tag_add(ds, &src, "DummyIn", DAX_INT, 1);
+    dax_tag_add(ds, &dest, "DummyOut", DAX_INT, 1);
+
+    dax_map_add(ds, &src, &dest, &id);
 
 }

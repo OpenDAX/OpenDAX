@@ -50,7 +50,7 @@ struct ar_pin {
     char *tagname;
     int lastvalue;
     Handle handle;
-    dax_event_id event;
+    dax_id event;
     struct ar_pin *next;
 };
 

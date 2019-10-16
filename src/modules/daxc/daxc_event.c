@@ -26,15 +26,15 @@ extern int quiet_mode;
 
 struct event_item {
     char used;
-    dax_event_id event;
+    dax_id event;
 };
 static struct event_item events[MAX_EVENTS];
 
 static void
 _event_callback(void *udata) {
-    dax_event_id *id;
+    dax_id *id;
     int n;
-    id =(dax_event_id *)udata;
+    id =(dax_id *)udata;
     
     /* TODO This is probably bad form.  The event_id structure should be
      * opaque and some common representation should be created. */

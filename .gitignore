@@ -26,6 +26,7 @@ config/ltmain.sh
 config/compile
 .kde4/
 *.kdev4
+.directory
 libtool
 m4/l*
 stamp-h1
@@ -40,3 +41,4 @@ doc/*.pdf
 doc/*.toc
 doc/doxygen/*
 *.pyc
+/doc/

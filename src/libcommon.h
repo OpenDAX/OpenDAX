@@ -44,7 +44,13 @@
 #define MSG_EVNT_MOD   0x000D /* Get an event definition */
 #define MSG_CDT_CREATE 0x000E /* Create a Custom Datatype */
 #define MSG_CDT_GET    0x000F /* Get the definition of a Custom Datatype */
+#define MSG_MAP_ADD    0x0010 /* Add a data point mapping */
+#define MSG_MAP_DEL    0x0011 /* Delete a data point mapping */
+#define MSG_MAP_GET    0x0012 /* Retrieve a data point mapping for a given tag */
 /* More to come */
+
+#define NUM_COMMANDS 19
+
 
 #define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
 #define MSG_ERROR      0x2000000LL /* Flag for defining an error message */

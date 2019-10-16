@@ -45,7 +45,7 @@
 
 _dax_tag_db *_db;
 static _dax_tag_index *_index;
-long int _tagcount = 0;
+tag_index _tagcount = 0;
 static long int _dbsize = 0;
 static datatype *_datatypes;
 static unsigned int _datatype_index; /* Next datatype index */
@@ -298,7 +298,10 @@ initialize_tagbase(void)
 }
 
 
-/* This adds a tag to the database. */
+/* This adds a tag to the database. It takes a string for the name
+ * of the tag, the type (see opendax.h for types) and a count.  If
+ * count is greater than 1 an array is created.  It returns the index
+ * of th newly created tag or an error. */
 tag_index
 tag_add(char *name, tag_type type, unsigned int count)
 {
@@ -374,7 +377,8 @@ tag_add(char *name, tag_type type, unsigned int count)
     } else {
         bzero(_db[n].data, size);
     }
-    _db[n].nextevent = 0;
+    _db[n].nextevent = 1;
+    _db[n].nextmap = 1;
     _db[n].events = NULL;
 
     if(_add_index(name, n)) {
@@ -482,6 +486,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
     /* Copy the data into the right place. */
     memcpy(&(_db[idx].data[offset]), data, size);
     event_check(idx, offset, size);
+    map_check(idx, offset, data, size);
 
     return 0;
 }
@@ -509,6 +514,7 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
     }
     event_check(idx, offset, size);
+    map_check(idx, offset, data, size);
     return 0;
 }
 

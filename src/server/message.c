@@ -51,7 +51,6 @@ static fd_set _fdset;
 static int _maxfd;
 
 /* This array holds the functions for each message command */
-#define NUM_COMMANDS 16
 int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
 
 /* Macro to check whether or not the command 'x' is valid */
@@ -73,6 +72,9 @@ int msg_evnt_get(dax_message *msg);
 int msg_evnt_mod(dax_message *msg);
 int msg_cdt_create(dax_message *msg);
 int msg_cdt_get(dax_message *msg);
+int msg_map_add(dax_message *msg);
+int msg_map_del(dax_message *msg);
+int msg_map_get(dax_message *msg);
 
 
 /* Generic message sending function.  If response is MSG_ERROR then it is assumed that 
@@ -83,7 +85,7 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
 {
     int result;
     char buff[DAX_MSGMAX];
-    
+
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
     if(response == RESPONSE) {
         ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
@@ -103,7 +105,7 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
         xerror("_message_send: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
-    return 0;    
+    return 0;
 }
 
 /* Sets up the local UNIX domain socket for listening. */
@@ -112,12 +114,12 @@ _msg_setup_local_socket(void)
 {
     struct sockaddr_un addr;
     int fd;
-    
+
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if(fd < 0) {
         xfatal("Unable to create local socket - %s", strerror(errno));
     }
-    
+
     bzero(&addr, sizeof(addr));
     strncpy(addr.sun_path, opt_socketname(), sizeof(addr.sun_path));
     addr.sun_family = AF_LOCAL;
@@ -125,13 +127,13 @@ _msg_setup_local_socket(void)
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
         xfatal("Unable to bind to local socket: %s", addr.sun_path);
     }
-    
+
     if(listen(fd, 5) < 0) {
         xfatal("Unable to listen for some reason");
     }
     FD_SET(fd, &_listenfdset);
     msg_add_fd(fd);
-    
+
     xlog(LOG_COMM, "Listening on local socket - %d", fd);
     return 0;
 }
@@ -144,23 +146,23 @@ _msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
 {
     struct sockaddr_in addr;
     int fd;
-    
+
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0) {
         xfatal("Unable to create remote socket - %s", strerror(errno));
     }
-    
+
     bzero(&addr, sizeof(addr));
-    
+
     /* TODO: Change this to the configuration stuff */
     addr.sin_family = AF_INET;
     addr.sin_port = htons(ipport);
     addr.sin_addr.s_addr = htonl(ipaddress);
-    
+
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
         xfatal("Unable to bind remote socket - %s", strerror(errno));
     }
-    
+
     if(listen(fd, 5) < 0) {
         xfatal("Unable to listen on remote socket - %s", strerror(errno));
     }
@@ -170,7 +172,7 @@ _msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
     /* TODO: Does this need to be an fd_set?? */
     FD_SET(fd, &_listenfdset);
     msg_add_fd(fd);
-    
+
     xlog(LOG_COMM, "Listening on remote socket - %d", fd);
     return 0;    
 }
@@ -185,15 +187,15 @@ msg_setup(void)
     _maxfd = 0;
     FD_ZERO(&_fdset);
     FD_ZERO(&_listenfdset);
-    
+
     /* TODO: These should be called based on configuration options
      * for now we'll just listen on the local domain socket and bind
      * to all interfaces on the default port. */
     _msg_setup_local_socket();
     _msg_setup_remote_socket(INADDR_ANY, DEFAULT_PORT);
-    
+
     buff_initialize(); /* This initializes the communications buffers */
-    
+
     /* The functions are added to an array of function pointers with their
         message type used as the index.  This makes it really easy to call
         the handler functions from the messaging thread. */
@@ -213,7 +215,10 @@ msg_setup(void)
     cmd_arr[MSG_EVNT_MOD]   = &msg_evnt_mod;
     cmd_arr[MSG_CDT_CREATE] = &msg_cdt_create;
     cmd_arr[MSG_CDT_GET]    = &msg_cdt_get;
-    
+    cmd_arr[MSG_MAP_ADD]    = &msg_map_add;
+    cmd_arr[MSG_MAP_DEL]    = &msg_map_del;
+    cmd_arr[MSG_MAP_GET]    = &msg_map_get;
+
     return 0;
 }
 
@@ -238,9 +243,9 @@ void
 msg_del_fd(int fd)
 {
     int n, tmpfd = 0;
-    
+
     FD_CLR(fd, &_fdset);
-    
+
     /* If it's the largest one then we need to re-figure _maxfd */
     if(fd == _maxfd) {
         for(n = 0; n <= _maxfd; n++) {
@@ -264,14 +269,14 @@ msg_receive(void)
     struct sockaddr_un addr;
     int result, fd, n;
     socklen_t len = 0;
-    
+
     FD_ZERO(&tmpset);
     FD_COPY(&_fdset, &tmpset);
     tm.tv_sec = 1; /* TODO: this should be configuration */
     tm.tv_usec = 0;
-    
+
     result = select(_maxfd + 1, &tmpset, NULL, NULL, &tm);
-    
+
     if(result < 0) {
         /* Ignore interruption by signal */
         if(errno != EINTR) {
@@ -318,7 +323,7 @@ int
 msg_dispatcher(int fd, unsigned char *buff)
 {
     dax_message message;
-    
+
     /* The first four bytes are the size and the size is always
      * sent in network order */
     message.size = ntohl(*(u_int32_t *)buff) - MSG_HDR_SIZE;
@@ -326,7 +331,7 @@ msg_dispatcher(int fd, unsigned char *buff)
      * byte order. */
     message.command = ntohl(*(u_int32_t *)&buff[4]);
     //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
-    
+
     if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
     message.fd = fd;
     memcpy(message.data, &buff[8], message.size);
@@ -355,13 +360,13 @@ msg_mod_register(dax_message *msg)
     int flags, result;
     char buff[DAX_MSGMAX];
     dax_module *mod;
-    
+
     if(msg->size > 0) {
-    	/* The first parameter is the timeout if the first registration and
-    	 * the module id if it's the async socket registration. */
+        /* The first parameter is the timeout if the first registration and
+         * the module id if it's the async socket registration. */
         parint = ntohl(*((u_int32_t *)&msg->data[0]));
         flags = ntohl(*((u_int32_t *)&msg->data[4]));
-        
+
         /* Is this the initial registration of the synchronous socket */
         if(flags & CONNECT_SYNC) {
             xlog(LOG_MSG, "Register Module message received for %s fd = %d", &msg->data[8], msg->fd);
@@ -416,14 +421,14 @@ msg_tag_add(dax_message *msg)
     tag_index idx;
     u_int32_t type;
     u_int32_t count;
-        
+
     type = *((u_int32_t *)&msg->data[0]);
     count = *((u_int32_t *)&msg->data[4]);
-    
+
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[8], msg->fd, type, count);
-    
+
     idx = tag_add(&msg->data[8], type, count);
-    
+
     if(idx >= 0) {
         _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_index), RESPONSE);
     } else {
@@ -439,15 +444,13 @@ msg_tag_del(dax_message *msg)
     return 0;
 }
 
-
-
 int
 msg_tag_get(dax_message *msg)
 {
     int result, index, size;
     dax_tag tag;
     char *buff;
-    
+
     if(msg->data[0] == TAG_GET_INDEX) { /* Is it a string or index */
         index = *((tag_index *)&msg->data[1]); /* cast void * -> handle_t * then indirect */
         result = tag_get_index(index, &tag); /* get the tag */
@@ -492,13 +495,13 @@ msg_tag_read(dax_message *msg)
     tag_index index;
     int result, offset;
     int size;
-     
+
     index = *((tag_index *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     size = *((int *)&msg->data[8]);
-    
+
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, index, offset, size);
-    
+
     result = tag_read(index, offset, &data, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_READ, &result, sizeof(result), ERROR);
@@ -542,15 +545,15 @@ msg_tag_mask_write(dax_message *msg)
     int result, offset;
     void *data, *mask;
     size_t size;
-    
+
     size = (msg->size - sizeof(tag_index) - sizeof(int)) / 2;
     handle = *((tag_index *)&msg->data[0]);
     offset = *((int *)&msg->data[4]);
     data = &msg->data[8];
     mask = &msg->data[8 + size];
-    
+
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
-    
+
     result = tag_mask_write(handle, offset, data, mask, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);
@@ -604,8 +607,7 @@ msg_evnt_add(dax_message *msg)
     dax_dint event_type;
     dax_module *module;
     dax_dint event_id = -1;
-    
-    
+
     module = module_find_fd(msg->fd);
     if( module != NULL ) {
         memcpy(&h.index, msg->data, 4);
@@ -626,7 +628,7 @@ msg_evnt_add(dax_message *msg)
         xlog(LOG_MSG | LOG_VERBOSE, "Add Event Message from %d - Index = %d, Count = %d, Type = %d", msg->fd, h.index, h.count, event_type);
         event_id = event_add(h, event_type, data, module);
     }
-    
+
     if(event_id < 0) { /* Send Error */
         _message_send(msg->fd, MSG_EVNT_ADD, &event_id, 0, ERROR);    
     } else {
@@ -642,15 +644,15 @@ msg_evnt_del(dax_message *msg)
     u_int32_t id;
     int result;
     dax_module *module;
-       
+
     idx = *((u_int32_t *)&msg->data[0]);
     id = *((u_int32_t *)&msg->data[4]);
     module = module_find_fd(msg->fd);
 
     xlog(LOG_MSG | LOG_VERBOSE, "Event Delete Message from %d", msg->fd);
-      
+
     result = event_del(idx, id, module);
-    
+
     if(idx >= 0) {
         _message_send(msg->fd, MSG_EVNT_DEL, &idx, 8, RESPONSE);
     } else {
@@ -677,11 +679,11 @@ msg_cdt_create(dax_message *msg)
 {
     int result;
     tag_type type;
-    
+
     msg->data[MSG_DATA_SIZE-1] = '\0'; /* Just to be safe */
     type = cdt_create(msg->data, &result);
     xlog(LOG_MSG | LOG_VERBOSE, "Create CDT message name = '%s' type = 0x%X", msg->data, type);
-    
+
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_CDT_CREATE, &result, sizeof(int), ERROR);    
     } else {
@@ -699,7 +701,7 @@ msg_cdt_get(dax_message *msg)
     tag_type cdt_type;
     char type[DAX_TAGNAME_SIZE + 1];
     char *str = NULL, *data = NULL;
-    
+
     result = 0;  /* result will stay zero if we don't have any errors */
     subcommand = msg->data[0];
     if(subcommand == CDT_GET_TYPE) {
@@ -711,9 +713,9 @@ msg_cdt_get(dax_message *msg)
         cdt_type = cdt_get_type(type);
         xlog(LOG_MSG | LOG_VERBOSE, "CDT Get for type %s Message from Module %d", type, msg->fd);
     }
-    
+
     size = serialize_datatype(cdt_type, &str);
-    
+
     /* TODO: !! We need to figure out how to deal with a string that is longer than one
      * message can hold.  For now we are going to return error. */
     if(size > (int)(MSG_DATA_SIZE - 4)) {
@@ -734,8 +736,52 @@ msg_cdt_get(dax_message *msg)
     } else {
         _message_send(msg->fd, MSG_CDT_GET, data, size + 4, RESPONSE);
     }
-    
+
     if(data) free(data);
     if(str) free(str); /* Allocated by serialize_datatype() */
     return 0;
 }
+
+int msg_map_add(dax_message *msg)
+{
+    int result;
+    int id;
+    Handle src, dest;
+
+    src.index = *(dax_dint *)msg->data;
+    src.byte = *(dax_dint *)&msg->data[4];
+    src.bit = msg->data[8];
+    src.count = *(dax_dint *)&msg->data[9];
+    src.size = *(dax_udint *)&msg->data[13];
+    src.count = *(dax_dint *)&msg->data[17];
+
+    dest.index = *(dax_dint *)&msg->data[21];
+    dest.byte = *(dax_dint *)&msg->data[25];
+    dest.bit = msg->data[29];
+    dest.count = *(dax_dint *)&msg->data[30];
+    dest.size = *(dax_udint *)&msg->data[34];
+    dest.count = *(dax_dint *)&msg->data[38];
+
+    id = map_add(src, dest, &result);
+    xlog(LOG_MSG | LOG_VERBOSE, "Create map from %d to %d", src.index, dest.index);
+
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_MAP_ADD, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_MAP_ADD, &id, sizeof(int), RESPONSE);
+    }
+    return 0;
+}
+
+int msg_map_del(dax_message *msg)
+{
+    printf("Message Delete\n");
+    return 0;
+}
+
+int msg_map_get(dax_message *msg)
+{
+    printf("Message Get\n");
+    return 0;
+}
+

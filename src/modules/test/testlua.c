@@ -160,7 +160,7 @@ _lazy_test(lua_State *L)
     static dax_dint test[10], data;
     
     Handle h;
-    dax_event_id id[10];
+    dax_id id[10];
     
 
     for(n = 0; n < 10; n++) {

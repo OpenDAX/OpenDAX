@@ -868,7 +868,7 @@ _event_add(lua_State *L) {
     lua_Number number;
     Handle h;
     event_ref_data *edata;
-    dax_event_id id;
+    dax_id id;
     void *data;
 
     if(lua_gettop(L) != 6) {
@@ -926,7 +926,7 @@ _event_add(lua_State *L) {
  * nothing */
 static int
 _event_del(lua_State *L) {
-    dax_event_id id;
+    dax_id id;
 
     if(!lua_istable(L, 1)) {
         luaL_error(L, "Wrong type of argument passed to event_del()");

@@ -33,10 +33,10 @@ static char *_statustag;
 static char *_socketname;
 static unsigned int _serverport;
 static int _verbosity;
-//static int _daemonize;
 static int _maxstartup;
 static int _min_buffers;
-static int _start_timeout;  /* module startup tier timeout */
+static int _start_timeout;  /* module startup stage timeout */
+static char **_required_modules;
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
@@ -49,7 +49,6 @@ static void initconfig(void) {
         if(_configfile)
             sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
     }
-//    _daemonize = -1; /* We set it to negative so we can determine when it's been set */
     _verbosity = 0;
     _statustag = NULL;
     _pidfile = NULL;
@@ -89,11 +88,12 @@ parsecommandline(int argc, const char *argv[])
         {"start_time", required_argument, 0, 'T'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
+        {"required-modules", required_argument, 0, 'Q'},
         {0, 0, 0, 0}
     };
 
 /* Get the command line arguments */
-    while ((c = getopt_long (argc, (char * const *)argv, "C:S:VvD",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:S:VvDQ:",options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
@@ -115,11 +115,11 @@ parsecommandline(int argc, const char *argv[])
         case 'V':
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
-//      case 'v':
-//            _verbosity++;
-//          break;
-//        case 'D':
-//            _daemonize = 1;
+        case 'v':
+            _verbosity++;
+            break;
+        case 'Q':
+            printf("Add Required Module %s\n", optarg);
             break;
         case '?':
             printf("Got the big ?\n");
@@ -227,13 +227,6 @@ opt_configure(int argc, const char *argv[])
 
     return 0;
 }
-
-//** Shouldn't be needed anymore.
-//int
-//opt_daemonize(void)
-//{
-//    return _daemonize;
-//}
 
 char *
 opt_statustag(void)

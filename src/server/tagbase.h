@@ -61,6 +61,10 @@
 #define STAT_DB_SIZE  64
 #define STAT_TAG_CNT 96
 
+/* This is the maximum number of mapping hops that we'll make before we print an
+ * and do some othe drastic action. */
+#define MAX_MAP_HOPS 128
+
 typedef struct dax_event_t {
     int id;              /* Unique identifier for this event definition */
 
@@ -68,7 +72,7 @@ typedef struct dax_event_t {
     unsigned char bit;   /* The bit offset */
     int count;           /* The number of items represented by the handle */
     u_int32_t size;      /* The total size of the data block in bytes */
-    tag_type datatype;   /* The datatype of the block */
+    tag_type datatype;   /* The data type of the block */
     int eventtype;       /* The type of event */
     void *data;          /* Data given by module */
     void *test;          /* Internal data, depends on event type */
@@ -76,13 +80,23 @@ typedef struct dax_event_t {
     struct dax_event_t *next;
 } _dax_event;
 
+typedef struct dax_datamap_t {
+    int id;
+    Handle source;
+    Handle dest;
+    u_int8_t *mask;
+    struct dax_datamap_t *next;
+} _dax_datamap;
+
 /* This is the internal structure for the tag array. */
 typedef struct {
     tag_type type;
     unsigned int count;
     char *name;
-    int nextevent;
-    _dax_event *events;
+    int nextevent;           /* Counter for keeping track of event IDs */
+    int nextmap;             /* Counter for keeping track of map IDs */
+    _dax_event *events;      /* Linked list of events */
+    _dax_datamap *mappings;  /* Linked list of mappings */
     u_int8_t *data;
 } _dax_tag_db;
 
@@ -119,6 +133,10 @@ void event_check(tag_index idx, int offset, int size);
 int event_add(Handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
 int events_cleanup(dax_module *module);
+
+int map_add(Handle src, Handle dest, int *error);
+int map_del(tag_index index, int id);
+int map_check(tag_index idx, int offset, u_int8_t *data, int size);
 
 #define DAX_DIAG
 #ifdef DAX_DIAG

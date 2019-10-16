@@ -163,7 +163,7 @@
 #define DAX_LREAL_MIN  -DBL_MAX
 #define DAX_LREAL_MAX   DBL_MAX
 
-/* typedefs to the basic DAX_? datatypes */
+/* typedefs to the basic DAX_? data types */
 typedef u_int8_t   dax_byte;
 typedef int8_t     dax_sint;
 typedef u_int16_t  dax_word;
@@ -188,7 +188,7 @@ struct Handle {
     unsigned char bit;   /* The bit offset */
     u_int32_t count;     /* The number of items represented by the handle */
     u_int32_t size;      /* The total size of the data block in bytes */
-    tag_type type;       /* The datatype of the block */
+    tag_type type;       /* The data type of the block */
 };
 
 typedef struct Handle Handle;
@@ -206,11 +206,11 @@ typedef struct dax_tag dax_tag;
 
 /* Identifier that is passed back and forth from modules to the server to
  * uniquely identify an event definition in the system */
-typedef struct dax_event_id
+typedef struct dax_id
 {
     tag_index index;     /* The Index of the Tag */
     int id;              /* The byte offset where the data block starts */
-} dax_event_id;
+} dax_id;
 
 /* Opaque pointer for storing a dax_state object in the library */
 typedef struct dax_state dax_state;
@@ -327,15 +327,15 @@ int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
 
 /* Event handling functions */
 int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data,
-                  dax_event_id *id, void (*callback)(void *udata), void *udata,
+                  dax_id *id, void (*callback)(void *udata), void *udata,
                   void (*free_callback)(void *udata));
-int dax_event_del(dax_state *ds, dax_event_id id);
-int dax_event_get(dax_state *ds, dax_event_id id);
+int dax_event_del(dax_state *ds, dax_id id);
+int dax_event_get(dax_state *ds, dax_id id);
 int dax_event_modify(dax_state *ds, int id);
-int dax_event_wait(dax_state *ds, int timeout, dax_event_id *id);
-int dax_event_poll(dax_state *ds, dax_event_id *id);
+int dax_event_wait(dax_state *ds, int timeout, dax_id *id);
+int dax_event_poll(dax_state *ds, dax_id *id);
 int dax_event_get_fd(dax_state *ds);
-int dax_event_dispatch(dax_state *ds, dax_event_id *id);
+int dax_event_dispatch(dax_state *ds, dax_id *id);
 /* Event Utility Functions */
 int dax_event_string_to_type(char *string);
 char *dax_event_type_to_string(int type);
@@ -366,6 +366,10 @@ struct cdt_iter {
 typedef struct cdt_iter cdt_iter;
 
 int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
+
+/* Add remove and get data table mapping functions */
+int dax_map_add(dax_state *ds, Handle *src, Handle *dest, dax_id *id);
+
 
 /* Convenience functions for converting strings to basic DAX values and back */
 int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);
