@@ -338,3 +338,53 @@ list_types(char **tokens)
     }
     return 0;
 }
+
+int
+map_add(char **tokens, int count)
+{
+    int srcCount, destCount, result;
+    Handle src, dest;
+    if(count < 4) {
+        fprintf(stderr, "ERROR: Too few arguments\n");
+        return ERR_ARG;
+    }
+    srcCount = strtol(tokens[1], NULL, 0);
+    destCount = strtol(tokens[3], NULL, 0);
+    if(srcCount <= 0) {
+        fprintf(stderr, "ERROR: Bad count of %s given for %s\n", tokens[1], tokens[0]);
+        return ERR_ARG;
+    }
+    if(destCount <= 0) {
+        fprintf(stderr, "ERROR: Bad count of %s given for %s\n", tokens[3], tokens[2]);
+        return ERR_ARG;
+    }
+    result = dax_tag_handle(ds, &src, tokens[0], srcCount);
+    if(result < 0) {
+        fprintf(stderr, "ERROR: Bad tag %s\n", tokens[0]);
+        return ERR_ARG;
+    }
+    result = dax_tag_handle(ds, &dest, tokens[2], destCount);
+    if(result < 0) {
+        fprintf(stderr, "ERROR: Bad tag %s\n", tokens[2]);
+        return ERR_ARG;
+    }
+    result = dax_map_add(ds, &src, &dest, NULL);
+    if(result) {
+        fprintf(stderr, "ERROR: Problem Adding Map.  Error %d\n", result);
+    }
+    return 0;
+}
+
+int
+map_del(char **tokens, int count)
+{
+    printf("Map delete not implemented\n");
+    return 0;
+}
+
+int
+map_get(char **tokens, int count)
+{
+    printf("Map get is not implemented\n");
+    return 0;
+}

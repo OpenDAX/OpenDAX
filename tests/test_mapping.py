@@ -44,18 +44,13 @@ class TestMapping(unittest.TestCase):
         self.server.terminate()
         self.server.wait()
 
-
     def test_mapping_add(self):
         t = daxwrapper.defines["DAX_INT"]
         src = self.dax.dax_tag_add(self.ds, "DummyIn", t)
         dest = self.dax.dax_tag_add(self.ds, "DummyOut", t)
-
-        # src = self.dax.dax_tag_handle(self.ds, "DummyIn")
-        # dest = self.dax.dax_tag_handle(self.ds, "DummyOut")
-        #t = self.dax.dax_tag_byname(self.ds, "dummy")
         self.dax.dax_map_add(self.ds, src, dest)
 
-    def test_single_map(self):
+    def test_map_single_int(self):
         t = daxwrapper.defines["DAX_INT"]
         src = self.dax.dax_tag_add(self.ds, "DummySrc", t)
         dest = self.dax.dax_tag_add(self.ds, "DummyDest", t)
@@ -64,6 +59,43 @@ class TestMapping(unittest.TestCase):
         self.dax.dax_write_tag(self.ds, src, b)
         x = self.dax.dax_read_tag(self.ds, dest)
         self.assertEqual(b,x)
+
+    def test_map_array_int(self):
+        t = daxwrapper.defines["DAX_INT"]
+        self.dax.dax_tag_add(self.ds, "DummySrc", t, 16)
+        self.dax.dax_tag_add(self.ds, "DummyDest", t, 16)
+        src = self.dax.dax_tag_handle(self.ds, "DummySrc[0]", 1)
+        dest = self.dax.dax_tag_handle(self.ds, "DummyDest[3]", 1)
+        self.dax.dax_map_add(self.ds, src, dest)
+        b = b'\x00\x10'
+        self.dax.dax_write_tag(self.ds, src, b)
+        x = self.dax.dax_read_tag(self.ds, dest)
+        self.assertEqual(b,x)
+
+    def test_map_single_bool(self):
+        t = daxwrapper.defines["DAX_BOOL"]
+        src = self.dax.dax_tag_add(self.ds, "DummySrc", t)
+        dest = self.dax.dax_tag_add(self.ds, "DummyDest", t)
+        self.dax.dax_map_add(self.ds, src, dest)
+        b = b'\x01'
+        self.dax.dax_write_tag(self.ds, src, b)
+        x = self.dax.dax_read_tag(self.ds, dest)
+        self.assertEqual(b,x)
+
+
+
+# Test single bools
+# test array to single bools
+# test single to array bools
+# test array to array bools (different indexes)
+# test single basic types
+# test array to single basic types
+# test single to array basic types
+# test array to array basic types
+# test bools to basic types with different bit indexs (this is the doosey)
+# test basic types to bools
+# test cdt memebers bools, basic types etc.
+# test infinite mapping chain fail
 
 
 if __name__ == '__main__':

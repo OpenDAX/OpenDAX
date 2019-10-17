@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -46,3 +46,7 @@ int event_add(char **tokens, int count);
 int event_del(char **tokens);
 int event_wait(char **tokens);
 int event_poll(void);
+
+int map_add(char **tokens, int count);
+int map_del(char **tokens, int count);
+int map_get(char **tokens, int count);

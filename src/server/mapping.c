@@ -136,7 +136,7 @@ map_del(tag_index index, int id) {
 int
 map_check(tag_index idx, int offset, u_int8_t *data, int size) {
     _dax_datamap *this;
-    printf("map_check() called\n");
+
     this = _db[idx].mappings;
     /* If this is the first time we've been called then it means that is is the tag that started
      * the mapping.  If we chain too many then we'll tell the user which tag started it all. */
@@ -146,6 +146,7 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
             /* Mapping Hit */
             _mapping_hops++;
             if(_mapping_hops > MAX_MAP_HOPS) {
+                /* TODO: conditional compilation of program exit */
                 xerror("Maximum number of chained mappings has been reached for tag %s", _db[_first_tag].name);
                 return ERR_OVERFLOW;
             }

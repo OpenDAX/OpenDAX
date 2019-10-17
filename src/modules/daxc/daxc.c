@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -42,20 +42,20 @@ int main(int argc,char *argv[]) {
     int flags, result = 0;
     char *instr, *command, *filename;
     char *home_dir;
-    
+
  /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-    
+
     ds = dax_init("daxc");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
         return ERR_ALLOC;
     }
-    
+
     dax_init_config(ds, "daxc");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "execute","execute", 'x', flags, NULL);
@@ -65,10 +65,10 @@ int main(int argc,char *argv[]) {
     result += dax_add_attribute(ds, "interactive","interactive", 'i', flags, NULL);
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
-    
+
     /* TODO: These have got to move to the configuration */
     dax_set_debug_topic(ds, 0);
-        
+
  /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
@@ -80,13 +80,13 @@ int main(int argc,char *argv[]) {
     if(dax_get_attr(ds, "quiet")) {
         quiet_mode = 1;
     }
-    
+
     command = dax_get_attr(ds, "execute");
-    
+
     if(command) {
         runcmd(command);
     }
-    
+
     filename = dax_get_attr(ds, "file");
     if(filename) {
         runfile(filename);
@@ -95,7 +95,7 @@ int main(int argc,char *argv[]) {
         getout(0);
     }
 
-/* At this point we are in interactive mode.  We first read the 
+/* At this point we are in interactive mode.  We first read the
  * readline history file and then start an infininte loop where
  * We call the readline function repeatedly and then send the
  * input to runcmd */
@@ -117,18 +117,18 @@ int main(int argc,char *argv[]) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
-        
+
         instr = rl_gets("dax>");
-    
+
         if( instr == NULL ) {
             /* End of File */
             getout(0);
         }
         if( instr[0] != '\0' ) {
-            runcmd(instr); /* Off we go */    
+            runcmd(instr); /* Off we go */
         }
     }
-    
+
  /* This is just to make the compiler happy */
     return(0);
 }
@@ -157,7 +157,7 @@ runcmd(char *instr)
         }
     }
 
-    /* Now that we know how many tokens we can allocate the array 
+    /* Now that we know how many tokens we can allocate the array
      * We get one more than needed so that we can add the NULL */
     tokens = malloc(sizeof(char *) * tcount+1);
 
@@ -174,7 +174,7 @@ runcmd(char *instr)
     for(n = 1; n < tcount; n++) {
         tokens[n] = strtok_r(NULL, " ", &last);
     }
-    tokens[tcount] = NULL; /* Terminate the array with a NULL */    
+    tokens[tcount] = NULL; /* Terminate the array with a NULL */
 
     /* test the command in sequential if's once found call function and continue */
     if( !strcasecmp(tokens[0],"dax")) {
@@ -197,6 +197,17 @@ runcmd(char *instr)
         result = tag_write(&tokens[1], tcount-1);
     } else if( !strncasecmp(tokens[0], "cdt", 3)) {
         result = cdt_add(&tokens[1], tcount -1);
+    } else if( !strncasecmp(tokens[0], "map", 3)) {
+        if(tokens[1] == NULL) {
+            fprintf(stderr, "ERROR: MAP requires a subcommand.  Try ADD, DEL GET\n");
+        } else if( !strncasecmp(tokens[1], "add", 3)) {
+            result = map_add(&tokens[2], tcount-2);
+        } else if( !strncasecmp(tokens[1], "del", 3)) {
+            result = map_del(&tokens[2], tcount-2);
+        } else if( !strncasecmp(tokens[1], "get", 3)) {
+            result = map_get(&tokens[2], tcount-2);
+        }
+
 //    } else if( !strncasecmp(tokens[0], "mod", 3)) {
 //        printf("Haven't done 'mod' yet!\n");
     } else if( !strcasecmp(tokens[0],"db")) {
@@ -222,19 +233,19 @@ runcmd(char *instr)
             fprintf(stderr, "ERROR: Unknown subcommand '%s'\n", tokens[1]);
         }
     } else if( !strcasecmp(tokens[0],"msg")) {
-        printf("Haven't done 'msg' yet!\n");    
+        printf("Haven't done 'msg' yet!\n");
     /* TODO: Really should work on the help command */
     } else if( !strcasecmp(tokens[0], "help")) {
         printf("Hehehehe, Yea right!\n");
         printf(" Try READ, WRITE, LIST, ADD\n");
-    
+
     } else if( !strcasecmp(tokens[0],"exit")) {
         getout(0);
-    
+
     } else {
         fprintf(stderr, "Unknown Command - %s\n", tokens[0]);
     }
-    
+
     free(tokens);
     return result;
 }
@@ -245,7 +256,7 @@ runfile(char *filename)
     char string[LINE_BUFF_SIZE];
     FILE *file;
     int len;
-    
+
     file = fopen(filename, "r");
     if(file == NULL) {
         fprintf(stderr, "ERROR: Unable to open file - %s\n", filename);
@@ -268,7 +279,7 @@ char *
 rl_gets(const char *prompt)
 {
     static char *line_read = (char *)NULL;
-    
+
     /* If the buffer has already been allocated,
        return the memory to the free pool. */
     if (line_read) {
