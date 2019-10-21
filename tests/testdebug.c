@@ -45,8 +45,22 @@ int main(int argc,char *argv[]) {
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     dax_connect(ds);
 
-    dax_tag_add(ds, &src, "DummyIn", DAX_INT, 1);
-    dax_tag_add(ds, &dest, "DummyOut", DAX_INT, 1);
+    dax_tag_add(ds, &src, "DummyIn", DAX_BOOL, 16);
+    dax_tag_add(ds, &dest, "DummyOut", DAX_BOOL, 16);
+
+    dax_tag_handle(ds, &src, "DummyIn[3]", 1);
+    dax_tag_handle(ds, &dest, "DummyOut[3]", 1);
+
+    printf("src.index = %d\n", src.index);
+    printf("src.type = %d\n", src.type);
+    printf("src.size = %d\n", src.size);
+    printf("src.byte = %d\n", src.byte);
+    printf("src.bit = %d\n", src.bit);
+    printf("dest.index = %d\n", dest.index);
+    printf("dest.type = %d\n", dest.type);
+    printf("dest.size = %d\n", dest.size);
+    printf("dest.byte = %d\n", dest.byte);
+    printf("dest.bit = %d\n", dest.bit);
 
     dax_map_add(ds, &src, &dest, &id);
 

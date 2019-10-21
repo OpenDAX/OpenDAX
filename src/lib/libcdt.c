@@ -445,7 +445,7 @@ _split_tagname(char *name)
 }
 
 /* Looks for a number within [ ] and returns that as an index
- * if it finds problems within the [ ] it retuns ERR_ARG if
+ * if it finds problems within the [ ] it returns ERR_ARG if
  * there are no [ ] then it returns ERR_NOTFOUND which is not
  * really an error in this case but we need to know anyway.
  * It if it finds a '[' it replaces it with a '\0' so that
@@ -454,7 +454,7 @@ static inline int
 _get_index(char *str)
 {
     int i, k, len, index;
-    
+
     len = strlen(str);
     for(i = 0; i < len && str[i] != '['; i++);
     if(i < len) {
@@ -477,26 +477,26 @@ _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int c
     char *name = str;
     char *nextname;
     cdt_member *this;
-    
+
     if(name == NULL) return ERR_ARG;
-    
+
     nextname = _split_tagname(str);
 
     index = _get_index(name);
     if(index < 0 && index != ERR_NOTFOUND) {
         return index;
     }
-    
+
     if(dax_type_to_string(ds, lasttype) == NULL) {
         return ERR_NOTFOUND; /* This is a serious problem here */
     }
-    
+
     this = ds->datatypes[CDT_TO_INDEX(lasttype)].members;
-        
+
     while(this != NULL) {
         /* Start by adding all the bytes of the members before the
          * one we are looking for */
-        
+
         if(strcmp(name, this->name)) {
             if(this->type == DAX_BOOL) {
                 h->bit += this->count;
@@ -511,15 +511,15 @@ _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int c
                 h->bit = 0;
             }
             h->type = this->type; /* We need to keep track of the last type */
-            
+
             this = this->next;
         } else { /* Here we have found it */
             break;
         }
-        
+
     }
     if(this == NULL) return ERR_NOTFOUND;
-    
+
     if(nextname) { /* Not the last item */
         result = _parse_next_member(ds, this->type, h, nextname, count);
         if(result) return result;
@@ -564,7 +564,7 @@ _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int c
                 h->count = count;
             }
         }
-    }    
+    }
     return 0;
 }
 
@@ -577,21 +577,21 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
     dax_tag tag;
     char tagname[strlen]; /* Hack alert */
     char *nextname;
-    
+
     if(str == NULL) return ERR_ARG;
-    
+
     strcpy(tagname, str);
-    
+
     nextname = _split_tagname(tagname);
     index = _get_index(tagname);
     if(index < 0 && index != ERR_NOTFOUND) {
         return index;
     }
-    
+
     result = dax_tag_byname(ds, &tag, tagname);
     if(result) return ERR_NOTFOUND;
     h->index = tag.idx; /* This index is the database index */
-    
+
     if(nextname) {
         if(!IS_CUSTOM(tag.type)) {
             dax_error(ds, "Tag %s, has no member %s", tagname, nextname);
@@ -625,7 +625,7 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
                 h->bit = 0;
                 h->count = count;
             }
-        } else { /* This is where no index was given */
+        } else { /* This is where no index [] was given */
             if(count > tag.count) return ERR_2BIG;
             if(count == 0) count = tag.count;
             if(tag.type == DAX_BOOL) {

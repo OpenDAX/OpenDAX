@@ -753,14 +753,14 @@ int msg_map_add(dax_message *msg)
     src.bit = msg->data[8];
     src.count = *(dax_dint *)&msg->data[9];
     src.size = *(dax_udint *)&msg->data[13];
-    src.count = *(dax_dint *)&msg->data[17];
+    src.type = *(dax_dint *)&msg->data[17];
 
     dest.index = *(dax_dint *)&msg->data[21];
     dest.byte = *(dax_dint *)&msg->data[25];
     dest.bit = msg->data[29];
     dest.count = *(dax_dint *)&msg->data[30];
     dest.size = *(dax_udint *)&msg->data[34];
-    dest.count = *(dax_dint *)&msg->data[38];
+    dest.type = *(dax_dint *)&msg->data[38];
 
     id = map_add(src, dest, &result);
     xlog(LOG_MSG | LOG_VERBOSE, "Create map from %d to %d", src.index, dest.index);

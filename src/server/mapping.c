@@ -80,9 +80,15 @@ map_add(Handle src, Handle dest, int *error)
     new_map = _new_map(src, dest);
 
     if(src.type == DAX_BOOL && src.bit > 0) {
-        bit = src.bit;
+        /* This basically creates a mask to write the bits that we want.
+         * We are putting the bits in mask according to the destination.
+         * The data itself will have to be shifted later when we write
+         * the data.
+         */
+        bit = dest.bit;
         offset = 0;
         mask = (u_int8_t *)malloc(src.size);
+        bzero(mask, src.size);
         for(int i=0; i<src.count; i++) {
             mask[offset] |= (0x01 << bit);
             bit++;
@@ -95,12 +101,6 @@ map_add(Handle src, Handle dest, int *error)
     }
     new_map->next = _db[src.index].mappings;
     _db[src.index].mappings = new_map;
-
-    printf("map_add() function called\n");
-    printf("src.index = %d\n", src.index);
-    printf("src.size = %d\n", src.size);
-    printf("dest.index = %d\n", dest.index);
-    printf("dest.size = %d\n", dest.size);
 
     return new_map->id;
 }
@@ -136,6 +136,11 @@ map_del(tag_index index, int id) {
 int
 map_check(tag_index idx, int offset, u_int8_t *data, int size) {
     _dax_datamap *this;
+    u_int8_t *new_data;
+    int srcByte;
+    int srcBit;
+    int destByte;
+    int destBit;
 
     this = _db[idx].mappings;
     /* If this is the first time we've been called then it means that is is the tag that started
@@ -151,7 +156,43 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
                 return ERR_OVERFLOW;
             }
             if(this->mask != NULL) {
-                tag_mask_write(this->dest.index, this->dest.byte, data, this->mask, this->dest.size);
+                /* Move the bits from their position in the source to
+                 * where they should go in the destination */
+                srcByte = 0;
+                srcBit = this->source.bit;
+                destByte = 0;
+                destBit = this->dest.bit;
+                new_data = (u_int8_t *)malloc(this->source.size);
+                if(new_data == NULL) {
+                    xerror("Unable to allocate memory for map mask");
+                    return ERR_ALLOC;
+                }
+                bzero(new_data, this->source.size);
+                for(int n=0; n<this->source.count; n++) {
+                    if(data[srcByte] & (0x01 << srcBit)) {
+                        new_data[destByte] |= (0x01 << destBit);
+                    }
+                    srcBit++;
+                    destBit++;
+                    if(srcBit == 8) {
+                        srcBit = 0;
+                        srcByte++;
+                    }
+                    if(destBit == 8) {
+                        destBit = 0;
+                        destByte++;
+                    }
+                }
+//                printf("src.byte = 0x%X\n", this->source.byte);
+//                printf("src.bit = 0x%X\n", this->source.bit);
+//                printf("src.size = %d\n", this->source.size);
+//                printf("dest.byte = 0x%X\n", this->dest.byte);
+//                printf("dest.bit = 0x%X\n", this->dest.bit);
+//                printf("dest.size = %d\n", this->dest.size);
+//                printf("data = 0x%X\n", *(uint16_t *)new_data);
+//                printf("mask = 0x%X\n", *(uint16_t *)this->mask);
+                tag_mask_write(this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
+                free(new_data);
             } else {
                 tag_write(this->dest.index, this->dest.byte, data, this->dest.size);
             }
