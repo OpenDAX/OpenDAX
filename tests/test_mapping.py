@@ -94,6 +94,14 @@ class TestMapping(unittest.TestCase):
         x = self.dax.dax_read_tag(self.ds, dest)
         self.assertEqual(b,x)
 
+        src = self.dax.dax_tag_handle(self.ds, "DummySrc[8]", 1)
+        dest = self.dax.dax_tag_handle(self.ds, "DummyDest[1]", 1)
+        self.dax.dax_map_add(self.ds, src, dest)
+        b = b'\x01'
+        self.dax.dax_write_tag(self.ds, src, b)
+        x = self.dax.dax_read_tag(self.ds, dest)
+        self.assertEqual(b,x)
+
 
 # Test single bools
 # test array to single bools

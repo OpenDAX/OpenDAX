@@ -79,7 +79,7 @@ map_add(Handle src, Handle dest, int *error)
 
     new_map = _new_map(src, dest);
 
-    if(src.type == DAX_BOOL && src.bit > 0) {
+    if(src.type == DAX_BOOL) {
         /* This basically creates a mask to write the bits that we want.
          * We are putting the bits in mask according to the destination.
          * The data itself will have to be shifted later when we write
