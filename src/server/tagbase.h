@@ -134,7 +134,7 @@ int event_add(Handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
 int events_cleanup(dax_module *module);
 
-int map_add(Handle src, Handle dest, int *error);
+int map_add(Handle src, Handle dest);
 int map_del(tag_index index, int id);
 int map_check(tag_index idx, int offset, u_int8_t *data, int size);
 

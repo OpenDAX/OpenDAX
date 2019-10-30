@@ -762,11 +762,11 @@ int msg_map_add(dax_message *msg)
     dest.size = *(dax_udint *)&msg->data[34];
     dest.type = *(dax_dint *)&msg->data[38];
 
-    id = map_add(src, dest, &result);
+    id = map_add(src, dest);
     xlog(LOG_MSG | LOG_VERBOSE, "Create map from %d to %d", src.index, dest.index);
 
-    if(result < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_MAP_ADD, &result, sizeof(int), ERROR);
+    if(id < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_MAP_ADD, &id, sizeof(int), ERROR);
     } else {
         _message_send(msg->fd, MSG_MAP_ADD, &id, sizeof(int), RESPONSE);
     }

@@ -72,6 +72,19 @@ class TestMapping(unittest.TestCase):
         x = self.dax.dax_read_tag(self.ds, dest)
         self.assertEqual(b,x)
 
+    def test_map_array_int2(self):
+        t = daxwrapper.defines["DAX_INT"]
+        self.dax.dax_tag_add(self.ds, "DummySrc", t, 16)
+        self.dax.dax_tag_add(self.ds, "DummyDest", t, 1)
+        src = self.dax.dax_tag_handle(self.ds, "DummySrc[2]", 1)
+        dest = self.dax.dax_tag_handle(self.ds, "DummyDest", 1)
+        self.dax.dax_map_add(self.ds, src, dest)
+        src = self.dax.dax_tag_handle(self.ds, "DummySrc", 4)
+        b = b'\xF1\xF2\xF3\xF4\xF5\xF6\xF7\xF8'
+        self.dax.dax_write_tag(self.ds, src, b)
+        x = self.dax.dax_read_tag(self.ds, dest)
+        self.assertEqual(b'\xF5\xF6',x)
+
     def test_map_single_bool(self):
         t = daxwrapper.defines["DAX_BOOL"]
         src = self.dax.dax_tag_add(self.ds, "DummySrc", t)
@@ -102,8 +115,39 @@ class TestMapping(unittest.TestCase):
         x = self.dax.dax_read_tag(self.ds, dest)
         self.assertEqual(b,x)
 
+    def test_map_array_dint(self):
+        t = daxwrapper.defines["DAX_DINT"]
+        self.dax.dax_tag_add(self.ds, "DummySrc", t, 16)
+        t = daxwrapper.defines["DAX_INT"]
+        self.dax.dax_tag_add(self.ds, "DummyDest", t, 16)
+        src = self.dax.dax_tag_handle(self.ds, "DummySrc[0]", 1)
+        dest = self.dax.dax_tag_handle(self.ds, "DummyDest[3]", 2)
+        self.dax.dax_map_add(self.ds, src, dest)
+        b = b'\x00\x10\x00\x00'
+        self.dax.dax_write_tag(self.ds, src, b)
+        x = self.dax.dax_read_tag(self.ds, dest)
+        self.assertEqual(b,x)
 
-# Test single bools
+    def test_map_too_big_error(self):
+        t = daxwrapper.defines["DAX_INT"]
+        self.dax.dax_tag_add(self.ds, "DummySrc", t, 16)
+        self.dax.dax_tag_add(self.ds, "DummyDest", t, 1)
+        with self.assertRaises(RuntimeError):
+            src = self.dax.dax_tag_handle(self.ds, "DummySrc[2]", 2)
+            dest = self.dax.dax_tag_handle(self.ds, "DummyDest", 1)
+            self.dax.dax_map_add(self.ds, src, dest)
+
+    def test_map_too_big_error_2(self):
+        t = daxwrapper.defines["DAX_DINT"]
+        self.dax.dax_tag_add(self.ds, "DummySrc2", t, 16)
+        t = daxwrapper.defines["DAX_INT"]
+        self.dax.dax_tag_add(self.ds, "DummyDest2", t, 16)
+        with self.assertRaises(RuntimeError):
+            src = self.dax.dax_tag_handle(self.ds, "DummySrc[2]", 1)
+            dest = self.dax.dax_tag_handle(self.ds, "DummyDest", 1)
+            self.dax.dax_map_add(self.ds, src, dest)
+
+
 # test array to single bools
 # test single to array bools
 # test array to array bools (different indexes)

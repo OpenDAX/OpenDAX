@@ -52,11 +52,19 @@ static void _free_map(_dax_datamap *map) {
 
 
 int
-map_add(Handle src, Handle dest, int *error)
+map_add(Handle src, Handle dest)
 {
     _dax_datamap *new_map;
     int bit, offset;
     u_int8_t *mask;
+//    printf("map_add() called\n");
+//    printf("src.byte = 0x%X\n", src.byte);
+//    printf("src.bit = 0x%X\n", src.bit);
+//    printf("src.size = %d\n", src.size);
+//    printf("dest.byte = 0x%X\n", dest.byte);
+//    printf("dest.bit = 0x%X\n", dest.bit);
+//    printf("dest.size = %d\n", dest.size);
+
     /* Bounds check handles */
     if(src.index < 0 || src.index >= tag_get_count()) {
        xlog(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
@@ -74,6 +82,14 @@ map_add(Handle src, Handle dest, int *error)
     /* Bounds check destination size */
     if( (dest.byte + dest.size) > tag_get_size(dest.index)) {
         xlog(LOG_ERROR, "Size of the affected destination data in the new mapping is too large");
+        return ERR_2BIG;
+    }
+//    if( (dest.byte + src.size) > tag_get_size(dest.index)) {
+//        xlog(LOG_ERROR, "Size of the source data in the new mapping is too large");
+//        return ERR_2BIG;
+//    }
+    if( src.size > dest.size ) {
+        xlog(LOG_ERROR, "Size of the source data in the new mapping is too large");
         return ERR_2BIG;
     }
 
@@ -141,14 +157,22 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
     int srcBit;
     int destByte;
     int destBit;
-
+//    printf("map_check() called\n");
     this = _db[idx].mappings;
     /* If this is the first time we've been called then it means that is is the tag that started
      * the mapping.  If we chain too many then we'll tell the user which tag started it all. */
     if(_first_tag == -1) _first_tag = idx;
     while(this != NULL) {
+//        printf("src.byte = 0x%X\n", this->source.byte);
+//        printf("src.bit = 0x%X\n", this->source.bit);
+//        printf("src.size = %d\n", this->source.size);
+//        printf("dest.byte = 0x%X\n", this->dest.byte);
+//        printf("dest.bit = 0x%X\n", this->dest.bit);
+//        printf("dest.size = %d\n", this->dest.size);
+
         if(offset <= (this->source.byte + this->source.size - 1) && (offset + size -1 ) >= this->source.byte) {
             /* Mapping Hit */
+//            printf("mapping hit\n");
             _mapping_hops++;
             if(_mapping_hops > MAX_MAP_HOPS) {
                 /* TODO: conditional compilation of program exit */
@@ -183,18 +207,16 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
                         destByte++;
                     }
                 }
-//                printf("src.byte = 0x%X\n", this->source.byte);
-//                printf("src.bit = 0x%X\n", this->source.bit);
-//                printf("src.size = %d\n", this->source.size);
-//                printf("dest.byte = 0x%X\n", this->dest.byte);
-//                printf("dest.bit = 0x%X\n", this->dest.bit);
-//                printf("dest.size = %d\n", this->dest.size);
 //                printf("data = 0x%X\n", *(uint16_t *)new_data);
 //                printf("mask = 0x%X\n", *(uint16_t *)this->mask);
                 tag_mask_write(this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
                 free(new_data);
             } else {
-                tag_write(this->dest.index, this->dest.byte, data, this->dest.size);
+                //new_data = data;
+                new_data = &data[offset+this->source.byte];
+
+//                printf("data = 0x%X\n", *(uint16_t *)new_data);
+                tag_write(this->dest.index, this->dest.byte, new_data, this->dest.size);
             }
         }
         this = this->next;
