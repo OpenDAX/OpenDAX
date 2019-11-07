@@ -85,7 +85,7 @@ class LibDaxWrapper:
         h = Handle()
         x = self.libdax.dax_tag_handle(ds, byref(h), name.encode('utf-8'), count)
         if x < 0:
-            raise RuntimeError
+            raise RuntimeError("function returned: {}".format(x))
         return h
 
     def dax_read_tag(self, ds, h):
@@ -105,7 +105,14 @@ class LibDaxWrapper:
 
     def dax_tag_add(self, ds, name, datatype, count=1):
         h = Handle()
-        x = self.libdax.dax_tag_add(ds, byref(h), name.encode('utf-8'), datatype, count)
+        if isinstance(datatype, str):
+            t = self.libdax.dax_string_to_type(ds, datatype.encode('utf-8'))
+            if t == 0:
+                # TODO: more descriptive error
+                raise RuntimeError
+        else:
+            t = datatype
+        x = self.libdax.dax_tag_add(ds, byref(h), name.encode('utf-8'), t, count)
         if x < 0:
             raise RuntimeError
         return h
@@ -138,3 +145,31 @@ class LibDaxWrapper:
         if result == defines["ERR_OVERFLOW"]:
             raise Overflow
         return buff, mask
+
+    # creates and returns the data type given by 'name' and members.  members
+    # should be an array of tuples where each array element represents one
+    # member of the cdt and the tuple should be (name, type, count)
+    def dax_add_cdt(self, ds, name, members):
+        dt = c_uint()
+        cdt = self.libdax.dax_cdt_new(name.encode('utf-8'), 0)
+        for member in members:
+            if isinstance(member[1], str):
+                t = self.libdax.dax_string_to_type(ds, member[1].encode('utf-8'))
+                if t == 0:
+                    # TODO: more descriptive error
+                    raise RuntimeError
+            else:
+                t = member[1]
+            x = self.libdax.dax_cdt_member(ds, cdt, member[0].encode('utf-8'), t, member[2])
+            if x < 0:
+                # TODO: more descriptive error
+                raise RuntimeError
+
+        x = self.libdax.dax_cdt_create(ds, cdt, byref(dt))
+        if x < 0:
+            # TODO: more descriptive error
+            raise RuntimeError
+        return dt
+
+    def dax_string_to_type(self, ds, name):
+        return c_uint(self.libdax.dax_string_to_type(ds, name.encode('utf-8'))).value

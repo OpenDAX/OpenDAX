@@ -6,7 +6,8 @@ FAIL = 1
 
 run_test("tests/random.lua", "Random Tag Addition Test")
 run_test("tests/tagname.lua", "Tagname Addition Test")
-run_test("tests/handles.lua", "Tag Handle Retrieval Test")
+-- This one has been replaced with a python unittest
+--run_test("tests/handles.lua", "Tag Handle Retrieval Test")
 
 run_test("tests/status.lua", "Status Retrieve test")
 run_test("tests/readwrite.lua", "Read / Write Test")
@@ -25,4 +26,3 @@ run_test("tests/eventdeadband.lua", "Event Deadband Test")
 run_test("tests/events.lua", "Event Notification Test")
 
 --run_test("tests/lazy.lua", "Lazy Programmer Test")
-
