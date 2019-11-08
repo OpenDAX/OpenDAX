@@ -42,19 +42,25 @@ class TestSingle(unittest.TestCase):
         x = self.dax.dax_configure(self.ds, ["test"], 4)
         x = self.dax.dax_connect(self.ds)
 
+        members = [("Int5", "INT", 5),     # 10
+                   ("Bool10", "BOOL", 10), #  2
+                   ("Dint1", "DINT", 1),   #  4
+                   ("Dint3", "DINT", 3)]   # 12
+                                           # 28 Total
+        test1 = self.dax.dax_add_cdt(self.ds, "Test1", members)
+
     def tearDown(self):
         x = self.dax.dax_disconnect(self.ds)
         self.server.terminate()
         self.server.wait()
 
     def test_cdt_add(self):
-        t = daxwrapper.defines["DAX_INT"]
-        self.dax.dax_tag_add(self.ds, "TestInt", t)
-        h = self.dax.dax_tag_handle(self.ds, "TestInt.6", 1)
+        self.dax.dax_tag_add(self.ds, "TestCDT", "Test1")
+        h = self.dax.dax_tag_handle(self.ds, "TestCDT.Int5.4", 1)
         self.assertEqual(h.byte, 0)
         self.assertEqual(h.size, 1)
         self.assertEqual(h.type, daxwrapper.defines["DAX_BOOL"])
-        self.assertEqual(h.bit, 6)
+        self.assertEqual(h.bit, 4)
         self.assertEqual(h.count, 1)
 
 

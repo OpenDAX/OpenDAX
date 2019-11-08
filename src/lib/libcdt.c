@@ -468,6 +468,42 @@ _get_index(char *str)
     return index;
 }
 
+/* called when a bit index is found in the tag string.  i.e. tagname.3.  The
+ * function determines if all is okay and if so it finishes the handle definition
+ * and returns 0 otherwise it returns an error */
+static int
+_parse_bit_index(dax_state *ds, tag_type type, Handle *h, char *digit, int index, int count)
+{
+    char *endptr;
+    int size;
+
+    if(type == DAX_BOOL || type == DAX_TIME ||
+       type == DAX_REAL || type == DAX_LREAL ||
+       IS_CUSTOM(type)) {
+           return ERR_BADTYPE;
+       }
+    if(index < 0) index = 0;
+    h->bit = strtol(digit, &endptr, 10);
+    /* This indicates that there is extra text past the number */
+    if(endptr[0] != '\0') {
+        //dax_error(ds, "Tag %s, has no member %s", tagname, nextname);
+        return ERR_ARG;
+    }
+    size = dax_get_typesize(ds, type);
+    if(h->bit > size*8) {
+        return ERR_2BIG;
+    }
+    if(count == 0) count = 1;
+    if((h->bit + count) > size*8) {
+        return ERR_2BIG;
+    }
+    h->byte += size * index + (h->bit / 8);
+    h->bit = h->bit % 8;
+    h->type = DAX_BOOL;
+    h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
+    h->count = count;
+    return 0;
+}
 
 static int
 _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int count)
@@ -520,6 +556,12 @@ _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int c
     if(this == NULL) return ERR_NOTFOUND;
 
     if(nextname) { /* Not the last item */
+        if(isdigit(nextname[0])) {
+            if(this->count > 1 && index <0) {
+                return ERR_ARG;
+            }
+            return _parse_bit_index(ds, this->type, h, nextname, index, count);
+        }
         result = _parse_next_member(ds, this->type, h, nextname, count);
         if(result) return result;
         if(index != ERR_NOTFOUND) {
@@ -576,7 +618,6 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
     dax_tag tag;
     char tagname[strlen]; /* Hack alert */
     char *membername;
-    char *endptr;
 
     if(str == NULL) {
         return ERR_ARG;
@@ -584,7 +625,7 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
 
     strcpy(tagname, str);
     membername = _split_tagname(tagname);
-    index = _get_index(tagname);
+    index = _get_index(tagname); /* Get array index inside [] */
     if(index < 0 && index != ERR_NOTFOUND) {
         return index;
     }
@@ -596,32 +637,10 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
     if(membername) {
         /* This is the case where the .x is a number refering to a bit */
         if(isdigit(membername[0])) {
-            if(tag.type == DAX_BOOL || tag.type == DAX_TIME ||
-               tag.type == DAX_REAL || tag.type == DAX_LREAL ||
-               IS_CUSTOM(tag.type)) {
-                   return ERR_BADTYPE;
-               }
-            if(index < 0) index = 0;
-            h->bit = strtol(membername, &endptr, 10);
-            /* This indicates that there is extra text past the number */
-            if(endptr[0] != '\0') {
-                dax_error(ds, "Tag %s, has no member %s", tagname, membername);
+            if(tag.count > 1 && index < 0) {
                 return ERR_ARG;
             }
-            size = dax_get_typesize(ds, tag.type);
-            if(h->bit > size*8) {
-                return ERR_2BIG;
-            }
-            h->byte = size * index + (h->bit / 8);
-            h->bit = h->bit % 8;
-            h->type = DAX_BOOL;
-            h->size = (h->bit + count - 1) / 8 - (h->bit / 8) + 1;
-            if(count == 0) count = 1;
-            h->count = count;
-            if((h->byte*8 + h->bit + count) > size*8) {
-                return ERR_2BIG;
-            }
-            return 0;
+            return _parse_bit_index(ds, tag.type, h, membername, index, count);
         }
         else if(!IS_CUSTOM(tag.type)) {
             dax_error(ds, "Tag %s, has no member %s", tagname, membername);

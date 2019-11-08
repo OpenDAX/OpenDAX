@@ -46,10 +46,11 @@ handleTestsPass = [("HandleBool1",                 0,  0,  0, 1,  1,  "BOOL"),
                    ("HandleBool33[7]",             1,  0,  7, 1,  1,  "BOOL"),
                    ("HandleBool33[3]",             8,  0,  3, 8,  2,  "BOOL"),
                    ("HandleBool33[3]",             9,  0,  3, 9,  2,  "BOOL"),
-                   ("HandleInt[1]",                1,  2,  0, 1,  2,  "INT",),
-                   ("HandleInt",                   0,  0,  0, 2,  4,  "INT",),
-                   ("HandleInt",                   1,  0,  0, 1,  2,  "INT",),
-                   ("HandleInt32",                 1,  0,  0, 1,  2,  "INT",),
+                   ("HandleInt2[1]",               1,  2,  0, 1,  2,  "INT"),
+                   ("HandleInt2",                  0,  0,  0, 2,  4,  "INT"),
+                   ("HandleInt",                   1,  0,  0, 1,  2,  "INT"),
+                   ("HandleInt32",                 1,  0,  0, 1,  2,  "INT"),
+                   ("HandleInt32",                 0,  0,  0, 32, 64, "INT"),
                    ("HandleTest1",                 0,  0,  0, 1,  28, "Test1"),
                    ("HandleTest1.Dint3",           0,  16, 0, 3,  12, "DINT"),
                    ("HandleTest1.Dint3[0]",        2,  16, 0, 2,  8,  "DINT"),
@@ -79,7 +80,10 @@ handleTestsPass = [("HandleBool1",                 0,  0,  0, 1,  1,  "BOOL"),
                    ("HandleInt.5",                 0,  0,  5, 1,  1,  "BOOL"),
                    ("HandleInt.12",                0,  1,  4, 1,  1,  "BOOL"),
                    ("HandleInt.12",                4,  1,  4, 4,  1,  "BOOL"),
-                   ("HandleInt.15",                0,  1,  7, 1,  1,  "BOOL")]
+                   ("HandleInt.15",                0,  1,  7, 1,  1,  "BOOL"),
+                   ("HandleTest1.Int5[0].5",          0,  0,  5, 1,  1,  "BOOL"),# Should these fail because of an ungiven index?
+                   ("HandleTest1.Dint3[0].5",         0,  16, 5, 1,  1,  "BOOL"),
+                   ("HandleTest1.Dint3[0].15",        0,  17, 7, 1,  1, "BOOL")]
 
 # These tests should fail
 #                    NAME                          N   B   b  c   s   TYPE
@@ -93,7 +97,11 @@ handleTestsFail = [("HandleBool7[6]",              2,  0,  6, 2,  1,  "BOOL"),
                    ("HandleTest2[0].NotAMember",   0,  0,  0, 0,  0,  "Yup"),
                    ("NoTagName",                   0,  0,  0, 0,  0,  "Duh"),
                    ("HandleInt.16",                0,  1,  4, 1,  1,  "BOOL"),
-                   ("HandleInt.12",                5,  1,  4, 1,  1,  "BOOL"),
+                   ("HandleInt.15",                2,  1,  4, 1,  1,  "BOOL"),
+                   ("HandleInt32[0].15",           2,  1,  4, 1,  1,  "BOOL"),
+                   ("HandleInt.6e",                1,  1,  4, 1,  1,  "BOOL"),
+                   ("HandleInt2.7",                2,  1,  4, 1,  1,  "BOOL"),
+                   ("HandleTest1.Dint3.5",         0,  16, 5, 1,  1,  "BOOL"),
                    ("",                            0,  0,  0, 0,  0,  "Yup")]
 
 
@@ -154,7 +162,8 @@ class TestHandles(unittest.TestCase):
         self.dax.dax_tag_add(self.ds, "HandleBool8", "BOOL", 8)
         self.dax.dax_tag_add(self.ds, "HandleBool9", "BOOL", 9)
         self.dax.dax_tag_add(self.ds, "HandleBool33", "BOOL", 33)
-        self.dax.dax_tag_add(self.ds, "HandleInt", "INT", 2)
+        self.dax.dax_tag_add(self.ds, "HandleInt", "INT", 1)
+        self.dax.dax_tag_add(self.ds, "HandleInt2", "INT", 2)
         self.dax.dax_tag_add(self.ds, "HandleInt32", "INT", 32)
         self.dax.dax_tag_add(self.ds, "HandleTest1", "Test1", 1)
         self.dax.dax_tag_add(self.ds, "HandleTest2", test2, 5)
@@ -180,7 +189,6 @@ class TestHandles(unittest.TestCase):
             b = test[3]
             c = test[4]
             s = test[5]
-            print(name)
             if isinstance(test[6], str):
                 dt = self.dax.dax_string_to_type(self.ds, test[6])
             else:
