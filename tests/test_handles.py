@@ -111,7 +111,7 @@ class TestHandles(unittest.TestCase):
         self.server = subprocess.Popen(["src/server/tagserver",
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
-                                        #stdout=subprocess.DEVNULL
+                                        stdout=subprocess.DEVNULL
                                         )
         time.sleep(0.1)
         x = self.server.poll()
@@ -165,6 +165,8 @@ class TestHandles(unittest.TestCase):
         self.dax.dax_tag_add(self.ds, "HandleInt", "INT", 1)
         self.dax.dax_tag_add(self.ds, "HandleInt2", "INT", 2)
         self.dax.dax_tag_add(self.ds, "HandleInt32", "INT", 32)
+        self.dax.dax_tag_add(self.ds, "HandleReal", "REAL", 1)
+        self.dax.dax_tag_add(self.ds, "HandleReal16", "REAL", 16)
         self.dax.dax_tag_add(self.ds, "HandleTest1", "Test1", 1)
         self.dax.dax_tag_add(self.ds, "HandleTest2", test2, 5)
         self.dax.dax_tag_add(self.ds, "HandleTest3", test3, 1)
@@ -212,6 +214,17 @@ class TestHandles(unittest.TestCase):
             dt = test[6]
             with self.assertRaises(RuntimeError):
                 h = self.dax.dax_tag_handle(self.ds, name, N)
+
+    def test_handels_wrong_type(self):
+        with self.assertRaises(RuntimeError):
+            h = self.dax.dax_tag_handle(self.ds, "HandleBool8.3")
+        with self.assertRaises(RuntimeError):
+            h = self.dax.dax_tag_handle(self.ds, "HandleReal.3")
+        with self.assertRaises(RuntimeError):
+            h = self.dax.dax_tag_handle(self.ds, "HandleReal16[2].3")
+        with self.assertRaises(RuntimeError):
+            h = self.dax.dax_tag_handle(self.ds, "HandleTest2[0].Test1[0].4")
+
 
 if __name__ == '__main__':
     unittest.main()
