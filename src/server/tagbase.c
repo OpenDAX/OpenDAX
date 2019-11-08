@@ -59,35 +59,35 @@ _checktype(tag_type type)
 {
     int index;
 
-    if(type & DAX_BOOL)
+    if(type == DAX_BOOL)
         return 0;
-    if(type & DAX_BYTE)
+    if(type == DAX_BYTE)
         return 0;
-    if(type & DAX_SINT)
+    if(type == DAX_SINT)
         return 0;
-    if(type & DAX_WORD)
+    if(type == DAX_WORD)
         return 0;
-    if(type & DAX_INT)
+    if(type == DAX_INT)
         return 0;
-    if(type & DAX_UINT)
+    if(type == DAX_UINT)
         return 0;
-    if(type & DAX_DWORD)
+    if(type == DAX_DWORD)
         return 0;
-    if(type & DAX_DINT)
+    if(type == DAX_DINT)
         return 0;
-    if(type & DAX_UDINT)
+    if(type == DAX_UDINT)
         return 0;
-    if(type & DAX_TIME)
+    if(type == DAX_TIME)
         return 0;
-    if(type & DAX_REAL)
+    if(type == DAX_REAL)
         return 0;
-    if(type & DAX_LWORD)
+    if(type == DAX_LWORD)
         return 0;
-    if(type & DAX_LINT)
+    if(type == DAX_LINT)
         return 0;
-    if(type & DAX_ULINT)
+    if(type == DAX_ULINT)
         return 0;
-    if(type & DAX_LREAL)
+    if(type == DAX_LREAL)
         return 0;
     /* NOTE: This will only work as long as we don't allow CDT's to be deleted */
     if(IS_CUSTOM(type)) {
