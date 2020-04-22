@@ -105,8 +105,9 @@ handleTestsFail = [("HandleBool7[6]",              2,  0,  6, 2,  1,  "BOOL"),
                    ("",                            0,  0,  0, 0,  0,  "Yup")]
 
 
-class TestHandles(unittest.TestCase):
-
+class TestHandles_LoopTests(unittest.TestCase):
+    """Tests all of the above handles in a couple of loop tests.  It would be
+       better if these tests were flattened out, but these will work for now"""
     def setUp(self):
         self.server = subprocess.Popen(["src/server/tagserver",
                                         "-C",
@@ -215,7 +216,44 @@ class TestHandles(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 h = self.dax.dax_tag_handle(self.ds, name, N)
 
+class TestHandles_FlatTests(unittest.TestCase):
+    def setUp(self):
+        self.server = subprocess.Popen(["src/server/tagserver",
+                                        "-C",
+                                        "tests/config/tagserver_basic.conf"],
+                                        stdout=subprocess.DEVNULL
+                                        )
+        time.sleep(0.1)
+        x = self.server.poll()
+        self.assertIsNone(x)
+        self.dax = daxwrapper.LibDaxWrapper()
+        self.ds = self.dax.dax_init("test")
+        x = self.dax.dax_init_config(self.ds, "test")
+        x = self.dax.dax_configure(self.ds, ["test"], 4)
+        x = self.dax.dax_connect(self.ds)
+
+    def tearDown(self):
+        x = self.dax.dax_disconnect(self.ds)
+        self.server.terminate()
+        self.server.wait()
+
     def test_handels_wrong_type(self):
+        members = [("Int5", "INT", 5),     # 10
+                   ("Bool10", "BOOL", 10), #  2
+                   ("Dint1", "DINT", 1),   #  4
+                   ("Dint3", "DINT", 3)]   # 12
+                                           # 28 Total
+        test1 = self.dax.dax_add_cdt(self.ds, "Test1", members)
+
+        members = [("Int3", "INT", 3),     #   6
+                   ("Test1", "Test1", 5)]  # 140
+                                           # 146 Total
+        test2 = self.dax.dax_add_cdt(self.ds, "Test2", members)
+
+        self.dax.dax_tag_add(self.ds, "HandleBool8", "BOOL", 8)
+        self.dax.dax_tag_add(self.ds, "HandleReal", "REAL", 1)
+        self.dax.dax_tag_add(self.ds, "HandleReal16", "REAL", 16)
+        self.dax.dax_tag_add(self.ds, "HandleTest2", test2, 5)
         with self.assertRaises(RuntimeError):
             h = self.dax.dax_tag_handle(self.ds, "HandleBool8.3")
         with self.assertRaises(RuntimeError):
@@ -224,6 +262,8 @@ class TestHandles(unittest.TestCase):
             h = self.dax.dax_tag_handle(self.ds, "HandleReal16[2].3")
         with self.assertRaises(RuntimeError):
             h = self.dax.dax_tag_handle(self.ds, "HandleTest2[0].Test1[0].4")
+
+
 
 
 if __name__ == '__main__':
