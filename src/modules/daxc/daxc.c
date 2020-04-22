@@ -133,6 +133,60 @@ int main(int argc,char *argv[]) {
     return(0);
 }
 
+int
+get_help(char **tokens) {
+    if(tokens[0] == NULL) {
+        printf("Usage: command <args>...\n");
+        printf("Commands: \n ADD\n DEL\n LIST\n READ\n WRITE\n WAIT\n POLL\n EXIT\n");
+        printf("For more information type: help <command>\n");
+    } else if(!strncasecmp(tokens[0], "add", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: ADD [TAG|TYPE|MAP|EVENT] <args>...\n\n");
+            printf("Add the given type of object\n");
+            printf("")
+        }
+    } else if(!strncasecmp(tokens[0], "del", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: DEL [TAG|TYPE|MAP|EVENT]\n\n");
+        } else if(!strncasecmp(tokens[1], "tag", 3)) {
+            printf("Usage: DEL TAG tagname\n\n");
+            printf("THIS IS NOT CURRENTLY IMPLEMENTED\n");
+        } else if(!strncasecmp(tokens[1], "type", 4)) {
+            printf("Usage: DEL TYPE typename\n\n");
+            printf("THIS IS NOT CURRENTLY IMPLEMENTED\n");
+        } else if(!strncasecmp(tokens[1], "map", 3)) {
+            printf("Usage: DEL MAP index\n\n");
+            printf("Deletes the map given by 'index'\n");
+        } else if(!strncasecmp(tokens[1], "event", 5)) {
+            printf("Usage: DEL EVENT index\n\n");
+            printf("Deletes the map given by 'index'\n");
+        }
+    } else if(!strncasecmp(tokens[0], "list", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: LIST subcommand <args>...\n");
+        }
+    } else if(!strncasecmp(tokens[0], "read", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: READ tag\n");
+        }
+    } else if(!strncasecmp(tokens[0], "write", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: WRITE tag values...\n");
+        }
+    } else if(!strncasecmp(tokens[0], "wait", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: WAIT tags...\n");
+        }
+    } else if(!strncasecmp(tokens[0], "poll", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: POLL tags...\n");
+        }
+    } else if(!strncasecmp(tokens[0], "exit", 3)) {
+        printf("Usage: EXIT\n\n");
+        printf("Will cause the program to exit\n");
+    }
+    return 0;
+}
 
 /* Takes the execution string tokenizes it and runs the appropriate function */
 int
@@ -180,64 +234,65 @@ runcmd(char *instr)
     if( !strcasecmp(tokens[0],"dax")) {
         printf("Haven't done 'dax' yet\n");
     } else if( !strncasecmp(tokens[0], "add", 1)) {
-        result = tag_add(&tokens[1]);
+        if(tokens[1] == NULL) {
+            result = tag_add(&tokens[1]);
+        } else if(!strncasecmp(tokens[1], "tag", 3)) {
+            result = tag_add(&tokens[2]);
+        } else if( !strncasecmp(tokens[1], "type", 4)) {
+            result = cdt_add(&tokens[2], tcount -2);
+        } else if( !strncasecmp(tokens[1], "map", 3)) {
+            result = map_add(&tokens[2], tcount -2);
+        } else if( !strncasecmp(tokens[1], "event", 5)) {
+            result = event_add(&tokens[2], tcount - 2);
+        }
+    } else if( !strncasecmp(tokens[0], "del", 3)) {
+        if(tokens[1] == NULL) {
+            fprintf(stderr, "ERROR: DEL What?\n");
+        } else if( !strncasecmp(tokens[1], "map", 3)) {
+            result = map_del(&tokens[2], tcount-2);
+        } else if( !strncasecmp(tokens[1], "event", 5)) {
+            event_del(&tokens[2]);
+        }
+
     } else if( !strncasecmp(tokens[0], "list", 4)) {
         if(tokens[1] == NULL) {
             result = list_tags(NULL);
         } else if(!strncasecmp(tokens[1], "tag", 3)) {
             result = list_tags(&tokens[2]);
-        } else if(!strncasecmp(tokens[1], "type", 3)) {
+        } else if(!strncasecmp(tokens[1], "type", 4)) {
             result = list_types(&tokens[2]);
+        } else if(!strncasecmp(tokens[1], "map", 3)) {
+            result = map_get(&tokens[2], tcount-2);
         } else {
             fprintf(stderr, "ERROR: Unknown list parameter %s\n", tokens[1]);
         }
+
     } else if( !strncasecmp(tokens[0], "read", 1)) {
         result = tag_read(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "write", 1)) {
         result = tag_write(&tokens[1], tcount-1);
-    } else if( !strncasecmp(tokens[0], "cdt", 3)) {
-        result = cdt_add(&tokens[1], tcount -1);
-    } else if( !strncasecmp(tokens[0], "map", 3)) {
-        if(tokens[1] == NULL) {
-            fprintf(stderr, "ERROR: MAP requires a subcommand.  Try ADD, DEL GET\n");
-        } else if( !strncasecmp(tokens[1], "add", 3)) {
-            result = map_add(&tokens[2], tcount-2);
-        } else if( !strncasecmp(tokens[1], "del", 3)) {
-            result = map_del(&tokens[2], tcount-2);
-        } else if( !strncasecmp(tokens[1], "get", 3)) {
-            result = map_get(&tokens[2], tcount-2);
-        }
+    } else if( !strncasecmp(tokens[0], "wait", 4)) {
+        event_wait(&tokens[1]);
+    } else if( !strncasecmp(tokens[0], "poll", 4)) {
+        event_poll();
 
 //    } else if( !strncasecmp(tokens[0], "mod", 3)) {
 //        printf("Haven't done 'mod' yet!\n");
-    } else if( !strcasecmp(tokens[0],"db")) {
-        result = db_read(&tokens[1]);
+    // } else if( !strcasecmp(tokens[0],"db")) {
+        // result = db_read(&tokens[1]);
 //        if(tokens[1] == NULL) fprintf(stderr, "ERROR: Missing Subcommand\n");
 //        else if( !strcasecmp(tokens[1], "read")) result = db_read();
 //    //  else if( !strcasecmp(tokens[1], "readbit")) result = db_read_bit();
 //        else if( !strcasecmp(tokens[1], "write")) result = db_write();
 //        else if( !strcasecmp(tokens[1], "format")) result = db_format();
 //        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tokens[0]);
-    } else if( !strncasecmp(tokens[0], "event", 5)) {
-        if( tokens[1] == NULL) {
-            fprintf(stderr, "ERROR: EVENT requires a subcommand.  Try ADD, DEL, WAIT, POLL\n");
-        } else if( !strncasecmp(tokens[1], "add", 3)) {
-            event_add(&tokens[2], tcount - 2);
-        } else if( !strncasecmp(tokens[1], "del", 3)) {
-            event_del(&tokens[2]);
-        } else if( !strncasecmp(tokens[1], "wait", 4)) {
-            event_wait(&tokens[2]);
-        } else if( !strncasecmp(tokens[1], "poll", 4)) {
-            event_poll();
-        } else {
-            fprintf(stderr, "ERROR: Unknown subcommand '%s'\n", tokens[1]);
-        }
-    } else if( !strcasecmp(tokens[0],"msg")) {
-        printf("Haven't done 'msg' yet!\n");
+    // } else if( !strcasecmp(tokens[0],"msg")) {
+    //     printf("Haven't done 'msg' yet!\n");
     /* TODO: Really should work on the help command */
     } else if( !strcasecmp(tokens[0], "help")) {
-        printf("Hehehehe, Yea right!\n");
-        printf(" Try READ, WRITE, LIST, ADD\n");
+        get_help(&tokens[1]);
+        // printf("Hehehehe, Yea right!\n");
+        // printf(" Try READ, WRITE, LIST, ADD\n");
 
     } else if( !strcasecmp(tokens[0],"exit")) {
         getout(0);
