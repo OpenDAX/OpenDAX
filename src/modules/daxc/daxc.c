@@ -143,7 +143,6 @@ get_help(char **tokens) {
         if(tokens[1] == NULL) {
             printf("Usage: ADD [TAG|TYPE|MAP|EVENT] <args>...\n\n");
             printf("Add the given type of object\n");
-            printf("")
         }
     } else if(!strncasecmp(tokens[0], "del", 3)) {
         if(tokens[1] == NULL) {
