@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,8 +14,8 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
- 
+
+
  *  This file contains the global macros, includes and definitions for
  *  all the files in the entire system.
  */
@@ -23,10 +23,7 @@
 #ifndef __COMMON_H
 #define __COMMON_H
 
-/* Are we using config.h */
-#ifdef HAVE_CONFIG_H
-  #include <config.h>
-#endif
+#include <config.h>
 
 /* including all this is just easier. */
 #include <stdlib.h>
@@ -35,20 +32,12 @@
 #include <errno.h>
 #include <assert.h>
 #include <assert.h>
-#ifdef HAVE_SYS_TYPES_H
- #include <sys/types.h>
-#endif
-#ifdef HAVE_STRING_H
- #include <string.h>
-#endif
-#ifdef HAVE_STRINGS_H
- #include <strings.h>
-#endif
-#ifdef HAVE_SYS_SELECT_H
- #include <sys/select.h>
- #ifndef FD_COPY
+#include <sys/types.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/select.h>
+#ifndef FD_COPY
   #define FD_COPY(f, t) (void)(*(t) = *(f))
- #endif
 #endif
 
 
@@ -64,44 +53,9 @@
 
 #define DAX_64_ONES 0xFFFFFFFFFFFFFFFFULL
 
-/* All this silliness is because the different distributions have the libraries
- and header files for lua in different places with different names.
- There has got to be a better way. */
-#if defined(HAVE_LUA5_1_LUA_H)
-#  include <lua5.1/lua.h>
-#elif defined(HAVE_LUA51_LUA_H)
-#  include <lua51/lua.h>
-#elif defined(HAVE_LUA_LUA_H)
-#  include <lua/lua.h>
-#elif defined(HAVE_LUA_H)
-#  include <lua.h>
-#else
-#  error "lua.h Not Found"
-#endif
-
-#if defined(HAVE_LUA51_LAUXLIB_H)
-#  include <lua51/lauxlib.h>
-#elif defined(HAVE_LUA5_1_LAUXLIB_H)
-#  include <lua5.1/lauxlib.h>
-#elif defined(HAVE_LUA_LAUXLIB_H)
-#  include <lua/lauxlib.h>
-#elif defined(HAVE_LAUXLIB_H)
-#  include <lauxlib.h>
-#else
-#  error "lauxlib.h Not Found"
-#endif
-
-#if defined(HAVE_LUA51_LUALIB_H)
-#  include <lua51/lualib.h>
-#elif defined(HAVE_LUA5_1_LUALIB_H)
-#  include <lua5.1/lualib.h>
-#elif defined(HAVE_LUA_LUALIB_H)
-#  include <lua/lualib.h>
-#elif defined(HAVE_LUALIB_H)
-#  include <lualib.h>
-#else
-#  error "lualib.h Not Found"
-#endif 
+# include <lua.h>
+# include <lauxlib.h>
+# include <lualib.h>
 
 
 /* These are conditionally compiled debug statements. */
@@ -109,8 +63,8 @@
 # define DAX_DEBUG(x) dax_debug(5, x);
 # define DAX_DEBUG2(x, y) dax_debug(5, x, y);
 #else
-# define DAX_DEBUG(x) 
-# define DAX_DEBUG2(x, y) 
+# define DAX_DEBUG(x)
+# define DAX_DEBUG2(x, y)
 #endif
 
 #endif
