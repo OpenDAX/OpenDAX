@@ -20,13 +20,14 @@ import pexpect
 import signal
 import time
 import tests.util.daxwrapper as daxwrapper
+import testconfig
 
-daxc_path = "src/modules/daxc/daxc"
+daxc_path = "{}/src/modules/daxc/daxc".format(testconfig.build_dir)
 
 class TestDaxc(unittest.TestCase):
 
     def setUp(self):
-        self.server = subprocess.Popen(["src/server/tagserver",
+        self.server = subprocess.Popen([testconfig.tagserver_file,
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
                                         stdout=subprocess.DEVNULL)
@@ -49,9 +50,9 @@ class TestDaxc(unittest.TestCase):
         """add a single tag with and without the count argument"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy int')
+        p.sendline('add tag dummy int')
         p.expect('dax>')
-        p.sendline('add dummy2 int 1')
+        p.sendline('add tag dummy2 int 1')
         p.expect('dax>')
         p.sendline('list')
         p.expect('dax>')
@@ -72,7 +73,7 @@ class TestDaxc(unittest.TestCase):
         """add an array tag"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy int 10')
+        p.sendline('add tag dummy int 10')
         p.expect('dax>')
         p.sendline('list')
         p.expect('dax>')
@@ -95,7 +96,7 @@ class TestDaxc(unittest.TestCase):
             uc = each
             lc = uc.lower()
             tag = "dummy_{}".format(lc)
-            p.sendline("add {} {}".format(tag, uc))
+            p.sendline("add tag {} {}".format(tag, uc))
             p.expect('dax>')
             t = self.dax.dax_tag_byname(self.ds, tag)
             self.assertEqual(t.type, daxwrapper.defines["DAX_{}".format(uc)])
@@ -106,7 +107,7 @@ class TestDaxc(unittest.TestCase):
     def test_write_bool(self):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy bool')
+        p.sendline('add tag dummy bool')
         p.expect('dax>')
         p.sendline('write dummy 1')
         p.expect('dax>')
@@ -114,7 +115,7 @@ class TestDaxc(unittest.TestCase):
         data = self.dax.dax_read_tag(self.ds, h)
         self.assertEqual(data, b'\x01')
 
-        p.sendline('add dummy2 bool 16')
+        p.sendline('add tag dummy2 bool 16')
         p.expect('dax>')
         p.sendline('write dummy2 0 1 0 1 0 1 0 1')
         p.expect('dax>')
@@ -150,7 +151,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy byte')
+            p.sendline('add tag dummy byte')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -175,7 +176,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy sint')
+            p.sendline('add tag dummy sint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -198,7 +199,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy word')
+            p.sendline('add tag dummy word')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -221,7 +222,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy uint')
+            p.sendline('add tag dummy uint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -247,7 +248,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy int')
+            p.sendline('add tag dummy int')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -272,7 +273,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy dword')
+            p.sendline('add tag dummy dword')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -297,7 +298,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy udint')
+            p.sendline('add tag dummy udint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -324,7 +325,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy dint')
+            p.sendline('add tag dummy dint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -349,7 +350,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy lword')
+            p.sendline('add tag dummy lword')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -374,7 +375,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy ulint')
+            p.sendline('add tag dummy ulint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -401,7 +402,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy lint')
+            p.sendline('add tag dummy lint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -424,7 +425,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy real')
+            p.sendline('add tag dummy real')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -445,7 +446,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy lreal')
+            p.sendline('add tag dummy lreal')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -458,14 +459,14 @@ class TestDaxc(unittest.TestCase):
     def test_read_bool(self):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy bool')
+        p.sendline('add tag dummy bool')
         p.expect('dax>')
         p.sendline('read dummy')
         answer = p.readline()
         p.expect('dax>')
         answer = p.before
         self.assertEqual(answer, b'0\r\n')
-        p.sendline('add dummy2 bool 16')
+        p.sendline('add tag dummy2 bool 16')
         p.expect('dax>')
         p.sendline('write dummy2 0 1 0 1 0 1 0 1')
         p.expect('dax>')
@@ -489,7 +490,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a BYTE"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy byte')
+        p.sendline('add tag dummy byte')
         p.expect('dax>')
         p.sendline('write dummy 57')
         p.expect('dax>')
@@ -503,7 +504,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a SINT"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy sint')
+        p.sendline('add tag dummy sint')
         p.expect('dax>')
         p.sendline('write dummy -57')
         p.expect('dax>')
@@ -517,7 +518,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a WORD"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy word')
+        p.sendline('add tag dummy word')
         p.expect('dax>')
         p.sendline('write dummy 31234')
         p.expect('dax>')
@@ -531,7 +532,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a UINT"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy UINT')
+        p.sendline('add tag dummy UINT')
         p.expect('dax>')
         p.sendline('write dummy 31235')
         p.expect('dax>')
@@ -545,7 +546,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a INT"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy INT')
+        p.sendline('add tag dummy INT')
         p.expect('dax>')
         p.sendline('write dummy -31235')
         p.expect('dax>')
@@ -559,7 +560,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a DWORD"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy dword')
+        p.sendline('add tag dummy dword')
         p.expect('dax>')
         p.sendline('write dummy 31235000')
         p.expect('dax>')
@@ -573,7 +574,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a UDINT"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy udint')
+        p.sendline('add tag dummy udint')
         p.expect('dax>')
         p.sendline('write dummy 312350001')
         p.expect('dax>')
@@ -587,7 +588,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a DINT"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy dint')
+        p.sendline('add tag dummy dint')
         p.expect('dax>')
         p.sendline('write dummy -312350001')
         p.expect('dax>')
@@ -601,7 +602,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a LWORD"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy lword')
+        p.sendline('add tag dummy lword')
         p.expect('dax>')
         p.sendline('write dummy 312350001000')
         p.expect('dax>')
@@ -615,7 +616,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a ULINT"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy ulint')
+        p.sendline('add tag dummy ulint')
         p.expect('dax>')
         p.sendline('write dummy 312350001001')
         p.expect('dax>')
@@ -629,7 +630,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a LINT"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy lint')
+        p.sendline('add tag dummy lint')
         p.expect('dax>')
         p.sendline('write dummy -312350001001')
         p.expect('dax>')
@@ -643,7 +644,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a REAL"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy real')
+        p.sendline('add tag dummy real')
         p.expect('dax>')
         p.sendline('write dummy 3.141592')
         p.expect('dax>')
@@ -657,7 +658,7 @@ class TestDaxc(unittest.TestCase):
         """check that we can read a LREAL"""
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
-        p.sendline('add dummy lreal')
+        p.sendline('add tag dummy lreal')
         p.expect('dax>')
         p.sendline('write dummy -312351234567.123456789')
         p.expect('dax>')
@@ -682,7 +683,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy lword')
+            p.sendline('add tag dummy lword')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -705,7 +706,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy ulint')
+            p.sendline('add tag dummy ulint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')
@@ -730,7 +731,7 @@ class TestDaxc(unittest.TestCase):
         p = pexpect.spawn(daxc_path)
         p.expect('dax>')
         for test in tests:
-            p.sendline('add dummy lint')
+            p.sendline('add tag dummy lint')
             p.expect('dax>')
             p.sendline('write dummy {}'.format(test[0]))
             p.expect('dax>')

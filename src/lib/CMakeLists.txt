@@ -16,5 +16,9 @@
 
 include_directories(.)
 
-add_library(libdax libcdt.c libconv.c libdata.c
+add_library(dax libcdt.c libconv.c libdata.c
             libevent.c libfunc.c libinit.c libmsg.c libopt.c)
+
+target_link_libraries(dax ${LUA_LIBRARIES})
+
+add_subdirectory(lua)

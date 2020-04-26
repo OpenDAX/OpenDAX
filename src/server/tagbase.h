@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,12 +14,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  * This is the header file for the tagname database handling routines
  */
 
-#include <daxtypes.h>
 #include <libcommon.h>
+#include "daxtypes.h"
 #include <opendax.h>
 
 #ifndef __TAGBASE_H

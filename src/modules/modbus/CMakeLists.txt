@@ -14,8 +14,11 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-#include_directories(.)
-add_executable(tagserver server.c options.c func.c module.c message.c
-               tagbase.c crc.c buffer.c events.c mapping.c)
-target_link_libraries(tagserver ${LUA_LIBRARIES})
-target_link_libraries(tagserver pthread)
+include_directories(.)
+add_subdirectory(lib)
+add_executable(modbus_module modmain.c modopt.c database.c)
+set_target_properties(modbus_module PROPERTIES OUTPUT_NAME modbus)
+target_link_libraries(modbus_module modbus)
+target_link_libraries(modbus_module dax)
+target_link_libraries(modbus_module pthread)
+#target_link_libraries(modbus_module ${LUA_LIBRARIES})

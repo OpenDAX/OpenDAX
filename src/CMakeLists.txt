@@ -17,5 +17,5 @@
 configure_file(config.h.in config.h)
 add_subdirectory(lib)
 add_subdirectory(master)
-add_subdirectory(modules)
 add_subdirectory(server)
+add_subdirectory(modules)

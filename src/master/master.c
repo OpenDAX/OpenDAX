@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2012 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -18,15 +18,15 @@
 
 /*  Source code file for the dax master process handling application */
 
+#include "process.h"
+#include "mstr_config.h"
+#include "logger.h"
+#include "daemon.h"
 #include <common.h>
-#include <process.h>
 #include <syslog.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <opendax.h>
-#include <mstr_config.h>
-#include <logger.h>
-#include <daemon.h>
 
 static int quitflag = 0;
 
@@ -39,7 +39,7 @@ main(int argc, const char *argv[])
 {
     struct sigaction sa;
     int restart;
-    
+
     /* Set up the signal handlers */
     /* TODO: We need to handle every signal that could possibly kill us */
     memset (&sa, 0, sizeof(struct sigaction));
@@ -47,7 +47,7 @@ main(int argc, const char *argv[])
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-    
+
     sa.sa_handler = &catch_signal;
     sigaction(SIGHUP, &sa, NULL);
     sigaction(SIGPIPE, &sa, NULL);
@@ -91,7 +91,7 @@ main(int argc, const char *argv[])
             closelog();
             exit(-1);
         }
- 
+
     }
     exit(0);
 }
@@ -124,7 +124,7 @@ child_signal(int sig)
 
     do {
         pid = waitpid(-1, &status, WNOHANG);
-        if(pid > 0) { 
+        if(pid > 0) {
             process_dpq_add(pid, status);
         }
     } while(pid > 0);

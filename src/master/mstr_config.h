@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,17 +14,17 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  *  Header file for opendax configuration
  */
 
 #ifndef __MSTR_CONFIG_H
 #define __MSTR_CONFIG_H
 
+#include "process.h"
 #include <common.h>
 #include <opendax.h>
 #include <libcommon.h>
-#include <process.h>
 
 /* If set to zero the program will run in the foreground
  * by default.  Otherwise it will go to the background */

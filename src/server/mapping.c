@@ -20,8 +20,8 @@
 
 
 #include <common.h>
-#include <tagbase.h>
-#include <func.h>
+#include "tagbase.h"
+#include "func.h"
 
 extern _dax_tag_db *_db;
 

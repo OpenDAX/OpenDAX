@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2012 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -19,9 +19,9 @@
 /* Source file for the process handling functions for the master process
  * handling program. */
 
-#include <process.h>
+#include "process.h"
+#include "logger.h"
 #include <sys/time.h>
-#include <logger.h>
 #include <unistd.h>
 #include <signal.h>
 
@@ -69,7 +69,7 @@ _arglist_tok(char *path, char *str)
     int count = 1;
     int index = 1;
     save=temp=NULL;
-    
+
     if(str!=NULL) {
         /* We need a non const char string for strtok */
         temp = strdup(str);
@@ -89,9 +89,9 @@ _arglist_tok(char *path, char *str)
     } else { /* No path supplied either */
         return NULL;
     }
-    
+
     arr[0] = strdup(path); /* Put the path into the first argument */
-    
+
     /* Now we re-parse the string to add the tokens to the array
        First we have to copy str to temp again.  No sense in using
        strdup() this time since the string is the same and the memory
@@ -105,7 +105,7 @@ _arglist_tok(char *path, char *str)
             token = strtok_r(NULL, " ", &save);
         }
         arr[index] = NULL;
-        
+
         free(temp);
     }
     return arr;
@@ -116,17 +116,17 @@ process_add(char *name, char *path, char *arglist, unsigned int flags)
 {
     dax_process *new, *this;
     xlog(LOG_CONFIG,"Adding process %s to configuration",name);
-    
+
     new = malloc(sizeof(dax_process));
     if(new) {
         new->fd = 0;
         new->efd = 0;
         new->pid = 0;
-        
+
         /* Add the module path to the struct */
         if(path) {
             new->path = strdup(path);
-            
+
             /* tokenize and set arglist */
             new->arglist = _arglist_tok(path, arglist);
         }
@@ -285,17 +285,17 @@ _get_process_pid(pid_t pid)
     return NULL;
 }
 
-/* This function is called from the scan_modules function and is used 
+/* This function is called from the scan_modules function and is used
  * to find and cleanup the module after it has died.  */
 static int
 _cleanup_process(pid_t pid, int status)
 {
     dax_process *proc;
-    
+
     proc = _get_process_pid(pid);
 
     /* at this point _current_mod should be pointing to a module with
-     * the PID that we passed but we should check because there may not 
+     * the PID that we passed but we should check because there may not
      * be a module with our PID */
     if(proc) {
         xlog(LOG_MINOR, "Cleaning up Process %d - Returned Status %d", pid, status);
@@ -517,5 +517,3 @@ _print_process_list(void)
         this = this->next;
     }
 }
-
-

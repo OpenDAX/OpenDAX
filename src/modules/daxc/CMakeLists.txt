@@ -14,8 +14,7 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-include_directories(.)
 add_executable(daxc daxc.c daxc_db.c daxc_event.c daxc_tag.c)
 target_link_libraries(daxc readline)
-target_link_libraries(daxc libdax)
+target_link_libraries(daxc dax)
 target_link_libraries(daxc ${LUA_LIBRARIES})

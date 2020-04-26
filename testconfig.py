@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#  Copyright (c) 2019 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,8 +14,12 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-#include_directories(.)
-add_executable(tagserver server.c options.c func.c module.c message.c
-               tagbase.c crc.c buffer.c events.c mapping.c)
-target_link_libraries(tagserver ${LUA_LIBRARIES})
-target_link_libraries(tagserver pthread)
+# This is used to configure global build specific parameters for the
+# Test system.
+
+# TODO: automatically generate this file with the proper stuff from the
+#       build system
+
+build_dir = "build"
+tagserver_file = "{}/src/server/tagserver".format(build_dir)
+libdax_file = "{}/src/lib/libdax.so".format(build_dir)

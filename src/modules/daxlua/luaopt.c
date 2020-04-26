@@ -19,7 +19,7 @@
  * Configuration source code file for the Lua script interpreter
  */
 
-#include <daxlua.h>
+#include "daxlua.h"
 #include <getopt.h>
 #include <math.h>
 
@@ -39,7 +39,7 @@ _get_new_script(void)
 {
     void *ns;
     int n;
-    
+
     /* Allocate the script array if it has not already been done */
     if(scriptcount == 0) {
         scripts = malloc(sizeof(script_t) * NUM_SCRIPTS);
@@ -72,7 +72,7 @@ _get_new_script(void)
 static int
 _set_trigger(lua_State *L, script_t *s) {
     char *tagname, *string;
-    
+
     lua_getfield(L, -1, "tag");
     s->event_tagname = strdup((char *)lua_tostring(L, -1));
     if(tagname == NULL) {
@@ -175,22 +175,22 @@ int
 configure(int argc, char *argv[])
 {
     int flags, result = 0;
-    
+
     dax_init_config(ds, "daxlua");
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "initscript", "initscript", 'i', flags, "init.lua");
     if(result) {
         dax_fatal(ds, "Problem with the configuration");
     }
-    
+
     dax_set_luafunction(ds, (void *)_add_script, "add_script");
-    
+
     dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
     initscript = strdup(dax_get_attr(ds, "initscript"));
-    
+
     dax_free_config(ds);
-    
+
     return 0;
 }
 
@@ -221,7 +221,7 @@ script_t *
 get_script_name(char *name)
 {
     int n;
-    
+
     for(n = 0; n < scriptcount; n++) {
         if( scripts[n].name && name && ! strcmp(scripts[n].name, name)) {
             return &scripts[n];

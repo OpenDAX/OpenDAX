@@ -17,15 +17,15 @@
  *
 
  * This file contains general functions that are used throughout the
- * OpenDAX program for things like logging, error reporting and 
+ * OpenDAX program for things like logging, error reporting and
  * memory allocation.
  */
 
+ #include "daemon.h"
+ #include "logger.h"
 #include <common.h>
 #include <syslog.h>
 #include <signal.h>
-#include <daemon.h>
-#include <logger.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
@@ -40,7 +40,7 @@ writepidfile(char *progname)
     umask(0);
     snprintf(filename, 40, "%s/%s", PID_FILE_PATH, progname);
     pidfd=open(filename, O_RDWR | O_CREAT | O_TRUNC,S_IRUSR | S_IWUSR);
-    if(!pidfd) 
+    if(!pidfd)
         xerror("Unable to open PID file - %s",filename);
     else {
         sprintf(pid, "%d", getpid());
@@ -58,9 +58,9 @@ daemonize(char *progname)
     pid_t result;
     int n;
     char s[10];
-   
+
     xlog(LOG_MAJOR, "Sending process to background");
-    /* Call fork() and exit as the parent.  This returns control to the 
+    /* Call fork() and exit as the parent.  This returns control to the
        command line and guarantees the program is not a process group
        leader. */
     result = fork();
@@ -73,14 +73,14 @@ daemonize(char *progname)
 
     /*Call setsid() to dump the controlling terminal*/
     result=setsid();
-   
+
     if(result<0) {
         xerror("Unable to dump controlling terminal");
         return(-1);
     }
 
     /* Call fork() and exit as the parent.  This assures that we
-       will never again be able to connect to a controlling 
+       will never again be able to connect to a controlling
        terminal */
     result = fork();
     if(result < 0) {
@@ -88,7 +88,7 @@ daemonize(char *progname)
         return (-1);
     } else if(result > 0)
         exit(0);
-   
+
     /* chdir() to / so that we don't hold any directories open */
     chdir("/");
     /* need control of the permissions of files that we write */
@@ -97,7 +97,7 @@ daemonize(char *progname)
     sprintf(s, "%d", getpid());
     write(2, s, strlen(s));
     writepidfile(progname);
-    
+
     /* Closes the logger before we pull the rug out from under it
        by closing all the file descriptors */
     closelog();
@@ -108,4 +108,3 @@ daemonize(char *progname)
     dup(n); dup(n);
     return 0;
 }
-

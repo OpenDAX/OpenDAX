@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2012 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,14 +14,14 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  *  Source code file for opendax master daemon configuration
  */
 
 
-#include <mstr_config.h>
-#include <logger.h>
-#include <process.h>
+#include "mstr_config.h"
+#include "logger.h"
+#include "process.h"
 #include <getopt.h>
 
 static char *_pidfile;
@@ -32,18 +32,18 @@ static int _verbosity;
 /* Initialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
     int length;
-    
+
     if(!_configfile) {
         length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
         _configfile = (char *)malloc(sizeof(char) * length);
-        if(_configfile) 
+        if(_configfile)
             sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
     }
-    _daemonize = -1; /* We set it to negative so we can determine when it's been set */    
+    _daemonize = -1; /* We set it to negative so we can determine when it's been set */
     _pidfile = NULL;
 }
 
-/* This function sets the defaults if nothing else has been done 
+/* This function sets the defaults if nothing else has been done
    to the configuration parameters to this point */
 static void
 setdefaults(void)
@@ -68,8 +68,8 @@ parsecommandline(int argc, const char *argv[])
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
     };
-      
-/* Get the command line arguments */ 
+
+/* Get the command line arguments */
     while ((c = getopt_long (argc, (char * const *)argv, "C:p:L:VvD",options, NULL)) != -1) {
         switch (c) {
         case 'C':
@@ -84,7 +84,7 @@ parsecommandline(int argc, const char *argv[])
         case 'v':
             _verbosity++;
             break;
-        case 'D': 
+        case 'D':
             _daemonize = 1;
             break;
         case '?':
@@ -97,7 +97,7 @@ parsecommandline(int argc, const char *argv[])
             printf ("?? getopt returned character code 0%o ??\n", c);
             break;
         } /* End Switch */
-    } /* End While */           
+    } /* End While */
 }
 
 /* If the uid was not set in the configuration but the user string was
@@ -161,7 +161,7 @@ _add_process(lua_State *L)
         return 0;
     }
     lua_pop(L, 1);
-    
+
     path = NULL;
     lua_getfield(L, -1, "path");
     path = (char *)lua_tostring(L, -1);
@@ -235,34 +235,34 @@ readconfigfile(void)
 {
     lua_State *L;
     char *string;
-    
+
     xlog(2, "Reading Configuration file %s", _configfile);
     L = lua_open();
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals. */
-    
+
     lua_pushcfunction(L, _add_process);
     lua_setglobal(L, "add_process");
-    
+
     luaopen_base(L);
-    
+
     lua_pushstring(L, "opendax");
     lua_setglobal(L, CONFIG_GLOBALNAME);
-    
+
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
         xerror("Problem executing configuration file - %s", lua_tostring(L, -1));
         return 1;
     }
-    
+
     /* tell lua to push these variables onto the stack */
     lua_getglobal(L, "daemonize");
     if(_daemonize < 0) { /* negative if not already set */
         _daemonize = lua_toboolean(L, -1);
     }
     lua_pop(L, 1);
-    
+
 //    lua_getglobal(L, "statustag");
 //    /* Do I really need to do this???? */
 //    if(_statustag == NULL) {
@@ -271,7 +271,7 @@ readconfigfile(void)
 //        }
 //    }
 //    lua_pop(L, 1);
-    
+
     lua_getglobal(L, "pidfile");
     if(_pidfile == NULL) {
         if( (string = (char *)lua_tostring(L, -1)) ) {
@@ -279,7 +279,7 @@ readconfigfile(void)
         }
     }
     lua_pop(L, 1);
-    
+
 //    lua_getglobal(L, "min_buffers");
 //    if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
 //        _min_buffers = (int)lua_tonumber(L, -1);
@@ -296,12 +296,12 @@ readconfigfile(void)
     if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
         //_verbosity = (int)lua_tonumber(L, 4);
         //set_log_topic(_verbosity);
-        set_log_topic(0xFFFFFFFF);    
+        set_log_topic(0xFFFFFFFF);
     }
-    
+
     /* Clean up and get out */
     lua_close(L);
-    
+
     return 0;
 }
 
@@ -312,7 +312,7 @@ readconfigfile(void)
  * parameter has not been set the defaults are used. */
 int
 opt_configure(int argc, const char *argv[])
-{    
+{
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
@@ -322,7 +322,7 @@ opt_configure(int argc, const char *argv[])
 
     return 0;
 }
- 
+
 int
 opt_daemonize(void)
 {
@@ -334,4 +334,3 @@ opt_pidfile(void)
 {
     return _pidfile;
 }
-

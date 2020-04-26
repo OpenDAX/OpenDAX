@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  *  The DB commands in daxc replicate the low level OpenDAX read / write functions
  */
 
-#include <daxc.h>
+#include "daxc.h"
 #include <ctype.h>
 
 #define FMT_HEX  0x00
@@ -38,7 +38,7 @@ db_read(char **tokens)
     Handle h;
     int result, n;
     unsigned char *buff;
-    
+
     if(tokens == NULL) {
         fprintf(stderr, "ERROR: No Tag Given\n");
         return ERR_ARG;
@@ -65,7 +65,7 @@ db_read(char **tokens)
     printf("Bit Offset:   %d\n", h.bit);
     printf("Count:        %d\n", h.count);
     printf("Size:         %d\n\n", h.size);
-   
+
     for(n = 0; n < h.size; n++) {
         /* TODO: Add formatting */
         printf("[0x%02X] ", buff[n]);
@@ -95,7 +95,7 @@ static int _db_read_getparams(tag_index *handle, size_t *count, char bitsorbytes
     dax_tag tag;
     char tag_given = 0;
     char *tok;
-    
+
     tok = strtok(NULL, " ");
     if(tok == NULL) {
         fprintf(stderr,"ERROR: Handle not given\n");
@@ -108,7 +108,7 @@ static int _db_read_getparams(tag_index *handle, size_t *count, char bitsorbytes
             fprintf(stderr, "ERROR: Bad Tagname %s\n", tok);
             return 1;
         }
-        
+
         tag_given = 1;
         *handle = tag.idx;
     }
@@ -125,7 +125,7 @@ static int _db_read_getparams(tag_index *handle, size_t *count, char bitsorbytes
     } else {
         *count = strtol(tok, NULL, 0);
     }
-   
+
     return 0;
 }
 
@@ -136,11 +136,11 @@ db_read_bit(void)
     tag_index handle;
     void *buff;
     size_t count, n;
-    
+
     if(_db_read_getparams(&handle, &count, 0)) {
         return 1;
     }
-    
+
     /* Allocate the buffer on the stack */
     buff = malloc(count/8 +1);
     if(buff == NULL) return ERR_ALLOC;
@@ -152,7 +152,7 @@ db_read_bit(void)
     } else {
     //    dax_tag_read_bits(handle, buff, count);
     }
-    
+
     /* Display the data */
     /* TODO: Format option for MSB first or LSB first: How to display??? */
     for(n = 0; n < count; n++) {
@@ -182,16 +182,16 @@ db_read(void)
     if(_db_read_getparams(&handle, &count, 1)) {
         return 1;
     }
-    
+
     /* Allocate the buffer on the stack */
     buff = malloc(count);
     if(buff == NULL) return ERR_ALLOC;
-    
+
     handle = handle / 8 * 8;
-    
+
     /* Read the data */
     dax_read(handle, 0, buff, count);
-    
+
     /* Display the data */
     /* TODO: Use the dsize format to display here */
     for(n = 0; n < count; n++) {
@@ -227,7 +227,7 @@ int db_write(void) {
 int db_format(void) {
     char *tok;
     int oldsize;
-    
+
     tok = strtok(NULL, " ");
     if(tok == NULL) {
         /* TODO: Maybe print the current formatting here instead */

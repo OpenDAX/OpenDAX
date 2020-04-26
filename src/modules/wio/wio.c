@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,12 +14,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- * 
+ *
  *  Main source code file for the OpenDAX wireless I/O module.
  */
 
 #include <signal.h>
-#include <wio.h>
+#include "wio.h"
 
 
 void quit_signal(int sig);
@@ -92,7 +92,7 @@ main(int argc, char *argv[])
     int fd;
     struct sigaction sa;
     int flags, result = 0;
-    
+
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -122,7 +122,7 @@ main(int argc, char *argv[])
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
-    
+
 //    result = dax_tag_add(ds, &h_full, tagname, DAX_DINT, 5);
 //    if(result) {
 //        dax_fatal(ds, "Unable to create tag - %s", tagname);
@@ -152,7 +152,7 @@ main(int argc, char *argv[])
         printf("Give 'er a try\n");
         just_playing(fd);
     }
-    
+
 /* This is just to make the compiler happy */
     return(0);
 }
@@ -171,4 +171,3 @@ getout(int exitstatus)
     dax_disconnect(ds);
     exit(exitstatus);
 }
-

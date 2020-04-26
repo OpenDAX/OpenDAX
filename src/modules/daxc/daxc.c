@@ -18,7 +18,7 @@
  *  Main source code file for the OpenDAX Command Line Client  module
  */
 
-#include <daxc.h>
+#include "daxc.h"
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <getopt.h>

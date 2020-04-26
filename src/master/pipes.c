@@ -19,7 +19,7 @@
 /* Source file for the stdio pipe handling thread for the master process
  * handling program. */
 
-#include <pipes.h>
+#include "pipes.h"
 
 /* Initialize the data structures for the pipe handling system */
 int
@@ -28,4 +28,3 @@ pipe_init(void)
 
     return 0;
 }
-

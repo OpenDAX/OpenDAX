@@ -19,11 +19,11 @@
  */
 
 #include <common.h>
-#include <options.h>
-#include <module.h>
-#include <message.h>
-#include <tagbase.h>
-#include <func.h>
+#include "options.h"
+#include "module.h"
+#include "message.h"
+#include "tagbase.h"
+#include "func.h"
 
 #include <getopt.h>
 
@@ -197,7 +197,7 @@ readconfigfile(void)
     if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
         //_verbosity = (int)lua_tonumber(L, 4);
         set_log_topic(_verbosity);
-        //set_log_topic(0xFFFFFFFF);    
+        //set_log_topic(0xFFFFFFFF);
     }
 
     /* Clean up and get out */

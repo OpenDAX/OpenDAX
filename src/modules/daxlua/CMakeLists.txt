@@ -14,8 +14,8 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-#include_directories(.)
-add_executable(tagserver server.c options.c func.c module.c message.c
-               tagbase.c crc.c buffer.c events.c mapping.c)
-target_link_libraries(tagserver ${LUA_LIBRARIES})
-target_link_libraries(tagserver pthread)
+add_executable(daxlua_module daxlua.c luaif.c luaopt.c)
+set_target_properties(daxlua_module PROPERTIES OUTPUT_NAME daxlua)
+target_link_libraries(daxlua_module dax)
+target_link_libraries(daxlua_module daxlua)
+target_link_libraries(daxlua_module pthread)

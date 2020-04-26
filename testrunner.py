@@ -21,6 +21,7 @@ import unittest
 loader = unittest.TestLoader()
 start_dir = 'tests'
 suite = loader.discover(start_dir, pattern="test_*.py")
+# suite = loader.discover(start_dir, pattern="test_libdax_strings.py")
 
 runner = unittest.TextTestRunner()
 runner.run(suite)

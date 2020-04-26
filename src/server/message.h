@@ -18,13 +18,13 @@
 
  *  Header file for the messaging code
  */
- 
+
 #ifndef __MESSAGE_H
 #define __MESSAGE_H
 
 #include <common.h>
-#include <daxtypes.h>
 #include <libcommon.h>
+#include "daxtypes.h"
 #include <opendax.h>
 
 /* message.c functions */

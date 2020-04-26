@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -19,7 +19,7 @@
  */
 
 
-#include <daxc.h>
+#include "daxc.h"
 
 extern dax_state *ds;
 extern int quiet_mode;
@@ -35,7 +35,7 @@ _event_callback(void *udata) {
     dax_id *id;
     int n;
     id =(dax_id *)udata;
-    
+
     /* TODO This is probably bad form.  The event_id structure should be
      * opaque and some common representation should be created. */
     for(n = 0; n < MAX_EVENTS; n++) {
@@ -53,7 +53,7 @@ _event_callback(void *udata) {
 
 static inline void
 _convert_data_str(tag_type datatype, dax_type_union *dest, char *str) {
-    
+
     switch(datatype) {
         case DAX_BYTE:
             dest->dax_byte = (dax_byte)strtol(str, NULL, 0);
@@ -103,7 +103,7 @@ event_add(char **tokens, int count)
     int event_type, event_count, result, n;
     dax_type_union value;
     void *ptr;
-    
+
     for(n=0; n < MAX_EVENTS && events[n].used != 0; n++) ;
     if(n == MAX_EVENTS) {
         fprintf(stderr, "ERROR: Maximum Number of stored events is %d\n", MAX_EVENTS);
@@ -133,7 +133,7 @@ event_add(char **tokens, int count)
     } else {
         ptr = NULL;
     }
-    result = dax_event_add(ds, &h, event_type, ptr, &events[n].event, 
+    result = dax_event_add(ds, &h, event_type, ptr, &events[n].event,
                            _event_callback, (void *)&events[n].event, NULL);
     if(result) {
         fprintf(stderr, "ERROR: Problem adding event to server. Code = %d\n", result);
@@ -164,7 +164,7 @@ int
 event_wait(char **tokens)
 {
     int timeout;
-    
+
     if(tokens[0] == NULL) {
         timeout = 0;
     } else {

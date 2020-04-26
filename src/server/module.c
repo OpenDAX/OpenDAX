@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -17,10 +17,10 @@
  */
 
 #include <common.h>
-#include <module.h>
-#include <options.h>
-#include <func.h>
-#include <tagbase.h>
+#include "module.h"
+#include "options.h"
+#include "func.h"
+#include "tagbase.h"
 
 #include <time.h>
 #include <sys/socket.h>
@@ -43,7 +43,7 @@ static int _module_count = 0;
  * host is used to return the parameter back to the caller and
  * the return value is there to indicate any error.  Returns
  * zero on success.  *host is set to zero if the socket originated
- * on the same host as the server, whether or not it was with a 
+ * on the same host as the server, whether or not it was with a
  * TCP socket or a Local Domain socket. */
 static int
 _get_host(int fd, in_addr_t *host)
@@ -52,7 +52,7 @@ _get_host(int fd, in_addr_t *host)
     socklen_t sock_len;
     struct sockaddr_storage addr;
     struct sockaddr_in *addr_in;
-    
+
     sock_len = sizeof(addr);
     result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
     if(result < 0) {
@@ -107,7 +107,7 @@ static dax_module *
 _get_module_fd(int fd)
 {
     dax_module *last;
-    
+
     if(_current_mod == NULL) return NULL;
     last = _current_mod;
     do {
@@ -125,7 +125,7 @@ static dax_module *
 _get_module_efd(int efd)
 {
     dax_module *last;
-    
+
     if(_current_mod == NULL) return NULL;
     last = _current_mod;
     do {
@@ -142,15 +142,15 @@ _get_module_efd(int efd)
 //_get_module_name(char *name)
 //{
 //    int n;
-//    
+//
 //    /* In case we ain't go no list */
 //    if(_current_mod == NULL) return NULL;
-//    
+//
 //    for(n = 0; n < _module_count; n++) {
 //        if(!strcmp(_current_mod->name, name)) return _current_mod;
 //        _current_mod = _current_mod->next;
 //    }
-//    
+//
 //    return NULL;
 //}
 
@@ -163,7 +163,7 @@ static void
 _print_modules(void)
 {
     dax_module *last;
-  
+
     /* In case we ain't got no list */
     if(_current_mod == NULL) return;
     /* Figure out where we need to stop */
@@ -189,11 +189,11 @@ module_add(char *name, unsigned int flags)
     if(new) {
         printf("New module '%s' created at %p  \n", name, new);
         new->flags = flags;
-        
+
         new->fd = 0;
         new->efd = 0;
         new->event_count = 0;
-        
+
         /* name the module */
         new->name = strdup(name);
         if(_current_mod == NULL) { /* List is empty */
@@ -256,7 +256,7 @@ dax_module *
 module_register(char *name, u_int32_t timeout, int fd)
 {
     dax_module *mod, *test;
-    
+
     /* If a module with the given file descriptor already exists
      * then we need to unregister that module.  It must have failed
      * or the OS would not give us the file descriptor again. */
@@ -264,7 +264,7 @@ module_register(char *name, u_int32_t timeout, int fd)
     if(test) {
         module_unregister(test->fd);
     }
-    
+
     mod = module_add(name, 0);
     if(mod) {
         mod->fd = fd;
@@ -291,7 +291,7 @@ event_register(u_int32_t mid, int fd)
     dax_module *mod;
     int result;
     in_addr_t host;
-    
+
     /* A module with the given file descriptor already exists */
     if(_get_module_efd(fd)) {
         return NULL;
@@ -299,10 +299,10 @@ event_register(u_int32_t mid, int fd)
     /* the host and PID are used to uniquely identify the module. */
     result = _get_host(fd, &host);
     if(result) return NULL;
-    
+
     //mod = _get_module_hostpid(host, pid);
     mod = _get_module_fd(mid);
-    
+
     if(!mod) {
         return NULL;
     } else {
@@ -333,7 +333,7 @@ dax_module *
 module_find_fd(int fd)
 {
     dax_module *last;
-    
+
     if(_current_mod == NULL) return NULL;
     last = _current_mod;
     do {
@@ -344,4 +344,3 @@ module_find_fd(int fd)
     } while(_current_mod != last);
     return NULL;
 }
-
