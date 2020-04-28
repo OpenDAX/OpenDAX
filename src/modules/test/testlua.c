@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -19,27 +19,27 @@
  *  opendax daxtest module.
  */
 
-#include <daxtest.h>
+#include "daxtest.h"
 
 extern dax_state *ds;
 
-/* This function runs a test script.  If the script raises an 
+/* This function runs a test script.  If the script raises an
  * error this function increments the fail count.  It returns
  * nothing */
 static int
 _run_test(lua_State *L)
 {
     char *script, *desc;
-    
+
     if(lua_gettop(L) != 2) {
         luaL_error(L, "Wrong number of arguments to run_test()");
     }
-    
+
     script = (char *)lua_tostring(L, -2);
     desc = (char *)lua_tostring(L, -1);
     test_start();
     printf("Starting - %s\n", desc);
-        
+
     /* load and run the test script */
     if(luaL_loadfile(L, script)) {
         /* Here the error is allowed to propagate up and kill the whole thing */
@@ -57,18 +57,18 @@ _run_test(lua_State *L)
 
 
 /* Adds a certain number of randomly generated tags that start
- * with the given name.  
+ * with the given name.
  * Lua Call : add_random_tags(int count, string name) */
 static int
 _add_random_tags(lua_State *L)
 {
     int count;
     char *name;
-    
+
     if(lua_gettop(L) != 2) {
         luaL_error(L, "wrong number of arguments to add_random_tags()");
     }
-    
+
     if(! lua_isnumber(L, 1)) {
         luaL_error(L, "argument to add_random_tags() is not a number");
     }
@@ -90,7 +90,7 @@ _handle_test(lua_State *L)
     int final = 0;
     const char *name, *type;
     int count, result, byte, bit, rcount, size, test;
-    
+
     if(lua_gettop(L) != 8) {
         luaL_error(L, "wrong number of arguments to handle_test()");
     }
@@ -102,7 +102,7 @@ _handle_test(lua_State *L)
     size = lua_tointeger(L, 6);
     type = lua_tostring(L, 7);
     test = lua_tointeger(L, 8);
-    
+
     result = dax_tag_handle(ds, &h, (char *)name, count);
     if(test == FAIL && result == 0) { /* We should fail */
         printf("Handle Test: %s : %d Should have Failed\n", name, count);
@@ -111,7 +111,7 @@ _handle_test(lua_State *L)
         if(result) {
             printf("Handle Test: dax_tag_handle failed with code %d\n", result);
             final = 1;
-        } else { 
+        } else {
             if(h.byte != byte) {
                 printf("Handle Test: %s : %d - Byte offset does not match (%d != %d)\n", name, count, h.byte, byte);
                 final = 1;
@@ -134,7 +134,7 @@ _handle_test(lua_State *L)
             }
         }
     }
-    lua_pop(L, 8);        
+    lua_pop(L, 8);
 
     if(final) {
         luaL_error(L, "Handle Test Failed");
@@ -158,10 +158,10 @@ _lazy_test(lua_State *L)
 {
     int result, n;
     static dax_dint test[10], data;
-    
+
     Handle h;
     dax_id id[10];
-    
+
 
     for(n = 0; n < 10; n++) {
         test[n] = n;
@@ -210,7 +210,7 @@ add_test_functions(lua_State *L)
 
     lua_pushcfunction(L, _handle_test);
     lua_setglobal(L, "handle_test");
-    
+
     lua_pushcfunction(L, _lazy_test);
     lua_setglobal(L, "lazy_test");
 

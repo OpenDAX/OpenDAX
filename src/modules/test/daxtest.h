@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 
 #include <common.h>
 #include <opendax.h>
-#include <../../lib/lua/libdaxlua.h>
+#include "../../lib/lua/libdaxlua.h"
 
 #ifndef __DAXTEST_H
 #define __DAXTEST_H

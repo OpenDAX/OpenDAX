@@ -14,8 +14,16 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_subdirectory(daxc)
-add_subdirectory(modbus)
-add_subdirectory(daxlua)
-add_subdirectory(wio)
-add_subdirectory(test)
+add_executable(daxtest daxtest.c tags.c testlua.c)
+target_link_libraries(daxtest dax)
+target_link_libraries(daxtest daxlua)
+
+add_executable(badmodule badmodule.c)
+target_link_libraries(badmodule dax)
+
+configure_file(daxtest.lua daxtest.lua COPYONLY)
+file(GLOB files "tests/*.lua")
+foreach(file ${files})
+  get_filename_component(FILENAME ${file} NAME)
+  configure_file(tests/${FILENAME} tests/${FILENAME} COPYONLY)
+endforeach()

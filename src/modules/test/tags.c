@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -17,7 +17,7 @@
  *
  */
 
-#include <daxtest.h>
+#include "daxtest.h"
 
 extern dax_state *ds;
 
@@ -25,35 +25,35 @@ extern dax_state *ds;
 int get_random_type(void) {
     switch (rand()%11) {
     case 0:
-        return DAX_BOOL;        
+        return DAX_BOOL;
     case 1:
-        return DAX_BYTE;        
+        return DAX_BYTE;
     case 2:
-        return DAX_SINT;        
+        return DAX_SINT;
     case 3:
-        return DAX_WORD;        
+        return DAX_WORD;
     case 4:
-        return DAX_INT;        
+        return DAX_INT;
     case 5:
-        return DAX_UINT;        
+        return DAX_UINT;
     case 6:
-        return DAX_DWORD;        
+        return DAX_DWORD;
     case 7:
-        return DAX_DINT;        
+        return DAX_DINT;
     case 8:
-        return DAX_UDINT;        
+        return DAX_UDINT;
     case 9:
-        return DAX_TIME;        
+        return DAX_TIME;
     case 10:
-        return DAX_REAL;        
+        return DAX_REAL;
     case 11:
-        return DAX_LWORD;        
+        return DAX_LWORD;
     case 12:
-        return DAX_LINT;        
+        return DAX_LINT;
     case 13:
-        return DAX_ULINT;        
+        return DAX_ULINT;
     case 14:
-        return DAX_LREAL;        
+        return DAX_LREAL;
     default:
         return 0;
     }
@@ -66,7 +66,7 @@ add_random_tags(int tagcount, char *name)
     int n, count, data_type;
     tag_index result;
     char tagname[32];
-    
+
     srand(12); /* Random but not so random */
     for(n = 0; n < tagcount; n++) {
         /* TODO: Perhaps we should randomize the name too */
@@ -149,7 +149,7 @@ static void
 _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
 {
     int n, bit;
-    
+
     /* We have to treat Booleans differently */
     if(tag.type == DAX_BOOL) {
         /* Check to see if it's an array */
@@ -197,13 +197,13 @@ read_callback(cdt_iter member, void *udata)
     struct iter_udata newdata;
 
     lua_pushstring(L, member.name);
-            
+
     if(IS_CUSTOM(member.type)) {
         lua_newtable(L);
         newdata.L = L;
         newdata.mask = NULL;
         newdata.error = 0;
-        
+
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
                 lua_newtable(L);
@@ -231,7 +231,7 @@ send_tag_to_lua(lua_State *L, Handle h, void *data)
     cdt_iter tag;
     struct iter_udata udata;
     int offset, n;
-    
+
     udata.L = L;
     udata.data = data;
     udata.mask = NULL;
@@ -239,10 +239,10 @@ send_tag_to_lua(lua_State *L, Handle h, void *data)
 
     if(IS_CUSTOM(h.type)) {
         lua_newtable(L);
-        
+
         if(h.count > 1) {
             for(n = 0; n < h.count; n++) {
-                lua_newtable(L);    
+                lua_newtable(L);
                 offset = n * dax_get_typesize(ds, h.type);
                 udata.data = (char *)data + offset;
                 dax_cdt_iter(ds, h.type, &udata, read_callback);
@@ -257,7 +257,7 @@ send_tag_to_lua(lua_State *L, Handle h, void *data)
         tag.byte = 0;
         tag.bit = 0;
         _push_base_datatype(L, tag, data);
-    } 
+    }
 }
 
 /* Here begin the tag writing functions.  */
@@ -268,7 +268,7 @@ static inline void
 _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int index)
 {
     lua_Integer x;
-    
+
     assert(mask != NULL);
     switch (type) {
         case DAX_BYTE:
@@ -333,7 +333,7 @@ int
 _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
 {
     int n, bit;
-    
+
     //printf("_pop_base_datatype() called with *data = %p\n", data);
     if(tag.count > 1) { /* The tag is an array */
         /* Check that the second parameter is a table */
@@ -378,7 +378,7 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
             ((u_int8_t *)mask)[bit/8] |= (1 << (bit % 8));
 //            printf("After Data[%d] = 0x%X\n", bit/8, ((u_int8_t *)data)[bit/8]);
 //            printf("After Mask[%d] = 0x%X\n", bit/8, ((u_int8_t *)mask)[bit/8]);
-            
+
         } else {
             _write_from_stack(L, tag.type, data, mask, 0);
         }
@@ -393,12 +393,12 @@ void
 write_callback(cdt_iter member, void *udata)
 {
     struct iter_udata newdata;
-    
+
     lua_State *L = ((struct iter_udata *)udata)->L;
     unsigned char *data = ((struct iter_udata *)udata)->data;
     unsigned char *mask = ((struct iter_udata *)udata)->mask;
     int offset, n, result = 0;
-    
+
     if(IS_CUSTOM(member.type)) {
         newdata.L = L;
         newdata.error = 0;
@@ -471,7 +471,7 @@ get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
     cdt_iter tag;
     struct iter_udata udata;
     int n, offset;
-    
+
     if(IS_CUSTOM(h.type)) {
         udata.L = L;
         udata.error = 0;

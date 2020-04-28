@@ -26,7 +26,7 @@
  * this module is limited to what is needed to attach to the OpenDAX server and
  * handle all the messages.
  */
-#include <daxtest.h>
+#include "daxtest.h"
 #include <sys/ipc.h>
 #include <sys/msg.h>
 

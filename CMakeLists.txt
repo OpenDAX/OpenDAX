@@ -31,6 +31,9 @@ check_include_file(sys/select.h HAVE_SYS_SELECT_H)
 include(FindLua)
 message("Lua Libraries Found: ${LUA_LIBRARIES}")
 include_directories(${LUA_INCLUDE_DIR})
+if(NOT LUA_LIBRARIES)
+  message(FATAL_ERROR "Lua library not found!!")
+endif()
 
 # This is for the config.h file
 include_directories(${PROJECT_BINARY_DIR}/src)

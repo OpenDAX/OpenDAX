@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -22,11 +22,11 @@
  * or testing features of the system that are supposed to detect misbehaviour
  * and act accordingly.  It can be made to flood the system with messages,
  * use up all the memory or use up as much CPU as possible.  It reads tags
- * from the tagserver to determine how to act so that other modules can 
+ * from the tagserver to determine how to act so that other modules can
  * force the behavior.
  */
 
-#include <badmodule.h>
+#include "badmodule.h"
 #include <signal.h>
 
 static dax_state *ds;
@@ -188,7 +188,7 @@ main(int argc,char *argv[])
         dax_event_poll(ds, NULL);
 	}
     dax_disconnect(ds);
-    
+
     return 0;
 }
 
@@ -197,4 +197,3 @@ main(int argc,char *argv[])
 void catchsignal(int sig) {
     _caught_signal = sig;
 }
-
