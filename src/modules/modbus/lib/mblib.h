@@ -46,7 +46,13 @@
  #endif
 #endif
 
+#ifndef __USE_XOPEN
+#define __USE_XOPEN
+#endif
+#define _XOPEN_SOURCE
 #include <unistd.h>
+#undef _XOPEN_SOURCE
+
 #include <termios.h>
 #include <errno.h>
 #include <assert.h>
