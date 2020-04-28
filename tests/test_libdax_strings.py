@@ -16,10 +16,9 @@
 
 import unittest
 import tests.util.daxwrapper as daxwrapper
+import testconfig
 
-daxc_path = "src/modules/daxc/daxc"
-
-class TestDaxc(unittest.TestCase):
+class TestLibDAXSTrings(unittest.TestCase):
 
     def setUp(self):
         self.dax = daxwrapper.LibDaxWrapper()

@@ -24,7 +24,7 @@
 
 #include <opendax.h>
 #include <common.h>
-#include <../../lib/lua/libdaxlua.h>
+#include "../../lib/lua/libdaxlua.h"
 
 
 /* This defines the starting number of scripts in the array */

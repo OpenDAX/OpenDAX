@@ -17,17 +17,17 @@
  *
 
  * This file contains general functions that are used throughout the
- * OpenDAX program for things like logging, error reporting and 
+ * OpenDAX program for things like logging, error reporting and
  * memory allocation.
  */
 
 #include <common.h>
+#include "func.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <syslog.h>
 #include <stdarg.h>
 #include <signal.h>
-#include <func.h>
 
 static u_int32_t _logflags = 0;
 
@@ -41,10 +41,10 @@ xwrite(int fd, const void *buff, size_t nbyte)
     const void *sbuff;
     size_t left;
     ssize_t result;
-    
+
     sbuff = buff;
     left = nbyte;
-    
+
     while(left > 0) {
         result = write(fd, sbuff, left);
         if(result <= 0) {
@@ -170,5 +170,3 @@ xstrdup(char *src)
     }
     return dest;
 }
-
-

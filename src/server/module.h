@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 #define __MODULE_H
 
 #include <common.h>
-#include <daxtypes.h>
+#include "daxtypes.h"
 
 //TODO: We don't really need all this since we aren't starting the
 //      modules any more.

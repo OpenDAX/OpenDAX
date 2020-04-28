@@ -23,11 +23,11 @@
  * size on different architectures.  Should use the dax_* datatypes or the
  * _t datatypes instead */
 
-#include <message.h>
-#include <func.h>
-#include <module.h>
-#include <tagbase.h>
-#include <options.h>
+#include "message.h"
+#include "func.h"
+#include "module.h"
+#include "tagbase.h"
+#include "options.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -77,8 +77,8 @@ int msg_map_del(dax_message *msg);
 int msg_map_get(dax_message *msg);
 
 
-/* Generic message sending function.  If response is MSG_ERROR then it is assumed that 
- * an error is being sent to the module.  In that case payload should point to a 
+/* Generic message sending function.  If response is MSG_ERROR then it is assumed that
+ * an error is being sent to the module.  In that case payload should point to a
  * single int that indicates the error */
 static int
 _message_send(int fd, int command, void *payload, size_t size, int response)
@@ -93,7 +93,7 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
         xlog(LOG_MSGERR, "Returning Error %d to Module", *(int *)payload);
         ((u_int32_t *)buff)[1] = htonl(command | MSG_ERROR);
     } else {
-        ((u_int32_t *)buff)[1] = htonl(command);         
+        ((u_int32_t *)buff)[1] = htonl(command);
     }
     /* Bounds check so we don't seg fault */
     if(size > (DAX_MSGMAX - MSG_HDR_SIZE)) {
@@ -174,7 +174,7 @@ _msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
     msg_add_fd(fd);
 
     xlog(LOG_COMM, "Listening on remote socket - %d", fd);
-    return 0;    
+    return 0;
 }
 
 /* Creates and sets up the local message socket for the program.
@@ -398,7 +398,7 @@ msg_mod_register(dax_message *msg)
             if(!mod) {
                 _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
             } else {
-                _message_send(msg->fd, MSG_MOD_REG, NULL, 0, RESPONSE);    
+                _message_send(msg->fd, MSG_MOD_REG, NULL, 0, RESPONSE);
             }
         } else { /* If the flags are bad send error */
             result = ERR_MSG_BAD;
@@ -533,7 +533,7 @@ msg_tag_write(dax_message *msg)
         xlog(LOG_ERROR, "Unable to write tag 0x%X with size %d",handle, size);
     } else {
         _message_send(msg->fd, MSG_TAG_WRITE, NULL, 0, RESPONSE);
-    }    
+    }
     return 0;
 }
 
@@ -560,7 +560,7 @@ msg_tag_mask_write(dax_message *msg)
         xerror("Unable to write tag 0x%X with size %d: result %d", handle, size, result);
     } else {
         _message_send(msg->fd, MSG_TAG_MWRITE, NULL, 0, RESPONSE);
-    }    
+    }
     return 0;
 }
 
@@ -630,7 +630,7 @@ msg_evnt_add(dax_message *msg)
     }
 
     if(event_id < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, 0, ERROR);    
+        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, 0, ERROR);
     } else {
         _message_send(msg->fd, MSG_EVNT_ADD, &event_id, sizeof(dax_dint), RESPONSE);
     }
@@ -685,7 +685,7 @@ msg_cdt_create(dax_message *msg)
     xlog(LOG_MSG | LOG_VERBOSE, "Create CDT message name = '%s' type = 0x%X", msg->data, type);
 
     if(result < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_CDT_CREATE, &result, sizeof(int), ERROR);    
+        _message_send(msg->fd, MSG_CDT_CREATE, &result, sizeof(int), ERROR);
     } else {
         _message_send(msg->fd, MSG_CDT_CREATE, &type, sizeof(tag_type), RESPONSE);
     }
@@ -784,4 +784,3 @@ int msg_map_get(dax_message *msg)
     printf("Message Get\n");
     return 0;
 }
-

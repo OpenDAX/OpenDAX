@@ -28,7 +28,7 @@ import tests.util.daxwrapper as daxwrapper
 class TestSingle(unittest.TestCase):
 
     def setUp(self):
-        self.server = subprocess.Popen(["src/server/tagserver",
+        self.server = subprocess.Popen(["build/src/server/tagserver",
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
                                         stdout=subprocess.DEVNULL

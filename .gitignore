@@ -6,7 +6,6 @@
 !NEWS
 !COPYING
 *.[oa]
-*.in
 *~
 *.l[oa]
 Makefile
@@ -41,4 +40,4 @@ doc/*.pdf
 doc/*.toc
 doc/doxygen/*
 *.pyc
-/doc/
+build/

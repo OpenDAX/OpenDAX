@@ -16,11 +16,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#include <options.h>
-#include <message.h>
-#include <tagbase.h>
-#include <common.h>
-#include <func.h>
+ #include <common.h>
+#include "options.h"
+#include "message.h"
+#include "tagbase.h"
+#include "func.h"
 #include <pthread.h>
 #include <syslog.h>
 #include <signal.h>

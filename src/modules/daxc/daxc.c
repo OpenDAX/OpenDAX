@@ -18,7 +18,7 @@
  *  Main source code file for the OpenDAX Command Line Client  module
  */
 
-#include <daxc.h>
+#include "daxc.h"
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <getopt.h>
@@ -143,7 +143,6 @@ get_help(char **tokens) {
         if(tokens[1] == NULL) {
             printf("Usage: ADD [TAG|TYPE|MAP|EVENT] <args>...\n\n");
             printf("Add the given type of object\n");
-            printf("")
         }
     } else if(!strncasecmp(tokens[0], "del", 3)) {
         if(tokens[1] == NULL) {

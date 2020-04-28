@@ -19,7 +19,7 @@
  */
 
 
-#include <daxc.h>
+#include "daxc.h"
 
 extern dax_state *ds;
 extern int quiet_mode;

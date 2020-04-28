@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-
-#  Copyright (c) 2019 Phil Birkelbach
+#  Copyright (c) 2020 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -16,12 +14,7 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-
-import unittest
-loader = unittest.TestLoader()
-start_dir = 'tests'
-suite = loader.discover(start_dir, pattern="test_*.py")
-# suite = loader.discover(start_dir, pattern="test_libdax_strings.py")
-
-runner = unittest.TextTestRunner()
-runner.run(suite)
+add_subdirectory(daxc)
+add_subdirectory(modbus)
+add_subdirectory(daxlua)
+add_subdirectory(wio)

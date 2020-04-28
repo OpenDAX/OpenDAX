@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,14 +14,14 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  *  Source code file for opendax crc checksum functions
- *  
+ *
  *  CRC32 Code Contrbuted by Chris Underwood - September 2007
  */
 
 #include <common.h>
-#include <crc.h>
+#include "crc.h"
 
 #ifndef __CRC32_INIT
 static u_int32_t gCRC32Tbl[] = {    0x0000, 0xC0C1,
@@ -84,7 +84,7 @@ static u_int32_t gCRC32Tbl[256];
 static unsigned long Reflect(unsigned long vulReference, char vcCurrent) {
     unsigned long lulValue = 0;
     int iApple;
-    
+
     /* Swap bit 0 for bit 7 : bit 1 for bit 6, etc. */
     for(iApple = 1; iApple < (vcCurrent + 1); iApple++) {
         if(vulReference & 1) {
@@ -98,11 +98,11 @@ static unsigned long Reflect(unsigned long vulReference, char vcCurrent) {
 
 
 static void InitCRC32Table(void) {
-    /* This is the official polynomial used by CRC-32 
+    /* This is the official polynomial used by CRC-32
        in PKZip, WinZip and Ethernet. */
     u_int32_t lulPolynomial = 0x04c11db7;
     int iBanana,iApple;
-    
+
     /* 256 values representing ASCII character codes. */
     for(iApple = 0; iApple <= 0xFF; ++iApple) {
         gCRC32Tbl[iApple]=Reflect(iApple, 8) << 24;
@@ -113,7 +113,7 @@ static void InitCRC32Table(void) {
     }
 }
 
-#endif /* __CRC32_INIT */ 
+#endif /* __CRC32_INIT */
 
 /* Generates a CRC32 checksum for the buffer vcpBuffer
    Be sure to use unsigned variables,
@@ -124,7 +124,7 @@ int CRC32(const unsigned char *vcpBuffer, int viLength) {
     unsigned long lulCRC = 0xffffffff;
 #ifdef __CRC32_INIT
     static int firstrun = 1;
-    
+
     if(firstrun) {
         InitCRC32Table();
         firstrun = 0;
@@ -135,8 +135,7 @@ int CRC32(const unsigned char *vcpBuffer, int viLength) {
     while(viLength--) {
         lulCRC = (lulCRC >> 8) ^ gCRC32Tbl[(lulCRC & 0xFF) ^ *vcpBuffer++];
     }
-    
+
     /* Exclusive OR the result with the beginning value. */
     return lulCRC ^ 0xffffffff;
 }
-

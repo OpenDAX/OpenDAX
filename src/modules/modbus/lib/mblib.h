@@ -14,27 +14,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
+ *
  * This is the private header file for the modbus library functions
  */
- 
+
 #ifndef __MODLIB_H
 #define __MODLIB_H
 
 /* Are we using config.h */
-#ifdef HAVE_CONFIG_H
- #include <config.h>
-#endif
+#include <config.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef HAVE_SYS_SOCKET_H
+//#ifdef HAVE_SYS_SOCKET_H
  #include <sys/socket.h>
-#endif
-#ifdef HAVE_SYS_PARAM_H
+//#endif
+//#ifdef HAVE_SYS_PARAM_H
  #include <sys/param.h>
-#endif
+//#endif
 #ifdef HAVE_STRING_H
  #include <string.h>
 #endif
@@ -48,7 +46,13 @@
  #endif
 #endif
 
+#ifndef __USE_XOPEN
+#define __USE_XOPEN
+#endif
+#define _XOPEN_SOURCE
 #include <unistd.h>
+#undef _XOPEN_SOURCE
+
 #include <termios.h>
 #include <errno.h>
 #include <assert.h>
@@ -72,7 +76,7 @@
 # endif
 #endif
 
-/* Used to insert a 16bit value into the modbus buffer 
+/* Used to insert a 16bit value into the modbus buffer
  * another endian machine would simply use memcpy() */
 #ifndef __MB_BIG_ENDIAN
 # define COPYWORD(OUT,IN) swab((const void *)(IN),(void *)(OUT),(ssize_t)2)
@@ -101,7 +105,7 @@ int __mb_mutex_unlock(mb_port *, _mb_mutex_t *);
 #  define mb_mutex_init(port)
 #  define mb_mutex_lock(port,mutex)
 #  define mb_mutex_unlock(port,mutex)
-#endif   
+#endif
 
 #define MB_FRAME_LEN 1024
 
@@ -141,14 +145,14 @@ struct mb_port {
     char ipaddress[16];
     unsigned int bindport;    /* IP port to bind to */
     unsigned char socket;     /* either UDP_SOCK or TCP_SOCK */
-    
+
     int delay;       /* Intercommand delay */
     int frame;       /* Interbyte timeout */
     int retries;     /* Number of retries to try */
     int scanrate;    /* Scanrate in mSeconds */
     int timeout;     /* Response timeout */
     int maxattempts; /* Number of failed attempts to allow before closing and exiting the port */
-    
+
     u_int16_t *holdreg;       /* database index for holding registers (slave only) */
     unsigned int holdsize;    /* size of the internal holding register bank */
     u_int16_t *inputreg;      /* database index for input registers (slave only) */
@@ -163,11 +167,11 @@ struct mb_port {
     _mb_mutex_t coil_mutex;
     _mb_mutex_t disc_mutex;
     _mb_mutex_t ctrl_mutex;  /* used to lock control bits */
-#endif    
+#endif
     fd_set fdset;
     int maxfd;
     struct client_buffer *buff_head; /* Head of a linked list of client connection buffers */
-    
+
     struct mb_cmd *commands;  /* Linked list of Modbus commands */
     int fd;                   /* File descriptor to the port */
     int ctrl_flags;

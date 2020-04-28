@@ -20,6 +20,7 @@ import pexpect
 import signal
 import time
 import tests.util.daxwrapper as daxwrapper
+import testconfig
 
 # Test that the handles returned are correct
 # Each tag entry contains...
@@ -109,7 +110,7 @@ class TestHandles_LoopTests(unittest.TestCase):
     """Tests all of the above handles in a couple of loop tests.  It would be
        better if these tests were flattened out, but these will work for now"""
     def setUp(self):
-        self.server = subprocess.Popen(["src/server/tagserver",
+        self.server = subprocess.Popen([testconfig.tagserver_file,
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
                                         stdout=subprocess.DEVNULL
@@ -218,7 +219,7 @@ class TestHandles_LoopTests(unittest.TestCase):
 
 class TestHandles_FlatTests(unittest.TestCase):
     def setUp(self):
-        self.server = subprocess.Popen(["src/server/tagserver",
+        self.server = subprocess.Popen([testconfig.tagserver_file,
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
                                         stdout=subprocess.DEVNULL

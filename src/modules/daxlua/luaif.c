@@ -17,13 +17,13 @@
  *
 
  * Main source code file for the Lua script interface functions
- * 
+ *
  * Many of these functions are duplicated in the daxtest module.
  * At some point they should become a separate Lua package but I
  * don't want to try to learn how to do that just yet.
  */
 
-#include <daxlua.h>
+#include "daxlua.h"
 #include <pthread.h>
 
 extern dax_state *ds;
@@ -95,7 +95,7 @@ static void
 _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
 {
     int n, bit;
-    
+
     /* We have to treat Booleans differently */
     if(tag.type == DAX_BOOL) {
         /* Check to see if it's an array */
@@ -143,13 +143,13 @@ read_callback(cdt_iter member, void *udata)
     struct iter_udata newdata;
 
     lua_pushstring(L, member.name);
-            
+
     if(IS_CUSTOM(member.type)) {
         lua_newtable(L);
         newdata.L = L;
         newdata.mask = NULL;
         newdata.error = 0;
-        
+
         if(member.count > 1) {
             for(n = 0;n < member.count; n++) {
                 lua_newtable(L);
@@ -177,7 +177,7 @@ tag_dax_to_lua(lua_State *L, Handle h, void *data)
     cdt_iter tag;
     struct iter_udata udata;
     int offset, n;
-    
+
     udata.L = L;
     udata.data = data;
     udata.mask = NULL;
@@ -185,10 +185,10 @@ tag_dax_to_lua(lua_State *L, Handle h, void *data)
 
     if(IS_CUSTOM(h.type)) {
         lua_newtable(L);
-        
+
         if(h.count > 1) {
             for(n = 0; n < h.count; n++) {
-                lua_newtable(L);    
+                lua_newtable(L);
                 offset = n * dax_get_typesize(ds, h.type);
                 udata.data = (char *)data + offset;
                 dax_cdt_iter(ds, h.type, &udata, read_callback);
@@ -203,7 +203,7 @@ tag_dax_to_lua(lua_State *L, Handle h, void *data)
         tag.byte = 0;
         tag.bit = 0;
         _push_base_datatype(L, tag, data);
-    } 
+    }
 }
 
 /* Here begin the tag writing functions.  */
@@ -214,7 +214,7 @@ static inline void
 _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int index)
 {
     lua_Integer x;
-    
+
     assert(mask != NULL);
     switch (type) {
         case DAX_BYTE:
@@ -278,7 +278,7 @@ int
 _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
 {
     int n, bit;
-    
+
     if(tag.count > 1) { /* The tag is an array */
         /* Check that the second parameter is a table */
         if( ! lua_istable(L, -1) ) {
@@ -315,7 +315,7 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
                 ((u_int8_t *)data)[bit/8] &= ~(1 << (bit % 8));
             }
             ((u_int8_t *)mask)[bit/8] |= (1 << (bit % 8));
-            
+
         } else {
             _write_from_stack(L, tag.type, data, mask, 0);
         }
@@ -330,12 +330,12 @@ static void
 write_callback(cdt_iter member, void *udata)
 {
     struct iter_udata newdata;
-    
+
     lua_State *L = ((struct iter_udata *)udata)->L;
     unsigned char *data = ((struct iter_udata *)udata)->data;
     unsigned char *mask = ((struct iter_udata *)udata)->mask;
     int offset, n, result = 0;
-    
+
     if(IS_CUSTOM(member.type)) {
         newdata.L = L;
         newdata.error = 0;
@@ -408,7 +408,7 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
     cdt_iter tag;
     struct iter_udata udata;
     int n, offset;
-    
+
     if(IS_CUSTOM(h.type)) {
         udata.L = L;
         udata.error = 0;
@@ -468,12 +468,12 @@ fetch_tag(lua_State *L, Handle h)
 {
     int result;
     void *data;
-    
+
     data = malloc(h.size);
     if(data == NULL) {
         return ERR_ALLOC;
     }
-    
+
     result = dax_read_tag(ds, h, data);
 
     if(result) {
@@ -483,8 +483,8 @@ fetch_tag(lua_State *L, Handle h)
     /* This function figures all the tag data out and pushes the right
      * thing onto the top of the Lua stack */
     tag_dax_to_lua(L, h, data);
-    
-    free(data);   
+
+    free(data);
     return 0;
 }
 
@@ -496,7 +496,7 @@ send_tag(lua_State *L, Handle h)
     int result, n;
     char q = 0;
     void *mask, *data;
-    
+
     data = malloc(h.size);
     if(data == NULL) {
         luaL_error(L, "tag_write() unable to allocate data area");
@@ -508,14 +508,14 @@ send_tag(lua_State *L, Handle h)
         luaL_error(L, "tag_write() unable to allocate mask memory");
     }
     bzero(mask, h.size);
-    
+
     result = tag_lua_to_dax(L, h, data, mask);
     if(result) {
         free(data);
         free(mask);
         return result;
     }
-    
+
     /* This checks the mask to determine which function to use
      * to write the data to the server */
     /* TODO: Might want to scan through and find the beginning and end of
@@ -530,7 +530,7 @@ send_tag(lua_State *L, Handle h)
     } else {
         result = dax_write_tag(ds, h, data);
     }
-    
+
     if(result) {
         free(data);
         free(mask);
@@ -550,16 +550,16 @@ _add_global(char *script, char *varname, unsigned char mode)
     script_t *scr;
     Handle h;
     int result;
-    
+
     /* This would indicate that it's a dax tag */
     if(mode != MODE_STATIC) {
         result = dax_tag_handle(ds, &h, varname, 0);
         if(result) return result;
     }
-    
+
     scr = get_script_name(script);
     if(scr == NULL) return -1;
-    
+
     glo = malloc(sizeof(global_t));
     if(glo) {
         glo->name = strdup( varname );
@@ -588,7 +588,7 @@ _register_tag(lua_State *L)
     char *script, *varname, *modestring;
     unsigned char mode = 0;
     int n;
-    
+
     script = (char *)lua_tostring(L, 1);
     if(script == NULL) {
         luaL_error(L, "Script name argument not supplied");
@@ -627,7 +627,7 @@ static int
 _register_static(lua_State *L)
 {
     char *script, *varname;
-    
+
     script = (char *)lua_tostring(L, 1);
     if(script == NULL) {
         luaL_error(L, "Script name argument not supplied");
@@ -639,9 +639,9 @@ _register_static(lua_State *L)
     if(_add_global(script, varname, MODE_STATIC) < 0) {
         luaL_error(L, "Problem adding variable to global registry");
     }
-    return 0;    
+    return 0;
 }
-    
+
 
 
 /* TODO: Stuff to add.
@@ -662,15 +662,15 @@ setup_interpreter(lua_State *L)
 
     lua_pushcfunction(L, _register_tag);
     lua_setglobal(L, "register_tag");
-    
+
     lua_pushcfunction(L, _register_static);
     lua_setglobal(L, "register_static");
-    
+
     /* register the libraries that we need*/
     luaopen_base(L);
     luaopen_table(L);
     luaopen_string(L);
     luaopen_math(L);
-    
+
     return 0; /* I don't think anything returns an error */
 }

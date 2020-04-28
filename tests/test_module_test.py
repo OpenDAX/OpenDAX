@@ -23,13 +23,14 @@ import pexpect
 import signal
 import time
 import tests.util.daxwrapper as daxwrapper
+import testconfig
 
-daxtest_path = "src/modules/test"
+daxtest_path = "{}/src/modules/test".format(testconfig.build_dir)
 
 class TestTestMOdule(unittest.TestCase):
 
     def setUp(self):
-        self.server = subprocess.Popen(["src/server/tagserver",
+        self.server = subprocess.Popen([testconfig.tagserver_file,
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
                                         stdout=subprocess.DEVNULL)

@@ -19,8 +19,8 @@
  */
 
 #include <common.h>
-#include <tagbase.h>
-#include <func.h>
+#include "tagbase.h"
+#include "func.h"
 #include <ctype.h>
 #include <assert.h>
 

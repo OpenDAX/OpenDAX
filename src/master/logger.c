@@ -20,8 +20,8 @@
  * log to the console (through stdout) or to syslog.
  */
 
+#include "logger.h"
 #include <common.h>
-#include <logger.h>
 #include <syslog.h>
 #include <signal.h>
 
@@ -107,4 +107,3 @@ set_log_topic(u_int32_t topic)
     _logflags = topic;
     xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
-

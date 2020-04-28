@@ -17,6 +17,7 @@
 # This class uses ctypes to wrap the modbus library for testing
 from ctypes import *
 import tests.util as util
+import testconfig
 
 defines = util.read_defines("src/opendax.h")
 
@@ -48,7 +49,7 @@ def typesize(datatype):
 
 class LibDaxWrapper:
     def __init__(self):
-        self.libdax = cdll.LoadLibrary("src/lib/.libs/libdax.so")
+        self.libdax = cdll.LoadLibrary(testconfig.libdax_file)
 
     def dax_init(self, name):
         self.name = name.encode('utf-8')

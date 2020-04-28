@@ -19,7 +19,7 @@
  * Main source code file for the Lua script interpreter
  */
 
-#include <daxlua.h>
+#include "daxlua.h"
 #include <signal.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -35,17 +35,17 @@ int
 lua_init(void)
 {
     lua_State *L;
-    
+
     dax_debug(ds, LOG_MAJOR, "Starting init script - %s", get_init());
     /* Create a lua interpreter object */
     L = luaL_newstate();
-    setup_interpreter(L);    
+    setup_interpreter(L);
     /* load and compile the file */
     if(luaL_loadfile(L, get_init()) || lua_pcall(L, 0, 0, 0) ) {
         dax_error(ds, "Error Running Init Script - %s", lua_tostring(L, -1));
         return 1;
     }
-    
+
     /* Clean up and get out */
     lua_close(L);
 
@@ -79,24 +79,24 @@ _receive_globals(lua_State *L, script_t *s)
     /* Now we set the daxlua system values as global variables */
     lua_pushstring(L, s->name);
     lua_setglobal(L, "_name");
-    
+
     /* This may be of liimited usefulness */
     lua_pushstring(L, s->filename);
     lua_setglobal(L, "_filename");
-    
+
     lua_pushinteger(L, (lua_Integer)s->lastscan);
     lua_setglobal(L, "_lastscan");
-    
+
     lua_pushinteger(L, (lua_Integer)s->rate);
     lua_setglobal(L, "_rate");
-    
+
     lua_pushinteger(L, (lua_Integer)s->executions);
     lua_setglobal(L, "_executions");
 
     lua_pushboolean(L, s->firstrun);
     lua_setglobal(L, "_firstrun");
-    
-    return 0;    
+
+    return 0;
 }
 
 /* Looks into the list of tags in the script and reads these global
@@ -106,13 +106,13 @@ static inline int
 _send_globals(lua_State*L, script_t *s)
 {
     global_t *this;
-    
+
     this = s->globals;
-    
+
     while(this != NULL) {
         if(this->mode & MODE_WRITE) {
             lua_getglobal(L, this->name);
-            
+
             if(send_tag(L, this->handle)) {
                 return -1;
             }
@@ -142,7 +142,7 @@ _send_globals(lua_State*L, script_t *s)
  * data argument for EQUAL, GREATER, LESS and DEADBAND events. */
 static inline void
 _convert_lua_number(tag_type datatype, dax_type_union *dest, lua_Number x) {
-    
+
     switch(datatype) {
         case DAX_BYTE:
             dest->dax_byte = (dax_byte)x;
@@ -205,7 +205,7 @@ _setup_script_event(lua_State *L, script_t *s) {
     }
 
     _convert_lua_number(h.type, &u, s->event_value);
-    result = dax_event_add(ds, &h, s->event_type, (void *)&u, 
+    result = dax_event_add(ds, &h, s->event_type, (void *)&u,
                            NULL, _script_event_dispatch, s, NULL);
     if(result) {
         return(result);
@@ -254,7 +254,7 @@ lua_script_thread(script_t *s)
 
     /* Create a lua interpreter object */
     L = luaL_newstate();
-    setup_interpreter(L);    
+    setup_interpreter(L);
     /* load and compile the file */
     if(luaL_loadfile(L, s->filename) ) {
         dax_error(ds, "Error Loading Main Script - %s", lua_tostring(L, -1));
@@ -302,12 +302,12 @@ lua_script_thread(script_t *s)
 /* This function attempts to start the thread given by s */
 static int
 _start_thread(script_t *s)
-{    
+{
     pthread_attr_t attr;
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    
+
     if(pthread_create(&s->thread, &attr, (void *)&lua_script_thread, (void *)s)) {
         dax_error(ds, "Unable to start thread for script - %s", s->name);
         return -1;
@@ -322,7 +322,7 @@ start_all_threads(void)
 {
     script_t *s;
     int n, scount;
-    
+
     scount = get_scriptcount();
     if(scount) {
         for(n = 0; n < scount; n++) {
@@ -340,7 +340,7 @@ int
 main(int argc, char *argv[])
 {
     struct sigaction sa;
-    
+
     ds = dax_init("daxlua");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
@@ -369,7 +369,7 @@ main(int argc, char *argv[])
         /* Start all the script threads */
         start_all_threads();
     }
-    
+
     /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -388,7 +388,7 @@ main(int argc, char *argv[])
             if(quitsig == SIGQUIT) {
                 exit(0);
             } else {
-                exit(-1);    
+                exit(-1);
             }
         }
 

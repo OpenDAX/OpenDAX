@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -16,14 +16,14 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#include <wio.h>
+#include "wio.h"
 
 int
 xbee_open_port(char *device, int baudrate)
-{   
+{
     int fd;
     struct termios options;
-    
+
     /* the port is opened RW and reads will not block */
     fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(fd == -1)  {
@@ -37,13 +37,13 @@ xbee_open_port(char *device, int baudrate)
         cfsetospeed(&options, baudrate);
         options.c_cflag |= (CLOCAL | CREAD);
         /* Set the parity */
-        /* No Parity */ 
+        /* No Parity */
         options.c_cflag &= ~PARENB;
         /* Set stop bits */
         options.c_cflag &= ~CSTOPB;
         /* Set databits */
-        options.c_cflag |= CS8;    
-        
+        options.c_cflag |= CS8;
+
         options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
         options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
         options.c_oflag &= ~OPOST;
@@ -51,6 +51,6 @@ xbee_open_port(char *device, int baudrate)
         options.c_cc[VTIME] = 0;
         /* TODO: Should check for errors here */
         tcsetattr(fd, TCSANOW, &options);
-    } 
+    }
     return fd;
 }

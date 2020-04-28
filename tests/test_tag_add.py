@@ -23,6 +23,7 @@ import pexpect
 import signal
 import time
 import tests.util.daxwrapper as daxwrapper
+import testconfig
 
 badnames =  ["1Tag", "-Tag", "Tag-name", "Tag&name", "Tag+name", "tag/name",
              "tag*name", "TAG?NAME", "TagNameIsWayTooLong12345678912345"]
@@ -32,7 +33,7 @@ goodnames = ["_Tag", "Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnough
 class TestSingle(unittest.TestCase):
 
     def setUp(self):
-        self.server = subprocess.Popen(["src/server/tagserver",
+        self.server = subprocess.Popen([testconfig.tagserver_file,
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
                                         stdout=subprocess.DEVNULL
