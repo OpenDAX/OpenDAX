@@ -19,3 +19,5 @@ set_target_properties(daxlua_module PROPERTIES OUTPUT_NAME daxlua)
 target_link_libraries(daxlua_module dax)
 target_link_libraries(daxlua_module daxlua)
 target_link_libraries(daxlua_module pthread)
+
+install(TARGETS daxlua_module DESTINATION bin)

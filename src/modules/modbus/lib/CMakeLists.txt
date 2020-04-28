@@ -18,3 +18,5 @@ include_directories(.)
 
 add_library(modbus_library modbus.c mbcmds.c mbports.c mbutil.c mbserver.c)
 set_target_properties(modbus_library PROPERTIES OUTPUT_NAME modbus)
+
+install(TARGETS modbus_library DESTINATION lib)

@@ -21,4 +21,5 @@ set_target_properties(modbus_module PROPERTIES OUTPUT_NAME modbus)
 target_link_libraries(modbus_module modbus)
 target_link_libraries(modbus_module dax)
 target_link_libraries(modbus_module pthread)
-#target_link_libraries(modbus_module ${LUA_LIBRARIES})
+
+install(TARGETS modbus_module DESTINATION bin)

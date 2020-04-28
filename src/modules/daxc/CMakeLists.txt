@@ -18,3 +18,5 @@ add_executable(daxc daxc.c daxc_db.c daxc_event.c daxc_tag.c)
 target_link_libraries(daxc readline)
 target_link_libraries(daxc dax)
 target_link_libraries(daxc ${LUA_LIBRARIES})
+
+install(TARGETS daxc DESTINATION bin)

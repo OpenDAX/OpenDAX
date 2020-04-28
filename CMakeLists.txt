@@ -42,3 +42,9 @@ message("Readline Libraries Found: ${HAVE_READLINE}")
 message("Project Build Directory:${PROJECT_BINARY_DIR}")
 
 add_subdirectory(src)
+
+# Install the sampel configurations
+file(GLOB files "etc/*.conf.sample")
+foreach(file ${files})
+  install(FILES ${file} DESTINATION etc/opendax)
+endforeach()

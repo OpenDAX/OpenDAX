@@ -21,4 +21,6 @@ add_library(dax libcdt.c libconv.c libdata.c
 
 target_link_libraries(dax ${LUA_LIBRARIES})
 
+install(TARGETS dax DESTINATION lib)
+
 add_subdirectory(lua)

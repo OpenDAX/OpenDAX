@@ -14,5 +14,10 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+#  CMake List file for the OpenDAX master daemon
+
 add_executable(master master.c logger.c process.c pipes.c daemon.c mstr_config.c)
+set_target_properties(master PROPERTIES OUTPUT_NAME opendax)
 target_link_libraries(master ${LUA_LIBRARIES})
+
+install(TARGETS master DESTINATION bin)
