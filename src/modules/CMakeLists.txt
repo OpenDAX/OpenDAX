@@ -15,7 +15,15 @@
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 add_subdirectory(daxc)
-add_subdirectory(modbus)
-add_subdirectory(daxlua)
-add_subdirectory(wio)
-add_subdirectory(test)
+
+if(BUILD_MODBUS)
+  add_subdirectory(modbus)
+endif()
+
+if(BUILD_DAXLUA)
+  add_subdirectory(daxlua)
+endif()
+
+if(BUILD_WIO)
+  add_subdirectory(wio)
+endif()

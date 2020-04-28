@@ -18,7 +18,7 @@ include_directories(.)
 add_subdirectory(lib)
 add_executable(modbus_module modmain.c modopt.c database.c)
 set_target_properties(modbus_module PROPERTIES OUTPUT_NAME modbus)
-target_link_libraries(modbus_module modbus)
+target_link_libraries(modbus_module modbus_library)
 target_link_libraries(modbus_module dax)
 target_link_libraries(modbus_module pthread)
 

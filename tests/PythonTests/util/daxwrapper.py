@@ -16,10 +16,10 @@
 
 # This class uses ctypes to wrap the modbus library for testing
 from ctypes import *
-import tests.util as util
+import PythonTests.util as util
 import testconfig
 
-defines = util.read_defines("src/opendax.h")
+defines = util.read_defines("../src/opendax.h")
 
 class Underflow(Exception):
     pass

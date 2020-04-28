@@ -18,7 +18,7 @@ import unittest
 import subprocess
 import signal
 import time
-import tests.util.daxwrapper as daxwrapper
+import PythonTests.util.daxwrapper as daxwrapper
 import testconfig
 
 class TestBasic(unittest.TestCase):

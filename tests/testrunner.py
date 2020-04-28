@@ -1,4 +1,6 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#!/usr/bin/env python3
+
+#  Copyright (c) 2019 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,16 +16,12 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_executable(daxtest daxtest.c tags.c testlua.c)
-target_link_libraries(daxtest dax)
-target_link_libraries(daxtest daxlua)
 
-add_executable(badmodule badmodule.c)
-target_link_libraries(badmodule dax)
+import unittest
+loader = unittest.TestLoader()
+start_dir = 'PythonTests'
+suite = loader.discover(start_dir, pattern="test_*.py")
+# suite = loader.discover(start_dir, pattern="test_libdax_strings.py")
 
-configure_file(daxtest.lua daxtest.lua COPYONLY)
-file(GLOB files "tests/*.lua")
-foreach(file ${files})
-  get_filename_component(FILENAME ${file} NAME)
-  configure_file(tests/${FILENAME} tests/${FILENAME} COPYONLY)
-endforeach()
+runner = unittest.TextTestRunner()
+runner.run(suite)

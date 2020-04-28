@@ -21,8 +21,8 @@ import signal
 import time
 import threading
 from serial import Serial
-import tests.util as util
-import tests.util.mbwrapper as mbwrapper
+import PythonTests.util as util
+import PythonTests.util.mbwrapper as mbwrapper
 
 defines = util.read_defines("src/modules/modbus/lib/modbus.h")
 

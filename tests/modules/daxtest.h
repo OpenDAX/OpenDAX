@@ -19,7 +19,7 @@
 
 #include <common.h>
 #include <opendax.h>
-#include "../../lib/lua/libdaxlua.h"
+#include "../../src/lib/lua/libdaxlua.h"
 
 #ifndef __DAXTEST_H
 #define __DAXTEST_H

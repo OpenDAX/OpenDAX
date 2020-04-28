@@ -23,13 +23,17 @@ cmake_minimum_required(VERSION 3.10.2)
 
 set(BUILD_SHARED_LIBS ON)
 
+option(BUILD_DAXLUA "Build Lua Module" ON)
+option(BUILD_MODBUS "Build Modbus Module" ON)
+option(BUILD_WIO "Build Wireless I/O Module" ON)
+
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(strings.h HAVE_STRINGS_H)
 check_include_file(sys/select.h HAVE_SYS_SELECT_H)
 
 
 include(FindLua)
-message("Lua Libraries Found: ${LUA_LIBRARIES}")
+# message("Lua Libraries Found: ${LUA_LIBRARIES}")
 include_directories(${LUA_INCLUDE_DIR})
 if(NOT LUA_LIBRARIES)
   message(FATAL_ERROR "Lua library not found!!")
@@ -40,9 +44,9 @@ include_directories(${PROJECT_BINARY_DIR}/src)
 include_directories(src)
 
 find_library(HAVE_READLINE NAMES readline)
-message("Readline Libraries Found: ${HAVE_READLINE}")
+# message("Readline Libraries Found: ${HAVE_READLINE}")
 
-message("Project Build Directory:${PROJECT_BINARY_DIR}")
+# message("Project Build Directory:${PROJECT_BINARY_DIR}")
 
 add_subdirectory(src)
 
@@ -51,3 +55,5 @@ file(GLOB files "etc/*.conf.sample")
 foreach(file ${files})
   install(FILES ${file} DESTINATION etc/opendax)
 endforeach()
+
+add_subdirectory(tests)

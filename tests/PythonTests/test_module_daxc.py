@@ -19,7 +19,7 @@ import subprocess
 import pexpect
 import signal
 import time
-import tests.util.daxwrapper as daxwrapper
+import PythonTests.util.daxwrapper as daxwrapper
 import testconfig
 
 daxc_path = "{}/src/modules/daxc/daxc".format(testconfig.build_dir)

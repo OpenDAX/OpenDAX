@@ -20,6 +20,6 @@
 # TODO: automatically generate this file with the proper stuff from the
 #       build system
 
-build_dir = "build"
+build_dir = "../build"
 tagserver_file = "{}/src/server/tagserver".format(build_dir)
 libdax_file = "{}/src/lib/libdax.so".format(build_dir)
