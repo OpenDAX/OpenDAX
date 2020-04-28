@@ -19,3 +19,5 @@ add_subdirectory(lib)
 add_subdirectory(master)
 add_subdirectory(server)
 add_subdirectory(modules)
+
+install(FILES opendax.h DESTINATION include)

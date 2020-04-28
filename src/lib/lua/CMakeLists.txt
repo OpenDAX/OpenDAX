@@ -20,3 +20,4 @@ add_library(daxlua_library libdaxlua.c)
 set_target_properties(daxlua_library PROPERTIES OUTPUT_NAME daxlua)
 
 install(TARGETS daxlua_library DESTINATION lib)
+install(FILES libdaxlua.h DESTINATION include)
