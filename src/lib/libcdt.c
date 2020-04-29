@@ -619,10 +619,6 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
     char tagname[strlen]; /* Hack alert */
     char *membername;
 
-    if(str == NULL) {
-        return ERR_ARG;
-    }
-
     strcpy(tagname, str);
     membername = _split_tagname(tagname);
     index = _get_index(tagname); /* Get array index inside [] */
@@ -703,7 +699,7 @@ int
 dax_tag_handle(dax_state *ds, Handle *h, char *str, int count)
 {
     int result;
-    if(h == NULL) {
+    if(h == NULL || ds == NULL || str == NULL) {
         return ERR_ARG;
     }
 

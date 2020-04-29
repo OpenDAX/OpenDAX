@@ -38,13 +38,13 @@
 #define DAX_DWORD   0x0005
 #define DAX_DINT    0x0015
 #define DAX_UDINT   0x0025
-#define DAX_TIME    0x0035
-#define DAX_REAL    0x0045
+#define DAX_REAL    0x0035
 /* 64 Bits */
 #define DAX_LWORD   0x0006
 #define DAX_LINT    0x0016
 #define DAX_ULINT   0x0026
-#define DAX_LREAL   0x0036
+#define DAX_TIME    0x0036
+#define DAX_LREAL   0x0046
 
 /* The highest order bit shows that it's a compound datatype */
 #define DAX_CUSTOM  0x80000000
