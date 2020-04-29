@@ -703,6 +703,10 @@ int
 dax_tag_handle(dax_state *ds, Handle *h, char *str, int count)
 {
     int result;
+    if(h == NULL) {
+        return ERR_ARG;
+    }
+
     bzero(h, sizeof(Handle)); /* Initialize h */
     result = _dax_tag_handle(ds, h, str, strlen(str) + 1, count);
     if(result) {
