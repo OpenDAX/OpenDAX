@@ -20,6 +20,9 @@
 # TODO: automatically generate this file with the proper stuff from the
 #       build system
 
-build_dir = "build"
+build_dir = "@CMAKE_BINARY_DIR@"
+opendax_h_location = "@CMAKE_SOURCE_DIR@/src/opendax.h"
+modbus_h_location = "@CMAKE_SOURCE_DIR@/src/modules/modbus/lib/modbus.h"
 tagserver_file = "{}/src/server/tagserver".format(build_dir)
 libdax_file = "{}/src/lib/libdax.so".format(build_dir)
+libmodbus_file = "{}/src/modules/modbus/lib/libmodbus.so".format(build_dir)

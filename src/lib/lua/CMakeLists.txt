@@ -18,6 +18,9 @@ include_directories(.)
 
 add_library(daxlua_library libdaxlua.c)
 set_target_properties(daxlua_library PROPERTIES OUTPUT_NAME daxlua)
+# Any target that links to this library will have this directory available
+# for include files
+target_include_directories(daxlua_library PUBLIC .)
 
 install(TARGETS daxlua_library DESTINATION lib)
 install(FILES libdaxlua.h DESTINATION include)

@@ -19,7 +19,7 @@ import subprocess
 import pexpect
 import signal
 import time
-import tests.util.daxwrapper as daxwrapper
+import PythonTests.util.daxwrapper as daxwrapper
 import testconfig
 
 class TestMapping(unittest.TestCase):

@@ -14,12 +14,12 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# This class uses ctypes to wrap the modbus library for testing
+# This class uses ctypes to wrap the dax library for testing
 from ctypes import *
-import tests.util as util
+import PythonTests.util as util
 import testconfig
 
-defines = util.read_defines("src/opendax.h")
+defines = util.read_defines(testconfig.opendax_h_location)
 
 class Underflow(Exception):
     pass
