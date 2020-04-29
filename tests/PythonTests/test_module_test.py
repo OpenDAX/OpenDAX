@@ -25,9 +25,9 @@ import time
 import PythonTests.util.daxwrapper as daxwrapper
 import testconfig
 
-daxtest_path = "{}/src/modules/test".format(testconfig.build_dir)
+daxtest_path = "{}/tests/modules".format(testconfig.build_dir)
 
-class TestTestMOdule(unittest.TestCase):
+class TestTestModule(unittest.TestCase):
 
     def setUp(self):
         self.server = subprocess.Popen([testconfig.tagserver_file,
@@ -51,7 +51,7 @@ class TestTestMOdule(unittest.TestCase):
 
     def test_run_daxtest_module(self):
         """run the old daxtest module"""
-        p = pexpect.spawn("daxtest", cwd=daxtest_path, timeout=1.0)
+        p = pexpect.spawn("{}/daxtest".format(daxtest_path), cwd=daxtest_path, timeout=1.0)
         p.expect("OpenDAX Test Finished, ")
         p.expect(" tests run, ")
         tests_run = int(p.before)

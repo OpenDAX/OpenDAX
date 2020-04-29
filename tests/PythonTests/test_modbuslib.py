@@ -23,8 +23,9 @@ import threading
 from serial import Serial
 import PythonTests.util as util
 import PythonTests.util.mbwrapper as mbwrapper
+import testconfig
 
-defines = util.read_defines("src/modules/modbus/lib/modbus.h")
+defines = util.read_defines(testconfig.modbus_h_location)
 
 class TestRTUMaster(unittest.TestCase):
     def setUp(self):

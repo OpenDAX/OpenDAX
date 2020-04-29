@@ -16,10 +16,11 @@
 
 # This class uses ctypes to wrap the modbus library for testing
 from ctypes import *
+import testconfig
 
 class ModbusWrapper:
     def __init__(self):
-        self.libmodbus = cdll.LoadLibrary("src/modules/modbus/lib/.libs/libmodbus.so")
+        self.libmodbus = cdll.LoadLibrary(testconfig.libmodbus_file)
         self.retval = None
 
     def mb_new_port(self, name, flags):

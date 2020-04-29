@@ -25,17 +25,15 @@
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
-
-// void quit_signal(int sig);
-// static void getout(int exitstatus);
+#include <sys/types.h>
+#include <sys/wait.h>
 
 dax_state *ds;
-// static int _quitsignal;
+static int _quitsignal;
 
-/* main inits and then calls run */
-int main(int argc,char *argv[]) {
-    // dax_byte buff[8];
-    // dax_byte mask[8];
+int
+do_test(int argc, char *argv[])
+{
     Handle src, dest;
     dax_id id;
     int result;
@@ -44,10 +42,36 @@ int main(int argc,char *argv[]) {
     dax_init_config(ds, "test");
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
-    dax_connect(ds);
+    result = dax_connect(ds);
+    if(result) {
+        return -1;
+    } else {
+        result = dax_tag_add(ds, &src, "tagname", DAX_DINT, 1);
+        printf("result = %d\n", result);
+        //dax_tag_add(ds, &dest, "DummyOut", DAX_BOOL, 16);
+    }
+}
 
-    result = dax_tag_add(ds, &src, "tagname", "DAX_DINT", 1);
-    printf("result = %d\n", result);
-    //dax_tag_add(ds, &dest, "DummyOut", DAX_BOOL, 16);
+/* main inits and then calls run */
+int
+main(int argc, char *argv[]) {
+    int status = 0;
 
+    pid_t pid;
+
+    pid = fork();
+    if(pid == 0) { // Child
+        execl("../src/server/tagserver", NULL);
+        printf("Failed to launch tagserver\n");
+        exit(0);
+    } else if(pid < 0) {
+        exit(-1);
+    } else {
+        usleep(100000);
+        if (do_test(argc, argv)) status ++;
+        kill(pid, SIGINT);
+        if (waitpid (pid, &status, 0) != pid)
+            status ++;
+    }
+    return status;
 }

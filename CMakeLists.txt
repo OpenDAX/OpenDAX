@@ -23,6 +23,8 @@ cmake_minimum_required(VERSION 3.10.2)
 
 set(BUILD_SHARED_LIBS ON)
 
+enable_testing()
+
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_WIO "Build Wireless I/O Module" ON)
