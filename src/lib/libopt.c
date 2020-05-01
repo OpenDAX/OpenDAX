@@ -35,9 +35,8 @@ dax_init_config(dax_state *ds, char *name)
     ds->L = luaL_newstate();
     if(ds->L == NULL) {
         return ERR_ALLOC;
-    } else {
-        ds->L = lua_open();
     }
+
     /* This sets up the configuration that is common to all modules */
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "socketname","socketname", 'U', flags, "/tmp/opendax");

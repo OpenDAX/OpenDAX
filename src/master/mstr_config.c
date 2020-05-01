@@ -237,7 +237,7 @@ readconfigfile(void)
     char *string;
 
     xlog(2, "Reading Configuration file %s", _configfile);
-    L = lua_open();
+    L = luaL_newstate();
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals. */

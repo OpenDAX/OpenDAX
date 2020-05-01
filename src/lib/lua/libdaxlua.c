@@ -1021,7 +1021,9 @@ int
 luaopen_dax (lua_State *L)
 {
     char *modulename = (char *)lua_tostring(L, 1);
-    luaL_register(L, modulename, daxlib);
+    //luaL_register(L, modulename, daxlib);
+    lua_pushcfunction(L, daxlib);
+    lua_setglobal(L, modulename);
     return 1;
 }
 

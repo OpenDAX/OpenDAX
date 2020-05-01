@@ -89,7 +89,7 @@ main(int argc,char *argv[])
     /* Free the configuration memory once we are done with it */
     dax_free_config(ds);
 
-    L = lua_open();
+    L = luaL_newstate();
     /* This adds all of the Lua functions to the lua_State */
     add_test_functions(L);
     daxlua_set_state(L, ds);

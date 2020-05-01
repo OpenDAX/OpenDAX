@@ -214,9 +214,7 @@ add_test_functions(lua_State *L)
     lua_pushcfunction(L, _lazy_test);
     lua_setglobal(L, "lazy_test");
 
-    /* These are the standard Lua libraries that we need */
-    luaopen_base(L);
-    luaopen_table(L);
-    luaopen_string(L);
-    luaopen_math(L);
+    /* TODO: Need to fix this so that we only load the libraries that we need */
+    luaL_openlibs(L);
+    
 }

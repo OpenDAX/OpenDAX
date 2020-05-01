@@ -4,11 +4,10 @@
 PASS = 0
 FAIL = 1
 
--- These have been replaced with a python unittest
---run_test("tests/tagname.lua", "Tagname Addition Test")
---run_test("tests/handles.lua", "Tag Handle Retrieval Test")
---run_test("tests/tagmodify.lua", "Tag Modification Test")
---run_test("tests/typefail.lua", "Type Fail Test")
+run_test("luatests/tagname.lua", "Tagname Addition Test")
+run_test("luatests/handles.lua", "Tag Handle Retrieval Test")
+run_test("luatests/tagmodify.lua", "Tag Modification Test")
+run_test("luatests/typefail.lua", "Type Fail Test")
 
 run_test("luatests/random.lua", "Random Tag Addition Test")
 

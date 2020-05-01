@@ -7,6 +7,7 @@
 
 --Recursive function for printing an entire table to the screen
 --  Used for debugging only, not really needed for the test
+
 function print_table(table, indent)
   local indentstr = ""
 
