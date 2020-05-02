@@ -37,6 +37,8 @@ do_test(int argc, char *argv[])
     Handle src, dest;
     dax_id id;
     int result;
+    char buff[32];
+    unsigned long x = 18446744073709551615UL;
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -46,8 +48,9 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        result = dax_tag_add(ds, &src, "tagname", DAX_DINT, 1);
+        dax_val_to_string(buff, 32, DAX_ULINT, &x, 0);
         printf("result = %d\n", result);
+        printf("string = %s\n", buff);
         //dax_tag_add(ds, &dest, "DummyOut", DAX_BOOL, 16);
     }
 }
@@ -61,7 +64,7 @@ main(int argc, char *argv[]) {
 
     pid = fork();
     if(pid == 0) { // Child
-        execl("../src/server/tagserver", NULL);
+        execl("../src/server/tagserver", "../src/server/tagserver", NULL);
         printf("Failed to launch tagserver\n");
         exit(0);
     } else if(pid < 0) {

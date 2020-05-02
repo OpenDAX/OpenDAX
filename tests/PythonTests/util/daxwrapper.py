@@ -125,7 +125,7 @@ class LibDaxWrapper:
 
     def dax_val_to_string(self, datatype, val, size=32, index=0):
         data = c_char_p()
-        data.value = b""
+        data.value = b"                                "
         x = self.libdax.dax_val_to_string(data, size, datatype, val, index)
         return data.value.decode('utf-8')
 

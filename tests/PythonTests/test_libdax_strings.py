@@ -18,7 +18,7 @@ import unittest
 import PythonTests.util.daxwrapper as daxwrapper
 import testconfig
 
-class TestLibDAXSTrings(unittest.TestCase):
+class TestLibDAXStrings(unittest.TestCase):
 
     def setUp(self):
         self.dax = daxwrapper.LibDaxWrapper()

@@ -64,7 +64,7 @@ add_test(python_test_handles_loop   "python3" "-m" "unittest"
 add_test(python_test_handles_flat   "python3" "-m" "unittest"
                                     "PythonTests.test_handles.TestHandles_FlatTests")
 add_test(python_test_libdax_strings "python3" "-m" "unittest"
-                                    "PythonTests.test_libdax_strings.TestLibDAXSTrings")
+                                    "PythonTests.test_libdax_strings.TestLibDAXStrings")
 add_test(python_test_mapping        "python3" "-m" "unittest"
                                     "PythonTests.test_mapping.TestMapping")
 add_test(python_test_single         "python3" "-m" "unittest"
