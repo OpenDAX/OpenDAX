@@ -1020,10 +1020,12 @@ static const struct luaL_Reg daxlib[] = {
 int
 luaopen_dax (lua_State *L)
 {
+#ifdef LUA_5_1
     char *modulename = (char *)lua_tostring(L, 1);
-    //luaL_register(L, modulename, daxlib);
-    lua_pushcfunction(L, daxlib);
-    lua_setglobal(L, modulename);
+    luaL_register(L, modulename, daxlib);
+#else
+    luaL_setfuncs(L, daxlib, 0);
+#endif
     return 1;
 }
 

@@ -22,13 +22,15 @@ project(OpenDAX VERSION 0.7)
 cmake_minimum_required(VERSION 3.10.2)
 
 set(BUILD_SHARED_LIBS ON)
-set(CMAKE_BUILD_TYPE Debug)
+
 
 enable_testing()
 
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_WIO "Build Wireless I/O Module" ON)
+
+#set(CMAKE_BUILD_TYPE Debug)
 
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(strings.h HAVE_STRINGS_H)
@@ -41,6 +43,10 @@ include_directories(${LUA_INCLUDE_DIR})
 if(NOT LUA_LIBRARIES)
   message(FATAL_ERROR "Lua library not found!!")
 endif()
+message("Lua Version ${LUA_VERSION_STRING} found")
+if(${LUA_VERSION_MAJOR} EQUAL 5 AND ${LUA_VERSION_MINOR} EQUAL 1)
+  set(LUA_5_1 TRUE)
+endif()
 
 # This is for the config.h file
 include_directories(${PROJECT_BINARY_DIR}/src)
@@ -49,14 +55,17 @@ include_directories(src)
 find_library(HAVE_READLINE NAMES readline)
 # message("Readline Libraries Found: ${HAVE_READLINE}")
 
-# message("Project Build Directory:${PROJECT_BINARY_DIR}")
-
 add_subdirectory(src)
 
-# Install the sampel configurations
+# Install the sample configurations
 file(GLOB files "etc/*.conf.sample")
 foreach(file ${files})
   install(FILES ${file} DESTINATION etc/opendax)
 endforeach()
 
 add_subdirectory(tests)
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  message("Building Debug Symbols and Verbose Warnings")
+endif()
+

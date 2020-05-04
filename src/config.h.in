@@ -7,3 +7,6 @@
 #cmakedefine HAVE_STRING_H @HAVE_STRING_H@
 #cmakedefine HAVE_STRINGS_H @HAVE_STRINGS_H@
 #cmakedefine HAVE_SYS_SELECT_H @HAVE_SYS_SELECT_H@
+
+#cmakedefine LUA_5_1 @LUA_5_1@
+
