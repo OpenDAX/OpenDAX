@@ -744,7 +744,6 @@ msg_cdt_get(dax_message *msg)
 
 int msg_map_add(dax_message *msg)
 {
-    int result;
     int id;
     Handle src, dest;
 

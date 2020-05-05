@@ -1013,7 +1013,7 @@ static const struct luaL_Reg daxlib[] = {
 /* This registers all of the functions that are defined in the above array
  * to the Lua script given by L.  It places them in a table named 'dax' and
  * leaves this table on the top of the stack.  This is the function that you
- *  would pass to the 'package.loadlib()' function in the Lua script.  
+ * would pass to the 'package.loadlib()' function in the Lua script.  
  * C program modules should probably use daxlua_register_function(). */
 /* TODO: Add a table, "tags" to "dax" that would be empty but utilize the
  * metamethods __index and __newindex to read and write the tags */
@@ -1024,8 +1024,10 @@ luaopen_dax (lua_State *L)
     char *modulename = (char *)lua_tostring(L, 1);
     luaL_register(L, modulename, daxlib);
 #else
+    luaL_newlibtable(L, daxlib);
     luaL_setfuncs(L, daxlib, 0);
 #endif
+
     return 1;
 }
 

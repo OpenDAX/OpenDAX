@@ -30,7 +30,7 @@ option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_WIO "Build Wireless I/O Module" ON)
 
-#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(strings.h HAVE_STRINGS_H)

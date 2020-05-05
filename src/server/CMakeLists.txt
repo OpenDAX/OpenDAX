@@ -19,5 +19,7 @@ add_executable(tagserver server.c options.c func.c module.c message.c
                tagbase.c crc.c buffer.c events.c mapping.c)
 target_link_libraries(tagserver ${LUA_LIBRARIES})
 target_link_libraries(tagserver pthread)
-
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_options(tagserver PRIVATE -Wall)
+endif()
 install(TARGETS tagserver DESTINATION bin)
