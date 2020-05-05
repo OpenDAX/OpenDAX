@@ -31,30 +31,6 @@ The modules do all the work and communicate with the opendax server through the 
 \chapter{Getting Started}
 \input{install.tex}
 
-\section{Configuration and Testing}
-
-Once you get OpenDAX installed on the system it might be a good idea to run the test module.  First we will have to get the server running.  Go to the configuration directory \footnote{On most systems this will be \texttt{/usr/local/etc/opendax}} and copy all of the *.conf.sample files to *.conf.\footnote{At some point in the future I hope that this task will be automated by the installation script but right now I don't want to spend the time on it.}   These are the configuration files.  The primary configuration file is opendax.conf.  This file configures the OpenDAX server as well as some defaults for all modules.
-
-Many of the individual modules will have their own configuration file as well.  Some may have many different configuration files.  Each configuration file is a Lua script.  In the simplest form the configuration file would simply be a list of assignment pairs. Like this...
-\begin{verbatim}
-daemonize = false
-statustag = "_status"
-pidfile = "/var/run/opendax.pid"
-... 
-\end{verbatim}
-
-These are just examples of the kind of information that you can find in a configuration file.  Since the OpenDAX configuration engine is based on the Lua programming language you can get very creative with how these configurations are generated.  We'll cover much more of the available configuration options later in the book when we start describing individual features.  For now the defaults that are included in the sample configurations should be sufficient for our needs.
-
-Once the configuration files are in place you should be able to run the server by typing \texttt{opendax} at the command prompt.  By default the server will send itself to the background and if everything works you should simply get a number printed to the screen indicating the PID of the server's process.
-
-To test the server installation you should run the \textit{daxtest} module.  This module should be located in the build tree where you compiled the program.  If extracted and compiled from your user directory it would be in \texttt{~/opendax.x.y/modules/test}.  Simply run the \texttt{daxtest} executable.  The module will print many messages to the screen depending on configuration and what tests are being run.  Once complete you should get a message that indicates how many tests were run and how many failed.  Hopefully the number of tests that fail is zero.
-
-Since OpenDAX is not very mature at this point please let the developers know of any tests that failed.  The \textit{opendax-devel} mailing list is the best place.
-
-At this point you may want to play around with the \textit{daxc} command line client module.  This is a command line interface to the server.  Run the module by typing \texttt{daxc} at the command line.  You'll be presented with the OpenDAX Daxc command interpreter.  Start with the help command and play.  For more information see the daxc references later in this book.
-
-Now, you should be able to start configuring your system.  You may want to restart the server, since the testing module creates thousands of tags that you will probably not want as part of your system.  Before you do that however, y
-
 \chapter{The OpenDAX Server}
 
 

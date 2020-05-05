@@ -1,15 +1,81 @@
+General
+-------
+
+Add option in CMake for compiling static libraries.
+
+Web REST API module - Flask?
+
+Webserver Module
+
+Qt Gui Module
+
+
+Master
+------
+
 opendax gets all locked up when a module fails to start
 
-_status tag can be written to by modules.  This should be read only.
+Possibly need to allow the start_module() function to set the processes
+environment before launching the module.
 
-Allow 'nice' levels to be set for modules
+Need to have the start_module() function set a lesser UID for the module
+before exec()ing the process.  What UID will opendax run as??
+There is probably some 'setuid root' stuff.  I don't really want to do that
+but it may be necessary to make sure that all the modules run as the opendax
+user.
 
-Much more testing needs to be done.
+Fix the dead module queue to be dynamic so that if too many modules die at
+once it won't fill up and the system can get cleaned up properly.
+
+Set up the module restarting in the scan_modules() function.
+
+Write the stop_module() function.
+
+Add this stuff to the configuration...
+
+  Modules
+    Restart (Yes or No) whether to restart
+    Reload (HUP or KILL) What signal ro reload a module (with KILL restart is implied)
+    StdIO (Yes or No) whether to connect to the modules STDIN, STDOUT, STDERR
+    nice Set kernel priorities.
+
+Write the command structures for connecting two modules STDIO.  When the first module requests
+to connect to STDIO it's STDOUT and STDERR are connected to the others STDIN and visa versa.
+Any subsequent requests by other modules to connect will either block (???) or return error.
+
+Tag Server
+---------
+
+_status tag can be written to by modules.  This should be read only.  This
+will probably need to be a CDT of some kind too.
+
+Allow 'nice' levels to be set for modules in the master
 
 There is a bug in the event handling logic when multiple modules of the
-same name are running.  Somewhere I'm using the name of the module to 
+same name are running.  Somewhere I'm using the name of the module to
 identify it and the name is not forced to be unique.
+
+There should be a hook for when a module reads the _status[] tag so that other parts of
+the system should update the tag with the latest info.
 
 Also need to remove events when modules are gone.
 
 Test for adding events and maps to tag indexes that do not exist.
+
+Add user authentication and tag access rights.
+
+Add properties to tags...
+  Timestamp
+  Time To Live  ???
+  Persistence Flag
+  Quality Flag(s)
+  Alarm Flags(s)  ??? - Maybe a higher level thing with CDTs
+
+Add this stuff to the configuration...
+
+  Global
+    Message Size??? (override the defaults that are found)
+    Starting Database and Taglist sizes as well as increments #defines as defaults
+    Network stuff
+  
+

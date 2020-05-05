@@ -102,5 +102,6 @@ make test
 If all the tests pass you can install with...
 
 sudo make install
+sudo ldconfig
 
 
