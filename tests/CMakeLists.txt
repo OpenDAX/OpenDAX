@@ -81,3 +81,12 @@ if(BUILD_MODBUS)
 endif()
 add_test(python_test_module_test    "python3" "-m" "unittest"
                                     "PythonTests.test_module_test.TestTestModule")
+
+                                    
+file(GLOB files "LuaTests/*")
+foreach(file ${files})
+  get_filename_component(FILENAME ${file} NAME)
+  configure_file(LuaTests/${FILENAME} LuaTests/${FILENAME})
+endforeach()
+
+add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua")
