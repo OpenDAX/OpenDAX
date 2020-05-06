@@ -99,7 +99,7 @@ _convert_data_str(tag_type datatype, dax_type_union *dest, char *str) {
 int
 event_add(char **tokens, int count)
 {
-    Handle h;
+    tag_handle h;
     int event_type, event_count, result, n;
     dax_type_union value;
     void *ptr;

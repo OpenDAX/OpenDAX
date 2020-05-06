@@ -33,7 +33,7 @@ static void
 _write_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
     /* It really should be this easy if we have done everything right up to here */
-    dax_write_tag(ds, *((Handle *)userdata), data);
+    dax_write_tag(ds, *((tag_handle *)userdata), data);
 }
 
 
@@ -41,7 +41,7 @@ static void
 _read_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
     /* It really should be this easy if we have done everything right up to here */
-    dax_read_tag(ds, *((Handle *)userdata), data);
+    dax_read_tag(ds, *((tag_handle *)userdata), data);
 }
 
 
@@ -55,10 +55,10 @@ setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 {
     int result, count;
     cmd_temp_data *cdata;
-    Handle *h;
+    tag_handle *h;
     char tagname[DAX_TAGNAME_SIZE + 20];
     
-    h = malloc(sizeof(Handle));
+    h = malloc(sizeof(tag_handle));
     if(h == NULL) {
         return;
     }

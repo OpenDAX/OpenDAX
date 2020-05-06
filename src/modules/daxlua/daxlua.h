@@ -42,7 +42,7 @@
 typedef struct Global_t {
     char *name;
     unsigned char mode;
-    Handle handle;
+    tag_handle handle;
     int ref;
     struct Global_t *next;
 } global_t;
@@ -81,9 +81,9 @@ int get_verbosity(void);
 /* luaif.c - Lua Interface functions */
 int daxlua_init(void);
 int setup_interpreter(lua_State *L);
-int fetch_tag(lua_State *L, Handle h);
-int send_tag(lua_State *L, Handle h);
-void tag_dax_to_lua(lua_State *L, Handle h, void* data);
-int tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask);
+int fetch_tag(lua_State *L, tag_handle h);
+int send_tag(lua_State *L, tag_handle h);
+void tag_dax_to_lua(lua_State *L, tag_handle h, void* data);
+int tag_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask);
 
 #endif /* !__DAXLUA_H */

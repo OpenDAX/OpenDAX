@@ -34,7 +34,7 @@ static int _quitsignal;
 int
 do_test(int argc, char *argv[])
 {
-    Handle src, dest;
+    tag_handle src, dest;
     dax_id id;
     int result;
     char buff[32];

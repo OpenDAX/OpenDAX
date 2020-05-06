@@ -86,7 +86,7 @@ _add_random_tags(lua_State *L)
 static int
 _handle_test(lua_State *L)
 {
-    Handle h;
+    tag_handle h;
     int final = 0;
     const char *name, *type;
     int count, result, byte, bit, rcount, size, test;
@@ -159,7 +159,7 @@ _lazy_test(lua_State *L)
     int result, n;
     static dax_dint test[10], data;
 
-    Handle h;
+    tag_handle h;
     dax_id id[10];
 
 

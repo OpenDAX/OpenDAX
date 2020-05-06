@@ -172,7 +172,7 @@ read_callback(cdt_iter member, void *udata)
  * iterating through the tag give by handle 'h' and storing that information
  * into a Lua variable on the top of the Lua stack. */
 void
-tag_dax_to_lua(lua_State *L, Handle h, void *data)
+tag_dax_to_lua(lua_State *L, tag_handle h, void *data)
 {
     cdt_iter tag;
     struct iter_udata udata;
@@ -404,7 +404,7 @@ write_callback(cdt_iter member, void *udata)
  * over to the recursive write_callback() function through the
  * cdt iterator. */
 int
-tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
+tag_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask){
     cdt_iter tag;
     struct iter_udata udata;
     int n, offset;
@@ -464,7 +464,7 @@ tag_lua_to_dax(lua_State *L, Handle h, void* data, void *mask){
 /* This function finds the tag given by *tagname, get's the data from
    the server and puts the result on the top of the Lua stack. */
 int
-fetch_tag(lua_State *L, Handle h)
+fetch_tag(lua_State *L, tag_handle h)
 {
     int result;
     void *data;
@@ -491,7 +491,7 @@ fetch_tag(lua_State *L, Handle h)
 /* This function reads the variable from the top of the Lua stack
    and sends it to the opendax tag given by *tagname */
 int
-send_tag(lua_State *L, Handle h)
+send_tag(lua_State *L, tag_handle h)
 {
     int result, n;
     char q = 0;
@@ -548,7 +548,7 @@ _add_global(char *script, char *varname, unsigned char mode)
 {
     global_t *glo;
     script_t *scr;
-    Handle h;
+    tag_handle h;
     int result;
 
     /* This would indicate that it's a dax tag */

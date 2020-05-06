@@ -472,7 +472,7 @@ _get_index(char *str)
  * function determines if all is okay and if so it finishes the handle definition
  * and returns 0 otherwise it returns an error */
 static int
-_parse_bit_index(dax_state *ds, tag_type type, Handle *h, char *digit, int index, int count)
+_parse_bit_index(dax_state *ds, tag_type type, tag_handle *h, char *digit, int index, int count)
 {
     char *endptr;
     int size;
@@ -506,7 +506,7 @@ _parse_bit_index(dax_state *ds, tag_type type, Handle *h, char *digit, int index
 }
 
 static int
-_parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int count)
+_parse_next_member(dax_state *ds, tag_type lasttype, tag_handle *h, char *str, int count)
 {
     int index, result, size;
     char *name = str;
@@ -612,7 +612,7 @@ _parse_next_member(dax_state *ds, tag_type lasttype, Handle *h, char *str, int c
 /* Wrapping the function to take advantage of the variable length array
  * feature of C for the tagname so we don't have to worry about malloc */
 static int
-_dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
+_dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int strlen, int count)
 {
     int result, index, size;
     dax_tag tag;
@@ -696,17 +696,17 @@ _dax_tag_handle(dax_state *ds, Handle *h, char *str, int strlen, int count)
  * functions to retrieve the data. If count is 0 then a handle to the whole tag
  * or tag member is returned. */
 int
-dax_tag_handle(dax_state *ds, Handle *h, char *str, int count)
+dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int count)
 {
     int result;
     if(h == NULL || ds == NULL || str == NULL) {
         return ERR_ARG;
     }
 
-    bzero(h, sizeof(Handle)); /* Initialize h */
+    bzero(h, sizeof(tag_handle)); /* Initialize h */
     result = _dax_tag_handle(ds, h, str, strlen(str) + 1, count);
     if(result) {
-        bzero(h, sizeof(Handle)); /* Reset h in case of error */
+        bzero(h, sizeof(tag_handle)); /* Reset h in case of error */
     }
     return result;
 }

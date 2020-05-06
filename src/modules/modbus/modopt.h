@@ -53,7 +53,7 @@ typedef struct cmd_temp_data {
  * field that helps us keep track of information that our module needs */
 typedef struct port_ud_item {
     char *mbreg;        /* OpenDAX Tagname */
-    Handle h;           /* OpenDAX Handle */
+    tag_handle h;           /* OpenDAX Handle */
     dax_id event; /* Event identification */
 } port_ud_item;
 

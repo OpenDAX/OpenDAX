@@ -29,7 +29,7 @@ static tag_index _first_tag = -1;
 static int _mapping_hops = 0;
 
 /* Allocates and initializes a data map node */
-static _dax_datamap *_new_map(Handle src, Handle dest)
+static _dax_datamap *_new_map(tag_handle src, tag_handle dest)
 {
     _dax_datamap *new;
 
@@ -52,7 +52,7 @@ static void _free_map(_dax_datamap *map) {
 
 
 int
-map_add(Handle src, Handle dest)
+map_add(tag_handle src, tag_handle dest)
 {
     _dax_datamap *new_map;
     int bit, offset;

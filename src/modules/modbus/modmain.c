@@ -60,7 +60,7 @@ _port_thread(void *port) {
  * update the modbus library register tables when the data in OpenDAX
  * changes.  The userdata structure is defined in modopt.h */
 typedef struct _slave_data {
-    Handle h;
+    tag_handle h;
     mb_port *port;
     int modreg;
 } _slave_data;
@@ -89,7 +89,7 @@ _slave_event_callback(void *udata)
 
 /* This function is so we can so this variable length array. */ 
 static void
-_write_data(mb_port *port, Handle h, int reg)
+_write_data(mb_port *port, tag_handle h, int reg)
 {
     int n;
     /*Add the extra byte so that we know that the

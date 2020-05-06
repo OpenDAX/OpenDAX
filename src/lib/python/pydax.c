@@ -546,7 +546,7 @@ pydax_read(PyObject *pSelf, PyObject *pArgs)
 {
     char *tagname;
     int count, result;
-    Handle h;
+    tag_handle h;
     void *buff;
     PyObject *po;
 
@@ -584,7 +584,7 @@ pydax_write(PyObject *pSelf, PyObject *pArgs)
     PyObject *data;
     char *tagname;
     int count, result;
-    Handle h;
+    tag_handle h;
     dax_type_union value;
 
     if(ds == NULL) {

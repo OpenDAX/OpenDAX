@@ -30,11 +30,11 @@
 #include <signal.h>
 
 static dax_state *ds;
-static Handle quit_tag;
-static Handle cpu_tag;
-static Handle mem_tag;
-static Handle msg_tag;
-static Handle noquit_tag;
+static tag_handle quit_tag;
+static tag_handle cpu_tag;
+static tag_handle mem_tag;
+static tag_handle msg_tag;
+static tag_handle noquit_tag;
 static dax_dint quit_time;
 static dax_int cpu_percent;
 static dax_dint mem_usage;

@@ -379,7 +379,7 @@ dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
  * tagname without the handle. */
 
 int
-dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count)
+dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
 {
     int size, result;
     dax_tag tag;
@@ -660,7 +660,7 @@ dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_
 }
 
 int
-dax_event_add(dax_state *ds, Handle *h, int event_type, void *data,
+dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
               dax_id *id, void (*callback)(void *udata),
               void *udata, void (*free_callback)(void *udata))
 {
@@ -762,7 +762,7 @@ dax_event_get(dax_state *ds, dax_id id)
 }
 
 int
-dax_event_mod(dax_state *ds, dax_id id, Handle *h, int event_type, void *data,
+dax_event_mod(dax_state *ds, dax_id id, tag_handle *h, int event_type, void *data,
               void (*callback)(void *udata), void *udata)
 {
 
@@ -891,7 +891,7 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
  * the unique id of the mapping if the function returns successfully.
  */
 int
-dax_map_add(dax_state *ds, Handle *src, Handle *dest, dax_id *id)
+dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
 {
     int result, size;
     dax_dint temp;
@@ -923,7 +923,7 @@ dax_map_add(dax_state *ds, Handle *src, Handle *dest, dax_id *id)
     temp = mtos_dint(dest->type);       /* Data type */
     memcpy(&buff[38], &temp, 4);
 
-    size = sizeof(Handle) * 2;
+    size = sizeof(tag_handle) * 2;
 
     libdax_lock(ds->lock);
     result = _message_send(ds, MSG_MAP_ADD, buff, size);

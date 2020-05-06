@@ -161,7 +161,7 @@ _read_callback(cdt_iter member, void *udata)
  * iterating through the tag give by handle 'h' and storing that information
  * into a Lua variable on the top of the Lua stack. */
 static void
-_send_tag_to_lua(lua_State *L, Handle h, void *data)
+_send_tag_to_lua(lua_State *L, tag_handle h, void *data)
 {
     cdt_iter tag;
     struct iter_udata udata;
@@ -402,7 +402,7 @@ _write_callback(cdt_iter member, void *udata)
  * over to the recursive write_callback() function through the
  * cdt iterator. */
 static int
-_get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask){
+_get_tag_from_lua(lua_State *L, tag_handle h, void* data, void *mask){
     cdt_iter tag;
     struct iter_udata udata;
     int n, offset;
@@ -627,7 +627,7 @@ static int
 _tag_read(lua_State *L) {
     char *name;
     int count, result;
-    Handle h;
+    tag_handle h;
     void *data;
     
     if(ds == NULL) {
@@ -675,7 +675,7 @@ _tag_write(lua_State *L) {
     char *name;
     char q = 0;
     int result, n;
-    Handle h;
+    tag_handle h;
     void *data, *mask;
     
     if(ds == NULL) {
@@ -866,7 +866,7 @@ _event_add(lua_State *L) {
     char *str;
     int count, type, result;
     lua_Number number;
-    Handle h;
+    tag_handle h;
     event_ref_data *edata;
     dax_id id;
     void *data;

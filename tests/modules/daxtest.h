@@ -34,8 +34,8 @@ int  tests_failed(void);
 void add_test_functions(lua_State *L);
 
 int add_random_tags(int count, char *name);
-void send_tag_to_lua(lua_State *L, Handle h, void* data);
-int get_tag_from_lua(lua_State *L, Handle h, void* data, void *mask);
+void send_tag_to_lua(lua_State *L, tag_handle h, void* data);
+int get_tag_from_lua(lua_State *L, tag_handle h, void* data, void *mask);
 
 
 #endif /* !__DAXTEST_H */

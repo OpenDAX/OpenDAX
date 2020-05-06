@@ -44,7 +44,7 @@ tag_add(char **tokens)
 {
     int count, result;
     tag_type type;
-    Handle handle;
+    tag_handle handle;
     const char usage[] = "Usage: add type count\n";
 
     /* Make sure that name is not NULL and we get the tagname */
@@ -168,7 +168,7 @@ list_tags(char **tokens)
 int
 tag_read(char **tokens)
 {
-    Handle handle;
+    tag_handle handle;
     int result, n, count = 0;
     char *name;
     void *buff;
@@ -220,7 +220,7 @@ tag_read(char **tokens)
  * as needed to represent the data to add.*/
 int
 tag_write(char **tokens, int tcount) {
-    Handle handle;
+    tag_handle handle;
     int result, n, points;
     char *name;
     void *buff, *mask;
@@ -343,7 +343,7 @@ int
 map_add(char **tokens, int count)
 {
     int srcCount, destCount, result;
-    Handle src, dest;
+    tag_handle src, dest;
     if(count < 4) {
         fprintf(stderr, "ERROR: Too few arguments\n");
         return ERR_ARG;

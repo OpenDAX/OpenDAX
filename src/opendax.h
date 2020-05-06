@@ -182,7 +182,7 @@ typedef double     dax_lreal;
 typedef dax_dint tag_index;
 typedef dax_udint tag_type;
 
-struct Handle {
+struct tag_handle {
     tag_index index;     /* The Index of the Tag */
     u_int32_t byte;      /* The byte offset where the data block starts */
     unsigned char bit;   /* The bit offset */
@@ -191,7 +191,8 @@ struct Handle {
     tag_type type;       /* The data type of the block */
 };
 
-typedef struct Handle Handle;
+typedef struct tag_handle tag_handle;
+typedef struct tag_handle Handle; /* For backward compatibility */
 
 /* This is a generic representation of a tag, it may or may
  * not actually represent how tags are stored. */
@@ -276,7 +277,7 @@ int dax_mod_get(dax_state *ds, char *modname);  /* Not implemented yet */
 int dax_mod_set(dax_state *ds, u_int8_t cmd, void *param);  /* Set module parameters in the server */
 
 /* Adds a tag to the opendax server database. */
-int dax_tag_add(dax_state *ds, Handle *h, char *name, tag_type type, int count);
+int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count);
 
 /* Get tag by name, will not decode members and subscripts */
 int dax_tag_byname(dax_state *ds, dax_tag *tag, char *name);
@@ -287,7 +288,7 @@ int dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index index);
  * data that we wish to retrieve is located.  This can be used in place
  * of a tagname string such as "Tag1.member1[5]".  Count is the number of
  * items, that we want. */
-int dax_tag_handle(dax_state *ds, Handle *h, char *str, int count);
+int dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int count);
 
 /* Returns the size of the datatype in bytes */
 int dax_get_typesize(dax_state *ds, tag_type type);
@@ -321,12 +322,12 @@ int dax_mask(dax_state *ds, tag_index idx, int offset, void *data,
  * count is the number of items in the tag to read/write.  The mask is
  * a binary mask that only allows data through where bits are high.
  * type is the tag type. */
-int dax_read_tag(dax_state *ds, Handle handle, void *data);
-int dax_write_tag(dax_state *ds, Handle handle, void *data);
-int dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask);
+int dax_read_tag(dax_state *ds, tag_handle handle, void *data);
+int dax_write_tag(dax_state *ds, tag_handle handle, void *data);
+int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);
 
 /* Event handling functions */
-int dax_event_add(dax_state *ds, Handle *handle, int event_type, void *data,
+int dax_event_add(dax_state *ds, tag_handle *handle, int event_type, void *data,
                   dax_id *id, void (*callback)(void *udata), void *udata,
                   void (*free_callback)(void *udata));
 int dax_event_del(dax_state *ds, dax_id id);
@@ -368,7 +369,7 @@ typedef struct cdt_iter cdt_iter;
 int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
 
 /* Add remove and get data table mapping functions */
-int dax_map_add(dax_state *ds, Handle *src, Handle *dest, dax_id *id);
+int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 
 
 /* Convenience functions for converting strings to basic DAX values and back */

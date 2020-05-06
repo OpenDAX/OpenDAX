@@ -553,7 +553,7 @@ _set_event_data(_dax_event *event, tag_index index, void *data) {
  * opendax.h for #defines.  'data' is any data that may need to be
  * passed such as values for deadband.*/
 int
-event_add(Handle h, int event_type, void *data, dax_module *module)
+event_add(tag_handle h, int event_type, void *data, dax_module *module)
 {
     _dax_event *head, *new;
     int result;

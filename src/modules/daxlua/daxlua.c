@@ -195,7 +195,7 @@ _script_event_dispatch(void *udata) {
 
 static inline int
 _setup_script_event(lua_State *L, script_t *s) {
-    Handle h;
+    tag_handle h;
     dax_type_union u;
     int result;
 

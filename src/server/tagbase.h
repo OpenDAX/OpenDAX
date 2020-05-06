@@ -82,8 +82,8 @@ typedef struct dax_event_t {
 
 typedef struct dax_datamap_t {
     int id;
-    Handle source;
-    Handle dest;
+    tag_handle source;
+    tag_handle dest;
     u_int8_t *mask;
     struct dax_datamap_t *next;
 } _dax_datamap;
@@ -130,11 +130,11 @@ int serialize_datatype(tag_type type, char **str);
 
 /* The event stuff is defined in events.c */
 void event_check(tag_index idx, int offset, int size);
-int event_add(Handle h, int event_type, void *data, dax_module *module);
+int event_add(tag_handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
 int events_cleanup(dax_module *module);
 
-int map_add(Handle src, Handle dest);
+int map_add(tag_handle src, tag_handle dest);
 int map_del(tag_index index, int id);
 int map_check(tag_index idx, int offset, u_int8_t *data, int size);
 

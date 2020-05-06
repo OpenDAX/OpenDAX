@@ -602,7 +602,7 @@ msg_mod_set(dax_message *msg)
 int
 msg_evnt_add(dax_message *msg)
 {
-    Handle h;
+    tag_handle h;
     void *data = NULL;
     dax_dint event_type;
     dax_module *module;
@@ -745,7 +745,7 @@ msg_cdt_get(dax_message *msg)
 int msg_map_add(dax_message *msg)
 {
     int id;
-    Handle src, dest;
+    tag_handle src, dest;
 
     src.index = *(dax_dint *)msg->data;
     src.byte = *(dax_dint *)&msg->data[4];

@@ -339,7 +339,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
 
 
 int
-dax_read_tag(dax_state *ds, Handle handle, void *data)
+dax_read_tag(dax_state *ds, tag_handle handle, void *data)
 {
     int result, n, i;
     u_int8_t *newdata;
@@ -467,7 +467,7 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
 
 
 int
-dax_write_tag(dax_state *ds, Handle handle, void *data)
+dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 {
     int i, n, result = 0;
     u_int8_t *mask, *newdata;
@@ -510,7 +510,7 @@ dax_write_tag(dax_state *ds, Handle handle, void *data)
 
 
 int
-dax_mask_tag(dax_state *ds, Handle handle, void *data, void *mask)
+dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 {
     int i, n, result = 0;
     u_int8_t *newmask = NULL, *newdata;

@@ -78,7 +78,7 @@ The \textit{Deadband} event will reset the "old value" when it fires.  So in the
 The functions that we will need are...
 
 \begin{verbatim}
-int dax_event_add(dax_state *ds, Handle *handle, int event_type,
+int dax_event_add(dax_state *ds, tag_handle *handle, int event_type,
                   void *data, dax_event_id *id, 
                   void (*callback)(void *udata), void *udata);
 \end{verbatim}
@@ -109,7 +109,7 @@ int dax_event_dispatch(dax_state *ds, dax_event_id *id);
 The \eventadd\index{dax\_event\_add() function} function is used to add a new event to the server.  It is a pretty involved function with a lot of arguments but it is actually pretty simple.  The first argument is the \daxstate| that we are very familiar with, the second argument is a pointer to a handle that represents the tag that we would like the event to be associated with.
 
 \begin{verbatim}
-int dax_event_add(dax_state *ds, Handle *handle, int event_type,
+int dax_event_add(dax_state *ds, tag_handle *handle, int event_type,
                   void *data, dax_event_id *id, 
                   void (*callback)(void *udata), void *udata);
 \end{verbatim}

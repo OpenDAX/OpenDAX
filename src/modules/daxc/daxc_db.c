@@ -35,7 +35,7 @@ extern dax_state *ds;
 int
 db_read(char **tokens)
 {
-    Handle h;
+    tag_handle h;
     int result, n;
     unsigned char *buff;
 
