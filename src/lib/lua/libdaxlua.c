@@ -1024,8 +1024,7 @@ luaopen_dax (lua_State *L)
     char *modulename = (char *)lua_tostring(L, 1);
     luaL_register(L, modulename, daxlib);
 #else
-    luaL_newlibtable(L, daxlib);
-    luaL_setfuncs(L, daxlib, 0);
+    luaL_newlib(L, daxlib);
 #endif
 
     return 1;
