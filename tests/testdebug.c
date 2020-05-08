@@ -48,10 +48,9 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        dax_val_to_string(buff, 32, DAX_ULINT, &x, 0);
-        printf("result = %d\n", result);
-        printf("string = %s\n", buff);
-        //dax_tag_add(ds, &dest, "DummyOut", DAX_BOOL, 16);
+        dax_tag_add(ds, &dest, "Dummy", DAX_INT, 1);
+        x = 0x55555555;
+        dax_write_tag(ds,  dest, &x);
     }
 }
 

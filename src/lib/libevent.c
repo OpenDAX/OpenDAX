@@ -206,8 +206,9 @@ int
 dax_event_dispatch(dax_state *ds, dax_id *id)
 {
     int result, n;
-    u_int32_t etype, idx, eid, byte, count, datatype;
-    u_int8_t bit;
+    u_int32_t idx, eid;
+//    u_int32_t etype, byte, count, datatype;
+//    u_int8_t bit;
 
 //    fprintf(stderr, "dax_event_dispatch() called\n");
     result = read(ds->afd, &(ds->ebuff[ds->eindex]), EVENT_MSGSIZE - ds->eindex);
@@ -216,13 +217,13 @@ dax_event_dispatch(dax_state *ds, dax_id *id)
     if(ds->eindex == EVENT_MSGSIZE) { /* We have a full message now */
         ds->eindex = 0; /* Reset for the next time */
 //        fprintf(stderr, "dax_event_dispatch() firing event\n");
-        etype =    ntohl(*(u_int32_t *)(&ds->ebuff[0]));
+//        etype =    ntohl(*(u_int32_t *)(&ds->ebuff[0]));
         idx =      ntohl(*(u_int32_t *)(&ds->ebuff[4]));
         eid =      ntohl(*(u_int32_t *)(&ds->ebuff[8]));
-        byte =     ntohl(*(u_int32_t *)(&ds->ebuff[12]));
-        count =    ntohl(*(u_int32_t *)(&ds->ebuff[16]));
-        datatype = ntohl(*(u_int32_t *)(&ds->ebuff[20]));
-        bit =      *(u_int8_t *)(&ds->ebuff[24]);
+//        byte =     ntohl(*(u_int32_t *)(&ds->ebuff[12]));
+//        count =    ntohl(*(u_int32_t *)(&ds->ebuff[16]));
+//        datatype = ntohl(*(u_int32_t *)(&ds->ebuff[20]));
+//        bit =      *(u_int8_t *)(&ds->ebuff[24]);
 //        fprintf(stderr, "event type  = %d\n", etype);
 //        fprintf(stderr, "event idx   = %d\n", idx);
 //        fprintf(stderr, "event id    = %d\n", eid);

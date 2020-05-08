@@ -493,12 +493,13 @@ msg_tag_read(dax_message *msg)
 {
     char data[MSG_DATA_SIZE];
     tag_index index;
-    int result, offset;
+    int result;
+    u_int32_t offset;
     int size;
 
     index = *((tag_index *)&msg->data[0]);
-    offset = *((int *)&msg->data[4]);
-    size = *((int *)&msg->data[8]);
+    offset = *((u_int32_t *)&msg->data[4]);
+    size = *((u_int32_t *)&msg->data[8]);
 
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, index, offset, size);
 
@@ -515,22 +516,23 @@ msg_tag_read(dax_message *msg)
 int
 msg_tag_write(dax_message *msg)
 {
-    tag_index handle;
-    int result, offset;
+    tag_index idx;
+    int result;
+    u_int32_t offset;
     void *data;
     size_t size;
 
-    size = msg->size - sizeof(tag_index) - sizeof(int);
-    handle = *((tag_index *)&msg->data[0]);
-    offset = *((int *)&msg->data[4]);
+    size = msg->size - sizeof(tag_index) - sizeof(u_int32_t);
+    idx = *((tag_index *)&msg->data[0]);
+    offset = *((u_int32_t *)&msg->data[4]);
     data = &msg->data[8];
+   
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
 
-    xlog(LOG_MSG | LOG_VERBOSE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
-
-    result = tag_write(handle, offset, data, size);
+    result = tag_write(idx, offset, data, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_WRITE, &result, sizeof(result), ERROR);
-        xlog(LOG_ERROR, "Unable to write tag 0x%X with size %d",handle, size);
+        xlog(LOG_ERROR, "Unable to write tag 0x%X with size %d",idx, size);
     } else {
         _message_send(msg->fd, MSG_TAG_WRITE, NULL, 0, RESPONSE);
     }
@@ -541,23 +543,23 @@ msg_tag_write(dax_message *msg)
 int
 msg_tag_mask_write(dax_message *msg)
 {
-    tag_index handle;
+    tag_index idx;
     int result, offset;
     void *data, *mask;
     size_t size;
 
-    size = (msg->size - sizeof(tag_index) - sizeof(int)) / 2;
-    handle = *((tag_index *)&msg->data[0]);
-    offset = *((int *)&msg->data[4]);
+    size = (msg->size - sizeof(tag_index) - sizeof(u_int32_t)) / 2;
+    idx = *((tag_index *)&msg->data[0]);
+    offset = *((u_int32_t *)&msg->data[4]);
     data = &msg->data[8];
     mask = &msg->data[8 + size];
+   
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
 
-    xlog(LOG_MSG | LOG_VERBOSE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, handle, offset, size);
-
-    result = tag_mask_write(handle, offset, data, mask, size);
+    result = tag_mask_write(idx, offset, data, mask, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);
-        xerror("Unable to write tag 0x%X with size %d: result %d", handle, size, result);
+        xerror("Unable to write tag 0x%X with size %d: result %d", idx, size, result);
     } else {
         _message_send(msg->fd, MSG_TAG_MWRITE, NULL, 0, RESPONSE);
     }
@@ -783,3 +785,5 @@ int msg_map_get(dax_message *msg)
     printf("Message Get\n");
     return 0;
 }
+
+

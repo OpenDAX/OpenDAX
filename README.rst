@@ -63,6 +63,12 @@ able to grow and shrink as the program runs.
 Licensing
 ---------------------
 
+OpenDAX is Open Source software.  It is completely open source and currently
+there are no 'enterprise' or 'premium' features that are not included in the
+code base.
+
+The core programs of OpenDAX are licensed with the GPL v2 and the libraries are
+licensed with the LGPL v2.  See the COPYING and COPYING.LIB files for details.
 
 ---------------------
 Status
@@ -70,6 +76,10 @@ Status
 
 At this point the code is at best, pre-alpha quality and it is not ready to be 
 installed on production systems.
+
+All parts of the system are open for modification at this time.  This includes
+the ABI of the libraries as well as the communication protocol itself.  The 
+ABI will not be changed unless absolutely necessary.
 
 ---------------------
 Installation

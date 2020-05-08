@@ -28,25 +28,25 @@
 #include <assert.h>
 
 /* Message functions */
-#define MSG_MOD_REG    0x0000 /* Register the module with the server */
-#define MSG_TAG_ADD    0x0001 /* Add a tag */
-#define MSG_TAG_DEL    0x0002 /* Delete a tag from the database */
-#define MSG_TAG_GET    0x0003 /* Get the handle, type, size etc for the tag */
-#define MSG_TAG_LIST   0x0004 /* Retrieve a list of all the tagnames */
-#define MSG_TAG_READ   0x0005 /* Read the value of a tag */
-#define MSG_TAG_WRITE  0x0006 /* Write the value to a tag */
-#define MSG_TAG_MWRITE 0x0007 /* Masked Write */
-#define MSG_MOD_GET    0x0008 /* Get the module parameters */
-#define MSG_MOD_SET    0x0009 /* set the module parameters */
-#define MSG_EVNT_ADD   0x000A /* Add an event to the taglist */
-#define MSG_EVNT_DEL   0x000B /* Delete an event */
-#define MSG_EVNT_GET   0x000C /* Get an event definition */
-#define MSG_EVNT_MOD   0x000D /* Get an event definition */
-#define MSG_CDT_CREATE 0x000E /* Create a Custom Datatype */
-#define MSG_CDT_GET    0x000F /* Get the definition of a Custom Datatype */
-#define MSG_MAP_ADD    0x0010 /* Add a data point mapping */
-#define MSG_MAP_DEL    0x0011 /* Delete a data point mapping */
-#define MSG_MAP_GET    0x0012 /* Retrieve a data point mapping for a given tag */
+#define MSG_MOD_REG     0x0000 /* Register the module with the server */
+#define MSG_TAG_ADD     0x0001 /* Add a tag */
+#define MSG_TAG_DEL     0x0002 /* Delete a tag from the database */
+#define MSG_TAG_GET     0x0003 /* Get the handle, type, size etc for the tag */
+#define MSG_TAG_LIST    0x0004 /* Retrieve a list of all the tagnames */
+#define MSG_TAG_READ    0x0005 /* Read the value of a tag */
+#define MSG_TAG_WRITE   0x0006 /* Write the value to a tag */
+#define MSG_TAG_MWRITE  0x0007 /* Masked Write */
+#define MSG_MOD_GET     0x0008 /* Get the module parameters */
+#define MSG_MOD_SET     0x0009 /* set the module parameters */
+#define MSG_EVNT_ADD    0x000A /* Add an event to the taglist */
+#define MSG_EVNT_DEL    0x000B /* Delete an event */
+#define MSG_EVNT_GET    0x000C /* Get an event definition */
+#define MSG_EVNT_MOD    0x000D /* Get an event definition */
+#define MSG_CDT_CREATE  0x000E /* Create a Custom Datatype */
+#define MSG_CDT_GET     0x000F /* Get the definition of a Custom Datatype */
+#define MSG_MAP_ADD     0x0010 /* Add a data point mapping */
+#define MSG_MAP_DEL     0x0011 /* Delete a data point mapping */
+#define MSG_MAP_GET     0x0012 /* Retrieve a data point mapping for a given tag */
 /* More to come */
 
 #define NUM_COMMANDS 19

@@ -36,7 +36,7 @@ static int _verbosity;
 static int _maxstartup;
 static int _min_buffers;
 static int _start_timeout;  /* module startup stage timeout */
-static char **_required_modules;
+//static char **_required_modules;
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */

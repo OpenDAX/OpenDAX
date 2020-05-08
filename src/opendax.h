@@ -293,19 +293,17 @@ int dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int count);
 /* Returns the size of the datatype in bytes */
 int dax_get_typesize(dax_state *ds, tag_type type);
 
-/* The following functions are for reading and writing data.  These
- * are generic functions and are used by other functions within the
- * library.  They can be used by the modules as well but they don't
- * do any bounds checking of the tag handles.  This will make them
- * more efficient but less stable if the module misbehaves.  These
- * may go away. */
+/* These are low level functions that write data directly to the server.
+ * They do no type checking or bounds checking of the data and should
+ * be avoided by client modules unless there is a really good reason.
+ */
 
 /* simple untyped tag reading function */
-int dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size);
+int dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size);
 /* simple untyped tag writing function */
-int dax_write(dax_state *ds, tag_index idx, int offset, void *data, size_t size);
+int dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size);
 /* simple untyped masked tag write */
-int dax_mask(dax_state *ds, tag_index idx, int offset, void *data,
+int dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data,
              void *mask, size_t size);
 
 /* These are the bread and butter tag handling functions.  The functions

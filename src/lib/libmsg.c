@@ -61,7 +61,7 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
    before we retrieve the result. */
 /* TODO: Do a better job of explaining the functionality of this function */
 static int
-_message_recv(dax_state *ds, int command, void *payload, int *size, int response)
+_message_recv(dax_state *ds, int command, void *payload, size_t *size, int response)
 {
     char buff[DAX_MSGMAX];
     int index, msg_size, result;
@@ -107,7 +107,7 @@ _message_recv(dax_state *ds, int command, void *payload, int *size, int response
     } else if(result == (command | (response ? MSG_RESPONSE : 0))) {
         if(size) {
             if((msg_size - MSG_HDR_SIZE) > *size) {
-                printf("Why do we think it's too big. msg_size = %d, *size = %d\n", msg_size, *size);
+                printf("Why do we think it's too big. msg_size = %d, *size = %ld\n", msg_size, *size);
                 return ERR_2BIG;
             } else {
                 memcpy(payload, &buff[MSG_HDR_SIZE], msg_size - MSG_HDR_SIZE);
@@ -193,7 +193,8 @@ _get_connection(dax_state *ds)
 static int
 _mod_connect(dax_state *ds, char *name)
 {
-    int result, len;
+    int result;
+    size_t len;
     char buff[DAX_MSGMAX];
 
 /* TODO: Boundary check that a name that is longer than data size will
@@ -246,7 +247,8 @@ _mod_connect(dax_state *ds, char *name)
 static int
 _event_connect(dax_state *ds)
 {
-    int result, len, tmpfd;
+    int result, tmpfd;
+    size_t len;
     char buff[DAX_MSGMAX];
 
     *((u_int32_t *)&buff[0]) = htonl(ds->id); /* Send our ID so that the server knows which module we are */
@@ -317,7 +319,8 @@ dax_connect(dax_state *ds)
 int
 dax_disconnect(dax_state *ds)
 {
-    int len, result = -1;
+    int result = -1;
+    size_t len;
     libdax_lock(ds->lock);
 
     if(ds->sfd) {
@@ -347,7 +350,8 @@ dax_mod_get(dax_state *ds, char *modname)
 int
 dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
 {
-    int result, size;
+    int result;
+    size_t size;
     char buff[1];  /* So far this is as big as we need */
 
     libdax_lock(ds->lock);
@@ -381,7 +385,8 @@ dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
 int
 dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
 {
-    int size, result;
+    int result;
+    size_t size;
     dax_tag tag;
     char buff[DAX_TAGNAME_SIZE + 8 + 1];
 
@@ -443,7 +448,8 @@ the custom data types going.  Returns zero on success. */
 int
 dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
 {
-    int result, size;
+    int result;
+    size_t size;
     char *buff;
 
     if(name == NULL) return ERR_ARG;
@@ -491,7 +497,8 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
 int
 dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
 {
-    int result, size;
+    int result;
+    size_t size;
     char buff[DAX_TAGNAME_SIZE + 13];
 
     libdax_lock(ds->lock);
@@ -527,46 +534,42 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
 /*!
  * The following three functions are the core of the data handling
  * system in Dax.  They are the raw reading and writing functions.
- * 'handle' is the handle of the tag as returned by the dax_tag_add()
- * function, 'offset' is the byte offset into the data area of the tag
+ * 'idx' is the tag index found in the tag_handle of the tag as 
+ * returned by the dax_tag_add() function. 
+ * 'offset' is the byte offset into the data area of the tag
  * 'data' is a pointer to a data area where the data will be written
  * and 'size' is the number of bytes to read. If data isn't allocated
  * then bad things will happen.  The data will come out of here exactly
  * like it appears in the server.  It is up to the module to convert
- * the data to the module's number format. */
+ * the data to the servers's number format.
+ */
 int
-dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
+dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size)
 {
-    int n, count, m_size, sendsize;
     int result = 0;
-    int buff[3];
+    u_int8_t buff[14];
 
-    /* This calculates the amount of data that we can send with a single message
-        It subtracts a handle_t from the data size for use as the tag handle.*/
-    m_size = MSG_DATA_SIZE;
-    count = ((size - 1) / m_size) + 1;
-    for(n = 0; n < count; n++) {
-        if(n == (count - 1)) { /* Last Packet */
-            sendsize = size % m_size; /* What's left over */
-        } else {
-            sendsize = m_size;
-        }
-        buff[0] = mtos_dint(idx);
-        buff[1] = mtos_dint(offset + n * m_size);
-        buff[2] = mtos_dint(sendsize);
+    
+    /* If we try to read more data that can be held in a single message we return an error */
+    if(size > MSG_DATA_SIZE) {
+        return ERR_2BIG;
+    }
 
-        libdax_lock(ds->lock);
-        result = _message_send(ds, MSG_TAG_READ, (void *)buff, sizeof(buff));
-        if(result) {
-            libdax_unlock(ds->lock);
-            return result;
-        }
-        result = _message_recv(ds, MSG_TAG_READ, &((char *)data)[m_size * n], &sendsize, 1);
+    *((tag_index *)&buff[0]) = mtos_dint(idx);
+    *((u_int32_t *)&buff[4]) = mtos_dint(offset);
+    *((u_int32_t *)&buff[8]) = mtos_dint(size);
+    
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_TAG_READ, (void *)buff, sizeof(buff));
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_TAG_READ, (char *)data, &size, 1);
 
-        if(result) {
-            libdax_unlock(ds->lock);
-            return result;
-        }
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
     }
     libdax_unlock(ds->lock);
     return 0;
@@ -579,40 +582,38 @@ dax_read(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
  * offset into the data area of the tag.
  */
 int
-dax_write(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
+dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size)
 {
-    size_t n, count, m_size, sendsize;
+    size_t sendsize;
     int result;
     char buff[MSG_DATA_SIZE];
 
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle and
        an int, because we'll send the handle and the offset.*/
-    m_size = MSG_DATA_SIZE - sizeof(tag_index) - sizeof(int);
-    /* count is the number of messages that we will have to send to transport this data. */
-    count = ( (size - 1) / m_size ) + 1;
-    for(n = 0; n < count; n++) {
-        if(n == (count - 1)) { /* Last Packet */
-            sendsize = size % m_size; /* What's left over */
-        } else {
-            sendsize = m_size;
-        }
-        /* Write the data to the message buffer */
-        *((tag_index *)&buff[0]) = mtos_dint(idx);
-        *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
-        memcpy(&buff[8], data + (m_size * n), sendsize);
+    sendsize = size + sizeof(tag_index) + sizeof(u_int32_t);
+    /* It is assumed that the flags that we want to set are the first 4 bytes are in *data */
+    /* If we try to read more data that can be held in a single message we return an error */
+    if(sendsize > MSG_DATA_SIZE) {
+        return ERR_2BIG;
+    }
 
-        libdax_lock(ds->lock);
-        result = _message_send(ds, MSG_TAG_WRITE, buff, sendsize + sizeof(tag_index) + sizeof(int));
-        if(result) {
-            libdax_unlock(ds->lock);
-            return result;
-        }
-        result = _message_recv(ds, MSG_TAG_WRITE, buff, 0, 1);
-        if(result) {
-            libdax_unlock(ds->lock);
-            return result;
-        }
+    /* Write the data to the message buffer */
+    *((tag_index *)&buff[0]) = mtos_dint(idx);
+    *((u_int32_t *)&buff[4]) = mtos_dint(offset); 
+    
+    memcpy(&buff[8], data, size);
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_TAG_WRITE, buff, sendsize);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_TAG_WRITE, buff, 0, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
     }
     libdax_unlock(ds->lock);
     return 0;
@@ -621,39 +622,36 @@ dax_write(dax_state *ds, tag_index idx, int offset, void *data, size_t size)
 /* Same as the dax_write() function except that only bits that are in *mask
  * will be changed. */
 int
-dax_mask(dax_state *ds, tag_index idx, int offset, void *data, void *mask, size_t size)
+dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask, size_t size)
 {
-    size_t n, count, m_size, sendsize;
+    size_t sendsize;
     u_int8_t buff[MSG_DATA_SIZE];
     int result;
 
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle.*/
-    m_size = (MSG_DATA_SIZE - sizeof(tag_index) - sizeof(int)) / 2;
-    count=((size - 1) / m_size) + 1;
-    for(n = 0; n < count; n++) {
-        if(n == (count - 1)) { /* Last Packet */
-            sendsize = (size % m_size); /* What's left over */
-        } else {
-            sendsize = m_size;
-        }
-        /* Write the data to the message buffer */
-        *((tag_index *)&buff[0]) = mtos_dint(idx);
-        *((int *)&buff[4]) = mtos_dint(offset + n * m_size);
-        memcpy(&buff[8], data + (m_size * n), sendsize);
-        memcpy(&buff[8 + sendsize], mask + (m_size * n), sendsize);
+    sendsize = size*2 + sizeof(tag_index) + sizeof(u_int32_t);
+    /* It is assumed that the flags that we want to set are the first 4 bytes are in *data */
+    /* If we try to read more data that can be held in a single message we return an error */
+    if(sendsize > MSG_DATA_SIZE) {
+        return ERR_2BIG;
+    }
+    /* Write the data to the message buffer */
+    *((tag_index *)&buff[0]) = mtos_dint(idx);
+    *((u_int32_t *)&buff[4]) = mtos_dint(offset);
+    memcpy(&buff[8], data, size);
+    memcpy(&buff[8 + size], mask, size);
 
-        libdax_lock(ds->lock);
-        result = _message_send(ds, MSG_TAG_MWRITE, buff, sendsize * 2 + sizeof(tag_index) + sizeof(int));
-        if(result) {
-            libdax_unlock(ds->lock);
-            return result;
-        }
-        result = _message_recv(ds, MSG_TAG_MWRITE, buff, 0, 1);
-        if(result) {
-            libdax_unlock(ds->lock);
-            return result;
-        }
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_TAG_MWRITE, buff, sendsize);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_TAG_MWRITE, buff, 0, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
     }
     libdax_unlock(ds->lock);
     return 0;
@@ -668,7 +666,7 @@ dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
     dax_dint result;
     dax_dint temp;
     dax_udint u_temp;
-    int size;
+    size_t size;
     dax_id eid;
     char buff[MSG_DATA_SIZE];
 
@@ -723,7 +721,8 @@ dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
 int
 dax_event_del(dax_state *ds, dax_id id)
 {
-    int test, size;
+    int test;
+    size_t size;
     dax_dint result;
     dax_dint temp;
     char buff[MSG_DATA_SIZE];
@@ -776,7 +775,8 @@ dax_event_mod(dax_state *ds, dax_id id, tag_handle *h, int event_type, void *dat
 int
 dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
 {
-    int size = 0, result;
+    int result;
+    size_t size = 0;
     cdt_member *this;
     char test[DAX_TAGNAME_SIZE + 1];
     char buff[MSG_DATA_SIZE], rbuff[10];
@@ -851,7 +851,8 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
 int
 dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
 {
-    int result, size;
+    int result;
+    size_t size;
     char buff[MSG_DATA_SIZE];
     tag_type type;
 
@@ -893,7 +894,8 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
 int
 dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
 {
-    int result, size;
+    int result;
+    size_t size;
     dax_dint temp;
     dax_udint u_temp;
 

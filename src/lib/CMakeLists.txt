@@ -20,7 +20,9 @@ add_library(dax libcdt.c libconv.c libdata.c
             libevent.c libfunc.c libinit.c libmsg.c libopt.c)
 
 target_link_libraries(dax ${LUA_LIBRARIES})
-
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_options(dax PRIVATE -Wall)
+endif()
 install(TARGETS dax DESTINATION lib)
 
 add_subdirectory(lua)
