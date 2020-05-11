@@ -1,7 +1,7 @@
 --This checks that the tagnames that should fail do so and that tags
 --that should be allowed are allowed
-fail = {"1Tag", "-Tag", "Tag-name", "Tag&name", "TagNameIsWayTooLong12345678912345"}
-pass = {"_Tag", "Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit12"}
+fail = {"_Tag", "1Tag", "-Tag", "Tag-name", "Tag&name", "TagNameIsWayTooLong12345678912345"}
+pass = {"Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit12"}
 duplicate = pass[2];
 
 --This loop iterates through the tagnames from 'fail' to make sure that they
