@@ -426,7 +426,10 @@ msg_tag_add(dax_message *msg)
     count = *((u_int32_t *)&msg->data[4]);
 
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[8], msg->fd, type, count);
-
+    
+    if(msg->data[8] == '_') {
+        return ERR_ILLEGAL;
+    }
     idx = tag_add(&msg->data[8], type, count);
 
     if(idx >= 0) {

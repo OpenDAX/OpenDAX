@@ -51,8 +51,9 @@ class TestTestModule(unittest.TestCase):
 
     def test_run_daxtest_module(self):
         """run the old daxtest module"""
-        p = pexpect.spawn("{}/daxtest".format(daxtest_path), cwd=daxtest_path, timeout=1.0)
+        p = pexpect.spawn("{}/daxtest".format(daxtest_path), cwd=daxtest_path, timeout=2.0)
         p.expect("OpenDAX Test Finished, ")
+        print(p.before)
         p.expect(" tests run, ")
         tests_run = int(p.before)
         p.expect(" tests failed")

@@ -25,9 +25,9 @@ import time
 import PythonTests.util.daxwrapper as daxwrapper
 import testconfig
 
-badnames =  ["1Tag", "-Tag", "Tag-name", "Tag&name", "Tag+name", "tag/name",
+badnames =  ["_Tag", "1Tag", "-Tag", "Tag-name", "Tag&name", "Tag+name", "tag/name",
              "tag*name", "TAG?NAME", "TagNameIsWayTooLong12345678912345"]
-goodnames = ["_Tag", "Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit12"]
+goodnames = ["Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit12"]
 
 
 class TestSingle(unittest.TestCase):
