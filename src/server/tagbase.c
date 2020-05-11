@@ -45,7 +45,8 @@
 
 _dax_tag_db *_db;
 static _dax_tag_index *_index;
-tag_index _tagcount = 0;
+static tag_index _tagnextindex = 0;
+static tag_index _tagcount = 0;
 static long int _dbsize = 0;
 static datatype *_datatypes;
 static unsigned int _datatype_index; /* Next datatype index */
@@ -141,7 +142,7 @@ _get_by_name(char *name)
     int i, min, max, try;
 
     min = 0;
-    max = _tagcount - 1;
+    max = _tagnextindex - 1;
 
     while(min <= max) {
         try = min + ((max - min) / 2);
@@ -204,7 +205,7 @@ _database_grow(void)
 
 /* This adds the name of the tag to the index */
 static int
-_add_index(char *name, int index)
+_add_index(char *name, tag_index index)
 {
     int n;
     char *temp;
@@ -215,11 +216,11 @@ _add_index(char *name, int index)
     if(temp == NULL)
         return ERR_ALLOC;
 
-    if(_tagcount == 0) {
+    if(_tagnextindex == 0) {
         n = 0;
     } else {
         min = 0;
-        max = _tagcount - 1;
+        max = _tagnextindex - 1;
 
         while(min <= max) {
             try = min + ((max - min) / 2);
@@ -247,6 +248,30 @@ _add_index(char *name, int index)
 //    for(n=0;n<_tagcount;n++) {
 //        printf("_index[%d] = %s\n", n, _index[n].name);
 //    }
+    return 0;
+}
+
+/* Delete the entry from the index for the given tag.
+ * The tag name must exist or this is an infinite loop */
+int
+_del_index(char *name) {
+    int i, min, max, try, n=-1;
+    min = 0;
+    max = _tagnextindex - 1;
+
+    while(min <= max) {
+        try = min + ((max - min) / 2);
+        i = strcmp(name, _index[try].name);
+        if(i > 0) {
+            min = try + 1;
+        } else if(i < 0) {
+            max = try - 1;
+        } else {
+            n = min;
+            break;
+        }
+    }
+    memmove(&_index[n], &_index[n+1], (_dbsize - n - 1) * sizeof(_dax_tag_index));
     return 0;
 }
 
@@ -316,7 +341,7 @@ tag_add(char *name, tag_type type, unsigned int count)
     }
 
     printf("tag_add() called with name = %s, type = 0x%X, count = %d\n", name, type, count);
-    if(_tagcount >= _dbsize) {
+    if(_tagnextindex >= _dbsize) {
         if(_database_grow()) {
             xerror("Failure to increae database size");
             return ERR_ALLOC;
@@ -364,7 +389,7 @@ tag_add(char *name, tag_type type, unsigned int count)
             return ERR_TAG_DUPL;
         }
     } else {
-        n = _tagcount;
+        n = _tagnextindex;
     }
     /* Assign everything to the new tag, copy the string and git */
     _db[n].count = count;
@@ -391,17 +416,38 @@ tag_add(char *name, tag_type type, unsigned int count)
     if(IS_CUSTOM(type)) {
         _cdt_inc_refcount(type);
     }
+    _tagnextindex++;
     _tagcount++;
     return n;
 }
 
-/* TODO: Make this function do something.  We don't want to move the tags up
- in the array so this function will have to leave a hole.  We'll have to mark
- the hole somehow. */
+/* Deletes the tag given my index.  The tags position in the _db array is not 
+ * moved.  The name and data fields are freed and set to NULL.  The events
+ * and the mappings are also freed and removed.  The item in the index is also
+ * removed.  After a tag is deleted the index will always be smaller than the
+ * database.  We cannot remove the items from the database and reuse them 
+ * because some modules may have stored an index to that tag and may try to
+ * access it in the future.  If the tag is now different then bad things could
+ * happen. 
+ */
 int
-tag_del(char *name)
+tag_del(tag_index idx)
 {
-    /* TODO: No deleting handle 0x0000 */
+    if(_db[idx].data == NULL) { /* We've already deleted this one */
+        return ERR_DELETED;
+    }
+    if(IS_CUSTOM(_db[idx].type)) {
+        _cdt_dec_refcount(_db[idx].type);
+    }
+    events_del_all(_db[idx].events);
+    map_del_all(_db[idx].mappings);
+    _del_index(_db[idx].name);
+    xfree(_db[idx].name);
+    xfree(_db[idx].data);
+    _db[idx].name = NULL;
+    _db[idx].data = NULL;
+    _tagcount--;
+    
     return 0; /* Return good for now */
 }
 
@@ -424,13 +470,12 @@ tag_get_name(char *name, dax_tag *tag)
     }
 }
 
-/* Finds a tag based on it's index in the array.  Returns a pointer to
- the tag give by index, NULL if index is out of range.  Index should
- not be assumed to remain constant throughout the programs lifetime. */
+/* Finds a tag based on it's index in the array.  Fills in the structure
+ * that is passed in as *tag. */
 int
 tag_get_index(int index, dax_tag *tag)
 {
-    if(index < 0 || index >= _tagcount) {
+    if(index < 0 || index >= _tagnextindex) {
         xlog(LOG_ERROR, "tag_get_index() called with an index that is out of range");
         return ERR_ARG;
     } else {
@@ -443,8 +488,8 @@ tag_get_index(int index, dax_tag *tag)
 }
 
 /* Just returns the tag count */
-long int tag_get_count(void) {
-    return _tagcount;
+long int get_tagindex(void) {
+    return _tagnextindex;
 }
 
 /* These are the low level tag reading / writing interface to the
@@ -458,12 +503,15 @@ int
 tag_read(tag_index idx, int offset, void *data, int size)
 {
     /* Bounds check handle */
-    if(idx < 0 || idx >= _tagcount) {
+    if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
     }
     /* Bounds check size */
     if( (offset + size) > tag_get_size(idx)) {
         return ERR_2BIG;
+    }
+    if(_db[idx].data == NULL) {
+        return ERR_DELETED;
     }
     /* Copy the data into the right place. */
     memcpy(data, &(_db[idx].data[offset]), size);
@@ -476,12 +524,18 @@ int
 tag_write(tag_index idx, int offset, void *data, int size)
 {
     /* Bounds check handle */
-    if(idx < 0 || idx >= _tagcount) {
+    if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
     }
     /* Bounds check size */
     if( (offset + size) > tag_get_size(idx)) {
         return ERR_2BIG;
+    }
+    if(_db[idx].name[0] == '_') {
+        return ERR_READONLY;
+    }
+    if(_db[idx].data == NULL) {
+        return ERR_DELETED;
     }
     /* Copy the data into the right place. */
     memcpy(&(_db[idx].data[offset]), data, size);
@@ -499,12 +553,18 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     int n;
 
     /* Bounds check handle */
-    if(idx < 0 || idx >= _tagcount) {
+    if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
     }
     /* Bounds check size */
     if( (offset + size) > tag_get_size(idx)) {
         return ERR_2BIG;
+    }
+    if(_db[idx].name[0] == '_') {
+        return ERR_READONLY;
+    }
+    if(_db[idx].data == NULL) {
+        return ERR_DELETED;
     }
     /* Just to make it easier */
     db = &_db[idx].data[offset];
@@ -960,7 +1020,7 @@ void
 diag_list_tags(void)
 {
     int n;
-    for (n=0; n<_tagcount; n++) {
+    for (n=0; n<_tagnextindex; n++) {
         printf("__db[%d] = %s[%d] type = %d\n", n, _db[n].name, _db[n].count, _db[n].type);
     }
 }

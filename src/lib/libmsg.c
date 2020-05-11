@@ -441,6 +441,29 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
     return result;
 }
 
+int dax_tag_del(dax_state* ds, tag_index index)
+{
+    int result;
+    size_t size;
+    char buff[sizeof(tag_index)];
+    printf("dax_tag_del() called\n");
+    *((u_int32_t *)&buff[0]) = mtos_udint(index);
+    
+    libdax_lock(ds->lock);
+    printf("about to send message\n");
+    result = _message_send(ds, MSG_TAG_DEL, buff, sizeof(buff));
+    printf("dax_tag_del message sent = %d\n", result);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return ERR_MSG_SEND;
+    }
+
+    size = 4; /* we just need the handle */
+    result = _message_recv(ds, MSG_TAG_DEL, buff, &size, 1);
+    printf("message returned %d\n", result);
+    libdax_unlock(ds->lock);
+    return result;        
+}
 
 /* These tag name getting routines will have to be rewritten when we get
 the custom data types going.  Returns zero on success. */

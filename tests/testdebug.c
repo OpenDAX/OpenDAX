@@ -34,8 +34,7 @@ static int _quitsignal;
 int
 do_test(int argc, char *argv[])
 {
-    tag_handle src, dest;
-    dax_id id;
+    tag_handle tag;
     int result;
     char buff[32];
     unsigned long x = 18446744073709551615UL;
@@ -48,10 +47,14 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        dax_tag_add(ds, &dest, "Dummy", DAX_INT, 1);
+        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
         x = 0x55555555;
-        dax_write_tag(ds,  dest, &x);
+        dax_write_tag(ds,  tag, &x);
+        dax_tag_del(ds, tag.index);
+        result = dax_read_tag(ds, tag, buff);
+        printf("result = %d\n", result);
     }
+    
 }
 
 /* main inits and then calls run */
@@ -59,7 +62,7 @@ int
 main(int argc, char *argv[]) {
     int status = 0;
 
-    pid_t pid;
+   pid_t pid;
 
     pid = fork();
     if(pid == 0) { // Child

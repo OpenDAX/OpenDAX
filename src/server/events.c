@@ -559,7 +559,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
     int result;
 
     /* Bounds check handle */
-    if(h.index < 0 || h.index >= tag_get_count()) {
+    if(h.index < 0 || h.index >= get_tagindex()) {
         xlog(LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
         return ERR_ARG;
     }
@@ -624,7 +624,7 @@ event_del(int index, int id, dax_module *module)
     _dax_event *this, *last;
     int result = ERR_NOTFOUND;
 
-    if(index >= tag_get_count() || index < 0) {
+    if(index >= get_tagindex() || index < 0) {
         xerror("event_del() - index %d is out of range\n", index);
     }
     this = _db[index].events;
@@ -657,12 +657,27 @@ event_del(int index, int id, dax_module *module)
     return result;
 }
 
+/* Traverse the linked list of events and delete them all */
+int
+events_del_all(_dax_event *head) {
+    _dax_event *this, *next;
+    this = head;
+    while(this != NULL) {
+        next = this->next;
+        _free_event(this);
+        this = next;
+    }
+    return 0;
+}
+
+
+/* Removes all of the events that are owned by the given module */
 int
 events_cleanup(dax_module *module) {
     int n, count;
     _dax_event *this;
 
-    count = tag_get_count();
+    count = get_tagindex();
     /* We start our scan at the bottom and work our way up.  It's probably
      * more likely that our modules events are associated with tags at the
      * bottom of the list.  This should prove more efficient */

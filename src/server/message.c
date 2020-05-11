@@ -444,6 +444,27 @@ msg_tag_add(dax_message *msg)
 int
 msg_tag_del(dax_message *msg)
 {
+    int result;
+    tag_index idx;
+    dax_tag tag;
+    
+    idx = *((tag_index *)&msg->data[0]);
+    
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Delete Message for index '%d' from module %d", idx, msg->fd);
+    result = tag_get_index(idx, &tag);
+    if(result) {
+        return ERR_ARG;
+    }
+    if(msg->data[8] == '_') {
+        return ERR_ILLEGAL; /* Modules are not allowed to remove reserved tags */
+    }
+    result = tag_del(idx);
+
+    if(!result) {
+        _message_send(msg->fd, MSG_TAG_DEL, &idx, sizeof(tag_index), RESPONSE);
+    } else {
+        _message_send(msg->fd, MSG_TAG_DEL, &result, sizeof(int), ERROR);
+    }
     return 0;
 }
 

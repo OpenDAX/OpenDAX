@@ -100,6 +100,8 @@
 #define ERR_AUTH      -22 /* Not Authorized */
 #define ERR_OVERFLOW  -23 /* Overflow Error */
 #define ERR_UNDERFLOW -24 /* Underflow Error */
+#define ERR_DELETED   -25 /* Object has been deleted */
+#define ERR_READONLY  -26 /* Resource is read only */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */
@@ -278,6 +280,9 @@ int dax_mod_set(dax_state *ds, u_int8_t cmd, void *param);  /* Set module parame
 
 /* Adds a tag to the opendax server database. */
 int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count);
+
+/* Delete the tag give by index */
+int dax_tag_del(dax_state *ds, tag_index index);
 
 /* Get tag by name, will not decode members and subscripts */
 int dax_tag_byname(dax_state *ds, dax_tag *tag, char *name);

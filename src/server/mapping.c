@@ -66,11 +66,11 @@ map_add(tag_handle src, tag_handle dest)
 //    printf("dest.size = %d\n", dest.size);
 
     /* Bounds check handles */
-    if(src.index < 0 || src.index >= tag_get_count()) {
+    if(src.index < 0 || src.index >= get_tagindex()) {
        xlog(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
        return ERR_ARG;
     }
-    if(dest.index < 0 || dest.index >= tag_get_count()) {
+    if(dest.index < 0 || dest.index >= get_tagindex()) {
        xlog(LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
        return ERR_ARG;
     }
@@ -126,7 +126,7 @@ int
 map_del(tag_index index, int id) {
     _dax_datamap *this, *prev;
 
-    if(index < 0 || index >=tag_get_count()) {
+    if(index < 0 || index >= get_tagindex()) {
         return ERR_ARG;
     }
     this = _db[index].mappings;
@@ -148,6 +148,18 @@ map_del(tag_index index, int id) {
     return ERR_NOTFOUND;
 }
 
+/* Traverse the linked list of events and delete them all */
+int
+map_del_all(_dax_datamap *head) {
+    _dax_datamap *this, *next;
+    this = head;
+    while(this != NULL) {
+        next = this->next;
+        _free_map(this);
+        this = next;
+    }
+    return 0;
+}
 
 int
 map_check(tag_index idx, int offset, u_int8_t *data, int size) {

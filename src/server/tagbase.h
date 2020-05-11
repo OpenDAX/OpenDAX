@@ -76,7 +76,7 @@ typedef struct dax_event_t {
     int eventtype;       /* The type of event */
     void *data;          /* Data given by module */
     void *test;          /* Internal data, depends on event type */
-    dax_module *notify;   /* List of every module to be notified of this event */
+    dax_module *notify;  /* Module to be notified of this event */
     struct dax_event_t *next;
 } _dax_event;
 
@@ -110,10 +110,10 @@ typedef struct {
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
 tag_index tag_add(char *name, tag_type type, unsigned int count);
-int tag_del(char *name);
+int tag_del(tag_index idx);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
-long int tag_get_count(void);
+long int get_tagindex(void);
 int tag_get_size(tag_index idx);
 
 
@@ -132,10 +132,12 @@ int serialize_datatype(tag_type type, char **str);
 void event_check(tag_index idx, int offset, int size);
 int event_add(tag_handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
+int events_del_all(_dax_event *head);
 int events_cleanup(dax_module *module);
 
 int map_add(tag_handle src, tag_handle dest);
 int map_del(tag_index index, int id);
+int map_del_all(_dax_datamap *head);
 int map_check(tag_index idx, int offset, u_int8_t *data, int size);
 
 #define DAX_DIAG
