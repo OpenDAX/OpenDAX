@@ -71,10 +71,12 @@ add_test(python_test_single         "python3" "-m" "unittest"
                                     "PythonTests.test_single.TestSingle")
 
 # Module Tests
-add_test(python_test_module_daxc    "python3" "-m" "unittest"
-                                    "PythonTests.test_module_daxc.TestDaxc")
-add_test(python_test_module_daxc_cdt "python3" "-m" "unittest"
-                                     "PythonTests.test_module_daxc_cdt.TestDaxc")
+add_test(python_test_module_daxc_tags "python3" "-m" "unittest"
+                                      "PythonTests.test_module_daxc_tags.TestDaxc")
+add_test(python_test_module_daxc_cdt  "python3" "-m" "unittest"
+                                      "PythonTests.test_module_daxc_cdt.TestDaxc")
+add_test(python_test_module_daxc_list "python3" "-m" "unittest"
+                                      "PythonTests.test_module_daxc_list.TestDaxc")                                    
 if(BUILD_MODBUS)
     add_test(python_test_modbus_library "python3" "-m" "unittest"
     "PythonTests.test_modbuslib.TestRTUMaster")

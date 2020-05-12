@@ -142,7 +142,6 @@ list_tags(char **tokens)
             }
             /* arg[0] should be an integer here and start is the first one */
         } else {
-            arg[1] = strtok(NULL, " ");
             /* List tags from start to start + count */
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
