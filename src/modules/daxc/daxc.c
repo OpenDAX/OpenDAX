@@ -158,7 +158,7 @@ get_help(char **tokens) {
             printf("Deletes the map given by 'index'\n");
         } else if(!strncasecmp(tokens[1], "event", 5)) {
             printf("Usage: DEL EVENT index\n\n");
-            printf("Deletes the map given by 'index'\n");
+            printf("Deletes the event given by 'index'\n");
         }
     } else if(!strncasecmp(tokens[0], "list", 3)) {
         if(tokens[1] == NULL) {
@@ -247,6 +247,8 @@ runcmd(char *instr)
     } else if( !strncasecmp(tokens[0], "del", 3)) {
         if(tokens[1] == NULL) {
             fprintf(stderr, "ERROR: DEL What?\n");
+        } else if( !strncasecmp(tokens[1], "tag", 3)) {
+            result = tag_del(&tokens[2]);
         } else if( !strncasecmp(tokens[1], "map", 3)) {
             result = map_del(&tokens[2], tcount-2);
         } else if( !strncasecmp(tokens[1], "event", 5)) {

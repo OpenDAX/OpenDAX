@@ -88,6 +88,23 @@ tag_add(char **tokens)
     return 0;
 }
 
+int
+tag_del(char **tokens)
+{
+    dax_tag temp_tag;
+    
+    if( dax_tag_byname(ds, &temp_tag, tokens[0]) ) {
+        fprintf(stderr, "ERROR: Unknown Tagname %s\n", tokens[0]);
+        return 1;
+    } else {
+        if(dax_tag_del(ds, temp_tag.idx)) {
+            fprintf(stderr, "ERROR: Unable to delete tag\n");
+        }
+    }
+    return 0;
+}
+
+
 /* TAG LIST command function
  * If we have no arguments then we list all the tags
  * If we have a single argument then we see if it's a tagname
@@ -103,6 +120,7 @@ list_tags(char **tokens)
 {
     dax_tag temp_tag;
     static int lastindex;
+    int result;
     char *arg[] = {NULL, NULL};
     char *end_ptr;
     int n, start, count;
@@ -153,8 +171,10 @@ list_tags(char **tokens)
     } else {
         /* List all tags */
         n = 0;
-        while( !dax_tag_byindex(ds, &temp_tag, n) ) {
-            show_tag(n, temp_tag);
+        while( (result = dax_tag_byindex(ds, &temp_tag, n)) != ERR_ARG) {
+            if(result != ERR_DELETED) {
+                show_tag(n, temp_tag);
+            }
             n++;
         }
     }
@@ -208,6 +228,10 @@ tag_read(char **tokens)
                 fprintf(stdout, "%s\n", str);
             }
         }
+    } else if(result == ERR_DELETED) {
+        fprintf(stderr, "ERROR: Tag '%s' has been deleted\n", tokens[0]);
+    } else if(result == ERR_NOTFOUND) {
+        fprintf(stderr, "ERROR: Tag '%s' could not be found\n", tokens[0]);        
     } else {
         fprintf(stderr, "ERROR: Unable to Read Tag %s\n", tokens[0]);
     }
