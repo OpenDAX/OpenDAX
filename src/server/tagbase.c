@@ -45,7 +45,8 @@
 
 _dax_tag_db *_db;
 static _dax_tag_index *_index;
-static tag_index _tagnextindex = 0;
+static tag_index  _indexsize = 0; /* Size of the database index */
+static tag_index _tagnextindex = 0;   /* The next index in the database */
 static tag_index _tagcount = 0;
 static long int _dbsize = 0;
 static datatype *_datatypes;
@@ -142,10 +143,10 @@ _get_by_name(char *name)
     int i, min, max, try;
 
     min = 0;
-    max = _tagnextindex - 1;
-
+    max = _indexsize - 1;
     while(min <= max) {
         try = min + ((max - min) / 2);
+    
         i = strcmp(name, _index[try].name);
         if(i > 0) {
             min = try + 1;
@@ -216,11 +217,11 @@ _add_index(char *name, tag_index index)
     if(temp == NULL)
         return ERR_ALLOC;
 
-    if(_tagnextindex == 0) {
+    if(_indexsize == 0) {
         n = 0;
     } else {
         min = 0;
-        max = _tagnextindex - 1;
+        max = _indexsize - 1;
 
         while(min <= max) {
             try = min + ((max - min) / 2);
@@ -243,6 +244,7 @@ _add_index(char *name, tag_index index)
     /* The name pointer in the __index and the __db point to the same string */
     _index[n].name = temp;
     _db[index].name = temp;
+    _indexsize++;
 
     /**** TESTING STUFF ******/
 //    for(n=0;n<_tagcount;n++) {
@@ -257,7 +259,7 @@ int
 _del_index(char *name) {
     int i, min, max, try, n=-1;
     min = 0;
-    max = _tagnextindex - 1;
+    max = _indexsize - 1;
 
     while(min <= max) {
         try = min + ((max - min) / 2);
@@ -272,6 +274,7 @@ _del_index(char *name) {
         }
     }
     memmove(&_index[n], &_index[n+1], (_dbsize - n - 1) * sizeof(_dax_tag_index));
+    _indexsize--;
     return 0;
 }
 
@@ -433,7 +436,12 @@ tag_add(char *name, tag_type type, unsigned int count)
 int
 tag_del(tag_index idx)
 {
+    if(idx >= _tagnextindex || idx < 0) {
+        xlog(LOG_ERROR, "tag_del() pass index out of range %d", idx);
+        return ERR_ARG;
+    }
     if(_db[idx].data == NULL) { /* We've already deleted this one */
+        xlog(LOG_ERROR, "tag_del() trying to delete already deleted tag %d", idx);
         return ERR_DELETED;
     }
     if(IS_CUSTOM(_db[idx].type)) {
@@ -448,7 +456,7 @@ tag_del(tag_index idx)
     _db[idx].data = NULL;
     _tagcount--;
     
-    return 0; /* Return good for now */
+    return 0;
 }
 
 /* Finds a tag based on it's name.  Basically just a wrapper for _get_by_name().
@@ -461,6 +469,9 @@ tag_get_name(char *name, dax_tag *tag)
     i = _get_by_name(name);
     if(i < 0) {
         return ERR_NOTFOUND;
+    }
+    if(_db[i].data == NULL) {
+        return ERR_DELETED;
     } else {
         tag->idx = i;
         tag->type = _db[i].type;
@@ -478,6 +489,9 @@ tag_get_index(int index, dax_tag *tag)
     if(index < 0 || index >= _tagnextindex) {
         xlog(LOG_ERROR, "tag_get_index() called with an index that is out of range");
         return ERR_ARG;
+    }
+    if(_db[index].data == NULL) {
+        return ERR_DELETED;
     } else {
         tag->idx = index;
         tag->type = _db[index].type;
@@ -1015,7 +1029,7 @@ type_size(tag_type type)
     return size;
 }
 
-#ifdef DAX_DIAG
+#ifdef TESTING
 void
 diag_list_tags(void)
 {
@@ -1024,4 +1038,4 @@ diag_list_tags(void)
         printf("__db[%d] = %s[%d] type = %d\n", n, _db[n].name, _db[n].count, _db[n].type);
     }
 }
-#endif /* DAX_DIAG */
+#endif /* TESTING */

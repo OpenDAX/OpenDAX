@@ -16,11 +16,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
- /*
-  *  We use this file for debugging tests.  Most of our tests use Python
-  *  ctypes and those can be hard to debug.  This file can be more easily
-  *  run with gdb.
-  */
+/*
+ *  We use this file for debugging tests.  Most of our tests use Python
+ *  ctypes and those can be hard to debug.  This file can be more easily
+ *  run with gdb.
+ */
 
 #include <common.h>
 #include <opendax.h>
@@ -59,7 +59,8 @@ do_test(int argc, char *argv[])
 
 /* main inits and then calls run */
 int
-main(int argc, char *argv[]) {
+main(int argc, char *argv[])
+{
     int status = 0;
 
    pid_t pid;

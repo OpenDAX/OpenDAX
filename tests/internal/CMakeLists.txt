@@ -18,6 +18,7 @@
 # tests the functions at a low level.
 
 include_directories(../../src/lib)
+include_directories(../../src/server)
 
 add_definitions(-DTESTING) # Compiles some testing code into the library */
 
@@ -34,4 +35,9 @@ add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
 # target_link_libraries(cachetest 
 target_link_libraries(cachetest ${LUA_LIBRARIES})
 
-
+set(SERVER_SOURCE_DIR ../../src/server)
+add_executable(tagbasetest_001 tagbasetest_001.c ${SERVER_SOURCE_DIR}/tagbase.c
+                                         ${SERVER_SOURCE_DIR}/func.c
+                                         ${SERVER_SOURCE_DIR}/events.c
+                                         ${SERVER_SOURCE_DIR}/mapping.c
+)

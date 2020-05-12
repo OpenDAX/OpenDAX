@@ -93,7 +93,6 @@ check_cache_miss(dax_state *ds, dax_tag tag)
     }
 }
 
-/* main inits and then calls run */
 int
 main(int argc, char *argv[])
 {

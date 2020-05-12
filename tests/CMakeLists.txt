@@ -90,3 +90,9 @@ foreach(file ${files})
 endforeach()
 
 add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua")
+
+if(INTERNAL_TESTS)
+  add_subdirectory(internal)
+  add_test(internal_library_cache internal/cachetest)
+  add_test(internal_tagbase_001 internal/tagbasetest_001)
+endif()
