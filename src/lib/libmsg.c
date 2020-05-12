@@ -434,7 +434,7 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
         tag.type = type;
         tag.count = count;
         /* Just in case this call modifies the tag */
-        cache_tag_del(ds, name);
+        cache_tag_del(ds, tag.idx);
         cache_tag_add(ds, &tag);
     }
     libdax_unlock(ds->lock);
@@ -446,13 +446,10 @@ int dax_tag_del(dax_state* ds, tag_index index)
     int result;
     size_t size;
     char buff[sizeof(tag_index)];
-    printf("dax_tag_del() called\n");
     *((u_int32_t *)&buff[0]) = mtos_udint(index);
     
     libdax_lock(ds->lock);
-    printf("about to send message\n");
     result = _message_send(ds, MSG_TAG_DEL, buff, sizeof(buff));
-    printf("dax_tag_del message sent = %d\n", result);
     if(result) {
         libdax_unlock(ds->lock);
         return ERR_MSG_SEND;
@@ -460,7 +457,6 @@ int dax_tag_del(dax_state* ds, tag_index index)
 
     size = 4; /* we just need the handle */
     result = _message_recv(ds, MSG_TAG_DEL, buff, &size, 1);
-    printf("message returned %d\n", result);
     libdax_unlock(ds->lock);
     return result;        
 }
@@ -592,6 +588,9 @@ dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size
 
     if(result) {
         libdax_unlock(ds->lock);
+        if(result == ERR_DELETED) {
+            cache_tag_del(ds, idx);
+        }
         return result;
     }
     libdax_unlock(ds->lock);
@@ -636,6 +635,9 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
     result = _message_recv(ds, MSG_TAG_WRITE, buff, 0, 1);
     if(result) {
         libdax_unlock(ds->lock);
+        if(result == ERR_DELETED) {
+            cache_tag_del(ds, idx);
+        }
         return result;
     }
     libdax_unlock(ds->lock);
@@ -674,6 +676,9 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
     result = _message_recv(ds, MSG_TAG_MWRITE, buff, 0, 1);
     if(result) {
         libdax_unlock(ds->lock);
+        if(result == ERR_DELETED) {
+            cache_tag_del(ds, idx);
+        }
         return result;
     }
     libdax_unlock(ds->lock);

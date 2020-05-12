@@ -42,25 +42,6 @@ init_tag_cache(dax_state *ds)
     return 0;
 }
 
-/****** FOR TESTING ONLY ********
-static void
-print_cache(void)
-{
-    int n;
-    tag_cnode *this;
-    this = _cache_head;
-    printf("_cache_head->handle = {%d}\n", _cache_head->handle);
-    for(n=0; n<_cache_count; n++) {
-        printf("{%d} - %s\t\t", this->handle, this->name);
-        printf("this->prev = {%d}", this->prev->handle);
-        printf(" : this->next = {%d}\n", this->next->handle);
-        this = this->next;
-    }
-    printf("\n{ count = %d, head = %p }\n", _cache_count, _cache_head);
-    //printf("{ head->handle = %d, tail->handle = %d head->prev = %p, tail->next = %p}\n", 
-    //       _cache_head->handle, _cache_tail->handle, _cache_head->prev, _cache_tail->next);
-}
-*/
  
 /* This function assigns the data to *tag and bubbles
    this up one node in the list */
@@ -99,9 +80,10 @@ _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
     //--print_cache();
 }
 
-/* Used to check if a tag with the given handle is in the 
- * cache.  Returns a pointer to the tag if found and
- * returns ERR_NOTFOUND otherwise */
+/* Used to check if a tag with the given index is in the 
+ * cache.  Sets the pointer to the tag and returns zero
+ * if found and returns ERR_NOTFOUND otherwise
+ */
 int
 check_cache_index(dax_state *ds, tag_index idx, dax_tag *tag)
 {
@@ -203,7 +185,7 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
 /* This function deletes the tag in the cache given by 'tagname'
  * It returns 0 on success and ERR_NOTFOUND if the tag is not in the cache */
 int
-cache_tag_del(dax_state *ds, char *tagname) {
+cache_tag_del(dax_state *ds, tag_index idx) {
     tag_cnode *this, *head;
     
     /* Search for the tag */
@@ -213,10 +195,10 @@ cache_tag_del(dax_state *ds, char *tagname) {
     } else {
         return ERR_NOTFOUND;
     }
-    if( strcmp(head->name, tagname) ) {
+    if( head->idx != idx ) {
         this = this->next;
         
-        while(this != head && strcmp(this->name, tagname)) {
+        while(this != head && (this->idx != idx)) {
             this = this->next;
         }
         if(this == head) {
@@ -226,15 +208,15 @@ cache_tag_del(dax_state *ds, char *tagname) {
     
     /* If we get this far the tag was found and 'this' should point to
      * the tag we want to delete */ 
-    if(this->next == this) { /* Last module */
-        head = NULL;
+    if(this->next == this) { /* This is the Last One */
+        ds->cache_head = NULL;
     } else {
         /* disconnect module */
         (this->next)->prev = this->prev;
         (this->prev)->next = this->next;
         /* don't want current to be pointing to the one we are deleting */
         if(head == this) {
-            head = this->next;
+            ds->cache_head = this->next;
         }
     }
     ds->cache_count--;

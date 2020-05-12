@@ -181,7 +181,7 @@ int init_tag_cache(dax_state *ds);
 int check_cache_index(dax_state *, tag_index, dax_tag *);
 int check_cache_name(dax_state *, char *, dax_tag *);
 int cache_tag_add(dax_state *, dax_tag *);
-int cache_tag_del(dax_state *, char *);
+int cache_tag_del(dax_state *, tag_index);
 
 int opt_get_msgtimeout(dax_state *);
 

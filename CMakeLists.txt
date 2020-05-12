@@ -29,6 +29,7 @@ enable_testing()
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_WIO "Build Wireless I/O Module" ON)
+option(INTERNAL_TESTS "Build Internal System Tests" OFF)
 
 set(CMAKE_BUILD_TYPE Debug)
 
