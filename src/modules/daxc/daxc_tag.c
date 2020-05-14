@@ -113,8 +113,7 @@ tag_del(char **tokens)
  * we list from the first to the first + second if not then we list
  * the next X tags and increment lastindex. */
 
-/* TODO: If we allow tags to be deleted then gaps will appear in the list.
- * We should deal with these appropriately */
+
 int
 list_tags(char **tokens)
 {
@@ -169,6 +168,9 @@ list_tags(char **tokens)
         }
     } else {
         /* List all tags */
+       /* TODO: We now have a _lastindex status tag that we can
+        * use to see how far to go instead of running until
+        * we get an error.*/        
         n = 0;
         while( (result = dax_tag_byindex(ds, &temp_tag, n)) != ERR_ARG) {
             if(result != ERR_DELETED) {
@@ -397,7 +399,11 @@ map_add(char **tokens, int count)
     }
     result = dax_map_add(ds, &src, &dest, NULL);
     if(result) {
-        fprintf(stderr, "ERROR: Problem Adding Map.  Error %d\n", result);
+        if(result == ERR_READONLY) {
+            fprintf(stderr, "ERROR: Destination is read only\n");
+        } else {
+            fprintf(stderr, "ERROR: Problem Adding Map.  Error %d\n", result);
+        }
     }
     return 0;
 }

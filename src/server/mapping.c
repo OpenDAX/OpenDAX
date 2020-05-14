@@ -74,6 +74,10 @@ map_add(tag_handle src, tag_handle dest)
        xlog(LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
        return ERR_ARG;
     }
+    if(is_tag_readonly(dest.index)) {
+        xlog(LOG_ERROR, "Destination tag is read only");
+       return ERR_READONLY;
+    }
     /* Bounds check source size */
     if( (src.byte + src.size) > tag_get_size(src.index)) {
         xlog(LOG_ERROR, "Size of the affected source data in the new mapping is too large");
@@ -148,7 +152,7 @@ map_del(tag_index index, int id) {
     return ERR_NOTFOUND;
 }
 
-/* Traverse the linked list of events and delete them all */
+/* Traverse the linked list of maps and delete them all */
 int
 map_del_all(_dax_datamap *head) {
     _dax_datamap *this, *next;
