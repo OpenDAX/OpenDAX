@@ -11,7 +11,6 @@ run_test("luatests/typefail.lua", "Type Fail Test")
 
 run_test("luatests/random.lua", "Random Tag Addition Test")
 
-run_test("luatests/status.lua", "Status Retrieve test")
 run_test("luatests/readwrite.lua", "Read / Write Test")
 
 run_test("luatests/eventadd.lua", "Event Addition/Removal Test")

@@ -57,9 +57,13 @@ class TestDaxc(unittest.TestCase):
         p.sendline('list')
         p.expect('dax>')
         l = (p.before.decode('utf-8').split('\n'))
-        self.assertIn("dummy", l[2])
-        self.assertIn("INT", l[2])
-        self.assertNotIn("INT[", l[2])
+        found = False
+        for each in l:
+            if "dummy" in each:
+                self.assertIn("INT", each)
+                self.assertNotIn("INT[", each)
+                found = True
+        self.assertTrue(found)
         t = self.dax.dax_tag_byname(self.ds, "dummy")
         self.assertEqual(t.type, daxwrapper.defines["DAX_INT"])
         self.assertEqual(t.count, 1)
@@ -78,8 +82,12 @@ class TestDaxc(unittest.TestCase):
         p.sendline('list')
         p.expect('dax>')
         l = (p.before.decode('utf-8').split('\n'))
-        self.assertIn("dummy", l[2])
-        self.assertIn("INT[10]", l[2])
+        found = False
+        for each in l:
+            if "dummy" in each:
+                self.assertIn("INT[10]", each)
+                found = True
+        self.assertTrue(found)
         t = self.dax.dax_tag_byname(self.ds, "dummy")
         self.assertEqual(t.type, daxwrapper.defines["DAX_INT"])
         self.assertEqual(t.count, 10)

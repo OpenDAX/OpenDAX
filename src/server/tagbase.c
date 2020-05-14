@@ -52,9 +52,6 @@ static tag_index _dbsize = 0;
 static datatype *_datatypes;
 static unsigned int _datatype_index; /* Next datatype index */
 static unsigned int _datatype_size;
-/* These are the database indexes for these tags */
-static tag_index _db_last_index;
-static tag_index _db_tag_count;
 
 
 /* Private function definitions */
@@ -62,10 +59,7 @@ static tag_index _db_tag_count;
 /* These functions are convienience for setting status tags */
 void
 set_dbsize(tag_index x) {
-    dax_tag tag;
-    /* Sicne we don't do it very often we can afford the look up the name*/
-    assert(tag_get_name("_dbsize", &tag) == 0);
-    assert(tag_write(tag.idx, 0, &x, sizeof(tag_index)) == 0);
+    assert(tag_write(INDEX_DBSIZE, 0, &x, sizeof(tag_index)) == 0);
 }
 
 /* checks whether type is a valid datatype */
@@ -291,13 +285,13 @@ _del_index(char *name) {
     return 0;
 }
 
+
 /* Allocates the symbol table and the database array.  There's no return
  value because failure of this function is fatal */
 void
 initialize_tagbase(void)
 {
     tag_type type;
-    int result;
     char *str;
 
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
@@ -314,11 +308,11 @@ initialize_tagbase(void)
 
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
 
-    /* Create the _status tag at handle zero */
-    /* TODO: Make the _status tag a cdt */
-    if( (result = tag_add("_dbsize", DAX_DINT, 1)) ) {
-        xfatal("_dbsize not created properly: Error %d", result);
-    }
+    /* Creates the status tags at handle zero */
+    
+    assert(tag_add("_tagcount", DAX_DINT, 1) == INDEX_TAGCOUNT);
+    assert(tag_add("_lastindex", DAX_DINT, 1) == INDEX_LASTINDEX);
+    assert(tag_add("_dbsize", DAX_DINT, 1) == INDEX_DBSIZE);
     set_dbsize(_dbsize);
 
     /* Allocate the datatype array and set the initial counters */
@@ -433,8 +427,15 @@ tag_add(char *name, tag_type type, unsigned int count)
     if(IS_CUSTOM(type)) {
         _cdt_inc_refcount(type);
     }
+    if(_db[INDEX_LASTINDEX].data != NULL) {
+        tag_write(INDEX_LASTINDEX, 0, &_tagnextindex, sizeof(tag_index));
+    }
     _tagnextindex++;
     _tagcount++;
+    if(_db[INDEX_TAGCOUNT].data != NULL) {
+        tag_write(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
+    }
+    
     return n;
 }
 
