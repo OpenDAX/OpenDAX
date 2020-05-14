@@ -18,8 +18,8 @@
  *  Main source code file for the OpenDAX Bad Module
  */
 
-/* This test tests for a bug where searching for a tag by name after it was
- * deleted would cause the tagserver to seg fault
+/* This test adds a bunch of tags to the database and then makes sure that
+ * we can find them all with thier name.
  */
 
 #include <tagbase.h>
@@ -32,15 +32,19 @@ int
 main(int argc, char *argv[])
 {
     dax_tag tag;
-   
-    initialize_tagbase();
-    tag_add("dummy", DAX_INT, 1);
-    tag_add("dopey", DAX_INT, 1);
-    tag_add("dipey", DAX_INT, 1);
+    char tagname[DAX_TAGNAME_SIZE + 1];
+    int n, result;
     
-    assert(tag_get_name("dummy", &tag) == 0);
-    assert(tag_del(tag.idx) == 0);
-    assert(tag_get_name("dummy", &tag) == ERR_NOTFOUND);
+    initialize_tagbase();
+    
+    for(n=0;n<1000;n++) {
+        sprintf(tagname, "TestTag%d", n);
+        assert(tag_add(tagname, DAX_INT, 1) > 0);
+    }
+    for(n=0;n<1000;n++) {
+        sprintf(tagname, "TestTag%d", n);
+        assert(tag_get_name(tagname, &tag) == 0);
+    }
 
     return 0;
 }

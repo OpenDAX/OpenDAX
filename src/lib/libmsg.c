@@ -495,7 +495,6 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
 
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
-            dax_error(ds, "Problem receiving message MSG_TAG_GET : result = %d", result);
             free(buff);
             libdax_unlock(ds->lock);
             return result;

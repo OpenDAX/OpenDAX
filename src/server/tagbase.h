@@ -43,23 +43,11 @@
  #define DAX_DATABASE_SIZE 1024
 #endif
 
-/* This is the increment by which the database will grow when
-   the size is exceeded */
-#ifndef DAX_DATABASE_INC
- #define DAX_DATABASE_INC 1024
-#endif
 
 #ifndef DAX_DATATYPE_SIZE
 # define DAX_DATATYPE_SIZE 10
 #endif
 
-/* Define Handles for _status register points */
-/* TODO: These should probably go away in lieu of making the _status tag a cdt */
-#define STATUS_SIZE   4
-#define STAT_MSG_RCVD 0
-#define STAT_MSG_SENT 32
-#define STAT_DB_SIZE  64
-#define STAT_TAG_CNT 96
 
 /* This is the maximum number of mapping hops that we'll make before we print an
  * and do some othe drastic action. */
@@ -113,7 +101,8 @@ tag_index tag_add(char *name, tag_type type, unsigned int count);
 int tag_del(tag_index idx);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
-long int get_tagindex(void);
+tag_index get_tagindex(void);
+int is_tag_readonly(tag_index idx);
 int tag_get_size(tag_index idx);
 
 

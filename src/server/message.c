@@ -552,8 +552,11 @@ msg_tag_write(dax_message *msg)
     data = &msg->data[8];
    
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
-
-    result = tag_write(idx, offset, data, size);
+    if(is_tag_readonly(idx)) {
+        return ERR_READONLY;
+    } else {
+        result = tag_write(idx, offset, data, size);
+    }
     if(result) {
         _message_send(msg->fd, MSG_TAG_WRITE, &result, sizeof(result), ERROR);
         xlog(LOG_ERROR, "Unable to write tag 0x%X with size %d",idx, size);
@@ -579,8 +582,11 @@ msg_tag_mask_write(dax_message *msg)
     mask = &msg->data[8 + size];
    
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
-
-    result = tag_mask_write(idx, offset, data, mask, size);
+    if(is_tag_readonly(idx)) {
+        result =  ERR_READONLY;
+    } else {
+        result = tag_mask_write(idx, offset, data, mask, size);
+    }
     if(result) {
         _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);
         xerror("Unable to write tag 0x%X with size %d: result %d", idx, size, result);

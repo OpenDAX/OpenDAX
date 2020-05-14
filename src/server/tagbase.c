@@ -48,12 +48,25 @@ static _dax_tag_index *_index;
 static tag_index  _indexsize = 0; /* Size of the database index */
 static tag_index _tagnextindex = 0;   /* The next index in the database */
 static tag_index _tagcount = 0;
-static long int _dbsize = 0;
+static tag_index _dbsize = 0;
 static datatype *_datatypes;
 static unsigned int _datatype_index; /* Next datatype index */
 static unsigned int _datatype_size;
+/* These are the database indexes for these tags */
+static tag_index _db_last_index;
+static tag_index _db_tag_count;
+
 
 /* Private function definitions */
+
+/* These functions are convienience for setting status tags */
+void
+set_dbsize(tag_index x) {
+    dax_tag tag;
+    /* Sicne we don't do it very often we can afford the look up the name*/
+    assert(tag_get_name("_dbsize", &tag) == 0);
+    assert(tag_write(tag.idx, 0, &x, sizeof(tag_index)) == 0);
+}
 
 /* checks whether type is a valid datatype */
 static int
@@ -183,13 +196,13 @@ _database_grow(void)
     _dax_tag_index *new_index;
     _dax_tag_db *new_db;
 
-    new_index = xrealloc(_index, (_dbsize + DAX_DATABASE_INC) * sizeof(_dax_tag_index));
-    new_db = xrealloc(_db, (_dbsize + DAX_DATABASE_INC) * sizeof(_dax_tag_db));
+    new_index = xrealloc(_index, (_dbsize *2) * sizeof(_dax_tag_index));
+    new_db = xrealloc(_db, (_dbsize *2) * sizeof(_dax_tag_db));
 
     if(new_index != NULL && new_db != NULL) {
         _index = new_index;
         _db = new_db;
-        _dbsize += DAX_DATABASE_INC;
+        _dbsize *= 2;
         return 0;
     } else {
         /* This is to shrink the one that didn't get allocated
@@ -303,9 +316,10 @@ initialize_tagbase(void)
 
     /* Create the _status tag at handle zero */
     /* TODO: Make the _status tag a cdt */
-    if( (result = tag_add("_status", DAX_DWORD, STATUS_SIZE)) ) {
-        xfatal("_status not created properly: Error %d", result);
+    if( (result = tag_add("_dbsize", DAX_DINT, 1)) ) {
+        xfatal("_dbsize not created properly: Error %d", result);
     }
+    set_dbsize(_dbsize);
 
     /* Allocate the datatype array and set the initial counters */
     _datatypes = xmalloc(sizeof(datatype) * DAX_DATATYPE_SIZE);
@@ -501,9 +515,16 @@ tag_get_index(int index, dax_tag *tag)
     }
 }
 
-/* Just returns the tag count */
-long int get_tagindex(void) {
+/* Just returns the next tag index */
+tag_index
+get_tagindex(void) {
     return _tagnextindex;
+}
+
+/* Returns true if the tag at the given index is read only */
+int
+is_tag_readonly(tag_index idx) {
+    return (_db[idx].name[0] == '_');
 }
 
 /* These are the low level tag reading / writing interface to the
@@ -545,9 +566,6 @@ tag_write(tag_index idx, int offset, void *data, int size)
     if( (offset + size) > tag_get_size(idx)) {
         return ERR_2BIG;
     }
-    if(_db[idx].name[0] == '_') {
-        return ERR_READONLY;
-    }
     if(_db[idx].data == NULL) {
         return ERR_DELETED;
     }
@@ -573,9 +591,6 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     /* Bounds check size */
     if( (offset + size) > tag_get_size(idx)) {
         return ERR_2BIG;
-    }
-    if(_db[idx].name[0] == '_') {
-        return ERR_READONLY;
     }
     if(_db[idx].data == NULL) {
         return ERR_DELETED;

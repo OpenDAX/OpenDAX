@@ -14,8 +14,8 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# These internal tests compile in different parts of the system and
-# tests the functions at a low level.
+# These internal tests link directly to different parts of the system. So that
+# they can test functions at a low level.
 
 include_directories(../../src/lib)
 include_directories(../../src/server)
@@ -37,6 +37,12 @@ target_link_libraries(cachetest ${LUA_LIBRARIES})
 
 set(SERVER_SOURCE_DIR ../../src/server)
 add_executable(tagbasetest_001 tagbasetest_001.c ${SERVER_SOURCE_DIR}/tagbase.c
+                                         ${SERVER_SOURCE_DIR}/func.c
+                                         ${SERVER_SOURCE_DIR}/events.c
+                                         ${SERVER_SOURCE_DIR}/mapping.c
+)
+
+add_executable(tagbasetest_002 tagbasetest_002.c ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
                                          ${SERVER_SOURCE_DIR}/mapping.c

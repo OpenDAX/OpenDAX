@@ -287,7 +287,11 @@ tag_write(char **tokens, int tcount) {
     result = dax_mask_tag(ds, handle, buff, mask);
 
     if(result) {
-        fprintf(stderr, "ERROR: Unable to Write to tag %s\n", name);
+        if(result == ERR_READONLY) {
+            fprintf(stderr, "ERROR: Tag %s is read-only\n", name);
+        } else {
+            fprintf(stderr, "ERROR: Unable to Write to tag %s code = %d\n", name, result);
+        }
     }
     free(buff);
     free(mask);
