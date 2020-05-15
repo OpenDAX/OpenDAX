@@ -17,6 +17,7 @@
  */
 
 #include <opendax.h>
+#include <sys/time.h>
 
 #ifndef __FUNC_H
 #define __FUNC_H
@@ -53,5 +54,6 @@ void xlog(u_int32_t ,const char *, ...);
 char *xstrcpy(const char *);
 char *xstrdup(char *);
 
+time_t xtime(void);
 
 #endif /* !__FUNC_H */

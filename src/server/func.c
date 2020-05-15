@@ -170,3 +170,12 @@ xstrdup(char *src)
     }
     return dest;
 }
+
+time_t
+xtime(void) {
+    struct timeval gettime;
+    
+    gettimeofday(&gettime, NULL);
+    return gettime.tv_sec * 1000 + gettime.tv_usec / 1000;
+}
+    

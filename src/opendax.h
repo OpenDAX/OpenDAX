@@ -24,8 +24,6 @@
 #include <float.h>
 
 /* Data type definitions */
-/* #define DAX_ALIAS   0x0000 // Don't know about alias' at this point */
-
 #define DAX_BOOL    0x0010
 /* 8 Bits */
 #define DAX_BYTE    0x0003

@@ -563,6 +563,9 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
         xlog(LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
         return ERR_ARG;
     }
+    if(is_tag_virtual(h.index)){
+        return ERR_ILLEGAL;
+    }
     /* Bounds check size */
     if( (h.byte + h.size) > tag_get_size(h.index)) {
         xlog(LOG_ERROR, "Size of the affected data in the new event is too large");

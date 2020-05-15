@@ -375,7 +375,7 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
                 if(result == 6) ms = 0;
                 tm.tm_year = year - 1900; /* Year is since 1900 in struct tm */
                 tm.tm_mon--; /* Month is 0-30 in struct tm */
-                ((dax_lint *)buff)[index] = ((dax_lint)(mktime(&tm)-timezone) * 1000) + ms;
+                ((dax_lint *)buff)[index] = ((dax_lint)timegm(&tm) * 1000) + ms;
                 if(mask) ((dax_lint *)mask)[index] = DAX_64_ONES;
             }
             break;

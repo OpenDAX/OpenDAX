@@ -70,9 +70,16 @@ map_add(tag_handle src, tag_handle dest)
        xlog(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
        return ERR_ARG;
     }
+    
     if(dest.index < 0 || dest.index >= get_tagindex()) {
        xlog(LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
        return ERR_ARG;
+    }
+    if(is_tag_virtual(src.index)){
+        return ERR_ILLEGAL;
+    }
+    if(is_tag_virtual(dest.index)){
+        return ERR_ILLEGAL;
     }
     if(is_tag_readonly(dest.index)) {
         xlog(LOG_ERROR, "Destination tag is read only");

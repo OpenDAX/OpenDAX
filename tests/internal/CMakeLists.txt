@@ -40,10 +40,19 @@ add_executable(tagbasetest_001 tagbasetest_001.c ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
                                          ${SERVER_SOURCE_DIR}/mapping.c
+                                         ${SERVER_SOURCE_DIR}/virtualtag.c
 )
 
 add_executable(tagbasetest_002 tagbasetest_002.c ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
                                          ${SERVER_SOURCE_DIR}/mapping.c
+                                         ${SERVER_SOURCE_DIR}/virtualtag.c
+)
+
+add_executable(tagbasetest_003 tagbasetest_003.c ${SERVER_SOURCE_DIR}/tagbase.c
+                                         ${SERVER_SOURCE_DIR}/func.c
+                                         ${SERVER_SOURCE_DIR}/events.c
+                                         ${SERVER_SOURCE_DIR}/mapping.c
+                                         ${SERVER_SOURCE_DIR}/virtualtag.c
 )

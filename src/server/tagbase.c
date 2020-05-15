@@ -21,9 +21,9 @@
 #include <common.h>
 #include "tagbase.h"
 #include "func.h"
+#include "virtualtag.h"
 #include <ctype.h>
 #include <assert.h>
-#include <sys/time.h>
 
 /* Notes:
  * The tags are stored in the server in two different arrays.  Both
@@ -286,6 +286,25 @@ _del_index(char *name) {
     return 0;
 }
 
+/* This function adds a virtual tag to the system. 
+ * When this tag is read from the system the data will
+ * come from the function given by f
+ */
+static  tag_index
+_virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *f)
+{
+    tag_index idx;
+    if(IS_CUSTOM(type)) {
+        return ERR_ILLEGAL;
+    }
+    idx = tag_add(name, type, 1);
+    /* We just allocated this data but that was just for convienience */
+    free(_db[idx].data);
+    _db[idx].data = (u_int8_t *)f;
+    _db[idx].options = TAG_OPTS_READONLY | TAG_OPTS_VIRTUAL;
+    return 0;
+}
+
 
 /* Allocates the symbol table and the database array.  There's no return
  value because failure of this function is fatal */
@@ -294,7 +313,6 @@ initialize_tagbase(void)
 {
     tag_type type;
     char *str;
-    struct timeval gettime;
     u_int64_t starttime;
     
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
@@ -311,14 +329,18 @@ initialize_tagbase(void)
 
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
 
-    /* Creates the status tags at handle zero */
-    
+    /* Creates the system tags */
     assert(tag_add("_tagcount", DAX_DINT, 1) == INDEX_TAGCOUNT);
+    _db[INDEX_TAGCOUNT].options = TAG_OPTS_READONLY;
     assert(tag_add("_lastindex", DAX_DINT, 1) == INDEX_LASTINDEX);
+    _db[INDEX_LASTINDEX].options = TAG_OPTS_READONLY;
     assert(tag_add("_dbsize", DAX_DINT, 1) == INDEX_DBSIZE);
-    assert(tag_add("_started", DAX_TIME, 1) == INDEX_STARTED);
-    gettimeofday(&gettime, NULL);
-    starttime = gettime.tv_sec * 1000 + gettime.tv_usec / 1000;
+    _db[INDEX_DBSIZE].options = TAG_OPTS_READONLY;
+    assert(tag_add("_starttime", DAX_TIME, 1) == INDEX_STARTED);
+    _db[INDEX_STARTED].options = TAG_OPTS_READONLY;
+    _virtual_tag_add("_time", DAX_TIME, 1, server_time);
+    
+    starttime = xtime();
     tag_write(INDEX_STARTED,0,&starttime,sizeof(u_int64_t));
     set_dbsize(_dbsize);
 
@@ -340,7 +362,6 @@ initialize_tagbase(void)
     free(str);
     
 }
-
 
 /* This adds a tag to the database. It takes a string for the name
  * of the tag, the type (see opendax.h for types) and a count.  If
@@ -533,8 +554,15 @@ get_tagindex(void) {
 /* Returns true if the tag at the given index is read only */
 int
 is_tag_readonly(tag_index idx) {
-    return (_db[idx].name[0] == '_');
+    return (_db[idx].options & TAG_OPTS_READONLY );
 }
+
+/* Returns true if the tag at the given index is a virtual tag */
+int
+is_tag_virtual(tag_index idx) {
+    return (_db[idx].options & TAG_OPTS_VIRTUAL );
+}
+
 
 /* These are the low level tag reading / writing interface to the
  * database.
@@ -542,6 +570,8 @@ is_tag_readonly(tag_index idx) {
  * This function reads the data from the tag given by handle at
  * the byte offset.  It will write size bytes into data and will
  * return 0 on success and some negative number on failure.
+ * 
+ * The writing functions bypass the read only attribute of the tag
  */
 int
 tag_read(tag_index idx, int offset, void *data, int size)
@@ -550,15 +580,22 @@ tag_read(tag_index idx, int offset, void *data, int size)
     if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
     }
-    /* Bounds check size */
-    if( (offset + size) > tag_get_size(idx)) {
-        return ERR_2BIG;
+     /* determine if it's a virtual tag */
+    if(_db[idx].options & TAG_OPTS_VIRTUAL) {
+        /* virtual tags read their data from a function that should be
+         * pointed to by the *data pointer */
+        return ((vfunction *)_db[idx].data)(offset, data, size);
+    } else {
+        /* Bounds check size */
+        if( (offset + size) > tag_get_size(idx)) {
+            return ERR_2BIG;
+        }
+        if(_db[idx].data == NULL) {
+            return ERR_DELETED;
+        }
+        /* Copy the data into the right place. */
+        memcpy(data, &(_db[idx].data[offset]), size);
     }
-    if(_db[idx].data == NULL) {
-        return ERR_DELETED;
-    }
-    /* Copy the data into the right place. */
-    memcpy(data, &(_db[idx].data[offset]), size);
 
     return 0;
 }

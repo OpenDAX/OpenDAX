@@ -59,6 +59,9 @@
 #define INDEX_DBSIZE 2
 #define INDEX_STARTED 3
 
+#define TAG_OPTS_READONLY 0x0001
+#define TAG_OPTS_VIRTUAL  0x0002
+
 typedef struct dax_event_t {
     int id;              /* Unique identifier for this event definition */
 
@@ -85,6 +88,7 @@ typedef struct dax_datamap_t {
 /* This is the internal structure for the tag array. */
 typedef struct {
     tag_type type;
+    unsigned int options;
     unsigned int count;
     char *name;
     int nextevent;           /* Counter for keeping track of event IDs */
@@ -109,6 +113,7 @@ int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);
 tag_index get_tagindex(void);
 int is_tag_readonly(tag_index idx);
+int is_tag_virtual(tag_index idx);
 int tag_get_size(tag_index idx);
 
 
