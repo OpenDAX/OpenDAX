@@ -23,6 +23,7 @@
 #include <common.h>
 #include <stdarg.h>
 #include <signal.h>
+#include <time.h>
 
 /* These functions handle the logging and error callback function */
 
@@ -155,6 +156,11 @@ dax_fatal(dax_state *ds, const char *format, ...)
 int
 dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
 {
+    int ms;
+    long int sec;
+    struct tm *tm;
+    char tstr[16];
+    
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
         case DAX_BOOL:
@@ -179,7 +185,6 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
             break;
         case DAX_DWORD:
         case DAX_UDINT:
-        case DAX_TIME:
             snprintf(buff, size, "%u", ((dax_udint *)val)[index]);
             break;
         case DAX_DINT:
@@ -191,6 +196,14 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
         case DAX_LWORD:
         case DAX_ULINT:
             snprintf(buff, size, "%lu", ((dax_ulint *)val)[index]);
+            break;
+        case DAX_TIME:
+            ms = ((dax_lint *)val)[index] % 1000;
+            sprintf(tstr, ".%03d", ms);
+            sec = ((dax_lint *)val)[index] / 1000;
+            tm = gmtime(&sec);
+            strftime(buff, size, "%FT%T", tm);
+            strncat(buff, tstr, size);
             break;
         case DAX_LINT:
             snprintf(buff, size, "%ld", ((dax_lint *)val)[index]);
@@ -212,7 +225,9 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
     long temp;
     long long ltemp;
     int retval = 0;
-
+    int result, ms, year;
+    struct tm tm = {0,0,0,0,0,0,0,0,0};
+   
     switch (type) {
         case DAX_BOOL:
             temp = strtol(instr, NULL, 0);
@@ -284,8 +299,6 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_DWORD:
         case DAX_UDINT:
-        // TODO: Make a special case for time
-        case DAX_TIME:
         ltemp =  strtol(instr, NULL, 0);
             if(ltemp < DAX_UDINT_MIN) {
                 ((dax_udint *)buff)[index] = DAX_UDINT_MIN;
@@ -341,6 +354,29 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
                 } else {
                     retval = ERR_OVERFLOW;
                 }
+            }
+            break;
+        case DAX_TIME:
+            /* We use sscanf because strptime doesn't do the milliseconds */
+            result = sscanf(instr, "%d-%d-%dT%d:%d:%d.%d", &year, &tm.tm_mon, &tm.tm_mday, 
+                                                           &tm.tm_hour, &tm.tm_min, &tm.tm_sec, &ms);
+            if(result < 6) { /* It didnt' work */
+                errno = 0;
+                ((dax_lint *)buff)[index] = (dax_lint)strtoll(instr, NULL, 0);
+                if(mask) ((dax_lint *)mask)[index] = DAX_64_ONES;
+                if(errno == ERANGE) {
+                    if(instr[0]=='-') {
+                        retval = ERR_UNDERFLOW;
+                    } else {
+                        retval = ERR_OVERFLOW;
+                    }
+                }
+            } else {
+                if(result == 6) ms = 0;
+                tm.tm_year = year - 1900; /* Year is since 1900 in struct tm */
+                tm.tm_mon--; /* Month is 0-30 in struct tm */
+                ((dax_lint *)buff)[index] = ((dax_lint)(mktime(&tm)-timezone) * 1000) + ms;
+                if(mask) ((dax_lint *)mask)[index] = DAX_64_ONES;
             }
             break;
         case DAX_LREAL:

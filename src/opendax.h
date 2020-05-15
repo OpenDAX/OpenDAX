@@ -43,7 +43,7 @@
 #define DAX_LWORD   0x0006
 #define DAX_LINT    0x0016
 #define DAX_ULINT   0x0026
-#define DAX_TIME    0x0036
+#define DAX_TIME    0x0036 /* milliseconds since the epoch */
 #define DAX_LREAL   0x0046
 
 /* The highest order bit shows that it's a compound datatype */
@@ -150,8 +150,6 @@
 #define DAX_DINT_MAX    2147483647
 #define DAX_UDINT_MIN   DAX_DWORD_MIN
 #define DAX_UDINT_MAX   DAX_DWORD_MAX
-#define DAX_TIME_MIN    DAX_DWORD_MIN
-#define DAX_TIME_MAX    DAX_DWORD_MAX
 /* 64 Bit */
 #define DAX_LWORD_MIN    0
 #define DAX_LWORD_MAX    18446744073709551615ULL
@@ -159,6 +157,8 @@
 #define DAX_LINT_MAX     9223372036854775807LL
 #define DAX_ULINT_MIN    DAX_LWORD_MIN
 #define DAX_ULINT_MAX    DAX_LWORD_MAX
+#define DAX_TIME_MIN     DAX_LINT_MIN
+#define DAX_TIME_MAX     DAX_LINT_MAX
 /* Floating Point */
 #define DAX_REAL_MIN   -FLT_MAX
 #define DAX_REAL_MAX    FLT_MAX
@@ -174,7 +174,7 @@ typedef u_int16_t  dax_uint;
 typedef u_int32_t  dax_dword;
 typedef int32_t    dax_dint;
 typedef u_int32_t  dax_udint;
-typedef u_int32_t  dax_time;
+typedef int64_t    dax_time;
 typedef float      dax_real;
 typedef u_int64_t  dax_lword;
 typedef int64_t    dax_lint;

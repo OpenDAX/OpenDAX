@@ -57,6 +57,7 @@
 #define INDEX_TAGCOUNT 0
 #define INDEX_LASTINDEX 1
 #define INDEX_DBSIZE 2
+#define INDEX_STARTED 3
 
 typedef struct dax_event_t {
     int id;              /* Unique identifier for this event definition */

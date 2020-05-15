@@ -23,6 +23,7 @@
 #include "func.h"
 #include <ctype.h>
 #include <assert.h>
+#include <sys/time.h>
 
 /* Notes:
  * The tags are stored in the server in two different arrays.  Both
@@ -293,7 +294,9 @@ initialize_tagbase(void)
 {
     tag_type type;
     char *str;
-
+    struct timeval gettime;
+    u_int64_t starttime;
+    
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!_db) {
         xfatal("Unable to allocate the database");
@@ -313,6 +316,10 @@ initialize_tagbase(void)
     assert(tag_add("_tagcount", DAX_DINT, 1) == INDEX_TAGCOUNT);
     assert(tag_add("_lastindex", DAX_DINT, 1) == INDEX_LASTINDEX);
     assert(tag_add("_dbsize", DAX_DINT, 1) == INDEX_DBSIZE);
+    assert(tag_add("_started", DAX_TIME, 1) == INDEX_STARTED);
+    gettimeofday(&gettime, NULL);
+    starttime = gettime.tv_sec * 1000 + gettime.tv_usec / 1000;
+    tag_write(INDEX_STARTED,0,&starttime,sizeof(u_int64_t));
     set_dbsize(_dbsize);
 
     /* Allocate the datatype array and set the initial counters */
@@ -331,6 +338,7 @@ initialize_tagbase(void)
         xfatal("Unable to create default datatypes");
     }
     free(str);
+    
 }
 
 
