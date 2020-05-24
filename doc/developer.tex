@@ -40,7 +40,7 @@ If the event corresponds to an array of bits it will only fire once per write op
 
 The \textit{Equal} event fires when a tag's value equals the value stored in the events \verb|data| parameter.
 
-The \textit{Greater Than} and \textit{Less Than} events are just what you would expect.  They fire each time the new tag value is greater than or less than the event's \verb|data| parameter.  
+The \textit{Greater Than} and \textit{Less Than} events are just what you would expect.  They fire each time the new tag value is greater than or less than the event's \verb|data| parameter.
 
 The \textit{Deadband} event fires when the data has changed by the amount given in the \verb|data| parameter.  For instance if the tag's value is 4 and the data value is 2 the event will not fire if the tag value is written as 3 or 5 but it will fire when the tag's value becomes 2 or 6.  To put it mathematically the event fires once the absolute value of the tag's old value minus the tag's new value is greater than or equal to data.
 
@@ -53,25 +53,25 @@ The \textit{Deadband} event will reset the "old value" when it fires.  So in the
 \begin{figure}[h]
 \centering
 \begin{tabular}{|l|c|c|c|c|c|c|c|c|}
-\hline   & Write & Change & Set & Reset & = & $<$ & $>$ & Deadband \\ 
-\hline  BOOL & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  &  &  &  \\ 
-\hline  BYTE & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  SINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ &$\bullet$  \\ 
-\hline  WORD & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  INT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  UINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  DWORD & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  DINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  UDINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  TIME & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  LWORD & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  LINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  ULINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  REAL & $\bullet$ & $\bullet$ &  &  &  & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  LREAL & $\bullet$ & $\bullet$ &  &  &  & $\bullet$ & $\bullet$ & $\bullet$ \\ 
-\hline  Compound & $\bullet$ & $\bullet$ &  &  &  &  &  &  \\ 
-\hline 
-\end{tabular} 
+\hline   & Write & Change & Set & Reset & = & $<$ & $>$ & Deadband \\
+\hline  BOOL & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  &  &  &  \\
+\hline  BYTE & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  SINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ &$\bullet$  \\
+\hline  WORD & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  INT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  UINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  DWORD & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  DINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  UDINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  TIME & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  LWORD & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  LINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  ULINT & $\bullet$ & $\bullet$ &  &  & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  REAL & $\bullet$ & $\bullet$ &  &  &  & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  LREAL & $\bullet$ & $\bullet$ &  &  &  & $\bullet$ & $\bullet$ & $\bullet$ \\
+\hline  Compound & $\bullet$ & $\bullet$ &  &  &  &  &  &  \\
+\hline
+\end{tabular}
 \caption{\label{Event Matrix}Event Matrix}
 \end{figure}
 
@@ -79,7 +79,7 @@ The functions that we will need are...
 
 \begin{verbatim}
 int dax_event_add(dax_state *ds, tag_handle *handle, int event_type,
-                  void *data, dax_event_id *id, 
+                  void *data, dax_event_id *id,
                   void (*callback)(void *udata), void *udata);
 \end{verbatim}
 \index{dax\_event\_add() function}
@@ -110,11 +110,11 @@ The \eventadd\index{dax\_event\_add() function} function is used to add a new ev
 
 \begin{verbatim}
 int dax_event_add(dax_state *ds, tag_handle *handle, int event_type,
-                  void *data, dax_event_id *id, 
+                  void *data, dax_event_id *id,
                   void (*callback)(void *udata), void *udata);
 \end{verbatim}
 
-The \texttt{event\_type} argument is one of the following... 
+The \texttt{event\_type} argument is one of the following...
 
 \begin{verbatim}
 EVENT_WRITE
@@ -137,7 +137,7 @@ void function_name(void *udata)
 \end{verbatim}
 The \texttt{udata} that the event dispatcher will pass is the same pointer you supply as the last argument to \eventadd.  The system doesn't look at the data, doesn't care about the data, will not free the data when the event is deleted or do anything other than simply pass this same pointer to your callback function.  If you have one callback function per event you may not need it but if you have a single callback function that handles multiple events you will need to have the event dispatcher pass some information to that callback function, that it can use to differentiate between the different events.
 
-I suspect it will be very common for the \texttt{udata} parameter to be a pointer to the same handle of the tag that the event is associated with.  The callback function will most likely then go to the server read the data from that handle and do whatever it is that the module does.  
+I suspect it will be very common for the \texttt{udata} parameter to be a pointer to the same handle of the tag that the event is associated with.  The callback function will most likely then go to the server read the data from that handle and do whatever it is that the module does.
 
 Once you are finished with an event you can delete it with \eventdel.
 
@@ -164,7 +164,7 @@ The \texttt{dax\_event\_wait()} function takes a couple of arguments in addition
 
 The last parameter to \eventwait is a pointer to a \texttt{dax\_event\_id} structure.  This will be filled in by \eventwait with the information that identifies this event.
 
-If you passed a pointer to a callback function to the \eventadd function, \verb|dax_event_wait()| will call that function and pass the \texttt{udata} pointer that you passed to \eventadd when you created the event.  
+If you passed a pointer to a callback function to the \eventadd function, \verb|dax_event_wait()| will call that function and pass the \texttt{udata} pointer that you passed to \eventadd when you created the event.
 
 The  function is very similar to \verb|dax_event_wait()| except that it will not wait.  It returns immediately if there is no event to dispatch.  If it dispatches an event it returns 0 and \verb|ERR_NOTFOUND| if there was no event.  Both functions might return another error code if there was some other problem.
 
@@ -175,79 +175,13 @@ int dax_event_poll(dax_state *ds, dax_event_id *id);
 
 The final method of dealing with events allows your program to have complete control over the file descriptor.  This is more complex, but it might be necessary if your program needs to deal with other events.  First use \texttt{dax\_event\_get\_fd()}\index{dax\_event\_get\_fd() function} function to retrieve the file descriptor that the library is using to wait on events to come from the server.  You can use other system calls such as \verb|system()| or \verb|poll()| to determine if there is a read pending.  If there is any information to read your module would then call \texttt{int dax\_event\_dispatch(dax\_state *ds, dax\_event\_id *id)}\index{dax\_event\_dispatch() function} function.  This function carries out the same tasks as \texttt{dax\_event\_wait()} and \texttt{dax\_event\_poll()}.  In fact these two functions call \texttt{dax\_event\_dispatch()} from within the library.
 
-It is important that your module does not read any of the bytes out of the socket that the file descriptor represents.  Also, the data is one way so you only need to detect that the socket is ready for reading.
-
-\chapter{Shell Module}
-
-The shell module is a wrapper around normal command line programs were not programmed to be an OpenDAX module.  They would normally be started from the command line.  These programs could be anything from an mp3 player to a database client.  They could be just about any program that can be started from the shell prompt.  They obviously don't have any "normal" OpenDAX functionality.  The shell module would allow the rest of the OpenDAX system to  gain access to the programs functionality by interfacing with the STDIN, STDOUT and STDERR file descriptors.  Strings can be sent from the shell module to these programs so that they can be controlled as though that text was being typed on the command line.  This allows OpenDAX to easily add functionality found in other programs and perhaps not reinvent too many wheels.
-
-None of this has been added yet and as of now it is unclear how exactly go about implementing this module.
+It is important that your module not read any of the data from the socket that the file descriptor represents.  Also, the data is one way so you only need to detect that the socket is ready for reading.
 
 \chapter{Lua Modules}
 
-It is possible to write an OpenDAX module entirely in Lua\footnote{This feature is only partially implemented at this point but rudimentary support is included and development is ongoing}.  Included in the OpenDAX distribution is a library for interfacing to the OpenDAX API from Lua.  Since Lua is such an integral part of so much of the OpenDAX system this library was written for convenience, but since Lua is such an elegant language to embed and interface with it was easy to take this library and make a Lua Module\footnote{Not to be confused with an OpenDAX module} out of it. 
+It is possible to write an OpenDAX module entirely in Lua.  Included in the OpenDAX distribution is a Lua module for interfacing to the OpenDAX API from Lua. 
 
-\section{Installation}
-
-If you installed OpenDAX according to the instructions in this manual you should have the libdaxlua library file installed where the other libraries are installed.  Normally this would be /usr/local/lib but if you changed your prefix to the autoconf script it would be there instead.
-
-To get the module to work the library needs to exist in the path that LUA will look for libraries to load as modules.  In Lua this is passed as the LUA\_CPATH environment variable.  You can either pass this environment variable to all of your scripts or you can just create a symbolic link in one of the directories that are part of the default 'cpath.'  To find out what the cpath is use this command at the command prompt...
-
-\verb|lua -e "print(package.cpath)"|
-
-On my system it looks like this...
-
-\verb|./?.so;/usr/local/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so|
-
-Each path is separated by a ';' and the ? will be replaced with whatever you use as the argument to \textit{require()}.  So to load the luadax module as 'dax' then the Lua interpreter needs to find the library as one of those filenames.  We want the library to load when we use the command \verb|require("dax")| in our Lua scripts.  Add a symbolic link in \textit{/usr/local/lib/lua/5.1/} named \textit{dax.so} that points to the library, \textit{/usr/local/lib/libdaxlua.so}\footnote{In OSX the library will ed in .dylib but the symbolic link will still need to match the pattern in cpath}.
-
-Now when we use \verb|require("dax")| in our Lua scripts it looks in the directory \textit{/usr/local/lib/lua/5.1/} and finds a link to the library.  It loads the library and off we go.
-
-At some point we'll spend some time with the autoconf scripts and try to automate this process but for now this will have to do.
-
-\section{API Description}
-
-All of the functions of the OpenDAX Lua Module are contained in a \textit{"dax"} table.  The following is a description of the functions contained in this table.
-
-\begin{verbatim}
-dax.init
-\end{verbatim}
-\index{dax.init function}
-
-\begin{verbatim}
-dax.free
-\end{verbatim}
-\index{dax.free function}
-
-\begin{verbatim}
-dax.cdt_create
-\end{verbatim}
-\index{dax.cdt\_create function}
-
-\begin{verbatim}
-dax.tag_add
-\end{verbatim}
-\index{dax.tag\_add function}
-
-\begin{verbatim}
-dax.tag_get
-\end{verbatim}
-\index{dax.tag\_get function}
-
-\begin{verbatim}
-dax.tag_read
-\end{verbatim}
-\index{dax.tag\_write function}
-
-\begin{verbatim}
-dax.event_add
-\end{verbatim}
-\index{dax.event\_add function}
-
-\begin{verbatim}
-dax.event_del
-\end{verbatim}
-\index{dax.event\_del function}
+See the Lua API documentation in the appendix for details.
 
 \section{Using the Lua Interface in C Modules}
 
@@ -257,16 +191,18 @@ dax.event_del
 
 \input{dev_api.tex}
 
+\input{lua_api.tex}
+
 \chapter{Skeleton Module}
 The Skeleton module is included in the distribution as a starting place for building new modules.  It includes just enough code to function as an OpenDAX module.  The code is well documented and when used with this manual it will, hopefully, make writing a new module for OpenDAX a fairly simple and straight forward process.  The Skeleton module is located in the /modules/skel subdirectory of the distribution.
 
 \section{skel.h}
 \begin{tiny}
-\verbatiminput{../modules/skel/skel.h}
+\verbatiminput{../src/modules/skel/skel.h}
 \end{tiny}
 \section{skel.c}
 \begin{tiny}
-\verbatiminput{../modules/skel/skel.c}
+\verbatiminput{../src/modules/skel/skel.c}
 \end{tiny}
 
 \input{dev_codebase.tex}

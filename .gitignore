@@ -38,6 +38,7 @@ doc/*.idx
 doc/*.log
 doc/*.pdf
 doc/*.toc
+doc/*.out
 doc/doxygen/*
 *.pyc
 build/

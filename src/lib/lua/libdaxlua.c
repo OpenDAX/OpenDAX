@@ -573,14 +573,19 @@ _cdt_create(lua_State *L)
 static int
 _tag_add(lua_State *L)
 {
-    int result;
+    int result, count;
     tag_type type;
     
     if(ds == NULL) {
         luaL_error(L, "OpenDAX is not initialized");
     }
-    if(lua_gettop(L) != 3) {
+    if(lua_gettop(L) < 2 || lua_gettop(L) > 3) {
         luaL_error(L, "wrong number of arguments to tag_add()");
+    }
+    if(lua_gettop(L) == 2) { /* Count is missing */
+        count = 1;
+    } else {
+        count = lua_tointeger(L, 3);
     }
     if(lua_isnumber(L, 2)) {
         type = lua_tointeger(L, 2);
@@ -591,7 +596,7 @@ _tag_add(lua_State *L)
         }
     }
 
-    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, lua_tointeger(L, 3));
+    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count);
     if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
     return 0;
 }
@@ -633,23 +638,19 @@ _tag_read(lua_State *L) {
     if(ds == NULL) {
         luaL_error(L, "OpenDAX is not initialized");
     }
-    if(lua_gettop(L) != 2) {
+    if(lua_gettop(L) < 1 || lua_gettop(L) > 2) {
         luaL_error(L, "Wrong number of arguments passed to tag_read()");
+    }
+    if(lua_gettop(L) == 1) { /* Assume that it's only the name and we just one one */
+        count = 1;
     }
     name = (char *)lua_tostring(L, 1);
     count = lua_tointeger(L, 2);
-//    printf("_tag_read() Getting Handle for %s with count of %d\n", name, count);
 
     result = dax_tag_handle(ds, &h, name, count);
     if(result) {
         luaL_error(L, "dax_tag_handle() returned %d", result);
     }
-//    printf("h.index = %d\n", h.index);
-//    printf("h.byte = %d\n", h.byte);
-//    printf("h.bit = %d\n", h.bit);
-//    printf("h.size = %d\n", h.size);
-//    printf("h.count = %d\n", h.count);
-//    printf("h.type = %s\n", dax_type_to_string(h.type));
     
     data = malloc(h.size);
     if(data == NULL) {
@@ -948,10 +949,13 @@ _event_wait(lua_State *L) {
     int result;
     int timeout;
 
-    if(lua_gettop(L) != 1) {
+    if(lua_gettop(L) == 0) {
+        timeout = 0;
+    } else if (lua_gettop(L) ==1 {
+        timeout = lua_tonumber(L, 1);
+    } else {
         luaL_error(L, "Wrong number of arguments passed to event_select()");
-    }
-    timeout = lua_tonumber(L, 1);
+    }    
     result = dax_event_wait(ds, timeout, NULL);
 
     if(result == ERR_TIMEOUT) {
@@ -1009,6 +1013,15 @@ static const struct luaL_Reg daxlib[] = {
     {"event_poll", _event_poll},
     {NULL, NULL}  /* sentinel */
 };
+
+/* TODO: Add the following functions...
+ *   tag_del
+ *   cdt_get
+ *   cdt_del
+ *   map_add
+ *   map_get
+ *   map_del
+ */
 
 /* This registers all of the functions that are defined in the above array
  * to the Lua script given by L.  It places them in a table named 'dax' and
