@@ -91,7 +91,7 @@ foreach(file ${files})
   configure_file(LuaTests/${FILENAME} LuaTests/${FILENAME})
 endforeach()
 
-add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua")
+add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua" "LuaTests/helper_event.lua")
 
 if(INTERNAL_TESTS)
   add_subdirectory(internal)

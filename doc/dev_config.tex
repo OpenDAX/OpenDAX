@@ -6,23 +6,16 @@ if the module itself does not have any configurable options. This is because the
 libdax library will need some configuration information to help it know how to
 communicate with the server.
 
-There are three methods for the module to receive configuration information.
-The main \textit{opendax.conf} contains configuration information for the server
-as well as any configuration that is common to all the modules on the local host
-machine.  Each module may have it's own configuration file that can be read and
-each module can receive configuration information passed as command line
+There are two methods for the module to receive configuration information.
+The server, the master and each module may have it's own configuration file that can be read and
+each program can receive configuration information passed as command line
 arguments.
 
 There is a precedence between these configurations.  If a configuration
 attribute is present on the command line it will take precedence over that same
-attribute given in either of the configuration files.  Likewise if an attribute
-exists in both of the configuration files then the module specific file will
-take priority.  This gives us a way to set up global default parameters for all
-modules such as IP address and communication port of the server in the
-\textit{opendax.conf} file.  Then if any of the global data needs to be
-different for any given module, that information can be changed in the module
-specific file.  Further, if the information needs to be different for any given
-invocation of the module that can be passed on the command line.
+attribute given in the configuration files.  Configuration files are Lua scripts
+which allows them to import and excecute other Lua configuration files.  This
+gives the user a way to set up universal configuration options.
 
 Configuration is made up of attributes.  An example of an attribute would be the
 name of the local unix domain socket that the module should use to communicate
@@ -37,7 +30,7 @@ help the module developer with all of this.
 
 If the configuration data is more complex than simply assigning a value to an
 attribute there is a callback function mechanism built into the configuration
-system.  The configuration files in OpenDAX are nothing more than Lua scripts.
+system.  Since the configuration files in OpenDAX are nothing more than Lua scripts.
 The libdax library gives the module programmer the ability to create functions
 that can be called from the script.  These functions are programmed in the
 module code just like any other Lua extension function.  The full description of
@@ -59,10 +52,11 @@ if(ds == NULL) exit(-1);
 \end{verbatim}
 
 First we declare a pointer to a \verb|dax_state| object.  This is an opaque
-pointer that your program will need to maintain for it's entire lifetime.
+pointer that your program will need to maintain for it's entire lifetime.  It
+represents a single connection to a single server.
 
 Once the pointer is declared we use the \verb|dax_init()| function to allocate
-it and initialize it.  The only real error that this function can really have is
+it and initialize it.  The only real error that this function can have is
 memory allocation failure, in which case it will return NULL.  Your module
 should probably log an error an exit gracefully.  The string that is passed to
 \verb|dax_init()| is the name of your module as it will be seen throughout the

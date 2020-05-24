@@ -57,7 +57,6 @@ _read_to_stack(lua_State *L, tag_type type, void *buff)
             break;
         case DAX_DWORD:
         case DAX_UDINT:
-        case DAX_TIME:
             lua_pushnumber(L, (double)*((dax_udint *)buff));
             break;
         case DAX_DINT:
@@ -70,6 +69,7 @@ _read_to_stack(lua_State *L, tag_type type, void *buff)
         case DAX_ULINT:
             lua_pushnumber(L, (double)*((dax_ulint *)buff));
             break;
+        case DAX_TIME:
         case DAX_LINT:
             lua_pushnumber(L, (double)*((dax_lint *)buff));
             break;
@@ -996,8 +996,8 @@ daxlua_set_state(lua_State *L, dax_state *new_ds) {
 
 /* This array defines the functions that can be exported to a Lua script */
 static const struct luaL_Reg daxlib[] = {
-    {"dax_init", _dax_init},
-    {"dax_free", _dax_free},
+    {"init", _dax_init},
+    {"free", _dax_free},
     {"cdt_create", _cdt_create},
     {"tag_add", _tag_add},
     {"tag_get", _tag_get},

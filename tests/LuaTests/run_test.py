@@ -15,7 +15,8 @@
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 # This script starts the tagserver then launches the Lua script given in
-# in the first argument
+# in the first argument.  The second argument will cause a helper script
+# to be executed.
 
 import subprocess
 import pexpect
@@ -25,20 +26,30 @@ import os
 
 build_dir = "@CMAKE_BINARY_DIR@"
 tagserver_file = "{}/src/server/tagserver".format(build_dir)
-
+helper = None
 
 server = subprocess.Popen([tagserver_file,
-                                "-C",
-                                "PythonTests/config/tagserver_basic.conf"],
-                                stdout=subprocess.DEVNULL
-                                )
+                           "-C",
+                           "PythonTests/config/tagserver_basic.conf"],
+                           stdout=subprocess.DEVNULL
+                           )
 time.sleep(0.1)
 x = server.poll()
 if(x): raise Exception("Tagserver did not start")
+
+# Start the helper script if one is given
+if len(sys.argv) >= 3:
+    helper = subprocess.Popen(["lua", sys.argv[2]],stdout=subprocess.DEVNULL)
+    time.sleep(0.1)
+    x = helper.poll()
+    if x: raise Exception("Helper script did not start")
+
 
 x = os.system("lua {}".format(sys.argv[1]))
 
 server.terminate()
 server.wait()
-
+if helper is not None:
+    helper.terminate()
+    helper.wait()
 if(x): raise Exception("Lua Script returned {}".format(x))

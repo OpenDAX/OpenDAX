@@ -6,5 +6,25 @@ package.cpath = "@CMAKE_BINARY_DIR@/src/lib/lua/?.so"
 
 dax = require("dax")
 
-dax.dax_init("dummy")
 
+function fire_event(a)
+    io.stderr:write(string.format("Test event called\n"))
+end
+
+dax.init("dax_test")
+
+dax.tag_add("dummy", "INT", 1)
+dax.tag_write("dummy", 12)
+
+dax.tag_write("flag", 1)
+
+dummy_change = dax.event_add("dummy", 1, "CHANGE", 0, fire_event, 0)
+
+dax.event_wait(0)
+
+x = dax.tag_read("dummy", 1)
+-- io.stderr:write(string.format("%d is the answer\n", x))
+
+if x ~= 1234 then
+    error("Don't match")
+end

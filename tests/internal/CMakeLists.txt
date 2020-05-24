@@ -23,6 +23,8 @@ include_directories(../../src/server)
 add_definitions(-DTESTING) # Compiles some testing code into the library */
 
 set(LIB_SOURCE_DIR ../../src/lib)
+set(SERVER_SOURCE_DIR ../../src/server)
+
 add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
                                      ${LIB_SOURCE_DIR}/libfunc.c
                                      ${LIB_SOURCE_DIR}/libcdt.c
@@ -35,24 +37,15 @@ add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
 # target_link_libraries(cachetest 
 target_link_libraries(cachetest ${LUA_LIBRARIES})
 
-set(SERVER_SOURCE_DIR ../../src/server)
-add_executable(tagbasetest_001 tagbasetest_001.c ${SERVER_SOURCE_DIR}/tagbase.c
-                                         ${SERVER_SOURCE_DIR}/func.c
-                                         ${SERVER_SOURCE_DIR}/events.c
-                                         ${SERVER_SOURCE_DIR}/mapping.c
-                                         ${SERVER_SOURCE_DIR}/virtualtag.c
-)
 
-add_executable(tagbasetest_002 tagbasetest_002.c ${SERVER_SOURCE_DIR}/tagbase.c
+file(GLOB files "tagbasetest_*.c")
+foreach(file ${files})
+  get_filename_component(FILENAME ${file} NAME)
+  get_filename_component(TESTNAME ${file} NAME_WE)
+  add_executable(${TESTNAME} ${FILENAME} ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
                                          ${SERVER_SOURCE_DIR}/mapping.c
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
-)
-
-add_executable(tagbasetest_003 tagbasetest_003.c ${SERVER_SOURCE_DIR}/tagbase.c
-                                         ${SERVER_SOURCE_DIR}/func.c
-                                         ${SERVER_SOURCE_DIR}/events.c
-                                         ${SERVER_SOURCE_DIR}/mapping.c
-                                         ${SERVER_SOURCE_DIR}/virtualtag.c
-)
+  )
+endforeach()
