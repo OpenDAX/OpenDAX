@@ -4,14 +4,14 @@
 PASS = 0
 FAIL = 1
 
-run_test("luatests/tagname.lua", "Tagname Addition Test")
-run_test("luatests/handles.lua", "Tag Handle Retrieval Test")
+--run_test("luatests/tagname.lua", "Tagname Addition Test")
+--run_test("luatests/handles.lua", "Tag Handle Retrieval Test")
 run_test("luatests/tagmodify.lua", "Tag Modification Test")
 run_test("luatests/typefail.lua", "Type Fail Test")
 
-run_test("luatests/random.lua", "Random Tag Addition Test")
+--run_test("luatests/random.lua", "Random Tag Addition Test")
 
-run_test("luatests/readwrite.lua", "Read / Write Test")
+--run_test("luatests/readwrite.lua", "Read / Write Test")
 
 run_test("luatests/eventadd.lua", "Event Addition/Removal Test")
 run_test("luatests/eventwrite.lua", "Event Write Test")

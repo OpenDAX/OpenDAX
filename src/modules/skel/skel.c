@@ -29,7 +29,7 @@
  * example of everything that can be done with the API.
  */
 
-#include <skel.h>
+#include "skel.h"
 
 void quit_signal(int sig);
 static void getout(int exitstatus);

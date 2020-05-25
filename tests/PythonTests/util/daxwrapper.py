@@ -118,6 +118,11 @@ class LibDaxWrapper:
             raise RuntimeError
         return h
 
+    def dax_tag_del(self, ds, idx):
+        x = self.libdax.dax_tag_del(ds, idx)
+        if x < 0:
+            raise RuntimeError
+
     def dax_map_add(self, ds, src, dest):
         x = self.libdax.dax_map_add(ds, byref(src), byref(dest), 0)
         if x < 0:

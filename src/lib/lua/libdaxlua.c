@@ -563,6 +563,12 @@ _cdt_create(lua_State *L)
 }
 
 
+// static void
+// _print_cdt_callback(cdt_iter iter, void *udata) {
+//     
+// }
+
+
 /* Adds a tag to the dax tagbase.  Three arguments...
     First - tagname
     Second - tag type
@@ -743,6 +749,33 @@ _tag_write(lua_State *L) {
     free(data);
     free(mask);
     return 1;
+}
+
+
+static int
+_tag_del(lua_State *L) {
+    char *name;
+    int result;
+    dax_tag tag;
+    
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) != 1) {
+        luaL_error(L, "Wrong number of arguments passed to tag_del()");
+    }
+    if(lua_isnumber(L, 1)) {
+        result = dax_tag_byindex(ds, &tag, (tag_index)lua_tointeger(L, 1));
+    } else {
+        result = dax_tag_byname(ds, &tag, (char *)lua_tostring(L, 1));
+    }
+
+    result = dax_tag_del(ds, tag.idx);
+    if(result) {
+        luaL_error(L, "Unable to delete tag");
+    } else {
+        return 0;
+    }
 }
 
 /* This structure is used to store the indexes in the registry where the
@@ -951,7 +984,7 @@ _event_wait(lua_State *L) {
 
     if(lua_gettop(L) == 0) {
         timeout = 0;
-    } else if (lua_gettop(L) ==1 {
+    } else if (lua_gettop(L) ==1) {
         timeout = lua_tonumber(L, 1);
     } else {
         luaL_error(L, "Wrong number of arguments passed to event_select()");
@@ -1007,6 +1040,7 @@ static const struct luaL_Reg daxlib[] = {
     {"tag_get", _tag_get},
     {"tag_read", _tag_read},
     {"tag_write", _tag_write},
+    {"tag_del", _tag_del},
     {"event_add", _event_add},
     {"event_del", _event_del},
     {"event_wait", _event_wait},
@@ -1015,9 +1049,8 @@ static const struct luaL_Reg daxlib[] = {
 };
 
 /* TODO: Add the following functions...
- *   tag_del
  *   cdt_get
- *   cdt_del
+ *   cdt_del - Not implemented in server yet
  *   map_add
  *   map_get
  *   map_del

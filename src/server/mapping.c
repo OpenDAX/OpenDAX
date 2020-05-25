@@ -180,7 +180,8 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
     int srcBit;
     int destByte;
     int destBit;
-//    printf("map_check() called\n");
+    int result;
+
     this = _db[idx].mappings;
     /* If this is the first time we've been called then it means that is is the tag that started
      * the mapping.  If we chain too many then we'll tell the user which tag started it all. */
@@ -195,7 +196,6 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
 
         if(offset <= (this->source.byte + this->source.size - 1) && (offset + size -1 ) >= this->source.byte) {
             /* Mapping Hit */
-//            printf("mapping hit\n");
             _mapping_hops++;
             if(_mapping_hops > MAX_MAP_HOPS) {
                 /* TODO: conditional compilation of program exit */
@@ -232,14 +232,22 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
                 }
 //                printf("data = 0x%X\n", *(uint16_t *)new_data);
 //                printf("mask = 0x%X\n", *(uint16_t *)this->mask);
-                tag_mask_write(this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
+                result = tag_mask_write(this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
+                /* If the destination tag has been deleted then delete this map */
+                if(result == ERR_DELETED) {
+                    map_del(this->source.index, this->id);
+                }
                 free(new_data);
             } else {
                 //new_data = data;
                 new_data = &data[offset+this->source.byte];
 
 //                printf("data = 0x%X\n", *(uint16_t *)new_data);
-                tag_write(this->dest.index, this->dest.byte, new_data, this->dest.size);
+                result = tag_write(this->dest.index, this->dest.byte, new_data, this->dest.size);
+                /* If the destination tag has been deleted then delete this map */
+                if(result == ERR_DELETED) {
+                    map_del(this->source.index, this->id);
+                }
             }
         }
         this = this->next;

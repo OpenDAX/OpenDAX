@@ -380,7 +380,7 @@ tag_add(char *name, tag_type type, unsigned int count)
         return ERR_ARG;
     }
 
-    printf("tag_add() called with name = %s, type = 0x%X, count = %d\n", name, type, count);
+    xlog(LOG_VERBOSE | LOG_MSG, "tag_add() called with name = %s, type = 0x%X, count = %d", name, type, count);
     if(_tagnextindex >= _dbsize) {
         if(_database_grow()) {
             xerror("Failure to increae database size");

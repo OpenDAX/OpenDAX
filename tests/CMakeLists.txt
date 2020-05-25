@@ -59,6 +59,8 @@ add_test(python_test_libdax_basic   "python3" "-m" "unittest"
                                     "PythonTests.test_libdax_basic.TestBasic")
 add_test(python_test_tag_add        "python3" "-m" "unittest"
                                     "PythonTests.test_tag_add.TestSingle")
+add_test(python_test_tag_delete     "python3" "-m" "unittest"
+                                    "PythonTests.test_tag_del.TestTagDelete")
 add_test(python_test_handles_loop   "python3" "-m" "unittest"
                                     "PythonTests.test_handles.TestHandles_LoopTests")
 add_test(python_test_handles_flat   "python3" "-m" "unittest"
@@ -69,14 +71,15 @@ add_test(python_test_mapping        "python3" "-m" "unittest"
                                     "PythonTests.test_mapping.TestMapping")
 add_test(python_test_single         "python3" "-m" "unittest"
                                     "PythonTests.test_single.TestSingle")
-
-# Module Tests
+                                    
+# daxc Module Tests
 add_test(python_test_module_daxc_tags "python3" "-m" "unittest"
                                       "PythonTests.test_module_daxc_tags.TestDaxc")
 add_test(python_test_module_daxc_cdt  "python3" "-m" "unittest"
                                       "PythonTests.test_module_daxc_cdt.TestDaxc")
 add_test(python_test_module_daxc_list "python3" "-m" "unittest"
-                                      "PythonTests.test_module_daxc_list.TestDaxc")                                    
+                                      "PythonTests.test_module_daxc_list.TestDaxc")
+
 if(BUILD_MODBUS)
     add_test(python_test_modbus_library "python3" "-m" "unittest"
     "PythonTests.test_modbuslib.TestRTUMaster")
@@ -92,7 +95,8 @@ foreach(file ${files})
 endforeach()
 
 add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua")
-add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_event.lua" "LuaTests/helper_event.lua")
+add_test(lua_test_tag_delete        "python3" "LuaTests/run_test.py" "LuaTests/test_tag_delete.lua")
+add_test(lua_test_event             "python3" "LuaTests/run_test.py" "LuaTests/test_event.lua" "LuaTests/helper_event.lua")
 
 if(INTERNAL_TESTS)
   add_subdirectory(internal)
