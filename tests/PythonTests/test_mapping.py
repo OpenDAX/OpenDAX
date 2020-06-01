@@ -116,6 +116,7 @@ class TestMapping(unittest.TestCase):
         self.assertEqual(b,x)
 
     def test_map_array_dint(self):
+        """Map one DINT to two INTs"""
         t = daxwrapper.defines["DAX_DINT"]
         self.dax.dax_tag_add(self.ds, "DummySrc", t, 16)
         t = daxwrapper.defines["DAX_INT"]
@@ -138,6 +139,7 @@ class TestMapping(unittest.TestCase):
             self.dax.dax_map_add(self.ds, src, dest)
 
     def test_map_too_big_error_2(self):
+        """An INT is smaller than a DINT so this makes sure that will fail"""
         t = daxwrapper.defines["DAX_DINT"]
         self.dax.dax_tag_add(self.ds, "DummySrc2", t, 16)
         t = daxwrapper.defines["DAX_INT"]

@@ -23,7 +23,8 @@
 #include <common.h>
 #include <arpa/inet.h>
 
-/* This function returns the proper event type that matches the string.
+/*!
+ * Returns the proper event type that matches the string.
  * Returns 0 for error */
 int
 dax_event_string_to_type(char *string) {
@@ -48,7 +49,9 @@ dax_event_string_to_type(char *string) {
     }
 }
 
-/* Returns a string representing the event type, NULL on error */
+/*!
+ *Returns a string representing the event type, NULL on error
+ */
 char *
 dax_event_type_to_string(int type) {
     switch(type) {
@@ -73,6 +76,9 @@ dax_event_type_to_string(int type) {
     }
 }
 
+/* Store the event information into a database internal to the library.  This is 
+ * where the callbacks and the userdata are stored.  The server simply sends an ID
+ */
 int
 add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(void *udata),
           void (*free_callback)(void *udata))
@@ -124,10 +130,18 @@ del_event(dax_state *ds, dax_id id)
 }
 
 
-/* Blocks waiting for an event to happen.  If an event is found it
- * will run the callback function for that event.  Returns ERR_TIMEOUT
- * if the time expires.  Returns zero on success.  If 0 is passed
- * as the timeout it will wait forever. */
+/*!
+ * Blocks waiting for an event to happen.  If an event is found it
+ * will run the callback function for that event.
+ * @param ds Pointer to the dax state object
+ * @param timeout Number of milliseconds to wait for an event.  If
+ *                set to zero it will wait forever.
+ * @param id Pointer to an event id structure.  The function will
+ *           populate this structure with the id of the event that
+ *           was handled.  Can be set to NULL if unneeded.
+ * @returns ERR_TIMEOUT if the time expires, zero on success or other
+ *          error codes if appropriate.
+ */
 int
 dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 {
@@ -158,10 +172,18 @@ dax_event_wait(dax_state *ds, int timeout, dax_id *id)
     return 0;
 }
 
-/* Does not block and checks for a pending event.  If there is an
- * event pending it will run the callback for that event.  Returns
- * 0 if it services an event and ERR_NOTFOUND if there are no
- * events pending to service */
+/*!
+ * Checks for a pending event without blocking.  If there is an
+ * event pending it will run the callback for that event.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param id Pointer to an event id structure.  The function will
+ *           populate this structure with the id of the event that
+ *           was handled.  Can be set to NULL if unneeded.
+ * @returns ERR_NOTFOUND if there are no pending events, zero 
+ *          if an event was successfully dispatched or other
+ *          error codes if appropriate.
+ */
 int
 dax_event_poll(dax_state *ds, dax_id *id)
 {
@@ -184,24 +206,39 @@ dax_event_poll(dax_state *ds, dax_id *id)
     return 0;
 }
 
-/* This function will return the asynchronous event handling file
+/*!
+ * This function will return the asynchronous event handling file
  * descriptor to the module.  This is used if the module wants to handle
  * it's own file descriptor management.  Handy for event driven programs
- * that need to select() on multiple file descriptors */
+ * that need to select() on multiple file descriptors
+ */
 int
 dax_event_get_fd(dax_state *ds)
 {
     return ds->afd;
 }
 
-/* This calls the read() system call to get the event that SHOULD be pending
- * on the ds->afd file descriptor, then it calls the event callback if it
- * is necessary and returns the id through the pointer.  This is used from
- * both the dax_event_select() and dax_event_poll() library function calls and
- * can be called from modules that choose to take care of dealing with the
- * file descriptor themselves.  It returns 0 if it was able to dispatch
- * the event, ERR_NOTFOUND if it only received a partial event message from
- * the server and other errors if necessary. */
+/*!
+ * Read the event message from the event socket and dispatch, determine
+ * which event is on that socket and call the appropriate callback function.
+ * This function assumes that there is a message in the buffer for the socket.
+ * Most client modules will not need to use this function.  The dax_event_wait()
+ * and dax_event_poll() functions will call this function when necessary.
+ * 
+ * This function is useful if the client module has other file descriptors to
+ * that it is using.  A client could call the dax_get_event_fd() function which
+ * would return the file descriptor that OpenDAX is using for event notifications,
+ * select or poll that file descriptor and if there is data available for reading,
+ * call this function.
+ * 
+ * This function deals with a single event.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param id Pointer to an event id that will be filled in by this function
+ *           with the information of the event that was handled.  If set to 
+ *           NULL the function will do nothing with this pointer.
+ * @returns zero on success or an error code otherwise
+ */
 int
 dax_event_dispatch(dax_state *ds, dax_id *id)
 {

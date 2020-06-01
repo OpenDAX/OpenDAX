@@ -269,9 +269,14 @@ _event_connect(dax_state *ds)
     return result;
 }
 
-/* Setup the module data structures and send registration message
- * to the server.  *name is the name that we want to give our
- * module */
+/*!
+ * Setup the module data structures and send registration message
+ * to the server.
+ * 
+ * @param ds Pointer to the dax state object.
+ *
+ * @returns Zero on success or an error code otherwise
+ */
 int
 dax_connect(dax_state *ds)
 {
@@ -316,6 +321,14 @@ dax_connect(dax_state *ds)
     return 0;
 }
 
+/*!
+ * Unregister our client module with the server and dax_disconnect
+ * the sockets of the connection
+ * 
+ * @param ds The pointer to the dax state object
+ * 
+ * @returns Zero on success or an error code otherwise
+ */
 int
 dax_disconnect(dax_state *ds)
 {
@@ -345,8 +358,9 @@ dax_mod_get(dax_state *ds, char *modname)
     return 0;
 }
 
-/* This is a generic function for setting module parameters.  Right now it is only
- * capable of setting the RUNNING flag */
+/*!
+ * This is a generic function for setting module parameters.
+ */
 int
 dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
 {
@@ -379,9 +393,18 @@ dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
     return 0;
 }
 
-/* Sends a message to dax to add a tag.  The payload is basically the
- * tagname without the handle. */
-
+/*! 
+ * Adds a tag to the tag server.
+ * @param ds The pointer to the dax state object
+ * @param h  Pointer to a tag handle structure.  This structure will be filled
+ *           in by this function if it is successful.  NULL may be passed if
+ *           the caller is not interested in the tag handle
+ * @param name Pointer to the name of the new name
+ * @param type Data type.
+ * @param count If count is greater than 1 then an array is created.
+ * 
+ * @returns Zero on success and an error code otherwise
+ */
 int
 dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
 {
@@ -441,7 +464,16 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
     return result;
 }
 
-int dax_tag_del(dax_state* ds, tag_index index)
+/*!
+ * Delete a tag from the tagserver.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param index Database index of the tag to be deleted
+ * 
+ * @returns Zero on success or an error code otherwise
+ */
+int
+dax_tag_del(dax_state* ds, tag_index index)
 {
     int result;
     size_t size;
@@ -461,9 +493,16 @@ int dax_tag_del(dax_state* ds, tag_index index)
     return result;        
 }
 
-/* These tag name getting routines will have to be rewritten when we get
-the custom data types going.  Returns zero on success. */
-/* TODO: Need to clean up this function.  There is stuff I don't think I want in here */
+/*!
+ * Retrive a tag definition based on the tags name.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param tag Pointer to the structure that this function will
+ *            fill with the tags information
+ * @param name The name of the tag that we are requesting
+ * 
+ * @returns Zero on success or an error code otherwise
+ */
 int
 dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
 {
@@ -511,18 +550,27 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
     return 0;
 }
 
-/* Retrieves the tag by handle.  */
-int
-dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
+/*!
+ * Retrieve the tag by it's index.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param tag Pointer to the structure that this function will
+ *            fill with the tags information
+ * @param idx The index of the tag that we are requesting
+ * 
+ * @returns Zero on success or an error code otherwise
+ */
+ int
+dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
 {
     int result;
     size_t size;
     char buff[DAX_TAGNAME_SIZE + 13];
 
     libdax_lock(ds->lock);
-    if(check_cache_index(ds, handle, tag)) {
+    if(check_cache_index(ds, idx, tag)) {
         buff[0] = TAG_GET_INDEX;
-        *((tag_index *)&buff[1]) = handle;
+        *((tag_index *)&buff[1]) = idx;
         result = _message_send(ds, MSG_TAG_GET, buff, sizeof(tag_index) + 1);
         if(result) {
             dax_error(ds, "Can't send MSG_TAG_GET message");
@@ -533,7 +581,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
         size = DAX_TAGNAME_SIZE + 13;
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
-            //dax_error("Unable to retrieve tag for handle %d", handle);
+            //dax_error("Unable to retrieve tag for index %d", idx);
             libdax_unlock(ds->lock);
             return result;
         }
@@ -550,16 +598,19 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index handle)
 }
 
 /*!
- * The following three functions are the core of the data handling
- * system in Dax.  They are the raw reading and writing functions.
- * 'idx' is the tag index found in the tag_handle of the tag as 
- * returned by the dax_tag_add() function. 
- * 'offset' is the byte offset into the data area of the tag
- * 'data' is a pointer to a data area where the data will be written
- * and 'size' is the number of bytes to read. If data isn't allocated
- * then bad things will happen.  The data will come out of here exactly
+ * Raw low level database read.  The data will be retrieved exactly
  * like it appears in the server.  It is up to the module to convert
- * the data to the servers's number format.
+ * the data to the servers's number format.  There are other functions
+ * in this library to help with the conversion.
+ * 
+ * @param ds The pointer to the dax state object
+ * @param idx Tag index found in the tag_handle of the tag as 
+ *            returned by the dax_tag_add() function.  
+ * @param offset The byte offset within the data area of the tag
+ * @param data Pointer to a data area where the data will be written
+ * @size size The number of bytes to read.
+ * 
+ * @returns Zero upon success or an error code otherwise
  */
 int
 dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size)
@@ -597,10 +648,18 @@ dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size
 }
 
 /*!
- * This is a type neutral way to just write bytes to the data table.
- * It is assumed that the data is already in the servers number format.
- * size is the total number of bytes to send, the offset is the byte
- * offset into the data area of the tag.
+ * Raw low level database write.  Used to write raw data to the database.
+ * This function makes no assumptions about the type of data and simply
+ * writes the data to the database. It is assumed that the data is 
+ * already in the servers number format.
+ * @param ds Pointer to the dax state object.
+ * @param idx The index of the tag that we are writing to
+ * @param offset Byte offset within the tags data area where we are
+ *               writing the data
+ * @param data Pointer to the data that we wish to write
+ * @param size Size of the data that we wish to write in bytes
+ * 
+ * @returns Zero upon success or an error code otherwise
  */
 int
 dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size)
@@ -643,8 +702,23 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
     return 0;
 }
 
-/* Same as the dax_write() function except that only bits that are in *mask
- * will be changed. */
+/*!
+ * Same as the dax_write() function except that only bits that are in *mask
+ * will be changed.
+ * @param ds Pointer to the dax state object.
+ * @param idx The index of the tag that we are writing to
+ * @param offset Byte offset within the tags data area where we are
+ *               writing the data
+ * @param data Pointer to the data that we wish to write
+ * @param mask Pointer to the buffer that we wish to use as the mask.
+ *             This should be the same size as data and is used to mark
+ *             the portion of the data buffer that will be written.  If
+ *             any bit is clear (=0) in this mask the data in the tag server
+ *             will remain unchanged.
+ * @param size Size of the data that we wish to write in bytes
+ * 
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask, size_t size)
 {
@@ -684,6 +758,35 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
     return 0;
 }
 
+
+/*!
+ * Add an event to the tag server.  An event is triggered when the conditions
+ * given become true.
+ * 
+ * @param ds Pointer to the dax state ojbect
+ * @param h  Pointer to a handle that repreents the tag or the part of the 
+ *           tag that we wish to apply the event to.
+ * @param event_type The type of event
+ * @param data Any data that may be required by this event.  For example if
+ *             the event is a Greater Than event then this data would represent
+ *             the number that the tag given by the handle would be compared against.
+ *             If not needed for the particular event type being created it should
+ *             be set to NULL.
+ * @param id Pointer that will be filled in with an identifier for this event.  This
+ *           identifier will be needed to delete or modify this event.
+ * @param callback This is the function that will be called by the system from either
+ *                 the event_wait() or event_poll() functions.
+ * @param udata This a pointer to any arbitrary data that the user needs to be sent
+ *              when the event happens.  This pointer will be passed to the callback
+ *              function.  This allows a single callback function to deal with
+ *              different events.  It can store any data that the user wishes.
+ *              OpenDAX makes no assumptions about the type of this data.
+ * @param free_callback If given, this function will be called when the event
+ *                      is deleted.  This gives the module a method to free
+ *                      the udata if necessary.  Can be set to NULL if not needed.
+ * 
+ * @return Zero on success or an error code otherwise.
+ */
 int
 dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
               dax_id *id, void (*callback)(void *udata),
@@ -745,6 +848,15 @@ dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
     return 0;
 }
 
+/*!
+ * Delete the given event from the tag server
+ * 
+ * @param ds Pointer to the dax state object.
+ * @param id The identifier of the event that we wish to remove.
+ * 
+ * @returns Zero on success or an error code otherwise
+ */
+
 int
 dax_event_del(dax_state *ds, dax_id id)
 {
@@ -780,6 +892,10 @@ dax_event_del(dax_state *ds, dax_id id)
     return 0;
 }
 
+/*!
+ * Retrieve the details of the given event.
+ * This function is not yet implemented
+ */
 int
 dax_event_get(dax_state *ds, dax_id id)
 {
@@ -787,6 +903,10 @@ dax_event_get(dax_state *ds, dax_id id)
     return 0;
 }
 
+/*!
+ * Modify the details of the given event.
+ * This function is not yet implemented
+ */
 int
 dax_event_mod(dax_state *ds, dax_id id, tag_handle *h, int event_type, void *data,
               void (*callback)(void *udata), void *udata)
@@ -795,7 +915,18 @@ dax_event_mod(dax_state *ds, dax_id id, tag_handle *h, int event_type, void *dat
     return 0;
 }
 
-/* write the datatype to the server, and free() it */
+/*!
+ * Write the compound datatype to the server and free the memory
+ * associated with it.  This is the last function to be called during
+ * the create of a compound data type.
+ * @param ds Pointer to the dax state object
+ * @param cdt Pointer to the compound data type object that was created
+ *            with dax_cdt_new().
+ * @param type Pointer to a type.  This value will be filled in by this
+ *             function with the data type identifier that can then be
+ *             used to create tags.
+ * @returns Zero on success or an error code otherwise
+ */
 /* TODO: There is an arbitrary limit to the size that a compound
  * datatype can be. If the desription string is larger than can
  * be sent in one message this will fail. */
@@ -865,15 +996,25 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
     return result;
 }
 
-/* This function retrieves the serialized string definition
+/*!
+ * This function retrieves the serialized string definition
  * from the server and puts the definition into list of
  * datatypes so that the rest of the library can access them.
  * Either type or name should be passed.  If name is passed
  * we will retrieve the cdt from the server by name and by
  * the type if NULL is passed for name.
  *
- * If this function returns true then it can be assumed that
+ * If this function returns success then it can be assumed that
  * the type is in the cache and can then be retrieved there.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param cdt_type Identifier to the type that we are requesting
+ *                 This can be set to zero of name is being used
+ *                 to retrive this type
+ * @param name Name of the type that we wish to retrieve.  If type
+ *             is being used to retrieve the type then NULL can be
+ *             passed here.
+ * @returns Zero on success or an error code otherwise
  */
 int
 dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
@@ -913,7 +1054,8 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
     return result;
 }
 
-/* This function sends a message to add a data mapping to the server.
+/*!
+ * This function sends a message to add a data mapping to the server.
  * It takes two Handles as arguments.  The first is for the source data
  * point and the second is for the destination.  The id pointer will have
  * the unique id of the mapping if the function returns successfully.

@@ -32,13 +32,8 @@ stamp-h1
 .cproject
 .project
 .settings/
-doc/*.dvi
-doc/*.aux
-doc/*.idx
-doc/*.log
-doc/*.pdf
-doc/*.toc
-doc/*.out
+doc/*
+!doc/*.tex
 doc/doxygen/*
 *.pyc
 build/

@@ -18,6 +18,7 @@
  *  Source code file for the library initialization functions.
  */
 
+
 #include <libdax.h>
 #include <libcommon.h>
 
@@ -25,6 +26,14 @@
  *  Allocate and initialize the state of the dax_state connection
  *  object.  The returned object will need to be passed to
  *  dax_free() when finished.
+ * 
+ *  @param name Pointer to a string that represents the name that will
+ *              identify our module to the rest of the sytem.
+ * 
+ *  @return An opaque pointer that represents the Dax State Object.  This
+ *          pointer is sent to the vast majority of the functiosn in this
+ *          library.  It represents everything about the connection to the
+ *          tag server.
  */
 dax_state *
 dax_init(char *name)
@@ -82,6 +91,13 @@ dax_init(char *name)
 }
 
 
+/*!
+ * Deallocate and free the given dax_state object
+ * 
+ * @param ds The Dax State object that is to be deallocated
+ *           and freed.  This would be the same pointer that
+ *           would have been returned from the dax_init() function.
+ */
 int
 dax_free(dax_state *ds)
 {

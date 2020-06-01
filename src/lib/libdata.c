@@ -319,7 +319,16 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     return 0;
 }
 
-
+/*!
+ * Higher level tag reading function.  This function is much more intelligent
+ * about what type of data is being read.  It reads the data and then does
+ * any conversions necessary.
+ * 
+ * @param ds Pointer to dax state object
+ * @param handle The handle that describes the data that we wish to read
+ * @param data The buffer where this function will store the data
+ * @returns Zero on succes or an error code otherwise
+ */
 int
 dax_read_tag(dax_state *ds, tag_handle handle, void *data)
 {
@@ -448,6 +457,9 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
 }
 
 
+/*!
+ * Higher level tag write function
+ */
 int
 dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 {
@@ -490,7 +502,9 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
     return result;
 }
 
-
+/*!
+ * Higher level tag masked write function
+ */
 int
 dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 {

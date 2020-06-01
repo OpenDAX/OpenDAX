@@ -101,7 +101,9 @@ _add_member_to_cache(dax_state *ds, int index, char *desc) {
     return 0;
 }
 
-/* Calculate the size (in bytes) of the datatype */
+/*!
+ * Calculate the size (in bytes) of the datatype
+ */
 int
 dax_get_typesize(dax_state *ds, tag_type type)
 {
@@ -234,12 +236,12 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
     return 0;
 }
 
-/* Creates an empty Custom Datatype with 'name' if
+/*! 
+ * Creates an empty Custom Datatype with 'name' if
  * 'error' is non NULL then results are put there.
  * Returns NULL on error and a pointer to the new
  * datatype if successfull.
  */
-
 dax_cdt *
 dax_cdt_new(char *name, int *error)
 {
@@ -270,7 +272,9 @@ dax_cdt_new(char *name, int *error)
 }
 
 
-/* Adds a member to the Custom Datatype. */
+/*!
+ * Adds a member to the Custom Datatype.
+ */
 int
 dax_cdt_member(dax_state *ds, dax_cdt *cdt, char *name, tag_type type, unsigned int count)
 {
@@ -314,6 +318,12 @@ _cdt_member_free(cdt_member *member) {
     free(member);
 }
 
+/*! 
+ * free the compound data type.  This function will only be
+ * used by the module if the dax_cdt_create() function is never
+ * called for some reason, because the cdt_create() function
+ * frees the CDT once it has been created in the server.
+ */
 void
 dax_cdt_free(dax_cdt *cdt) {
     if(cdt->members != NULL) _cdt_member_free(cdt->members);
@@ -322,8 +332,15 @@ dax_cdt_free(dax_cdt *cdt) {
 }
 
 
-/* Find the datatype that has the name 'type' and return it's numeric ID
- * returns 0 on error.  */
+/*!
+ * Find the datatype of the given name and return it's numeric ID.
+ * both base data types and compound data types can be found with
+ * this function.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param type A string that represents the name of the data type
+ * @returns 0 on error
+ */
 tag_type
 dax_string_to_type(dax_state *ds, char *type)
 {
@@ -370,7 +387,13 @@ dax_string_to_type(dax_state *ds, char *type)
     return 0;
 }
 
-/* Returns a pointer to a string that is the name of the datatype */
+/*!
+ * Returns a pointer to a string that is the name of the data type
+ * 
+ * @param ds Pointer to the dax state object
+ * @param type The numeric type identifier
+ * @returns A pointer to the name of the data type or NULL on error
+ */
 const char *
 dax_type_to_string(dax_state *ds, tag_type type)
 {
@@ -690,11 +713,21 @@ _dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int strlen, int count)
     return 0;
 }
 
-/* This function retrieves a handle to the tag or tag fragment that is
+/*!
+ * This function retrieves a handle to the tag or tag fragment that is
  * represented by 'str'.  The handle is a complete representation of where
  * the data is located in the server.  It is passed to the reading/writing
  * functions to retrieve the data. If count is 0 then a handle to the whole tag
- * or tag member is returned. */
+ * or tag member is returned.
+ * 
+ * @param ds Pointer to the dax state object
+ * @param h Pointer to the handle that we wish to be filled in by the function
+ * @param str The string that represents the tag or tag fragment that we wish
+ *            to get a handle to.
+ * @param count The number of items of the tag that we wish to identify.  If set
+ *              to zero the entire tag will be assumed.
+ * @returns Zero on success or an error code otherwise
+ */
 int
 dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int count)
 {
@@ -712,13 +745,22 @@ dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int count)
 }
 
 
-/* This is the compound data type iterator.  If type is a CDT then this
+/*!
+ * This is the compound data type iterator.  If type is a CDT then this
  * function iterates over each member of the data type and calls 'callback'
  * with the cdt_iter structure and passes back the udata pointer as well.
  * If type is 0 then it iterates over the list of data types.  In this case
- * the name and type fields in cdt_iter are the only things that are relevant. */
+ * the name and type fields in cdt_iter are the only things that are relevant.
+ * 
+ * @param ds Pointer to dax state object
+ * @param type The data type that we wish to iterate over.  If set to zero
+ *             This will iterate over the list of CDTs in the server
+ * @param udata Pointer to user data that will be passed to the callback
+ * @param callback Function that will be called for each member in the CDT
+ * @returns Zero on success or an error code otherwise
+ */
 int
-dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter, void *))
+dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata))
 {
     datatype *dt;
     cdt_member *this;

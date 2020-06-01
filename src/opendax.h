@@ -16,6 +16,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+/*! \file
+ * This is the main header file for the libdax API.  This must be included
+ * by all client modules.
+ */
+
 
 #ifndef __OPENDAX_H
 #define __OPENDAX_H
@@ -70,7 +75,7 @@
 #define LOG_VERBOSE 0x80000000  /* Used to increase the verbosity of the other topics */
 #define LOG_ALL     0xFFFFFFFF  /* Log everything */
 
-/* Macro to get the size of the datatype in bits*/
+/*! Macro to get the size of the datatype in bits*/
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
 /* Library function errors */
@@ -182,13 +187,17 @@ typedef double     dax_lreal;
 typedef dax_dint tag_index;
 typedef dax_udint tag_type;
 
+/*!
+ * This structure is used to define a specific tag or a part of the tag for
+ * reading and writing.
+ */
 struct tag_handle {
-    tag_index index;     /* The Index of the Tag */
-    u_int32_t byte;      /* The byte offset where the data block starts */
-    unsigned char bit;   /* The bit offset */
-    u_int32_t count;     /* The number of items represented by the handle */
-    u_int32_t size;      /* The total size of the data block in bytes */
-    tag_type type;       /* The data type of the block */
+    tag_index index;     /*!< The Database Index of the Tag */
+    u_int32_t byte;      /*!< The byte offset where the data block starts */
+    unsigned char bit;   /*!< The bit offset */
+    u_int32_t count;     /*!< The number of items represented by the handle */
+    u_int32_t size;      /*!< The total size of the data block in bytes */
+    tag_type type;       /*!< The data type of the block */
 };
 
 typedef struct tag_handle tag_handle;
@@ -205,15 +214,17 @@ struct dax_tag {
 
 typedef struct dax_tag dax_tag;
 
-/* Identifier that is passed back and forth from modules to the server to
- * uniquely identify an event definition in the system */
+/*! 
+ * Identifier that is passed back and forth from modules to the server to
+ * uniquely identify events or mappings in the system.
+ */
 typedef struct dax_id
 {
     tag_index index;     /* The Index of the Tag */
     int id;              /* The byte offset where the data block starts */
 } dax_id;
 
-/* Opaque pointer for storing a dax_state object in the library */
+/*! Opaque pointer for storing a dax_state object in the library */
 typedef struct dax_state dax_state;
 
 /* Easy way to store base datatypes.  Doesn't include BOOL */
@@ -367,6 +378,7 @@ struct cdt_iter {
 
 typedef struct cdt_iter cdt_iter;
 
+/* Iterate over the members of a CDT */
 int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
 
 /* Add remove and get data table mapping functions */

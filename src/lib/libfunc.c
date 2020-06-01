@@ -149,10 +149,20 @@ dax_fatal(dax_state *ds, const char *format, ...)
 }
 
 /* The following two functions are utility functions for converting dax
-   values to strings and strings to dax values.
+ * values to strings and strings to dax values.
+ */
 
- * Used to printf a dax tag value. Size is the size of buff to keep from being
- * overflowed.  The index indicates where in val we'll look for the data. */
+/*!
+ * Convert an OpenDAX value to a readable string.  Only a single value will be
+ * converted even though val can be an entire array.
+ * 
+ * @param buff Pointer to the string buffer that will be filled in by this function.
+ * @param size Size of the buffer.  This is passed to prevent overflow.
+ * @param type The data type of the value in buff
+ * @param val Pointer to the actual value
+ * @param index The index into val.  This is essentially an array index.
+ * @returns Zero on success or an error code if appropriate
+ */
 int
 dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
 {
@@ -216,9 +226,23 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
     return 0;
 }
 
-/* This function figures out how to format the data from the string given
- * by *val and places the result in *buff.  If *mask is NULL it is ignored.
- * index is where the data will be wrtitten in buff */
+/*!
+ * Convert the given string into an OpenDAX value.
+ * 
+ * @param instr Pointer to the string that we wish to convert
+ * @param type The data type of the value that we want returned
+ * @param buff Pointer to the location where we want this function
+ *             to put the value.  The caller should take care to make
+ *             sure that this buffer is large enough to store the value.
+ * @params mask If the type is a BOOL we can have this function set 
+ *              this to be a mask suitable for use in writing the
+ *              correct bit based on the index.  If set to NULL it
+ *              will be ignored.
+ * @params index The index into buff where the value will be written.
+ *               buff is first cast into the appropriate type and then
+ *               indexed with this value to find the location that the 
+ *               converted value will be written.
+ */
 int
 dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
 {
