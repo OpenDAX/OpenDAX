@@ -62,14 +62,29 @@ dax_init_config(dax_state *ds, char *name)
     }
 }
 
-/* Allows the module developer to add their own function for
- * the Lua configuration file */
+/*!
+ * Allows the module developer to add their own function for
+ * the Lua configuration file
+ */
 int
 dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name)
 {
     lua_pushcfunction(ds->L, (int (*)(lua_State *))f);
     lua_setglobal(ds->L, name);
     return 0;
+}
+
+/*!
+ * Retrieves the configuration Lua state from the dax state object.
+ * 
+ * This can be used to set global variables or other advanced uses
+ * of the Lua scripting language.  The configuration script will
+ * be run by the dax_configure() function.
+ */
+lua_State *
+dax_get_luastate(dax_state *ds)
+{
+    return ds->L;
 }
 
 /* Determine whether or not the attribute name is okay */
@@ -435,7 +450,10 @@ _verify_config(dax_state *ds)
     return 0;
 }
 
-/* Executes the configuration routines */
+/*!
+ * Parse the command line and execute the configuration
+ * script.
+ */
 int
 dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {

@@ -14,20 +14,12 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_subdirectory(daxc)
+add_executable(mqtt_module mqtt.c mqttopts.c)
+set_target_properties(mqtt_module PROPERTIES OUTPUT_NAME daxmqtt)
+target_link_libraries(mqtt_module dax)
+#target_link_libraries(mqtt_module daxlua_library)
+target_link_libraries(mqtt_module pthread)
+target_link_libraries(mqtt_module paho-mqtt3c)
 
-if(BUILD_MODBUS)
-  add_subdirectory(modbus)
-endif()
 
-if(BUILD_DAXLUA)
-  add_subdirectory(daxlua)
-endif()
-
-if(BUILD_WIO)
-  add_subdirectory(wio)
-endif()
-
-if(BUILD_MQTT)
-  add_subdirectory(mqtt)
-endif()
+install(TARGETS mqtt_module DESTINATION bin)
