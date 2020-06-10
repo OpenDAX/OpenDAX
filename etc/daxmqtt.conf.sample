@@ -5,10 +5,12 @@ dofile(configdir .. "/common.conf")
 
 verbosity = 10 --needs to change to the new way
 
-server = "127.0.0.1"
-port = 1883
--- cycle time is used to 
-cycle_time = 1000  -- mSec of the write cycle time
+broker_ip = "192.168.1.157"
+-- broker_port = 1883
+-- broker_timeout = 10
+clientid = "OpenDAX"
+-- username = "uname"
+-- password = "pword"
 
 -- Simple subscriptions
 s = {}

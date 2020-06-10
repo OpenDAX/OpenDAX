@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2020 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,10 +57,12 @@ _get_new_sub(void)
     n = subscriber_count;
     subscriber_count++;
     /* Initialize the script structure */
-    subscribers[n].enabled = 0x00;
+    subscribers[n].enabled = ENABLE_UNINIT;
+    subscribers[n].format_type = CFG_STR;
     subscribers[n].tag_count = 0;
     subscribers[n].tagnames = NULL;
     subscribers[n].qos = 0;
+    subscribers[n].h = NULL;
     subscribers[n].topic = NULL;
     subscribers[n].update_mode = CFG_CHANGE;
     return n;
@@ -129,10 +131,28 @@ _add_sub(lua_State *L)
 
     lua_pop(L, 1); /* Pop off tagnmaes */
     
-    /* type
-     * format
-     * qos
-     */
+    lua_getfield(L, 1, "type");
+    if(! lua_isnil(L, -1)) {
+        subscribers[idx].format_type = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1); /* Pop off tagnmaes */
+    
+    lua_getfield(L, 1, "format");
+    
+    if(! lua_isnil(L, -1)) {
+        s = lua_tostring(L, -1);
+        subscribers[idx].format_str = strdup(s);
+        if(subscribers[idx].format_str == NULL) {
+            luaL_error(L, "Unable to allocate space for format string");
+        }
+    }
+    lua_pop(L, 1); /* Pop off tagnmaes */
+
+    lua_getfield(L, 1, "qos");
+    if(! lua_isnil(L, -1)) {
+        subscribers[idx].qos = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1); /* Pop off tagnmaes */
     
     return 0;
 }
@@ -176,14 +196,47 @@ configure(int argc, char *argv[])
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "broker_ip", "broker-ip", 'b', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "broker_port", "broker-port", 'p', flags, "1883");
+    result += dax_add_attribute(ds, "broker_timeout", "broker-timeout", 't', flags, "10");
+    result += dax_add_attribute(ds, "clientid", "clientid", 'i', flags, "OpenDAX MQTT Client");
+    result += dax_add_attribute(ds, "username", "username", 'u', flags, NULL);
+    result += dax_add_attribute(ds, "password", "password", 'w', flags, NULL);
+    if(result) {
+        dax_fatal(ds, "Problem setting attributes");
+    }
         
     dax_set_luafunction(ds, (void *)_add_pub, "add_pub");
     dax_set_luafunction(ds, (void *)_add_sub, "add_sub");
 
-
     dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
-    dax_free_config(ds);
+    //dax_free_config(ds);
 
     return 0;
+}
+
+/* iterator that returns each subscriber in turn.  Returns
+ * NULL when there are no more. */
+subscriber_t *
+get_sub_iter(void) {
+    static int idx;
+    if(idx >= subscriber_count) {
+        idx = 0;
+        return NULL;
+    } else {
+        return &subscribers[idx++];
+    }
+}
+
+/* return a pointer to the subscription given by topic */
+// TODO This function just does a linear search through the array.
+//      woudl be better as a sorted array and bisection search or something
+subscriber_t *
+get_sub(char *topic) {
+    int n;
+    for(n=0;n<subscriber_count;n++) {
+        if(! strcmp(topic, subscribers[n].topic)) {
+            return &subscribers[n];
+        }
+    }
+    return NULL;
 }

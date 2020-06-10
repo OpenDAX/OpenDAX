@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2020 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,12 +36,16 @@
 #define CFG_ANY_CHANGE -22
 #define CFG_ALL_WRITE -33
 
+#define ENABLE_UNINIT 0 /* Hasn't been properly initialized */
+#define ENABLE_GOOD   1 /* Good and running */
+#define ENABLE_FAIL   2 /* Permanent failure cannot be fixed */
+
 /* Contains all the information to identify a subscription */
 typedef struct {
    u_int8_t enabled;
    char *topic;
    char **tagnames;  /* Array of tagnames */
-   tag_handle **h;   /* Array of handles to the tags */
+   tag_handle *h;   /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
    u_int8_t qos;
    int format_type;
@@ -66,3 +70,6 @@ typedef struct {
 
 
 int configure(int argc, char *argv[]);
+subscriber_t *get_sub_iter(void);
+subscriber_t *get_sub(char *topic);
+

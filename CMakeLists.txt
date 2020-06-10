@@ -56,7 +56,11 @@ include_directories(src)
 
 find_library(HAVE_READLINE NAMES readline)
 # message("Readline Libraries Found: ${HAVE_READLINE}")
-
+find_library(HAVE_MQTT NAMES paho-mqtt3c)
+if( NOT HAVE_MQTT )
+  message("paho-mqtt3c library not found.  Not building MQTT client module.")
+  set(BUILD_MQTT OFF)
+endif()
 add_subdirectory(src)
 
 # Install the sample configurations

@@ -108,6 +108,24 @@ _validate_name(char *name)
     return 0;
 }
 
+/* Determine whether or not the attribute longopt is okay */
+static int
+_validate_longopt(char *name)
+{
+    int n;
+    
+    if(name != NULL) {
+        /* name can be letters, numbers '-' or '_' */
+        for(n = 1; n < strlen(name) ;n++) {
+            if( !isalpha(name[n]) && (name[n] != '_') && (name[n] != '-') &&  !isdigit(name[n]) ) {
+                return ERR_ARG;
+            }
+        }
+    }
+    return 0;
+}
+
+
 /* Check the attributes symbols, returns 0 on success or an error code */
 static int
 _check_attr(dax_state *ds, char *name, char *longopt, char shortopt)
@@ -116,7 +134,11 @@ _check_attr(dax_state *ds, char *name, char *longopt, char shortopt)
     
     this = ds->attr_head;
     
-    if(_validate_name(name) || _validate_name(longopt)) {
+    if(_validate_name(name)) {
+        return ERR_ARG;
+    }
+
+    if(_validate_longopt(longopt)) {
         return ERR_ARG;
     }
     
@@ -144,7 +166,7 @@ dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int f
     
     /* Check for bad symbols */
     if( (result = _check_attr(ds, name, longopt, shortopt)) ) {
-        return ERR_DUPL;
+        return result;
     }
     if(name == NULL) return ERR_ARG;
         
