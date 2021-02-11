@@ -107,11 +107,13 @@ subscribe(subscriber_t *sub) {
             return 1;
         }
     }
-    printf("Subscribe to %s\n", sub->topic);
+    // printf("Subscribe to %s\n", sub->topic);
     MQTTClient_subscribe(client, sub->topic, 0);
     sub->enabled = ENABLE_GOOD; /* We're rolling now */
     return 0;
 }
+
+
 
 
 /* Does the initial subscription of all the configured subscribers */
@@ -131,6 +133,77 @@ setup_subscribers() {
 }
 
 void
+event_callback(void *udata) {
+    publisher_t *pub = (publisher_t *)udata;
+    
+    if(pub->format_type == CFG_STR) {
+        
+    }
+    printf("Event hit on %s\n", pub->topic);
+}
+
+static int
+publish(publisher_t *pub) {
+    int result;
+    dax_type_union val;
+    
+    if(pub->tag_count == 0) {
+        dax_error(ds, "No tags given for topic %s", pub->topic);
+        pub->enabled = ENABLE_FAIL; /* Can't recover from this */
+        return 0; /* We return zero because there is no need to come back here for this one */
+    }
+    if(pub->h == NULL) { /* We need to allocate our array of tag handles */
+        pub->h = (tag_handle *)malloc(sizeof(tag_handle) * pub->tag_count);
+    }
+    /* Now search through the tagnames and get handles for all of the tags */
+    for(int n=0;n<pub->tag_count;n++) {
+        result = dax_tag_handle(ds, &pub->h[n], pub->tagnames[n], 1);
+        if(result) {
+            dax_error(ds, "Unable to add tag %s to publication", pub->tagnames[n]);
+            return 1;
+        }            
+    }
+    if(pub->update_tag == NULL) {
+        for(int n=0;n<pub->tag_count;n++) {
+            if( pub->event_data != NULL ) {
+                printf("Add event for tag %s, with val %s\n", pub->tagnames[n], pub->event_data);
+                dax_string_to_val(pub->event_data, pub->h[n].type, &val, NULL, 0);
+                result = dax_event_add(ds, &pub->h[n], pub->update_mode, &val, NULL, event_callback, pub, NULL);
+            } else {
+                printf("Add event for tag %s\n", pub->tagnames[n]);
+                result = dax_event_add(ds, &pub->h[n], pub->update_mode, NULL, NULL, event_callback, pub, NULL);
+            }
+            if(result) {
+                dax_error(ds, "Problem adding update event for tag %s", pub->tagnames[n]);
+                return 1;
+            }
+        }
+    }
+    
+    // printf("Set to publish to %s\n", pub->topic);
+    pub->enabled = ENABLE_GOOD; /* We're rolling now */
+    return 0;
+}
+
+/* Does the initial subscription of all the configured subscribers */
+static int
+setup_publishers() {
+    int result;
+    publisher_t *pub;
+    int bad_pubs = 0;
+    
+    while((pub = get_pub_iter()) != NULL) {
+        if(pub->enabled == ENABLE_UNINIT) {
+            bad_pubs += publish(pub);
+        }
+    }
+    
+    return bad_pubs;
+}
+
+
+
+void
 client_loop(void) {
     int result;
     unsigned int cycle_count = 1;
@@ -138,6 +211,7 @@ client_loop(void) {
     char *attr;
     char conn_str[64];
     int bad_subs = 1;
+    int bad_pubs = 1;
     
     snprintf(conn_str, 64, "tcp://%s:%s", dax_get_attr(ds, "broker_ip"), dax_get_attr(ds, "broker_port"));
     MQTTClient_create(&client, conn_str, dax_get_attr(ds, "clientid"), MQTTCLIENT_PERSISTENCE_NONE, NULL);
@@ -168,13 +242,16 @@ client_loop(void) {
         if(_connected && bad_subs !=0 && (cycle_count % 10) == 0) {
             bad_subs = setup_subscribers();
         }
-            
+        if(_connected && bad_pubs !=0 && (cycle_count % 10) == 0) {
+            bad_pubs = setup_publishers();
+        }
+
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
-        sleep(1);
+        dax_event_wait(ds, 1000, NULL);
         cycle_count++;
     }
 

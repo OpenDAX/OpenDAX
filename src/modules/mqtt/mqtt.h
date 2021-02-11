@@ -27,14 +27,9 @@
 #define SUB_START_SIZE 16
 #define PUB_START_SIZE 16
 
-#define CFG_RAW -1
-#define CFG_STR -2
-#define CFG_RE -3
-#define CFG_WRITE -11
-#define CFG_CHANGE -22
-#define CFG_ANY_WRITE -11
-#define CFG_ANY_CHANGE -22
-#define CFG_ALL_WRITE -33
+#define CFG_RAW -1  /* Raw binary format */
+#define CFG_STR -2  /* scanf/printf type string formatting */
+#define CFG_RE -3   /* regular expression */
 
 #define ENABLE_UNINIT 0 /* Hasn't been properly initialized */
 #define ENABLE_GOOD   1 /* Good and running */
@@ -45,13 +40,12 @@ typedef struct {
    u_int8_t enabled;
    char *topic;
    char **tagnames;  /* Array of tagnames */
-   tag_handle *h;   /* Array of handles to the tags */
+   tag_handle *h;    /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
    u_int8_t qos;
    int format_type;
    char *format_str;
-   u_int8_t binformat[8];
-   int update_mode;
+//   u_int8_t binformat[8];
 } subscriber_t;
 
 /* Contains all the information to identify a publisher */
@@ -59,17 +53,21 @@ typedef struct {
    u_int8_t enabled;
    char *topic;
    char **tagnames;  /* Array of tagnames */
-   tag_handle **h;   /* Array of handles to the tags */
+   tag_handle *h;   /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
    u_int8_t qos;
    int format_type;
    char *format_str;
-   u_int8_t binformat[8];
-   int update_mode;
+   char *update_tag;
+//   u_int8_t binformat[8];
+   tag_type update_mode;
+   char *event_data; /* We use a string for convenience */
 } publisher_t;
 
 
 int configure(int argc, char *argv[]);
 subscriber_t *get_sub_iter(void);
 subscriber_t *get_sub(char *topic);
+publisher_t *get_pub_iter(void);
+publisher_t *get_pub(char *topic);
 

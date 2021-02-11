@@ -25,6 +25,11 @@
 #ifndef __OPENDAX_H
 #define __OPENDAX_H
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 #include <float.h>
 #include <lua.h>
@@ -215,7 +220,7 @@ struct dax_tag {
 
 typedef struct dax_tag dax_tag;
 
-/*! 
+/*!
  * Identifier that is passed back and forth from modules to the server to
  * uniquely identify events or mappings in the system.
  */
@@ -390,5 +395,9 @@ int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 /* Convenience functions for converting strings to basic DAX values and back */
 int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);
 int dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !__OPENDAX_H */

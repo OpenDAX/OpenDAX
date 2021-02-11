@@ -33,7 +33,7 @@ add_script(s)
 s.name = "triggerdemo"
 s.enable = true
 -- The trigger is defined in a table.
-s.trigger = {tag = "LuaTriggerTest", count = 0, type = "CHANGE", valaue = 0}
+s.trigger = {tag = "LuaTriggerTest", count = 0, type = "CHANGE", value = 0}
 s.filename = root.."triggerdemo.lua"
 s.rate = 0
 add_script(s)

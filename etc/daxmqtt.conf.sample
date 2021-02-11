@@ -6,6 +6,7 @@ dofile(configdir .. "/common.conf")
 verbosity = 10 --needs to change to the new way
 
 broker_ip = "192.168.1.157"
+-- broker_ip = "10.100.3.81"
 -- broker_port = 1883
 -- broker_timeout = 10
 clientid = "OpenDAX"
@@ -21,7 +22,7 @@ s.qos = 0
 add_sub(s)
 
 s.topic = "dax_topic_2"
-s.tagname = "tag_3"
+s.tagname = "tag_2"
 add_sub(s)
 
 s.topic = "dax_topic_3"
@@ -37,7 +38,7 @@ p.topic = "dax_topic_4"
 p.tagname = "tag_4"
 p.format = "[4321]" -- four bytes big endian format
 p.type = RAW      -- send as raw binary data
-p.update = WRITE  -- send on tag's write event
+p.update_mode = WRITE  -- send on tag's write event
 p.qos = 1
 
 add_pub(p)
@@ -45,23 +46,25 @@ add_pub(p)
 p.topic = "dax_topic_5"
 p.tagname = "tag_5"
 p.type = STR      -- send as a string
-p.format = "%.2f" -- printf type string formatting
-p.update = WRITE  -- send on tag's write event
+p.format = "Temperature = %.2f deg F" -- printf type string formatting
+p.update_mode = WRITE  -- send on tag's write event
 
 add_pub(p)
 
-p.topic = "dax_topic_5"
-p.tagname = "tag_5"
-p.update = CHANGE  -- send on tag's change event
+p.topic = "dax_topic_6"
+p.tagname = "tag_6"
+p.update_mode = CHANGE  -- send on tag's change event
 
 add_pub(p)
 
-p.topic = "dax_topic_5"
-p.tagname = "tag_5"
+p.topic = "dax_topic_7"
+p.tagname = "tag_7"
 -- if .update is a string then it's assumed to be an OpenDAX
 -- tag.  The message will be sent when this tags change events
 -- is fired
-p.update = "tag_5_update"
+p.update_mode = CHANGE  -- send on tag's change event
+--p.update_tag = "tag_5_update" -- if this is set then use this tag for the event instead 
+p.event_data = 2345.432 -- If the update event needs data
 
 add_pub(p)
 
@@ -98,11 +101,11 @@ p = {}
 
 p.topic = "dax_topic_20"  -- MQTT Topic name to subscribe to
 p.tagnames = {"tag_20", "tag_21"}  -- OpenDAX tagnames in an array
-p.update_mode = 2           -- Multiple of the cycle time
+-- p.update_mode = 2           -- Multiple of the cycle time
 -- p.update_mode = ANY_CHANGE  -- When any tag chagnes
 -- p.update_mode = ANY_WRITE   -- When any tag is written to
 -- p.update_mode = ALL_WRITE   -- When all the tags have been written since last send
-p.update_mode = "tag_20_update" -- When the tag UpdateTag changes
+p.update_tag = "tag_20_update" -- When the tag UpdateTag changes
 
 -- There are two ways to write the values
 -- Write the raw binary value

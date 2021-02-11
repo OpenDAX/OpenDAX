@@ -61,6 +61,7 @@ if( NOT HAVE_MQTT )
   message("paho-mqtt3c library not found.  Not building MQTT client module.")
   set(BUILD_MQTT OFF)
 endif()
+
 add_subdirectory(src)
 
 # Install the sample configurations
