@@ -25,6 +25,7 @@
 
 #include <opendax.h>
 #include <common.h>
+#include <time.h>
 
 int luaopen_daxlib (lua_State *L);
 int daxlua_register_function(lua_State *L, char *function_name);
