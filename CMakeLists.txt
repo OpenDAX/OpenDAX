@@ -30,7 +30,7 @@ option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_WIO "Build Wireless I/O Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
-option(INTERNAL_TESTS "Build Internal System Tests" OFF)
+option(INTERNAL_TESTS "Build Internal System Tests" ON)
 
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -55,7 +55,11 @@ include_directories(${PROJECT_BINARY_DIR}/src)
 include_directories(src)
 
 find_library(HAVE_READLINE NAMES readline)
+if( NOT HAVE_READLINE )
+    message(FATAL_ERROR "Readline Library not found!")
+endif()
 # message("Readline Libraries Found: ${HAVE_READLINE}")
+
 find_library(HAVE_MQTT NAMES paho-mqtt3c)
 if( NOT HAVE_MQTT )
   message("paho-mqtt3c library not found.  Not building MQTT client module.")

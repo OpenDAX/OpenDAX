@@ -71,7 +71,7 @@ add_test(python_test_mapping        "python3" "-m" "unittest"
                                     "PythonTests.test_mapping.TestMapping")
 add_test(python_test_single         "python3" "-m" "unittest"
                                     "PythonTests.test_single.TestSingle")
-                                    
+
 # daxc Module Tests
 add_test(python_test_module_daxc_tags "python3" "-m" "unittest"
                                       "PythonTests.test_module_daxc_tags.TestDaxc")
@@ -87,7 +87,7 @@ endif()
 add_test(python_test_module_test    "python3" "-m" "unittest"
                                     "PythonTests.test_module_test.TestTestModule")
 
-                                    
+
 file(GLOB files "LuaTests/*")
 foreach(file ${files})
   get_filename_component(FILENAME ${file} NAME)

@@ -7,15 +7,6 @@ dax = require("dax")
 
 dax.init("helper")
 
-function fire_event(a)
-    io.stderr:write(string.format("Helper event called\n"))
-    dax.tag_write("dummy", 1234)
-end
+dax.sleep(200)
 
-
-dax.tag_add("flag", "INT", 1)
-
-flag_change = dax.event_add("flag", 1, "CHANGE", 0, fire_event, 0)
-
-dax.event_wait(0)
-
+dax.tag_write("dummy", 35)
