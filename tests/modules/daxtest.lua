@@ -13,7 +13,7 @@ run_test("luatests/typefail.lua", "Type Fail Test")
 
 --run_test("luatests/readwrite.lua", "Read / Write Test")
 
-run_test("luatests/eventadd.lua", "Event Addition/Removal Test")
+--run_test("luatests/eventadd.lua", "Event Addition/Removal Test")
 run_test("luatests/eventwrite.lua", "Event Write Test")
 run_test("luatests/eventchange.lua", "Event Change Test")
 run_test("luatests/eventset.lua", "Event Set/Reset Test")
