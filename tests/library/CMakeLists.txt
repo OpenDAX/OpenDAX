@@ -25,6 +25,12 @@ add_definitions(-DTESTING) # Compiles some testing code into the library */
 set(LIB_SOURCE_DIR ../../src/lib)
 set(SERVER_SOURCE_DIR ../../src/server)
 
+# Event wait tests
+add_executable(library_event_wait libtest_event_wait.c libtest_common.c)
+target_link_libraries(library_event_wait dax)
+add_test(library_event_wait library_event_wait)
+set_tests_properties(library_event_wait PROPERTIES TIMEOUT 10)
+
 # Change event test
 add_executable(library_event_change libtest_event_change.c libtest_common.c)
 target_link_libraries(library_event_change dax)
