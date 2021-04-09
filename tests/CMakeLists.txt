@@ -28,6 +28,7 @@ add_executable(testdebug testdebug.c)
 target_link_libraries(testdebug dax)
 add_test(testdebug testdebug)
 
+add_subdirectory(library)
 
 # Python Tests
 
@@ -97,6 +98,8 @@ endforeach()
 add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua")
 add_test(lua_test_tag_delete        "python3" "LuaTests/run_test.py" "LuaTests/test_tag_delete.lua")
 add_test(lua_test_event             "python3" "LuaTests/run_test.py" "LuaTests/test_event.lua" "LuaTests/helper_event.lua")
+set_tests_properties(lua_test_event PROPERTIES TIMEOUT 10) 
+
 
 if(INTERNAL_TESTS)
   add_subdirectory(internal)

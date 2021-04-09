@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2019 Phil Birkelbach
+ *  Copyright (c) 2021 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,7 @@
  */
 
 /*
- *  We use this file for debugging tests.  Most of our tests use Python
- *  ctypes and those can be hard to debug.  This file can be more easily
- *  run with gdb.
+ *  This contains common code for the compiled C Library tests
  */
 
 #include <common.h>
@@ -28,55 +26,26 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-dax_state *ds;
-static int _quitsignal;
-
 int
-do_test(int argc, char *argv[])
-{
-    tag_handle tag;
-    int result;
-    char buff[32];
-    unsigned long x = 18446744073709551615UL;
-
-    ds = dax_init("test");
-    dax_init_config(ds, "test");
-
-    dax_configure(ds, argc, argv, CFG_CMDLINE);
-    result = dax_connect(ds);
-    if(result) {
-        return -1;
-    } else {
-        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
-        x = 0x55555555;
-        dax_write_tag(ds,  tag, &x);
-        dax_tag_del(ds, tag.index);
-        result = dax_read_tag(ds, tag, buff);
-        printf("result = %d\n", result);
-    }
-
-}
-
-/* main inits and then calls run */
-int
-main(int argc, char *argv[])
-{
+run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
     int status = 0;
+    int result;
     pid_t pid;
 
     pid = fork();
+
     if(pid == 0) { // Child
-        execl("../src/server/tagserver", "../src/server/tagserver", NULL);
+        execl("../../src/server/tagserver", "../../src/server/tagserver", NULL);
         printf("Failed to launch tagserver\n");
-        exit(0);
+        exit(-1);
     } else if(pid < 0) {
         exit(-1);
     } else {
         usleep(100000);
-        if (do_test(argc, argv)) status ++;
+        result=testfunc(argc, argv);
         kill(pid, SIGINT);
-        if (waitpid (pid, &status, 0) != pid)
-            status ++;
+        if( waitpid(pid, &status, 0) != pid )
+            return status;
     }
-    return status;
+    return result;
 }
