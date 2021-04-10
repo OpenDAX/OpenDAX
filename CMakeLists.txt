@@ -23,7 +23,6 @@ cmake_minimum_required(VERSION 3.10.2)
 
 set(BUILD_SHARED_LIBS ON)
 
-
 enable_testing()
 
 option(BUILD_DAXLUA "Build Lua Module" ON)

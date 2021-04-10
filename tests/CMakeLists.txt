@@ -21,7 +21,7 @@
 # To run an individual test...
 # ctest -R <testname> -V
 
-add_subdirectory(modules)
+add_subdirectory(oldtests)
 
 # Compiled C tests
 add_executable(testdebug testdebug.c)
@@ -98,7 +98,7 @@ endforeach()
 add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua")
 add_test(lua_test_tag_delete        "python3" "LuaTests/run_test.py" "LuaTests/test_tag_delete.lua")
 add_test(lua_test_event             "python3" "LuaTests/run_test.py" "LuaTests/test_event.lua" "LuaTests/helper_event.lua")
-set_tests_properties(lua_test_event PROPERTIES TIMEOUT 10) 
+set_tests_properties(lua_test_event PROPERTIES TIMEOUT 10)
 
 
 if(INTERNAL_TESTS)

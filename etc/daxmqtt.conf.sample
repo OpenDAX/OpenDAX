@@ -36,7 +36,7 @@ add_sub(s)
 p = {}
 p.topic = "dax_topic_4"
 p.tagname = "tag_4"
-p.format = "[4321]" -- four bytes big endian format
+p.format = "[3210]" -- four bytes big endian format
 p.type = RAW      -- send as raw binary data
 p.update_mode = WRITE  -- send on tag's write event
 p.qos = 1
@@ -79,7 +79,7 @@ s.tagnames = {"tag_10", "tag_11"}  -- OpenDAX tagnames in an array
 -- There are three ways to read the value
 -- Assumes that the data is the binary representation of the number
 s.type = RAW
-s.format = "[4321][4321]" -- 4 bytes Big endian format
+s.format = "[3210][3210]" -- 4 bytes Big endian format
 
 -- The received data is a string which we'll parse with scanf type formatting
 -- s.type = STR
@@ -110,10 +110,10 @@ p.update_tag = "tag_20_update" -- When the tag UpdateTag changes
 -- There are two ways to write the values
 -- Write the raw binary value
 p.type = RAW
-p.format = "[4321][4321]" -- 4 bytes Big endian format
+p.format = "[3210][3210]" -- 4 bytes Big endian format
 
 -- Write a string with printf type formatting
 -- p.type = STR
 -- p.format = "%f,%f"  -- A printf() type format string
 
--- add_fpub(p)
+-- add_pub(p)

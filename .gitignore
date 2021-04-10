@@ -5,6 +5,9 @@
 !INSTALL
 !NEWS
 !COPYING
+!AUTHORS
+!ChangeLog
+!Doxyfile
 *.[oa]
 *~
 *.l[oa]

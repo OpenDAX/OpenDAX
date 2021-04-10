@@ -25,7 +25,7 @@ import time
 import PythonTests.util.daxwrapper as daxwrapper
 import testconfig
 
-daxtest_path = "{}/tests/modules".format(testconfig.build_dir)
+daxtest_path = "{}/tests/oldtests".format(testconfig.build_dir)
 
 class TestTestModule(unittest.TestCase):
 
