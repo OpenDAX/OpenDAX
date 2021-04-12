@@ -17,7 +17,7 @@
  */
 
 /*
- *  This test creates a single change event and uses dax_event_poll() to
+ *  This test creates a single write event and uses dax_event_poll() to
  *  to test whether or not it is called properly
  */
 
@@ -55,24 +55,24 @@ do_test(int argc, char *argv[])
         dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
         x = 5;
         dax_write_tag(ds, tag, &x);
-        result = dax_event_add(ds, &tag, EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
+        result = dax_event_add(ds, &tag, EVENT_WRITE, NULL, &id, test_callback, NULL, NULL);
         if(result) return result;
-        x = 6;
+        x = 5;
         result = dax_write_tag(ds, tag, &x);
         if(result) return result;
         result = dax_event_poll(ds, NULL);
         if(result) return result;
-        /* Our Callback will set validation to 1 if it runs */
+        /* Our Callback will increment validation it runs */
         if(validation != 1) return -1;
 
-        /* Now write the same value to make sure that we DON'T get the callback */
+        /* Now write the same value and make sure we get the callback again */
         result = dax_write_tag(ds, tag, &x);
         if(result) return result;
         /* this should return a not found error if no event was processed */
         result = dax_event_poll(ds, NULL);
-        if(result != ERR_NOTFOUND) return -1;
-        /* Our Callback will set validation to 1 if it runs */
-        if(validation != 1) return -1;
+        if(result) return result;
+        /* Our Callback will increment validation it runs */
+        if(validation != 2) return -1;
 
         /* Change the tag and see if we get the event properly again */
         x = 16;
@@ -81,7 +81,7 @@ do_test(int argc, char *argv[])
         result = dax_event_poll(ds, NULL);
         if(result) return result;
         /* Our Callback will set validation to 1 if it runs */
-        if(validation != 2) return -1;
+        if(validation != 3) return -1;
 
     }
     return 0;

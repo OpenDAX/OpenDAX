@@ -25,7 +25,6 @@
 #ifndef __OPENDAX_H
 #define __OPENDAX_H
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -126,7 +125,7 @@ extern "C" {
 /* Event Types */
 #define EVENT_READ     0x01 /* Called before a tag is read - Not implemented */
 #define EVENT_WRITE    0x02 /* When a tag is written whether or not it has changed */
-#define EVENT_CHANGE   0x03 /* When a change to the tags value has changed */
+#define EVENT_CHANGE   0x03 /* When a change to the tags value has occurred */
 #define EVENT_SET      0x04 /* Bit set to 1*/
 #define EVENT_RESET    0x05 /* Bit cleared to 0*/
 #define EVENT_EQUAL    0x06 /* Equal to */

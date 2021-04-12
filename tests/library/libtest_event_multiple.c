@@ -17,8 +17,8 @@
  */
 
 /*
- *  This test creates a single change event and uses dax_event_poll() to
- *  to test whether or not it is called properly
+ *  This test causes multiple events to be sent between calls to dax_event_poll()
+ *  to verify that they are all recieved properly.
  */
 
 #include <common.h>
@@ -39,8 +39,9 @@ test_callback(void *udata) {
 int
 do_test(int argc, char *argv[])
 {
-    tag_handle tag;
-    int result = 0;
+    tag_handle tags[5];
+    int result = 0, i;
+    char tagname[32];
     dax_int x;
     dax_id id;
 
@@ -52,37 +53,34 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
-        x = 5;
-        dax_write_tag(ds, tag, &x);
-        result = dax_event_add(ds, &tag, EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
-        if(result) return result;
-        x = 6;
-        result = dax_write_tag(ds, tag, &x);
-        if(result) return result;
-        result = dax_event_poll(ds, NULL);
-        if(result) return result;
-        /* Our Callback will set validation to 1 if it runs */
-        if(validation != 1) return -1;
-
-        /* Now write the same value to make sure that we DON'T get the callback */
-        result = dax_write_tag(ds, tag, &x);
-        if(result) return result;
+        /* Setup the tags and events */
+        for(i=0; i<5; i++) {
+            sprintf(tagname, "Dummy%d", i);
+            dax_tag_add(ds, &tags[i], tagname, DAX_INT, 1);
+            result = dax_event_add(ds, &tags[i], EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
+            if(result) return result;
+            x = 5 + i;
+            dax_write_tag(ds, tags[i], &x);
+            if(result) return result;
+        }
+        /* Cause the events to happen */
+        for(i=0; i<5; i++) {
+            x = 6+i;
+            result = dax_write_tag(ds, tags[i], &x);
+            if(result) return result;
+        }
+        /* We should get exactly five events */
+        for(i=0; i<5; i++) {
+            result = dax_event_poll(ds, NULL);
+            if(result) return result;
+            /* Our Callback will set validation to 1 if it runs */
+            if(validation != 1+i) return -1;
+        }
         /* this should return a not found error if no event was processed */
         result = dax_event_poll(ds, NULL);
-        if(result != ERR_NOTFOUND) return -1;
+        if(result != ERR_NOTFOUND) return result;
         /* Our Callback will set validation to 1 if it runs */
-        if(validation != 1) return -1;
-
-        /* Change the tag and see if we get the event properly again */
-        x = 16;
-        result = dax_write_tag(ds, tag, &x);
-        if(result) return result;
-        result = dax_event_poll(ds, NULL);
-        if(result) return result;
-        /* Our Callback will set validation to 1 if it runs */
-        if(validation != 2) return -1;
-
+        if(validation != 5) return -1;
     }
     return 0;
 }

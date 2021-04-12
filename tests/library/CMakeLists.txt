@@ -31,8 +31,32 @@ target_link_libraries(library_event_wait dax)
 add_test(library_event_wait library_event_wait)
 set_tests_properties(library_event_wait PROPERTIES TIMEOUT 10)
 
+# Write event test
+add_executable(library_event_write libtest_event_write.c libtest_common.c)
+target_link_libraries(library_event_write dax)
+add_test(library_event_write library_event_write)
+set_tests_properties(library_event_write PROPERTIES TIMEOUT 10)
+
 # Change event test
 add_executable(library_event_change libtest_event_change.c libtest_common.c)
 target_link_libraries(library_event_change dax)
 add_test(library_event_change library_event_change)
 set_tests_properties(library_event_change PROPERTIES TIMEOUT 10)
+
+# Simple Set event test
+add_executable(library_event_set_simple libtest_event_set_simple.c libtest_common.c)
+target_link_libraries(library_event_set_simple dax)
+add_test(library_event_set_simple library_event_set_simple)
+set_tests_properties(library_event_set_simple PROPERTIES TIMEOUT 10)
+
+# Simple Set event test
+add_executable(library_event_set_multiple libtest_event_set_multiple.c libtest_common.c)
+target_link_libraries(library_event_set_multiple dax)
+add_test(library_event_set_multiple library_event_set_multiple)
+set_tests_properties(library_event_set_multiple PROPERTIES TIMEOUT 10)
+
+# Multiple event tests
+add_executable(library_event_multiple libtest_event_multiple.c libtest_common.c)
+target_link_libraries(library_event_multiple dax)
+add_test(library_event_multiple library_event_multiple)
+set_tests_properties(library_event_multiple PROPERTIES TIMEOUT 10)

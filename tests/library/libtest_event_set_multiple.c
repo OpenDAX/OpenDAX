@@ -16,9 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/*
- *  This test creates a single change event and uses dax_event_poll() to
- *  to test whether or not it is called properly
+/*  Here we test that writing multiple bits at once to an integer fires an
+ *  event when it is supposed to
  */
 
 #include <common.h>
@@ -33,13 +32,14 @@ int validation = 0;
 
 void
 test_callback(void *udata) {
+    printf("Event Hit\n");
     validation++;
 }
 
 int
 do_test(int argc, char *argv[])
 {
-    tag_handle tag;
+    tag_handle tag, eh;
     int result = 0;
     dax_int x;
     dax_id id;
@@ -53,35 +53,43 @@ do_test(int argc, char *argv[])
         return -1;
     } else {
         dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
-        x = 5;
-        dax_write_tag(ds, tag, &x);
-        result = dax_event_add(ds, &tag, EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
         if(result) return result;
-        x = 6;
-        result = dax_write_tag(ds, tag, &x);
-        if(result) return result;
-        result = dax_event_poll(ds, NULL);
-        if(result) return result;
-        /* Our Callback will set validation to 1 if it runs */
-        if(validation != 1) return -1;
 
-        /* Now write the same value to make sure that we DON'T get the callback */
+        /* Set our event o to the third bit in the integer */
+        result = dax_tag_handle(ds, &eh, "Dummy.2", 1);
+        if(result) return result;
+        result = dax_event_add(ds, &eh, EVENT_SET, NULL, &id, test_callback, NULL, NULL);
+        if(result) return result;
+
+        /* Test the first bit in the array */
+        x = 1;
         result = dax_write_tag(ds, tag, &x);
         if(result) return result;
-        /* this should return a not found error if no event was processed */
+        /* We should not get a hit */
         result = dax_event_poll(ds, NULL);
         if(result != ERR_NOTFOUND) return -1;
-        /* Our Callback will set validation to 1 if it runs */
-        if(validation != 1) return -1;
-
-        /* Change the tag and see if we get the event properly again */
-        x = 16;
+        if(validation != 0) return -1;
+        /* This should also be a miss */
+        x = 0x0A;
         result = dax_write_tag(ds, tag, &x);
         if(result) return result;
         result = dax_event_poll(ds, NULL);
+        if(result != ERR_NOTFOUND) return -1;
+        if(validation != 0) return -1;
+        /* This should be a hit */
+        x = 0x05;
+        result = dax_write_tag(ds, tag, &x);
         if(result) return result;
-        /* Our Callback will set validation to 1 if it runs */
-        if(validation != 2) return -1;
+        result = dax_event_poll(ds, NULL);
+        if(result) return -1;
+        if(validation != 1) return -1;
+        /* This should miss again */
+        x = 0x0A;
+        result = dax_write_tag(ds, tag, &x);
+        if(result) return result;
+        result = dax_event_poll(ds, NULL);
+        if(result != ERR_NOTFOUND) return -1;
+        if(validation != 1) return -1;
 
     }
     return 0;
