@@ -52,8 +52,9 @@
 #define NUM_COMMANDS 19
 
 
-#define MSG_RESPONSE   0x1000000LL /* Flag for defining a response message */
-#define MSG_ERROR      0x2000000LL /* Flag for defining an error message */
+#define MSG_RESPONSE  0x01000000LL /* Flag for defining a response message */
+#define MSG_ERROR     0x02000000LL /* Flag for defining an error message */
+#define MSG_EVENT     0x80000000LL /* Flag for defining an event message */
 
 /* These are flags for the registration command */
 #define CONNECT_SYNC  0x01 /* Used to identify the synchronous socket during registration */
@@ -91,9 +92,9 @@
 #endif
 
 /* Event messages are a fixed size */
-#ifndef EVENT_MSGSIZE
-#  define EVENT_MSGSIZE 25
-#endif
+//#ifndef EVENT_MSGSIZE
+//#  define EVENT_MSGSIZE 25
+//#endif
 
 /* This defines the size of the message minus the actual data */
 #define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t))
@@ -101,11 +102,11 @@
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(tag_idx_t))
 
 /* This is a full sized message.  It's the largest message allowed to be sent */
-struct dax_message{
-    /* Message Header Stuff.  Changes here should be reflected in the 
+struct dax_message {
+    /* Message Header Stuff.  Changes here should be reflected in the
      * MSG_HDR_SIZE definition above */
     u_int32_t size;     /* size of the data sent */
-    u_int32_t command;  /* Which function to call */
+    u_int32_t msg_type;  /* Which function to call */
     /* Main data payload */
     char data[MSG_DATA_SIZE];
     /* The following stuff isn't in the socket message */

@@ -34,19 +34,17 @@ static int
 _send_event(tag_index idx, _dax_event *event)
 {
     int result;
-    char buff[EVENT_MSGSIZE];
-
-    *(u_int32_t *)(&buff[0])  = htonl(event->eventtype);
-    *(u_int32_t *)(&buff[4])  = htonl(idx);
-    *(u_int32_t *)(&buff[8])  = htonl(event->id);
-    *(u_int32_t *)(&buff[12]) = htonl(event->byte);
-    *(u_int32_t *)(&buff[16]) = htonl(event->count);
-    *(u_int32_t *)(&buff[20]) = htonl(event->datatype);
-    *(u_int8_t *)(&buff[24])  = event->bit;
-
+    char buff[DAX_MSGMAX];
+    u_int32_t msgsize = event->size + 16; /* Calculate the total size of this message */
+    if(msgsize > DAX_MSGMAX) return ERR_2BIG;
+    *(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
+    *(u_int32_t *)(&buff[4])  = htonl(MSG_EVENT & event->eventtype);
+    *(u_int32_t *)(&buff[8])  = htonl(idx);
+    *(u_int32_t *)(&buff[12])  = htonl(event->id);
+    memcpy(&buff[16], &_db[idx].data[event->byte], event->size);
     xlog(LOG_MSG, "Sending %d event to module %d",
          event->eventtype, event->notify->efd);
-    result = xwrite(event->notify->efd, buff, EVENT_MSGSIZE);
+    result = xwrite(event->notify->efd, buff, msgsize);
     if(result < 0) {
         xerror("_send_event: %s", strerror(errno));
         return ERR_MSG_SEND;

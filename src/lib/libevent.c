@@ -244,47 +244,26 @@ dax_event_dispatch(dax_state *ds, dax_id *id)
 {
     int result, n;
     u_int32_t idx, eid;
-//    u_int32_t etype, byte, count, datatype;
-//    u_int8_t bit;
+    dax_message msg;
 
-//    fprintf(stderr, "dax_event_dispatch() called\n");
-    result = read(ds->afd, &(ds->ebuff[ds->eindex]), EVENT_MSGSIZE - ds->eindex);
-    ds->eindex += result;
-//    fprintf(stderr, "ds->eindex = %d\n", ds->eindex);
-    if(ds->eindex == EVENT_MSGSIZE) { /* We have a full message now */
-        ds->eindex = 0; /* Reset for the next time */
-//        fprintf(stderr, "dax_event_dispatch() firing event\n");
-//        etype =    ntohl(*(u_int32_t *)(&ds->ebuff[0]));
-        idx =      ntohl(*(u_int32_t *)(&ds->ebuff[4]));
-        eid =      ntohl(*(u_int32_t *)(&ds->ebuff[8]));
-//        byte =     ntohl(*(u_int32_t *)(&ds->ebuff[12]));
-//        count =    ntohl(*(u_int32_t *)(&ds->ebuff[16]));
-//        datatype = ntohl(*(u_int32_t *)(&ds->ebuff[20]));
-//        bit =      *(u_int8_t *)(&ds->ebuff[24]);
-//        fprintf(stderr, "event type  = %d\n", etype);
-//        fprintf(stderr, "event idx   = %d\n", idx);
-//        fprintf(stderr, "event id    = %d\n", eid);
-//        fprintf(stderr, "event byte  = %d\n", byte);
-//        fprintf(stderr, "event bit   = %d\n", bit);
-//        fprintf(stderr, "event count = %d\n", count);
-//        fprintf(stderr, "event datatype = %s\n", dax_type_to_string(ds, datatype));
-        for(n = 0; n < ds->event_count; n ++) {
-//            fprintf(stderr, "checking for event at n = %d, idx = %d, id = %d\n", n, ds->events[n].idx, ds->events[n].id );
-            if(ds->events[n].idx == idx && ds->events[n].id == eid) {
-                if(ds->events[n].callback != NULL) {
-                    ds->events[n].callback(ds->events[n].udata);
-                }
-                if(id != NULL) {
-                    id->id = eid;
-                    id->index = idx;
-                }
-                return 0;
-            }
-        }
-        dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
-        return ERR_GENERIC;
-    } else {
-        return ERR_NOTFOUND;
-    }
-    return 0;
+    result = message_get(ds->afd, &msg);
+    if(result) return result;
+    idx =      ntohl(*(u_int32_t *)(&msg.data[0]));
+    eid =      ntohl(*(u_int32_t *)(&msg.data[4]));
+
+	for(n = 0; n < ds->event_count; n ++) {
+		if(ds->events[n].idx == idx && ds->events[n].id == eid) {
+			if(ds->events[n].callback != NULL) {
+				fprintf(stderr, "Calling the callback\n");
+				ds->events[n].callback(ds->events[n].udata);
+			}
+			if(id != NULL) {
+				id->id = eid;
+				id->index = idx;
+			}
+			return 0;
+		}
+	}
+	dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
+	return ERR_GENERIC;
 }

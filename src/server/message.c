@@ -86,7 +86,7 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
     int result;
     char buff[DAX_MSGMAX];
 
-    ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
+    ((u_int32_t *)buff)[0] = htonl(size);
     if(response == RESPONSE) {
         ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
     } else if(response == ERROR) {
@@ -329,15 +329,15 @@ msg_dispatcher(int fd, unsigned char *buff)
     message.size = ntohl(*(u_int32_t *)buff) - MSG_HDR_SIZE;
     /* The next four bytes are the DAX command also sent in network
      * byte order. */
-    message.command = ntohl(*(u_int32_t *)&buff[4]);
+    message.msg_type = ntohl(*(u_int32_t *)&buff[4]);
     //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
 
-    if(CHECK_COMMAND(message.command)) return ERR_MSG_BAD;
+    if(CHECK_COMMAND(message.msg_type)) return ERR_MSG_BAD;
     message.fd = fd;
     memcpy(message.data, &buff[8], message.size);
     buff_free(fd);
     /* Now call the function to deal with it */
-    return (*cmd_arr[message.command])(&message);
+    return (*cmd_arr[message.msg_type])(&message);
 }
 
 /* The rest of the functions in this file are wrappers for other functions

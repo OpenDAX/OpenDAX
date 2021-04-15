@@ -121,8 +121,6 @@ struct dax_state {
     event_db *events;      /* Array of events stored for this connection */
     int event_size;        /* Current size of the events array */
     int event_count;       /* Total number of events stored in the array */
-    u_int8_t ebuff[EVENT_MSGSIZE]; /* Temporary buffer for event reception */
-    u_int8_t eindex;       /* Current index into the ebuff */
     void (*dax_debug)(const char *output);
     void (*dax_error)(const char *output);
     void (*dax_log)(const char *output);
@@ -193,5 +191,7 @@ int add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(void *udat
               void (*free_callback)(void *));
 int del_event(dax_state *ds, dax_id id);
 int exec_event(dax_state *ds, dax_id id);
+
+int message_get(int, dax_message *);
 
 #endif /* !__LIBDAX_H */

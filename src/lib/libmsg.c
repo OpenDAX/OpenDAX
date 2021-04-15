@@ -54,6 +54,58 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
     return 0;
 }
 
+/* This function retrieves a single message from the given fd. */
+int
+message_get(int fd, dax_message *msg) {
+    char buff[DAX_MSGMAX];
+    int index, result;
+    index = 0;
+
+    while( index < MSG_HDR_SIZE) {
+    	/* Start by reading the header */
+        result = read(fd, &buff[index], MSG_HDR_SIZE);
+        if(result < 0) {
+            if(errno == EWOULDBLOCK) {
+                //dax_debug(ds, LOG_COMM, "_message_recv Timed out");
+                return ERR_TIMEOUT;
+            } else {
+                //dax_debug(ds, LOG_COMM, "_message_recv failed: %s", strerror(errno));
+                return ERR_MSG_RECV;
+            }
+        } else if(result == 0) {
+            printf("TODO: I don't know what to do with read returning 0\n");
+            return ERR_GENERIC;
+        } else {
+            index += result;
+        }
+    }
+    /* At this point we should have the size and the message type */
+    msg->size = ntohl(*(u_int32_t *)buff);
+    msg->msg_type = ntohl(*((u_int32_t *)&buff[4]));
+    /* Now we get the rest of the message */
+    index = 0;
+    while( index < msg->size) {
+    	/* Start by reading the header */
+        result = read(fd, &buff[index], msg->size-index);
+        if(result < 0) {
+            if(errno == EWOULDBLOCK) {
+                //dax_debug(ds, LOG_COMM, "_message_recv Timed out");
+                return ERR_TIMEOUT;
+            } else {
+                //dax_debug(ds, LOG_COMM, "_message_recv failed: %s", strerror(errno));
+                return ERR_MSG_RECV;
+            }
+        } else if(result == 0) {
+            printf("TODO: I don't know what to do with read returning 0\n");
+            return ERR_GENERIC;
+        } else {
+            index += result;
+        }
+    }
+	memcpy(msg->data, buff, msg->size);
+    return 0;
+}
+
 /* This function waits for a message with the given command to come in. If
    a message of another command comes in it will send that message out to
    an asynchronous command handler.  This is due to a race condition that could
@@ -63,56 +115,19 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
 static int
 _message_recv(dax_state *ds, int command, void *payload, size_t *size, int response)
 {
-    char buff[DAX_MSGMAX];
-    int index, msg_size, result;
-    index = msg_size = 0;
+	dax_message msg;
+	int result;
 
-    while( index < msg_size || index < MSG_HDR_SIZE) {
-        result = read(ds->sfd, &buff[index], DAX_MSGMAX);
-        /*****TESTING STUFF******/
-//        printf("_message_recv() returned %d\n", result);
-//        for(done = 0; done < result; done ++) {
-//            printf("0x%02X[%c] " , (unsigned char)buff[done], (unsigned char)buff[done]);
-//        } printf("\n");
-
-        if(result < 0) {
-            if(errno == EWOULDBLOCK) {
-                dax_debug(ds, LOG_COMM, "_message_recv Timed out");
-                return ERR_TIMEOUT;
-            } else {
-                dax_debug(ds, LOG_COMM, "_message_recv failed: %s", strerror(errno));
-                return ERR_MSG_RECV;
-            }
-        } else if(result == 0) {
-            printf("TODO: I don't know what to do with read returning 0\n");
-            return ERR_GENERIC;
-        } else {
-            index += result;
-        }
-
-        if(index >= MSG_HDR_SIZE) {
-            msg_size = ntohl(*(u_int32_t *)buff);
-            if(msg_size > DAX_MSGMAX) {
-                dax_debug(ds, LOG_COMM, "_message_recv message size is too big");
-                return ERR_MSG_BAD;
-            }
-        }
-    }
-    /* This gets the command out of the buffer */
-    result = ntohl(*((u_int32_t *)&buff[4]));
+	result = message_get(ds->sfd, &msg);
+	if(result) return result;
 
     /* Test if the error flag is set and then return the error code */
-    if(result == (command | MSG_ERROR)) {
-        return stom_dint((*(int32_t *)&buff[8]));
-    } else if(result == (command | (response ? MSG_RESPONSE : 0))) {
+    if(msg.msg_type == (command | MSG_ERROR)) {
+        return stom_dint((*(int32_t *)&msg.data[0]));
+    } else if(msg.msg_type == (command | (response ? MSG_RESPONSE : 0))) {
         if(size) {
-            if((msg_size - MSG_HDR_SIZE) > *size) {
-                printf("Why do we think it's too big. msg_size = %d, *size = %ld\n", msg_size, *size);
-                return ERR_2BIG;
-            } else {
-                memcpy(payload, &buff[MSG_HDR_SIZE], msg_size - MSG_HDR_SIZE);
-                *size = msg_size - MSG_HDR_SIZE; /* size is value result */
-            }
+            memcpy(payload, msg.data, msg.size);
+            *size = msg.size;
         }
     } else { /* This is not the command we wanted */
         printf("TODO: Whoa we got the wrong command\n");

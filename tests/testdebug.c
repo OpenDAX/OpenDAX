@@ -47,7 +47,8 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
+        result = dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
+        assert(result == 0);
         x = 0x55555555;
         dax_write_tag(ds,  tag, &x);
         dax_tag_del(ds, tag.index);

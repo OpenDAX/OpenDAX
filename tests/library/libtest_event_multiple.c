@@ -50,22 +50,25 @@ do_test(int argc, char *argv[])
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
-    if(result) {
+	if(result) {
         return -1;
     } else {
         /* Setup the tags and events */
         for(i=0; i<5; i++) {
             sprintf(tagname, "Dummy%d", i);
             dax_tag_add(ds, &tags[i], tagname, DAX_INT, 1);
-            result = dax_event_add(ds, &tags[i], EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
-            if(result) return result;
             x = 5 + i;
             dax_write_tag(ds, tags[i], &x);
             if(result) return result;
+            result = dax_event_add(ds, &tags[i], EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
+            if(result) {
+            	return result;
+            }
+
         }
         /* Cause the events to happen */
         for(i=0; i<5; i++) {
-            x = 6+i;
+            x = 6 + i;
             result = dax_write_tag(ds, tags[i], &x);
             if(result) return result;
         }
