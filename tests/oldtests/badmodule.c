@@ -58,7 +58,7 @@ __difftimeval(struct timeval *start, struct timeval *end)
 
 /* This is our event callback.  It is called whenever one of our tags has changed */
 static void
-__update_tags(void *x)
+__update_tags(dax_state *d, void *x)
 {
     dax_read_tag(ds, quit_tag, &quit_time);
     dax_read_tag(ds, cpu_tag, &cpu_percent);
@@ -151,7 +151,7 @@ main(int argc,char *argv[])
     /* Free the configuration memory once we are done with it */
     dax_free_config(ds);
     /* Read all the tags from the server */
-    __update_tags(NULL);
+    __update_tags(ds, NULL);
     /* If we have a quit time in the server then we'll just wait it out then bail */
     if(quit_time > 0) {
         usleep(quit_time);

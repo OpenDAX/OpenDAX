@@ -149,7 +149,7 @@ _handle_test(lua_State *L)
  * having to create a formal test.
  *******************************************************************/
 static void
-_event_callback(void *data) {
+_event_callback(dax_state *ds, void *data) {
     fprintf(stderr, "Got Callback: data = %d\n", *(int *)data);
 }
 

@@ -31,7 +31,7 @@ struct event_item {
 static struct event_item events[MAX_EVENTS];
 
 static void
-_event_callback(void *udata) {
+_event_callback(dax_state *ds, void *udata) {
     dax_id *id;
     int n;
     id =(dax_id *)udata;

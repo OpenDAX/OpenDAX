@@ -60,3 +60,9 @@ add_executable(library_event_multiple libtest_event_multiple.c libtest_common.c)
 target_link_libraries(library_event_multiple dax)
 add_test(library_event_multiple library_event_multiple)
 set_tests_properties(library_event_multiple PROPERTIES TIMEOUT 10)
+
+# Simple event data tests
+add_executable(library_event_data libtest_event_data.c libtest_common.c)
+target_link_libraries(library_event_data dax)
+add_test(library_event_data library_event_data)
+set_tests_properties(library_event_data PROPERTIES TIMEOUT 10)

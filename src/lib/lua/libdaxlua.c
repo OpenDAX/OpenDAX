@@ -776,6 +776,7 @@ _tag_del(lua_State *L) {
     } else {
         return 0;
     }
+    return 0;
 }
 
 /* This structure is used to store the indexes in the registry where the
@@ -792,7 +793,7 @@ typedef struct event_ref_data {
  * that represents the lua_State, the Lua function and the argument that we
  * want to pass to the Lua function and then calls the Lua function */
 static void
-_event_callback(void *data) {
+_event_callback(dax_state *ds, void *data) {
     event_ref_data *rdata;
     rdata = (event_ref_data *)data;
     lua_rawgeti(rdata->L, LUA_REGISTRYINDEX, rdata->function);

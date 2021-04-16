@@ -133,7 +133,7 @@ setup_subscribers() {
 }
 
 void
-event_callback(void *udata) {
+event_callback(dax_state *ds, void *udata) {
     publisher_t *pub = (publisher_t *)udata;
     
     if(pub->format_type == CFG_STR) {

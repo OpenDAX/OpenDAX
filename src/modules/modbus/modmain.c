@@ -71,7 +71,7 @@ typedef struct _slave_data {
  * it can read the newly changed tag data from the server and then write it
  * to the proper register area from the modbus library */
 static void
-_slave_event_callback(void *udata)
+_slave_event_callback(dax_state *ds, void *udata)
 {
     u_int8_t buff[((_slave_data *)udata)->h.size];
     _slave_data *sd;
@@ -164,7 +164,7 @@ _slave_reg_add(mb_port *port, port_ud_item *item, int mbreg, int size)
         result = dax_event_add(ds, &sd->h, EVENT_CHANGE, NULL, &item->event, 
                                _slave_event_callback, sd, _free_slave_data);
         /* Now we call the callback to write any existing data to the port */
-        _slave_event_callback(sd);
+        _slave_event_callback(ds, sd);
     } else {
         dax_error(ds, "Unable to add data to port %s", mb_get_port_name(port));
     }

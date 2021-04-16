@@ -346,7 +346,7 @@ int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);
 
 /* Event handling functions */
 int dax_event_add(dax_state *ds, tag_handle *handle, int event_type, void *data,
-                  dax_id *id, void (*callback)(void *udata), void *udata,
+                  dax_id *id, void (*callback)(dax_state *ds, void *udata), void *udata,
                   void (*free_callback)(void *udata));
 int dax_event_del(dax_state *ds, dax_id id);
 int dax_event_get(dax_state *ds, dax_id id);
@@ -355,6 +355,8 @@ int dax_event_wait(dax_state *ds, int timeout, dax_id *id);
 int dax_event_poll(dax_state *ds, dax_id *id);
 int dax_event_get_fd(dax_state *ds);
 int dax_event_dispatch(dax_state *ds, dax_id *id);
+int dax_event_get_data(dax_state *ds, void* buff, int len);
+
 /* Event Utility Functions */
 int dax_event_string_to_type(char *string);
 char *dax_event_type_to_string(int type);

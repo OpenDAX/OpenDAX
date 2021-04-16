@@ -28,11 +28,10 @@
 #include <sys/wait.h>
 #include "libtest_common.h"
 
-dax_state *ds;
 int validation = 0;
 
 void
-test_callback(void *udata) {
+test_callback(dax_state *ds, void *udata) {
     printf("Event Hit\n");
     validation++;
 }
@@ -40,6 +39,7 @@ test_callback(void *udata) {
 int
 do_test(int argc, char *argv[])
 {
+	dax_state *ds;
     tag_handle tag;
     int result = 0;
     dax_int x;

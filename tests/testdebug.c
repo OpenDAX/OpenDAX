@@ -55,6 +55,7 @@ do_test(int argc, char *argv[])
         result = dax_read_tag(ds, tag, buff);
         printf("result = %d\n", result);
     }
+    return 0;
 
 }
 

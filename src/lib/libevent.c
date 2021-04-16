@@ -80,7 +80,7 @@ dax_event_type_to_string(int type) {
  * where the callbacks and the userdata are stored.  The server simply sends an ID
  */
 int
-add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(void *udata),
+add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(dax_state *ds, void *udata),
           void (*free_callback)(void *udata))
 {
     event_db *new_db;
@@ -250,12 +250,13 @@ dax_event_dispatch(dax_state *ds, dax_id *id)
     if(result) return result;
     idx =      ntohl(*(u_int32_t *)(&msg.data[0]));
     eid =      ntohl(*(u_int32_t *)(&msg.data[4]));
-
+    /* we just store the pointer to the message data in case the callback needs it */
+    ds->event_data = &msg.data[8];
+    ds->event_data_size = msg.size-8;
 	for(n = 0; n < ds->event_count; n ++) {
 		if(ds->events[n].idx == idx && ds->events[n].id == eid) {
 			if(ds->events[n].callback != NULL) {
-				fprintf(stderr, "Calling the callback\n");
-				ds->events[n].callback(ds->events[n].udata);
+				ds->events[n].callback(ds, ds->events[n].udata);
 			}
 			if(id != NULL) {
 				id->id = eid;
@@ -264,6 +265,35 @@ dax_event_dispatch(dax_state *ds, dax_id *id)
 			return 0;
 		}
 	}
+	ds->event_data = NULL; /* This indicates that the data is out of scope now */
 	dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
 	return ERR_GENERIC;
+}
+
+/*!
+ * Retrieves the data that was passed back from the server when the event fired.
+ * This function is designed to be called from inside the callback function that
+ * is called when the event is fired.  This data will go out of scope after the
+ * event callback function returns.  If the data is meant to persist it will be
+ * the responsibility of the event callback function to store it.
+ *
+ * If this function is called while the data is out of scope and error will be
+ * returned.
+ *
+ * @param ds   Pointer to the dax state object
+ * @param buff Pointer to the buffer where the event data is to be written
+ * @param len  Pointer to the length of the buffer that is passed.  This will
+ *             be changed by the function if
+ * @returns    number of bytes written on success or a negative error code otherwise.
+ */
+int
+dax_event_get_data(dax_state *ds, void* buff, int len) {
+	int size;
+
+	size = MIN(len, ds->event_data_size);
+	if(ds->event_data == NULL) return ERR_DELETED;
+	if(ds->event_data_size == 0) return ERR_EMPTY;
+
+	memcpy(buff, ds->event_data, size);
+	return size;
 }

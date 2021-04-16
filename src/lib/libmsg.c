@@ -804,7 +804,7 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
  */
 int
 dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
-              dax_id *id, void (*callback)(void *udata),
+              dax_id *id, void (*callback)(dax_state *ds, void *udata),
               void *udata, void (*free_callback)(void *udata))
 {
     int test;
@@ -924,7 +924,7 @@ dax_event_get(dax_state *ds, dax_id id)
  */
 int
 dax_event_mod(dax_state *ds, dax_id id, tag_handle *h, int event_type, void *data,
-              void (*callback)(void *udata), void *udata)
+              void (*callback)(dax_state *ds, void *udata), void *udata)
 {
 
     return 0;
