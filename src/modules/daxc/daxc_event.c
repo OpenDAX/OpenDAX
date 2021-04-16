@@ -34,14 +34,12 @@ static void
 _event_callback(dax_state *ds, void *udata) {
     dax_id *id;
     int n;
-    id =(dax_id *)udata;
+    id = (dax_id *)udata;
 
-    /* TODO This is probably bad form.  The event_id structure should be
-     * opaque and some common representation should be created. */
     for(n = 0; n < MAX_EVENTS; n++) {
         if(events[n].event.index == id->index && events[n].event.id == id->id) {
             if(!quiet_mode) {
-                printf("Event %d Recieved\n", n+1);
+                printf("Event %d Received\n", n+1);
             } else {
                 printf("%d\n", n+1);
             }

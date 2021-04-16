@@ -270,15 +270,13 @@ runcmd(char *instr)
 
     } else if( !strncasecmp(tokens[0], "read", 1)) {
         result = tag_read(&tokens[1]);
-    } else if( !strncasecmp(tokens[0], "write", 1)) {
+    } else if( !strncasecmp(tokens[0], "write", 5)) {
         result = tag_write(&tokens[1], tcount-1);
     } else if( !strncasecmp(tokens[0], "wait", 4)) {
         result = event_wait(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "poll", 4)) {
         event_poll();
 
-//    } else if( !strncasecmp(tokens[0], "mod", 3)) {
-//        printf("Haven't done 'mod' yet!\n");
     // } else if( !strcasecmp(tokens[0],"db")) {
         // result = db_read(&tokens[1]);
 //        if(tokens[1] == NULL) fprintf(stderr, "ERROR: Missing Subcommand\n");
@@ -359,7 +357,6 @@ void
 quit_signal(int sig)
 {
     _quitsignal = sig;
-    //getout(-1);
 }
 
 static void
