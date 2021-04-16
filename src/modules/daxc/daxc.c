@@ -273,7 +273,7 @@ runcmd(char *instr)
     } else if( !strncasecmp(tokens[0], "write", 1)) {
         result = tag_write(&tokens[1], tcount-1);
     } else if( !strncasecmp(tokens[0], "wait", 4)) {
-        event_wait(&tokens[1]);
+        result = event_wait(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "poll", 4)) {
         event_poll();
 

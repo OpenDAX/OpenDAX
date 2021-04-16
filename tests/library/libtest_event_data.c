@@ -58,6 +58,8 @@ do_test(int argc, char *argv[])
         dax_write_tag(ds, tag, &x);
         result = dax_event_add(ds, &tag, EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
         if(result) return result;
+        result = dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
+        if(result) return result;
         x = 3.141592;
         result = dax_write_tag(ds, tag, &x);
         if(result) return result;
@@ -67,6 +69,7 @@ do_test(int argc, char *argv[])
         if(validation != x) return -1;
     }
     return 0;
+    /* TODO: Need to test large amounts of data */
 }
 
 /* main inits and then calls run */

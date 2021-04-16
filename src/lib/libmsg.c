@@ -902,9 +902,6 @@ dax_event_del(dax_state *ds, dax_id id)
     }
     libdax_unlock(ds->lock);
     return result;
-
-
-    return 0;
 }
 
 /*!
@@ -919,14 +916,41 @@ dax_event_get(dax_state *ds, dax_id id)
 }
 
 /*!
- * Modify the details of the given event.
- * This function is not yet implemented
+ * Set options flags on the given event.
+ *
+ * @param ds Pointer to the dax state object.
+ * @param id The identifier of the event that we wish to remove.
+ * @param options Options bits
+ *
+ * @returns Zero on success or an error code otherwise
  */
 int
-dax_event_mod(dax_state *ds, dax_id id, tag_handle *h, int event_type, void *data,
-              void (*callback)(dax_state *ds, void *udata), void *udata)
+dax_event_options(dax_state *ds, dax_id id, u_int32_t options)
 {
+	int test;
+	size_t size;
+	dax_dint result;
+	dax_dint temp;
+	char buff[MSG_DATA_SIZE];
 
+	temp = mtos_dint(id.index);      /* Tag Index */
+	memcpy(buff, &temp, 4);
+	temp = mtos_dint(id.id);         /* Event ID */
+	memcpy(&buff[4], &temp, 4);
+	temp = mtos_dint(options);       /* Options */
+	memcpy(&buff[8], &temp, 4);
+	size = 12;
+
+	libdax_lock(ds->lock);
+	if(_message_send(ds, MSG_EVNT_OPT, buff, size)) {
+		libdax_unlock(ds->lock);
+		return ERR_MSG_SEND;
+	} else {
+		test = _message_recv(ds, MSG_EVNT_OPT, &result, &size, 1);
+		libdax_unlock(ds->lock);
+		return test;
+	}
+	libdax_unlock(ds->lock);
     return 0;
 }
 
@@ -934,6 +958,7 @@ dax_event_mod(dax_state *ds, dax_id id, tag_handle *h, int event_type, void *dat
  * Write the compound datatype to the server and free the memory
  * associated with it.  This is the last function to be called during
  * the create of a compound data type.
+ *
  * @param ds Pointer to the dax state object
  * @param cdt Pointer to the compound data type object that was created
  *            with dax_cdt_new().

@@ -69,6 +69,7 @@ typedef struct dax_event_t {
     unsigned char bit;   /* The bit offset */
     int count;           /* The number of items represented by the handle */
     u_int32_t size;      /* The total size of the data block in bytes */
+    u_int32_t options;   /* Options for the event */
     tag_type datatype;   /* The data type of the block */
     int eventtype;       /* The type of event */
     void *data;          /* Data given by module */
@@ -133,6 +134,7 @@ void event_check(tag_index idx, int offset, int size);
 int event_add(tag_handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
 int events_del_all(_dax_event *head);
+int event_opt(int index, int id, u_int32_t options, dax_module *module);
 int events_cleanup(dax_module *module);
 
 int map_add(tag_handle src, tag_handle dest);

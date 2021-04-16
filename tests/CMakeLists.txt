@@ -85,9 +85,9 @@ if(BUILD_MODBUS)
     add_test(python_test_modbus_library "python3" "-m" "unittest"
     "PythonTests.test_modbuslib.TestRTUMaster")
 endif()
-add_test(python_test_module_test    "python3" "-m" "unittest"
-                                    "PythonTests.test_module_test.TestTestModule")
-
+# These are the old Lua tests
+add_test(python_oldtest_module_test    "python3" "-m" "unittest"
+                                       "PythonTests.test_module_test.TestTestModule")
 
 file(GLOB files "LuaTests/*")
 foreach(file ${files})

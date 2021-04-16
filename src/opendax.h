@@ -133,6 +133,10 @@ extern "C" {
 #define EVENT_LESS     0x08 /* Less Than */
 #define EVENT_DEADBAND 0x09 /* Changed by X amount since last event */
 
+/* Event Options */
+#define EVENT_OPT_SEND_DATA  0x01 /* Send the affected data with the event */
+
+
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
  #define DAX_TAGNAME_SIZE 32
@@ -350,7 +354,7 @@ int dax_event_add(dax_state *ds, tag_handle *handle, int event_type, void *data,
                   void (*free_callback)(void *udata));
 int dax_event_del(dax_state *ds, dax_id id);
 int dax_event_get(dax_state *ds, dax_id id);
-int dax_event_modify(dax_state *ds, int id);
+int dax_event_options(dax_state *ds, dax_id id, u_int32_t options);
 int dax_event_wait(dax_state *ds, int timeout, dax_id *id);
 int dax_event_poll(dax_state *ds, dax_id *id);
 int dax_event_get_fd(dax_state *ds);

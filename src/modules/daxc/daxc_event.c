@@ -139,6 +139,7 @@ event_add(char **tokens, int count)
         fprintf(stderr, "ERROR: Problem adding event to server. Code = %d\n", result);
         return -1;
     }
+    result = dax_event_options(ds, events[n].event, EVENT_OPT_SEND_DATA);
     events[n].used = 1;
     if(!quiet_mode) printf("OK: Event %d added\n", n+1);
     return result;
