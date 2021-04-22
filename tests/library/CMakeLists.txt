@@ -66,3 +66,19 @@ add_executable(library_event_data libtest_event_data.c libtest_common.c)
 target_link_libraries(library_event_data dax)
 add_test(library_event_data library_event_data)
 set_tests_properties(library_event_data PROPERTIES TIMEOUT 10)
+
+# Event queue tests
+add_executable(library_event_queue_simple libtest_event_queue_simple.c libtest_common.c)
+target_link_libraries(library_event_queue_simple dax)
+add_test(library_event_queue_simple library_event_queue_simple)
+set_tests_properties(library_event_queue_simple PROPERTIES TIMEOUT 10)
+
+add_executable(library_event_queue_overflow libtest_event_queue_overflow.c libtest_common.c)
+target_link_libraries(library_event_queue_overflow dax)
+add_test(library_event_queue_overflow library_event_queue_overflow)
+set_tests_properties(library_event_queue_overflow PROPERTIES TIMEOUT 10)
+
+add_executable(library_event_queue_overflow2 libtest_event_queue_overflow2.c libtest_common.c)
+target_link_libraries(library_event_queue_overflow2 dax)
+add_test(library_event_queue_overflow2 library_event_queue_overflow2)
+set_tests_properties(library_event_queue_overflow2 PROPERTIES TIMEOUT 10)

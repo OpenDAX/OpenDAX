@@ -130,8 +130,7 @@ struct dax_state {
     dax_message *emsg_queue; /* Event Message FIFO Queue */
     int emsg_queue_size;     /* Total size of the Event Message Queue */
     int emsg_queue_count;    /* number of entries in the event message queue */
-    int emsg_queue_read;     /* index to the next event in the queue */
-    int emsg_queue_last;     /* index to the last event that was added to the queue */
+    int emsg_queue_read;     /* index to the next event to read in the queue */
     void (*dax_debug)(const char *output);
     void (*dax_error)(const char *output);
     void (*dax_log)(const char *output);

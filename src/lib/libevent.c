@@ -31,26 +31,26 @@ push_event(dax_state *ds, dax_message *msg) {
 
     /* We need to grow the queue */
     if(ds->emsg_queue_count == ds->emsg_queue_size) {
+    	printf("Time to grow\n");
 		newsize = ds->emsg_queue_size * 2;
+		printf("** Newsize = %d\n", newsize);
         new_queue = realloc(ds->emsg_queue, sizeof(dax_message) * newsize);
         if(new_queue == NULL) return ERR_ALLOC;
         ds->emsg_queue = new_queue;
         /* After the queue size is increased we need to move the fragment that is now
          * at the beginning of the queue to the start of the new area */
         if(ds->emsg_queue_read > 0) {
-            memcpy(&ds->emsg_queue[ds->emsg_queue_size],&ds->emsg_queue[0], ds->emsg_queue_last+1);
-            ds->emsg_queue_last = ds->emsg_queue_size;
+        	memcpy(&ds->emsg_queue[ds->emsg_queue_size],&ds->emsg_queue[0], ds->emsg_queue_read);
         }
         ds->emsg_queue_size = newsize;
 	}
-	next = ds->emsg_queue_last;
+	next = (ds->emsg_queue_read + ds->emsg_queue_count) % ds->emsg_queue_size;
 	memcpy(&ds->emsg_queue[next], msg, sizeof(dax_message));
-	ds->emsg_queue_last++;
-	/* Roll over the last entry to the beginning of the queue */
-	if(ds->emsg_queue_last == ds->emsg_queue_size) {
-		ds->emsg_queue_last = 0;
-	}
 	ds->emsg_queue_count++;
+	printf("** queue size = %d\n", ds->emsg_queue_size);
+    printf("** queue count = %d\n", ds->emsg_queue_count);
+    printf("** queue read = %d\n", ds->emsg_queue_read);
+    printf("** queue writen to index = %d\n\n", next);
 
 	return 0;
 }
@@ -62,12 +62,16 @@ pop_event(dax_state *ds) {
     if(ds->emsg_queue_count == 0) {
         return NULL;
     }
+    printf("<< returning index = %d\n", ds->emsg_queue_read);
     temp = &ds->emsg_queue[ds->emsg_queue_read];
     ds->emsg_queue_read++;
     if(ds->emsg_queue_read == ds->emsg_queue_size)  {
+    	printf("Rolling over the read\n");
         ds->emsg_queue_read = 0;
     }
     ds->emsg_queue_count--;
+    printf("<< queue count = %d\n", ds->emsg_queue_count);
+    printf("<< queue read = %d\n", ds->emsg_queue_read);
 
     return temp;
 }
