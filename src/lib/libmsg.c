@@ -57,7 +57,7 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
 /* This function retrieves a single message from the given fd. */
 int
 message_get(int fd, dax_message *msg) {
-    char buff[DAX_MSGMAX];
+    unsigned char buff[DAX_MSGMAX];
     int index, result;
     index = 0;
 
@@ -66,10 +66,8 @@ message_get(int fd, dax_message *msg) {
         result = read(fd, &buff[index], MSG_HDR_SIZE);
         if(result < 0) {
             if(errno == EWOULDBLOCK) {
-                //dax_debug(ds, LOG_COMM, "_message_recv Timed out");
                 return ERR_TIMEOUT;
             } else {
-                //dax_debug(ds, LOG_COMM, "_message_recv failed: %s", strerror(errno));
                 return ERR_MSG_RECV;
             }
         } else if(result == 0) {
@@ -117,7 +115,6 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
 {
 	dax_message msg;
 	int result;
-
 	while(1) {
 		result = message_get(ds->sfd, &msg);
 		if(result) return result;

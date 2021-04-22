@@ -45,7 +45,6 @@ _send_event(tag_index idx, _dax_event *event)
 		*(u_int32_t *)(&buff[0])  = htonl(8); /* The size that we send */
 	}
     if(msgsize > DAX_MSGMAX) return ERR_2BIG;
-    *(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
     *(u_int32_t *)(&buff[4])  = htonl(MSG_EVENT | event->eventtype);
     *(u_int32_t *)(&buff[8])  = htonl(idx);
     *(u_int32_t *)(&buff[12])  = htonl(event->id);
