@@ -118,19 +118,25 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
 	dax_message msg;
 	int result;
 
-	result = message_get(ds->sfd, &msg);
-	if(result) return result;
+	while(1) {
+		result = message_get(ds->sfd, &msg);
+		if(result) return result;
 
-    /* Test if the error flag is set and then return the error code */
-    if(msg.msg_type == (command | MSG_ERROR)) {
-        return stom_dint((*(int32_t *)&msg.data[0]));
-    } else if(msg.msg_type == (command | (response ? MSG_RESPONSE : 0))) {
-        if(size) {
-            memcpy(payload, msg.data, msg.size);
-            *size = msg.size;
-        }
-    } else { /* This is not the command we wanted */
-        printf("TODO: Whoa we got the wrong command\n");
+        /* Test if the error flag is set and then return the error code */
+		if(msg.msg_type == (command | MSG_ERROR)) {
+			return stom_dint((*(int32_t *)&msg.data[0]));
+		} else if(msg.msg_type == (command | (response ? MSG_RESPONSE : 0))) {
+			if(size) {
+				memcpy(payload, msg.data, msg.size);
+				*size = msg.size;
+			}
+			return 0;
+		/* This is an event message that needs to be stored the queue */
+		} else if(msg.msg_type & MSG_EVENT) {
+			push_event(ds, &msg);
+		} else { /* This is not the command we wanted */
+			printf("TODO: Whoa we got the wrong command\n");
+		}
     }
     return 0;
 }
@@ -259,30 +265,6 @@ _mod_connect(dax_state *ds, char *name)
     return ds->reformat;
 }
 
-static int
-_event_connect(dax_state *ds)
-{
-    int result, tmpfd;
-    size_t len;
-    char buff[DAX_MSGMAX];
-
-    *((u_int32_t *)&buff[0]) = htonl(ds->id); /* Send our ID so that the server knows which module we are */
-    *((u_int32_t *)&buff[4]) = htonl(CONNECT_EVENT); /* registration flags */
-
-    /* This is to trick the _message_send into sending on the new connection
-     * instead of the existing one. */
-    tmpfd = ds->sfd;
-    ds->sfd = ds->afd;
-    /* For registration we pack the data no matter what */
-    if((result = _message_send(ds, MSG_MOD_REG, buff, CON_HDR_SIZE))) {
-        ds->sfd = tmpfd;
-        return result;
-    }
-    len = DAX_MSGMAX;
-    result = _message_recv(ds, MSG_MOD_REG, buff, &len, 1);
-    ds->sfd = tmpfd;
-    return result;
-}
 
 /*!
  * Setup the module data structures and send registration message
@@ -316,20 +298,6 @@ dax_connect(dax_state *ds)
         return result;
     }
 
-    /* This will be the event connection.  This socket receives
-     * asynchronous messages that are generated in the server */
-    fd = _get_connection(ds);
-    if(fd > 0) {
-        ds->afd = fd;
-    } else {
-        libdax_unlock(ds->lock);
-        return fd;
-    }
-    result = _event_connect(ds);
-    if(result) {
-        libdax_unlock(ds->lock);
-        return result;
-    }
     init_tag_cache(ds);
 
     libdax_unlock(ds->lock);
@@ -359,8 +327,6 @@ dax_disconnect(dax_state *ds)
         }
         close(ds->sfd);
         ds->sfd = 0;
-        close(ds->afd);
-        ds->afd = 0;
     }
     libdax_unlock(ds->lock);
     return result;
@@ -804,7 +770,7 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
  */
 int
 dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
-              dax_id *id, void (*callback)(void *udata),
+              dax_id *id, void (*callback)(dax_state *ds, void *udata),
               void *udata, void (*free_callback)(void *udata))
 {
     int test;

@@ -119,42 +119,6 @@ _get_module_fd(int fd)
     return NULL;
 }
 
-/* Return a pointer to the module with a matching event file
- * descriptor (efd).  Returns NULL if not found */
-static dax_module *
-_get_module_efd(int efd)
-{
-    dax_module *last;
-
-    if(_current_mod == NULL) return NULL;
-    last = _current_mod;
-    do {
-        if(_current_mod->efd == efd) {
-            return _current_mod;
-        }
-        _current_mod = _current_mod->next;
-    } while(_current_mod != last);
-    return NULL;
-}
-
-/* returns a module with the given name, NULL if not found */
-//static dax_module *
-//_get_module_name(char *name)
-//{
-//    int n;
-//
-//    /* In case we ain't go no list */
-//    if(_current_mod == NULL) return NULL;
-//
-//    for(n = 0; n < _module_count; n++) {
-//        if(!strcmp(_current_mod->name, name)) return _current_mod;
-//        _current_mod = _current_mod->next;
-//    }
-//
-//    return NULL;
-//}
-
-
 
 /* Lookup and return the pointer to the module with pid */
 /* Retrieves a pointer to module given name */
@@ -172,7 +136,7 @@ _print_modules(void)
     printf(" _current_mod = %p\n", _current_mod);
     do {
         printf("Module %s:%d\n", _current_mod->name, _current_mod->fd);
-        printf(" efd = %d\n", _current_mod->efd);
+        printf(" efd = %d\n", _current_mod->fd);
         printf(" host = %d\n", _current_mod->host);
         _current_mod = _current_mod->next;
     } while (_current_mod != last);
@@ -191,7 +155,6 @@ module_add(char *name, unsigned int flags)
         new->flags = flags;
 
         new->fd = 0;
-        new->efd = 0;
         new->event_count = 0;
 
         /* name the module */
@@ -278,36 +241,6 @@ module_register(char *name, u_int32_t timeout, int fd)
     }
     xlog(LOG_MAJOR,"Added module '%s' at file descriptor %d", name, fd);
 
-    _print_modules();
-    return mod;
-}
-
-/* This finds the module given by pid and sets the modules
- * event notification socket file descriptor in the module
- * list. */
-dax_module *
-event_register(u_int32_t mid, int fd)
-{
-    dax_module *mod;
-    int result;
-    in_addr_t host;
-
-    /* A module with the given file descriptor already exists */
-    if(_get_module_efd(fd)) {
-        return NULL;
-    }
-    /* the host and PID are used to uniquely identify the module. */
-    result = _get_host(fd, &host);
-    if(result) return NULL;
-
-    //mod = _get_module_hostpid(host, pid);
-    mod = _get_module_fd(mid);
-
-    if(!mod) {
-        return NULL;
-    } else {
-        mod->efd = fd;
-    }
     _print_modules();
     return mod;
 }

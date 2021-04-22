@@ -28,17 +28,17 @@
 #include <sys/wait.h>
 #include "libtest_common.h"
 
-dax_state *ds;
 int validation = 0;
 
 void
-test_callback(void *udata) {
+test_callback(dax_state *ds, void *udata) {
     validation++;
 }
 
 int
 do_test(int argc, char *argv[])
 {
+	dax_state *ds;
     tag_handle tags[5];
     int result = 0, i;
     char tagname[32];

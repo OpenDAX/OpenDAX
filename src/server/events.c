@@ -38,13 +38,13 @@ _send_event(tag_index idx, _dax_event *event)
     u_int32_t msgsize = event->size + 16; /* Calculate the total size of this message */
     if(msgsize > DAX_MSGMAX) return ERR_2BIG;
     *(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
-    *(u_int32_t *)(&buff[4])  = htonl(MSG_EVENT & event->eventtype);
+    *(u_int32_t *)(&buff[4])  = htonl(MSG_EVENT | event->eventtype);
     *(u_int32_t *)(&buff[8])  = htonl(idx);
     *(u_int32_t *)(&buff[12])  = htonl(event->id);
     memcpy(&buff[16], &_db[idx].data[event->byte], event->size);
     xlog(LOG_MSG, "Sending %d event to module %d",
-         event->eventtype, event->notify->efd);
-    result = xwrite(event->notify->efd, buff, msgsize);
+         event->eventtype, event->notify->fd);
+    result = xwrite(event->notify->fd, buff, msgsize);
     if(result < 0) {
         xerror("_send_event: %s", strerror(errno));
         return ERR_MSG_SEND;
@@ -398,7 +398,6 @@ event_check(tag_index idx, int offset, int size) {
     this = _db[idx].events;
 
     while(this != NULL) {
-        //fprintf(stderr, "Checking Event Index %d, ID %d\n", idx, this->id);
         /* This is to check whether the the data rages intersect.  If this
          * test passes then we have manipulated the data associated with
          * this event. */

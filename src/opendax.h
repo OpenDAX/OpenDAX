@@ -133,6 +133,10 @@ extern "C" {
 #define EVENT_LESS     0x08 /* Less Than */
 #define EVENT_DEADBAND 0x09 /* Changed by X amount since last event */
 
+/* Event Options */
+#define EVENT_OPT_SEND_DATA  0x01 /* Send the affected data with the event */
+
+
 /* Defines the maximum length of a tagname */
 #ifndef DAX_TAGNAME_SIZE
  #define DAX_TAGNAME_SIZE 32
@@ -346,18 +350,19 @@ int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);
 
 /* Event handling functions */
 int dax_event_add(dax_state *ds, tag_handle *handle, int event_type, void *data,
-                  dax_id *id, void (*callback)(void *udata), void *udata,
+                  dax_id *id, void (*callback)(dax_state *ds, void *udata), void *udata,
                   void (*free_callback)(void *udata));
 int dax_event_del(dax_state *ds, dax_id id);
 int dax_event_get(dax_state *ds, dax_id id);
-int dax_event_modify(dax_state *ds, int id);
+int dax_event_options(dax_state *ds, dax_id id, u_int32_t options);
 int dax_event_wait(dax_state *ds, int timeout, dax_id *id);
 int dax_event_poll(dax_state *ds, dax_id *id);
 int dax_event_get_fd(dax_state *ds);
-int dax_event_dispatch(dax_state *ds, dax_id *id);
+int dax_event_get_data(dax_state *ds, void* buff, int len);
+
 /* Event Utility Functions */
 int dax_event_string_to_type(char *string);
-char *dax_event_type_to_string(int type);
+const char *dax_event_type_to_string(int type);
 
 /* Custom Datatype Functions */
 typedef struct datatype dax_cdt;

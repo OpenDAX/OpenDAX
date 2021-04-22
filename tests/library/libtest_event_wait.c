@@ -34,7 +34,7 @@
 int validation = 0;
 
 void
-test_callback(void *udata) {
+test_callback(dax_state *ds, void *udata) {
     validation++;
 }
 
@@ -57,8 +57,7 @@ child_function(int argc, char *argv[]) {
     usleep(200000);
     x = 12;
     result =  dax_write_tag(ds, h, &x);
-    if(result) return result;
-
+    return result;
 }
 
 int

@@ -28,6 +28,11 @@
 #include <libcommon.h>
 
 
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+#define ABS(a)     (((a) < 0) ? -(a) : (a))
+
+
 /* Compiler Options */
 /* This causes the library to use pthread_mutex locks for thread safety.
  * If this is not defined then the library will not be thread safe. */
@@ -96,7 +101,7 @@ typedef struct event_db {
     u_int32_t idx;  /* Tag index of the event */
     u_int32_t id;   /* Individual id of the event */
     void *udata;    /* The user data to be sent with callback() */
-    void (*callback)(void *udata);  /* Callback function */
+    void (*callback)(dax_state *ds, void *udata);  /* Callback function */
     void (*free_callback)(void *udata); /* Callback to free userdata */
 } event_db;
 
@@ -109,7 +114,6 @@ struct dax_state {
     int msgtimeout;
     int id;     /* ID uniquely identifies the module to the server */
     int sfd;   /* Server's File Descriptor */
-    int afd;   /* Asynchronous File Descriptor */
     unsigned int reformat; /* Flags to show how to reformat the incoming data */
     int logflags;
     tag_cnode *cache_head; /* First node in the cache list */
@@ -121,6 +125,13 @@ struct dax_state {
     event_db *events;      /* Array of events stored for this connection */
     int event_size;        /* Current size of the events array */
     int event_count;       /* Total number of events stored in the array */
+    int event_data_size;   /* Size of the event data that is stored here */
+    char *event_data;      /* Pointer to the event data that was returned */
+    dax_message *emsg_queue; /* Event Message FIFO Queue */
+    int emsg_queue_size;     /* Total size of the Event Message Queue */
+    int emsg_queue_count;    /* number of entries in the event message queue */
+    int emsg_queue_read;     /* index to the next event in the queue */
+    int emsg_queue_last;     /* index to the last event that was added to the queue */
     void (*dax_debug)(const char *output);
     void (*dax_error)(const char *output);
     void (*dax_log)(const char *output);
@@ -129,6 +140,8 @@ struct dax_state {
 #define MIN_TIMEOUT      500
 #define MAX_TIMEOUT      30000
 #define DEFAULT_TIMEOUT  "1000"
+
+#define EVENT_QUEUE_SIZE 8 /* Initial size of the event queue */
 
 /* Data Conversion Functions */
 #define REF_INT_SWAP 0x0001
@@ -187,7 +200,8 @@ datatype *get_cdt_pointer(dax_state *, tag_type, int *);
 int add_cdt_to_cache(dax_state *, tag_type type, char *typedesc);
 int dax_cdt_get(dax_state *ds, tag_type type, char *name);
 
-int add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(void *udata),
+int push_event(dax_state *ds, dax_message *msg);
+int add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(dax_state *ds, void *udata),
               void (*free_callback)(void *));
 int del_event(dax_state *ds, dax_id id);
 int exec_event(dax_state *ds, dax_id id);

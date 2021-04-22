@@ -49,7 +49,6 @@ dax_init(char *name)
     
     ds->msgtimeout = 0;
     ds->sfd = 0;       /* Server's File Descriptor */
-    ds->afd = 0;       /* Asynchronous File Descriptor */
     ds->reformat = 0;  /* Flags to show how to reformat the incoming data */
     ds->logflags = 0;
     /* Tag Cache */
@@ -68,6 +67,13 @@ dax_init(char *name)
     }
     ds->event_size = 1;
     ds->event_count = 0;
+    /* Event Message FIFO Queue */
+    ds->emsg_queue = malloc(sizeof(dax_message)*EVENT_QUEUE_SIZE);
+    ds->emsg_queue_size = EVENT_QUEUE_SIZE;     /* Total size of the Event Message Queue */
+    ds->emsg_queue_count = 0;    /* number of entries in the event message queue */
+    ds->emsg_queue_read = 0;     /* index to the next event in the queue */
+    ds->emsg_queue_last = 0;     /* index to the last event that was added to the queue */
+
     /* Logging functions */
     ds->dax_debug = NULL;
     ds->dax_error = NULL;

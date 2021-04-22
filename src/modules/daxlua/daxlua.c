@@ -69,7 +69,7 @@ _receive_globals(lua_State *L, script_t *s)
             } else {
                 lua_setglobal(L, this->name);
             }
-        } else if(this->mode & MODE_STATIC && this->ref != LUA_NOREF) {
+        } else if((this->mode & MODE_STATIC) && this->ref != LUA_NOREF) {
             lua_rawgeti(L, LUA_REGISTRYINDEX, this->ref);
             lua_setglobal(L, this->name);
         }
@@ -185,7 +185,7 @@ _convert_lua_number(tag_type datatype, dax_type_union *dest, lua_Number x) {
 }
 
 static void
-_script_event_dispatch(void *udata) {
+_script_event_dispatch(dax_state *ds, void *udata) {
     script_t *s;
     s = (script_t *)udata;
     pthread_mutex_lock(&s->mutex);

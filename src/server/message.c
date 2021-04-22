@@ -388,17 +388,6 @@ msg_mod_register(dax_message *msg)
                 //strncpy(&buff[30], mod->name, DAX_MSGMAX - 26 - 1);
                 //_message_send(msg->fd, MSG_MOD_REG, buff, 30 + strlen(mod->name) + 1, RESPONSE);
                 _message_send(msg->fd, MSG_MOD_REG, buff, 30 + 1, RESPONSE);
-
-            }
-        /* Is this the asynchronous event socket registration */
-        } else if(flags & CONNECT_EVENT) {
-            xlog(LOG_MSG, "Event Socket Registration message received for Module %s fd = %d", &msg->data[8], msg->fd);
-            mod = event_register(parint, msg->fd);
-            result = ERR_NOTFOUND;
-            if(!mod) {
-                _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
-            } else {
-                _message_send(msg->fd, MSG_MOD_REG, NULL, 0, RESPONSE);
             }
         } else { /* If the flags are bad send error */
             result = ERR_MSG_BAD;

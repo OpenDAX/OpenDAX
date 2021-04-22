@@ -53,9 +53,9 @@
 
 #define DAX_64_ONES 0xFFFFFFFFFFFFFFFFULL
 
-# include <lua.h>
-# include <lauxlib.h>
-# include <lualib.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 
 
 /* These are conditionally compiled debug statements. */

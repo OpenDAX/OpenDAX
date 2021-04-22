@@ -58,7 +58,6 @@
 
 /* These are flags for the registration command */
 #define CONNECT_SYNC  0x01 /* Used to identify the synchronous socket during registration */
-#define CONNECT_EVENT 0x02 /* Identifies the asynchronous event socket during registration */
 
 /* These are the values that the registration system uses to 
    determine whether or not the module will have to reformat

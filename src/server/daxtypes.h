@@ -39,7 +39,6 @@ typedef struct dax_Module {
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
     int fd;             /* The socket file descriptor for this module */
-    int efd;            /* The notification file descriptor */
     u_int32_t timeout;  /* Module communication timeout. */
     time_t starttime;
     int event_count;
