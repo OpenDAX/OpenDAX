@@ -362,3 +362,31 @@ dax_event_get_data(dax_state *ds, void* buff, int len) {
 	memcpy(buff, ds->event_data, size);
 	return size;
 }
+
+/*!
+ * Retrieves the data that was passed back from the server when the event fired.
+ * This function is designed to be called from inside the callback function that
+ * is called when the event is fired.  This data will go out of scope after the
+ * event callback function returns.  If the data is meant to persist it will be
+ * the responsibility of the event callback function to store it.
+ *
+ * If this function is called while the data is out of scope and error will be
+ * returned.
+ *
+ * @param ds   Pointer to the dax state object
+ * @param buff Pointer to the buffer where the event data is to be written
+ * @param len  Pointer to the length of the buffer that is passed.  This will
+ *             be changed by the function if
+ * @returns    number of bytes written on success or a negative error code otherwise.
+ */
+int
+dax_event_get_data(dax_state *ds, void* buff, int len) {
+	int size;
+
+	size = MIN(len, ds->event_data_size);
+	if(ds->event_data == NULL) return ERR_DELETED;
+	if(ds->event_data_size == 0) return ERR_EMPTY;
+
+	memcpy(buff, ds->event_data, size);
+	return size;
+}

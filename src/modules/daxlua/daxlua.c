@@ -185,7 +185,7 @@ _convert_lua_number(tag_type datatype, dax_type_union *dest, lua_Number x) {
 }
 
 static void
-_script_event_dispatch(dax_state *ds, void *udata) {
+_script_event_dispatch(dax_state *d, void *udata) {
     script_t *s;
     s = (script_t *)udata;
     pthread_mutex_lock(&s->mutex);

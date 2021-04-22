@@ -35,13 +35,23 @@ _send_event(tag_index idx, _dax_event *event)
 {
     int result;
     char buff[DAX_MSGMAX];
-    u_int32_t msgsize = event->size + 16; /* Calculate the total size of this message */
+    u_int32_t msgsize;
+
+    if(event->options & EVENT_OPT_SEND_DATA) {
+    	msgsize = event->size + 16; /* Calculate the total size of this message */
+		*(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
+	} else {
+		msgsize = 16; /* Calculate the total size of this message */
+		*(u_int32_t *)(&buff[0])  = htonl(8); /* The size that we send */
+	}
     if(msgsize > DAX_MSGMAX) return ERR_2BIG;
     *(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
     *(u_int32_t *)(&buff[4])  = htonl(MSG_EVENT | event->eventtype);
     *(u_int32_t *)(&buff[8])  = htonl(idx);
     *(u_int32_t *)(&buff[12])  = htonl(event->id);
-    memcpy(&buff[16], &_db[idx].data[event->byte], event->size);
+    if(event->options & EVENT_OPT_SEND_DATA) {
+        memcpy(&buff[16], &_db[idx].data[event->byte], event->size);
+    }
     xlog(LOG_MSG, "Sending %d event to module %d",
          event->eventtype, event->notify->fd);
     result = xwrite(event->notify->fd, buff, msgsize);
@@ -583,6 +593,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
     new->bit = h.bit;
     new->size = h.size;
     new->count = h.count;
+    new->options = 0x0000;
     new->datatype = h.type;
     new->eventtype = event_type;
     new->notify = module;
@@ -616,6 +627,20 @@ _free_event(_dax_event *event) {
     if(event->data != NULL) free(event->data);
     if(event->test != NULL) free(event->test);
     free(event);
+}
+
+int
+_find_event(_dax_event **event, int index, int id) {
+	_dax_event *this;
+
+    this = _db[index].events;
+    if(this == NULL) return ERR_NOTFOUND;
+    while(this->id != id) {
+    	if(this->next == NULL) return ERR_NOTFOUND;
+    	this = this->next;
+    }
+    *event = this;
+	return 0;
 }
 
 int
@@ -667,6 +692,26 @@ events_del_all(_dax_event *head) {
         _free_event(this);
         this = next;
     }
+    return 0;
+}
+
+int
+event_opt(int index, int id, u_int32_t options, dax_module *module) {
+    _dax_event *event;
+    int result;
+
+    if(index >= get_tagindex() || index < 0) {
+        xerror("event_opt() - index %d is out of range\n", index);
+    }
+
+    result = _find_event(&event, index, id);
+    if(result) xerror("event_opt() - event not found\n");
+    if(event->notify != module) {
+    	xlog(LOG_ERROR | LOG_VERBOSE, "Module cannot modify another module's event");
+        return ERR_AUTH;
+    }
+
+    event->options = options;
     return 0;
 }
 

@@ -69,7 +69,7 @@ int msg_mod_set(dax_message *msg);
 int msg_evnt_add(dax_message *msg);
 int msg_evnt_del(dax_message *msg);
 int msg_evnt_get(dax_message *msg);
-int msg_evnt_mod(dax_message *msg);
+int msg_evnt_opt(dax_message *msg);
 int msg_cdt_create(dax_message *msg);
 int msg_cdt_get(dax_message *msg);
 int msg_map_add(dax_message *msg);
@@ -212,7 +212,7 @@ msg_setup(void)
     cmd_arr[MSG_EVNT_ADD]   = &msg_evnt_add;
     cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
     cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
-    cmd_arr[MSG_EVNT_MOD]   = &msg_evnt_mod;
+    cmd_arr[MSG_EVNT_OPT]   = &msg_evnt_opt;
     cmd_arr[MSG_CDT_CREATE] = &msg_cdt_create;
     cmd_arr[MSG_CDT_GET]    = &msg_cdt_get;
     cmd_arr[MSG_MAP_ADD]    = &msg_map_add;
@@ -689,8 +689,27 @@ msg_evnt_get(dax_message *msg)
 }
 
 int
-msg_evnt_mod(dax_message *msg)
+msg_evnt_opt(dax_message *msg)
 {
+    tag_index idx;
+    u_int32_t id, options;
+    int result;
+    dax_module *module;
+
+    idx = *((u_int32_t *)&msg->data[0]);
+    id = *((u_int32_t *)&msg->data[4]);
+    options = *((u_int32_t *)&msg->data[8]);
+    module = module_find_fd(msg->fd);
+
+    xlog(LOG_MSG | LOG_VERBOSE, "Event Set Option Message from %d", msg->fd);
+
+    result = event_opt(idx, id, options, module);
+
+    if(idx >= 0) {
+        _message_send(msg->fd, MSG_EVNT_OPT, &idx, 8, RESPONSE);
+    } else {
+        _message_send(msg->fd, MSG_EVNT_OPT, &result, sizeof(result), ERROR);
+    }
     return 0;
 }
 

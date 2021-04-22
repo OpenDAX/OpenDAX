@@ -73,21 +73,24 @@ add_test(python_test_mapping        "python3" "-m" "unittest"
 add_test(python_test_single         "python3" "-m" "unittest"
                                     "PythonTests.test_single.TestSingle")
 
-# daxc Module Tests
-add_test(python_test_module_daxc_tags "python3" "-m" "unittest"
-                                      "PythonTests.test_module_daxc_tags.TestDaxc")
-add_test(python_test_module_daxc_cdt  "python3" "-m" "unittest"
-                                      "PythonTests.test_module_daxc_cdt.TestDaxc")
-add_test(python_test_module_daxc_list "python3" "-m" "unittest"
+if(MODULE_TESTS)
+	# daxc Module Tests
+	add_test(python_test_module_daxc_tags "python3" "-m" "unittest"
+	                                      "PythonTests.test_module_daxc_tags.TestDaxc")
+	add_test(python_test_module_daxc_cdt  "python3" "-m" "unittest"
+	                                      "PythonTests.test_module_daxc_cdt.TestDaxc")
+	add_test(python_test_module_daxc_list "python3" "-m" "unittest"
                                       "PythonTests.test_module_daxc_list.TestDaxc")
+endif()
+
 
 if(BUILD_MODBUS)
     add_test(python_test_modbus_library "python3" "-m" "unittest"
     "PythonTests.test_modbuslib.TestRTUMaster")
 endif()
-add_test(python_test_module_test    "python3" "-m" "unittest"
-                                    "PythonTests.test_module_test.TestTestModule")
-
+# These are the old Lua tests
+add_test(python_oldtest_module_test    "python3" "-m" "unittest"
+                                       "PythonTests.test_module_test.TestTestModule")
 
 file(GLOB files "LuaTests/*")
 foreach(file ${files})

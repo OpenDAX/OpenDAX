@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2019 Phil Birkelbach
+ *  Copyright (c) 2021 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,8 @@
  */
 
 /*
- *  We use this file for debugging tests.  Most of our tests use Python
- *  ctypes and those can be hard to debug.  This file can be more easily
- *  run with gdb.
+ *  This test creates a single change event and uses dax_event_poll() to
+ *  to test whether or not it is called properly
  */
 
 #include <common.h>
@@ -27,17 +26,24 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "libtest_common.h"
 
-dax_state *ds;
-static int _quitsignal;
+dax_real validation = 0;
+
+void
+test_callback(dax_state *ds, void *udata) {
+	dax_event_get_data(ds, &validation, sizeof(dax_real));
+	printf("validation = %f\n", validation);
+}
 
 int
 do_test(int argc, char *argv[])
 {
     tag_handle tag;
-    int result;
-    char buff[32];
-    unsigned long x = 18446744073709551615UL;
+    int result = 0;
+    dax_real x;
+    dax_id id;
+	dax_state *ds;
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -47,38 +53,32 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        result = dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
-        assert(result == 0);
-        x = 0x55555555;
-        dax_write_tag(ds,  tag, &x);
-        dax_tag_del(ds, tag.index);
-        result = dax_read_tag(ds, tag, buff);
-        printf("result = %d\n", result);
+        dax_tag_add(ds, &tag, "Dummy", DAX_REAL, 1);
+        x = 5;
+        dax_write_tag(ds, tag, &x);
+        result = dax_event_add(ds, &tag, EVENT_CHANGE, NULL, &id, test_callback, NULL, NULL);
+        if(result) return result;
+        result = dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
+        if(result) return result;
+        x = 3.141592;
+        result = dax_write_tag(ds, tag, &x);
+        if(result) return result;
+        result = dax_event_poll(ds, NULL);
+        if(result) return result;
+        /* Our Callback will set validation to what we wrote */
+        if(validation != x) return -1;
     }
     return 0;
-
+    /* TODO: Need to test large amounts of data */
 }
 
 /* main inits and then calls run */
 int
 main(int argc, char *argv[])
 {
-    int status = 0;
-    pid_t pid;
-
-    pid = fork();
-    if(pid == 0) { // Child
-        execl("../src/server/tagserver", "../src/server/tagserver", NULL);
-        printf("Failed to launch tagserver\n");
-        exit(0);
-    } else if(pid < 0) {
+    if(run_test(do_test, argc, argv)) {
         exit(-1);
     } else {
-        usleep(100000);
-        if (do_test(argc, argv)) status ++;
-        kill(pid, SIGINT);
-        if (waitpid (pid, &status, 0) != pid)
-            status ++;
+        exit(0);
     }
-    return status;
 }

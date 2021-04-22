@@ -12,5 +12,11 @@ Might also allow for '~' to be used to skip a value.  IOW if a user wanted to
 change the second and fourth item in an array they could use a command like...
 daxc>write TagName[1] 21 ~ 22
 
+
+Event handling needs to change a lot.  We are now sending the changed data with
+the event so we should be able to git rid of the list of events and replace it
+with all of the information that we need to be in the udata.
+
 Much testing needs to be done.
+
 

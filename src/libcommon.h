@@ -41,7 +41,7 @@
 #define MSG_EVNT_ADD    0x000A /* Add an event to the taglist */
 #define MSG_EVNT_DEL    0x000B /* Delete an event */
 #define MSG_EVNT_GET    0x000C /* Get an event definition */
-#define MSG_EVNT_MOD    0x000D /* Get an event definition */
+#define MSG_EVNT_OPT    0x000D /* Set event options */
 #define MSG_CDT_CREATE  0x000E /* Create a Custom Datatype */
 #define MSG_CDT_GET     0x000F /* Get the definition of a Custom Datatype */
 #define MSG_MAP_ADD     0x0010 /* Add a data point mapping */
