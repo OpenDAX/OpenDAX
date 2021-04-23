@@ -111,6 +111,7 @@ dax_free(dax_state *ds)
     free(ds->modulename);
     /* TODO: gotta loop through and free the udata in the events. */
     free(ds->events);
+    free(ds->emsg_queue);
     free(ds->lock);
     free(ds);
     return 0;

@@ -25,6 +25,8 @@ add_definitions(-DTESTING) # Compiles some testing code into the library */
 set(LIB_SOURCE_DIR ../../src/lib)
 set(SERVER_SOURCE_DIR ../../src/server)
 
+# Library tests
+# tests the tag cache in the library
 add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
                                      ${LIB_SOURCE_DIR}/libfunc.c
                                      ${LIB_SOURCE_DIR}/libcdt.c
@@ -37,7 +39,20 @@ add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
 # target_link_libraries(cachetest 
 target_link_libraries(cachetest ${LUA_LIBRARIES})
 
+add_executable(event_queue event_queue.c ${LIB_SOURCE_DIR}/libdata.c
+                                         ${LIB_SOURCE_DIR}/libfunc.c
+                                         ${LIB_SOURCE_DIR}/libcdt.c
+                                         ${LIB_SOURCE_DIR}/libconv.c
+                                         ${LIB_SOURCE_DIR}/libevent.c
+                                         ${LIB_SOURCE_DIR}/libinit.c
+                                         ${LIB_SOURCE_DIR}/libmsg.c
+                                         ${LIB_SOURCE_DIR}/libopt.c
+                                         )
+target_link_libraries(event_queue ${LUA_LIBRARIES})
+add_test(internal_library_event_queue event_queue)
 
+
+# Server Tests
 file(GLOB files "tagbasetest_*.c")
 foreach(file ${files})
   get_filename_component(FILENAME ${file} NAME)

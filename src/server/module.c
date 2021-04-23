@@ -119,31 +119,6 @@ _get_module_fd(int fd)
     return NULL;
 }
 
-
-/* Lookup and return the pointer to the module with pid */
-/* Retrieves a pointer to module given name */
-//#ifdef DEBUG
-static void
-_print_modules(void)
-{
-    dax_module *last;
-
-    /* In case we ain't got no list */
-    if(_current_mod == NULL) return;
-    /* Figure out where we need to stop */
-    last = _current_mod;
-    printf(" Module Count = %d\n", _module_count);
-    printf(" _current_mod = %p\n", _current_mod);
-    do {
-        printf("Module %s:%d\n", _current_mod->name, _current_mod->fd);
-        printf(" efd = %d\n", _current_mod->fd);
-        printf(" host = %d\n", _current_mod->host);
-        _current_mod = _current_mod->next;
-    } while (_current_mod != last);
-}
-//#endif
-
-
 dax_module *
 module_add(char *name, unsigned int flags)
 {
@@ -241,7 +216,6 @@ module_register(char *name, u_int32_t timeout, int fd)
     }
     xlog(LOG_MAJOR,"Added module '%s' at file descriptor %d", name, fd);
 
-    _print_modules();
     return mod;
 }
 
@@ -258,7 +232,6 @@ module_unregister(int fd)
     } else {
         xerror("module_unregister() - Module File Descriptor %d Not Found", fd);
     }
-    _print_modules();
 }
 
 

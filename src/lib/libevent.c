@@ -26,33 +26,27 @@
 /* TODO: there is probably a better way than copying the memory */
 int
 push_event(dax_state *ds, dax_message *msg) {
-	int next, newsize;
-	dax_message *new_queue;
+    int next, newsize;
+    dax_message *new_queue;
 
     /* We need to grow the queue */
     if(ds->emsg_queue_count == ds->emsg_queue_size) {
-    	printf("Time to grow\n");
-		newsize = ds->emsg_queue_size * 2;
-		printf("** Newsize = %d\n", newsize);
+        newsize = ds->emsg_queue_size * 2;
         new_queue = realloc(ds->emsg_queue, sizeof(dax_message) * newsize);
         if(new_queue == NULL) return ERR_ALLOC;
         ds->emsg_queue = new_queue;
         /* After the queue size is increased we need to move the fragment that is now
          * at the beginning of the queue to the start of the new area */
         if(ds->emsg_queue_read > 0) {
-        	memcpy(&ds->emsg_queue[ds->emsg_queue_size],&ds->emsg_queue[0], ds->emsg_queue_read);
+            memcpy(&ds->emsg_queue[ds->emsg_queue_size],&ds->emsg_queue[0], ds->emsg_queue_read*sizeof(dax_message));
         }
         ds->emsg_queue_size = newsize;
-	}
-	next = (ds->emsg_queue_read + ds->emsg_queue_count) % ds->emsg_queue_size;
-	memcpy(&ds->emsg_queue[next], msg, sizeof(dax_message));
-	ds->emsg_queue_count++;
-	printf("** queue size = %d\n", ds->emsg_queue_size);
-    printf("** queue count = %d\n", ds->emsg_queue_count);
-    printf("** queue read = %d\n", ds->emsg_queue_read);
-    printf("** queue writen to index = %d\n\n", next);
+    }
+    next = (ds->emsg_queue_read + ds->emsg_queue_count) % ds->emsg_queue_size;
+    memcpy(&ds->emsg_queue[next], msg, sizeof(dax_message));
+    ds->emsg_queue_count++;
 
-	return 0;
+    return 0;
 }
 
 dax_message *
@@ -62,16 +56,12 @@ pop_event(dax_state *ds) {
     if(ds->emsg_queue_count == 0) {
         return NULL;
     }
-    printf("<< returning index = %d\n", ds->emsg_queue_read);
     temp = &ds->emsg_queue[ds->emsg_queue_read];
     ds->emsg_queue_read++;
     if(ds->emsg_queue_read == ds->emsg_queue_size)  {
-    	printf("Rolling over the read\n");
         ds->emsg_queue_read = 0;
     }
     ds->emsg_queue_count--;
-    printf("<< queue count = %d\n", ds->emsg_queue_count);
-    printf("<< queue read = %d\n", ds->emsg_queue_read);
 
     return temp;
 }
@@ -137,7 +127,7 @@ dax_event_type_to_string(int type) {
     }
 }
 
-/* Store the event information into a database internal to the library.  This is 
+/* Store the event information into a database internal to the library.  This is
  * where the callbacks and the userdata are stored.  The server simply sends an ID
  */
 int
@@ -285,12 +275,12 @@ dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 /*!
  * Checks for a pending event without blocking.  If there is an
  * event pending it will run the callback for that event.
- * 
+ *
  * @param ds Pointer to the dax state object
  * @param id Pointer to an event id structure.  The function will
  *           populate this structure with the id of the event that
  *           was handled.  Can be set to NULL if unneeded.
- * @returns ERR_NOTFOUND if there are no pending events, zero 
+ * @returns ERR_NOTFOUND if there are no pending events, zero
  *          if an event was successfully dispatched or other
  *          error codes if appropriate.
  */

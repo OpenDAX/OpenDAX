@@ -200,6 +200,7 @@ int add_cdt_to_cache(dax_state *, tag_type type, char *typedesc);
 int dax_cdt_get(dax_state *ds, tag_type type, char *name);
 
 int push_event(dax_state *ds, dax_message *msg);
+dax_message *pop_event(dax_state *ds);
 int add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(dax_state *ds, void *udata),
               void (*free_callback)(void *));
 int del_event(dax_state *ds, dax_id id);
