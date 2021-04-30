@@ -140,7 +140,7 @@ int mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t inde
 int mb_open_port(mb_port *port);
 int mb_close_port(mb_port *port);
 
-/* Set callback functions that are called anytime data is read or written over the port */
+/* Set callback functions that are called any time data is read or written over the port */
 void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,u_int8_t *,unsigned int));
 void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsigned int));
 

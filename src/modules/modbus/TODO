@@ -16,8 +16,6 @@ Modbus RTU Slave
 
 Modbus ASCII Master / Slave
 
-Modbus TCP Server
-
 Configuration options for the outdata and indata functions.
 
 Try to get rid of the extern Config, configuration structure.
@@ -29,3 +27,4 @@ Add some kind of diagnostic tagging or messaging.
 
 Need to be able to create and send a command dynamically at runtime too.
 
+TCP Server may not be dealing with the message length properly

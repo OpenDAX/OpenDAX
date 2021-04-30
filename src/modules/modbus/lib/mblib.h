@@ -118,7 +118,7 @@ int __mb_mutex_unlock(mb_port *, _mb_mutex_t *);
 #define MB_NETWORK 1
 
 /* Maximum size of the receive buffer */
-#define MB_BUFF_SIZE 150
+#define MB_BUFF_SIZE 256
 
 /* This is used in the port for client connections for the TCP Server */
 struct client_buffer {

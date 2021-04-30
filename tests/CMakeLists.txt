@@ -74,6 +74,7 @@ add_test(python_test_single         "python3" "-m" "unittest"
                                     "PythonTests.test_single.TestSingle")
 
 if(MODULE_TESTS)
+    add_subdirectory(modules)
 	# daxc Module Tests
 	add_test(python_test_module_daxc_tags "python3" "-m" "unittest"
 	                                      "PythonTests.test_module_daxc_tags.TestDaxc")

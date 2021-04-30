@@ -73,14 +73,14 @@ _add_connection(mb_port *port, int fd)
 }
 
 /* Loops through the client buffer linked list of the port and sets
- * the index to 0, effectively delteing the buffers. */
+ * the index to 0, effectively deleting the buffers. */
 static int
 _clear_buffers(mb_port *port)
 {
     struct client_buffer *this;
-    
+
     this = port->buff_head;
-    
+
     while(this != NULL) {
         this->buffindex = 0;
         this = this->next;
@@ -91,7 +91,7 @@ _clear_buffers(mb_port *port)
 static int
 _del_connection(mb_port *port, int fd)
 {
-    
+
     close(fd);
     _del_fd(port, fd);
     return 0;
@@ -101,7 +101,7 @@ static struct client_buffer *
 _get_buff_ptr(mb_port *port, int fd)
 {
     struct client_buffer *this;
-    
+
     this = port->buff_head;
     while(this != NULL) {
         if(this->fd == fd) {
@@ -114,12 +114,12 @@ _get_buff_ptr(mb_port *port, int fd)
 
 static int
 _mb_read(mb_port *port, int fd)
-{   
+{
     int result, size;
     unsigned char buff[100];
     struct client_buffer *cc;
     u_int16_t msgsize;
-    
+
     size = 100;
     result = read(fd, buff, size);
     if(result < 0) {
@@ -129,10 +129,10 @@ _mb_read(mb_port *port, int fd)
         DEBUGMSG2("Received EOF on socket %d", fd);
         return MB_ERR_NO_SOCKET;
     }
-    
+
     cc = _get_buff_ptr(port, fd);
     assert(cc != NULL); /* If we get this far cc should exist in the port */
-    
+
     /* Check that we haven't received too big of a message */
     if((result + cc->buffindex) > MB_BUFF_SIZE) {
         return MB_ERR_OVERFLOW;
@@ -170,12 +170,11 @@ _server_listen(mb_port *port)
 {
     struct sockaddr_in addr;
     int fd;
-    
+
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0) {
         return -1;
     }
-
     bzero(&addr, sizeof(addr));
 
     addr.sin_family = AF_INET;
@@ -183,10 +182,11 @@ _server_listen(mb_port *port)
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
+    	fprintf(stderr, "Failed to bind\n");
         return -1;
     }
-
     if(listen(fd, 5) < 0) {
+    	fprintf(stderr, "Failed to listen\n");
         return -1;
     }
     /* We store this fd so that we know what socket we are listening on */
