@@ -63,11 +63,6 @@ _write_data(mb_port *port, tag_handle h, int reg)
     int result;
 
     result = mb_read_register(port, reg, (u_int16_t *)buff, 0, h.count);
-//    fprintf(stderr, "modmain.c/_write_data() ");
-//    for(n = 0; n < h.size; n++) {
-//        fprintf(stderr,"[0x%X]", buff[n]);
-//    }
-//    fprintf(stderr, "\n");
     if(result) {
         dax_error(ds, "Unable to get data from Modbus Registers\n");
     } else {
@@ -270,8 +265,7 @@ main (int argc, const char * argv[]) {
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
 
     while(1) {
-        //dax_event_poll(ds, NULL);
-
+        sleep(1);
         if(_caught_signal) {
             if(_caught_signal == SIGHUP) {
                 dax_log(ds, "Should be Reconfiguring Now");
