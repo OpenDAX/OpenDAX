@@ -52,14 +52,13 @@ static int
 _add_connection(mb_port *port, int fd)
 {
     struct client_buffer *new;
-    
-    DEBUGMSG2("_add_connection() - Adding connection on fd %d", fd);
+
     new = malloc(sizeof(struct client_buffer));
     if(new == NULL) return MB_ERR_ALLOC;
-    
+
     new->fd = fd;
     new->buffindex = 0;
-    
+
     if(port->buff_head == NULL) {
         /* If it's the first one just put it on top */
         new->next = NULL;
@@ -234,9 +233,9 @@ _receive(mb_port *port)
                     fd = accept(n, (struct sockaddr *)&addr, &len);
                     if(fd < 0) {
                         /* TODO: Need to handle these communication errors */
-                        DEBUGMSG2("_recieve() - Error Accepting socket: %s", strerror(errno));
+                        DEBUGMSG2("Error Accepting socket: %s", strerror(errno));
                     } else {
-                        DEBUGMSG2("_recieve() - Accepted socket on fd %d", n);
+                        DEBUGMSG2("Accepted socket on fd %d", n);
                         _add_connection(port, fd);
                     }
                 } else {

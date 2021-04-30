@@ -799,12 +799,9 @@ create_response(mb_port *port, unsigned char *buff, int size)
             word = index / 16;
             bit = index % 16;
             for(n = 0; n < count; n++) {
-                fprintf(stderr, "Buff[%d] = 0x%X\n", 7 +n/8, buff[7+n/8]);
                 if(buff[7 + n/8] & (0x01 << (n%8))) {
-                    fprintf(stderr, "Setting Coil %d to TRUE\n", index + n);
                     port->coilreg[word] |= (0x01 << bit);
                 } else {
-                    fprintf(stderr, "Setting Coil %d to FALSE\n", index + n);
                     port->coilreg[word] &= ~(0x01 << bit);
                 }
                 bit++;

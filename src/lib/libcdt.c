@@ -654,7 +654,7 @@ _dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int strlen, int count)
     h->index = tag.idx; /* This index is the database index */
 
     if(membername) {
-        /* This is the case where the .x is a number refering to a bit */
+        /* This is the case where the .x is a number referring to a bit */
         if(isdigit(membername[0])) {
             if(tag.count > 1 && index < 0) {
                 return ERR_ARG;

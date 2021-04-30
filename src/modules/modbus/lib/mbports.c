@@ -535,7 +535,7 @@ mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, 
     unsigned int reg_size, word, n;
     _mb_mutex_t *reg_mutex;
     unsigned char bit;
-    fprintf(stderr, "mb_write_register() called with regtype = %d\n", regtype);
+
     switch(regtype) {
         case MB_REG_HOLDING:
             reg_ptr = port->holdreg;
@@ -598,7 +598,7 @@ mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u
     unsigned int reg_size, word, n;
     _mb_mutex_t *reg_mutex;
     unsigned char bit;
-    fprintf(stderr, "mb_read_register() called with regtype = %d\n", regtype);
+
     switch(regtype) {
         case MB_REG_HOLDING:
             reg_ptr = port->holdreg;
