@@ -52,17 +52,57 @@ _port_thread(void *port) {
     result = mb_run_port((mb_port *)port);
 }
 
-/* This function writes the data to the proper register in the OpenDAX server. */
-static void
-_write_data(mb_port *port, tag_handle h, int reg)
-{
-    int n;
-    /*Add the extra byte so that we know that the
-     * mb_read_register() function won't overflow our buffer */
-    u_int8_t buff[h.size+1];
-    int result;
 
-    result = mb_read_register(port, reg, (u_int16_t *)buff, 0, h.count);
+/* This callback function is assigned as the slave_write callback to the modbus
+ * library.  After the library updates the modbus tables with new information this
+ * function is called which writes the data back to the OpenDAX server */
+static void
+_slave_write_callback(mb_port *port, int reg, int index, int count, void *userdata)
+{
+    u_int16_t buff[count];  /* This should be big enough */
+    int result;
+    port_userdata *ud;
+    tag_handle h;
+
+    ud = (port_userdata *)userdata;
+    /* We're going to cheat and build our own tag_handle */
+    /* We're assuming that the server loop won't call this function
+     * with bad data. */
+    switch(reg) {
+        case MB_REG_HOLDING: /* These are the 16 bit registers */
+            h.index = ud->reg[HOLD_REG].h.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_INPUT:
+            h.index = ud->reg[INPUT_REG].h.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_COIL:
+            h.index = ud->reg[COIL_REG].h.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
+        case MB_REG_DISC:
+            h.index = ud->reg[DISC_REG].h.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
+    }
+    result = mb_read_register(port, reg, buff, index , count);
     if(result) {
         dax_error(ds, "Unable to get data from Modbus Registers\n");
     } else {
@@ -74,74 +114,59 @@ _write_data(mb_port *port, tag_handle h, int reg)
 }
 
 
-/* This callback function is assigned as the slave_write callback to the modbus
- * library.  After the library updates the modbus tables with new information this
- * function is called which writes the data back to the OpenDAX server */
 static void
-_slave_write_callback(mb_port *port, int reg, int index, int count, void *userdata)
-{
+_slave_read_callback(mb_port *port, int reg, int index, int count, void *userdata) {
+    u_int16_t buff[count];  /* This should be big enough */
+    int result;
     port_userdata *ud;
+    tag_handle h;
 
     ud = (port_userdata *)userdata;
-    if(reg == MB_REG_HOLDING) {
-        _write_data(port, ud->reg[HOLD_REG].h, MB_REG_HOLDING);
-    } else if(reg == MB_REG_INPUT) {
-        _write_data(port, ud->reg[INPUT_REG].h, MB_REG_INPUT);
-    } else if(reg == MB_REG_COIL) {
-        _write_data(port, ud->reg[COIL_REG].h, MB_REG_COIL);
-    } else if(reg == MB_REG_DISC) {
-        _write_data(port, ud->reg[DISC_REG].h, MB_REG_DISC);
-    } else {
-        assert(0);
+    /* We're going to cheat and build our own tag_handle */
+    /* We're assuming that the server loop won't call this function
+     * with bad data. */
+    switch(reg) {
+        case MB_REG_HOLDING: /* These are the 16 bit registers */
+            h.index = ud->reg[HOLD_REG].h.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_INPUT:
+            h.index = ud->reg[INPUT_REG].h.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_COIL:
+            h.index = ud->reg[COIL_REG].h.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
+        case MB_REG_DISC:
+            h.index = ud->reg[DISC_REG].h.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
     }
-}
-
-/* This fucntion reads the data from the OpenDAX server and puts it into
- * the proper modbus register
- */
-static void
-_read_data(mb_port *port, tag_handle h, int reg) {
-    int n;
-    /*Add the extra byte so that we know that the
-     * mb_read_register() function won't overflow our buffer */
-    u_int8_t buff[h.size+1];
-    int result;
-
     result = dax_read_tag(ds, h, buff);
     if(result) {
         dax_error(ds, "Unable to write tag data to server\n");
     }
 
-    result = mb_write_register(port, reg, (u_int16_t *)buff, 0, h.count);
+    result = mb_write_register(port, reg, buff, index, count);
     if(result) {
         dax_error(ds, "Unable to write data to Modbus Registers\n");
-    } else {
-
-    }
-
-//    fprintf(stderr, "modmain.c/_read_data() ");
-//	for(n = 0; n < h.size; n++) {
-//		fprintf(stderr,"[0x%X]", buff[n]);
-//	}
-//	fprintf(stderr, "\n");
-}
-
-
-static void
-_slave_read_callback(mb_port *port, int reg, int index, int count, void *userdata) {
-    port_userdata *ud;
-
-    ud = (port_userdata *)userdata;
-    if(reg == MB_REG_HOLDING) {
-        _read_data(port, ud->reg[HOLD_REG].h, MB_REG_HOLDING);
-    } else if(reg == MB_REG_INPUT) {
-        _read_data(port, ud->reg[INPUT_REG].h, MB_REG_INPUT);
-    } else if(reg == MB_REG_COIL) {
-        _read_data(port, ud->reg[COIL_REG].h, MB_REG_COIL);
-    } else if(reg == MB_REG_DISC) {
-        _read_data(port, ud->reg[DISC_REG].h, MB_REG_DISC);
-    } else {
-        assert(0);
     }
 }
 
