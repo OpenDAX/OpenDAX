@@ -82,3 +82,8 @@ add_executable(library_event_queue_overflow2 libtest_event_queue_overflow2.c lib
 target_link_libraries(library_event_queue_overflow2 dax)
 add_test(library_event_queue_overflow2 library_event_queue_overflow2)
 set_tests_properties(library_event_queue_overflow2 PROPERTIES TIMEOUT 10)
+
+add_executable(library_dax_write_tag_001 libtest_dax_write_tag_001.c libtest_common.c)
+target_link_libraries(library_dax_write_tag_001 dax)
+add_test(library_dax_write_tag_001 library_dax_write_tag_001)
+set_tests_properties(library_dax_write_tag_001 PROPERTIES TIMEOUT 10)

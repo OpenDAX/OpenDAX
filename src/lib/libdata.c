@@ -42,20 +42,20 @@ init_tag_cache(dax_state *ds)
     return 0;
 }
 
- 
+
 /* This function assigns the data to *tag and bubbles
    this up one node in the list */
 static inline void
 _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
 {
     tag_cnode *before, *after;
-    
+
     /* Store the return values in tag */
     strcpy(tag->name, this->name);
     tag->idx = this->idx;
     tag->type = this->type;
     tag->count = this->count;
-    
+
     /* Bubble up:
      'after' is set to the node that we swap with
      'before' is set to the node that will be before
@@ -80,7 +80,7 @@ _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
     //--print_cache();
 }
 
-/* Used to check if a tag with the given index is in the 
+/* Used to check if a tag with the given index is in the
  * cache.  Sets the pointer to the tag and returns zero
  * if found and returns ERR_NOTFOUND otherwise
  */
@@ -88,7 +88,7 @@ int
 check_cache_index(dax_state *ds, tag_index idx, dax_tag *tag)
 {
     tag_cnode *this;
-    
+
     if(ds->cache_head != NULL) {
         this = ds->cache_head;
     } else {
@@ -96,7 +96,7 @@ check_cache_index(dax_state *ds, tag_index idx, dax_tag *tag)
     }
     if(ds->cache_head->idx != idx) {
         this = this->next;
-        
+
         while(this != ds->cache_head && this->idx != idx) {
             this = this->next;
         }
@@ -104,9 +104,9 @@ check_cache_index(dax_state *ds, tag_index idx, dax_tag *tag)
             return ERR_NOTFOUND;
         }
     }
-    
+
     _cache_hit(ds, this, tag);
-    
+
     return 0;
 }
 
@@ -117,7 +117,7 @@ int
 check_cache_name(dax_state *ds, char *name, dax_tag *tag)
 {
     tag_cnode *this;
-    
+
     if(ds->cache_head != NULL) {
         this = ds->cache_head;
     } else {
@@ -125,7 +125,7 @@ check_cache_name(dax_state *ds, char *name, dax_tag *tag)
     }
     if( strcmp(ds->cache_head->name, name) ) {
         this = this->next;
-        
+
         while(this != ds->cache_head && strcmp(this->name, name)) {
             this = this->next;
         }
@@ -133,9 +133,9 @@ check_cache_name(dax_state *ds, char *name, dax_tag *tag)
             return ERR_NOTFOUND;
         }
     }
-    
+
     _cache_hit(ds, this, tag);
-    
+
     return 0;
 }
 
@@ -145,7 +145,7 @@ int
 cache_tag_add(dax_state *ds, dax_tag *tag)
 {
     tag_cnode *new;
-    
+
     if(ds->cache_head == NULL) { /* First one */
         //--printf("adding {%d} to the beginning\n", tag->handle);
         new = malloc(sizeof(tag_cnode));
@@ -178,7 +178,7 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
     new->type = tag->type;
     new->count = tag->count;
     //--print_cache();
-    
+
     return 0;
 }
 
@@ -187,7 +187,7 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
 int
 cache_tag_del(dax_state *ds, tag_index idx) {
     tag_cnode *this, *head;
-    
+
     /* Search for the tag */
     if(ds->cache_head != NULL) {
         head = ds->cache_head;
@@ -197,7 +197,7 @@ cache_tag_del(dax_state *ds, tag_index idx) {
     }
     if( head->idx != idx ) {
         this = this->next;
-        
+
         while(this != head && (this->idx != idx)) {
             this = this->next;
         }
@@ -205,9 +205,9 @@ cache_tag_del(dax_state *ds, tag_index idx) {
             return ERR_NOTFOUND;
         }
     }
-    
+
     /* If we get this far the tag was found and 'this' should point to
-     * the tag we want to delete */ 
+     * the tag we want to delete */
     if(this->next == this) { /* This is the Last One */
         ds->cache_head = NULL;
     } else {
@@ -238,7 +238,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     char *newdata;
     datatype *dtype = NULL;
     cdt_member *this = NULL;
-    
+
     newdata = (char *)data + offset;
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
@@ -314,7 +314,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
             default:
                 return ERR_ARG;
                 break;
-        }    
+        }
     }
     return 0;
 }
@@ -323,7 +323,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
  * Higher level tag reading function.  This function is much more intelligent
  * about what type of data is being read.  It reads the data and then does
  * any conversions necessary.
- * 
+ *
  * @param ds Pointer to dax state object
  * @param handle The handle that describes the data that we wish to read
  * @param data The buffer where this function will store the data
@@ -334,10 +334,10 @@ dax_read_tag(dax_state *ds, tag_handle handle, void *data)
 {
     int result, n, i;
     u_int8_t *newdata;
-    
+
     result = dax_read(ds, handle.index, handle.byte, data, handle.size);
     if(result) return result;
-    
+
     /* The only time that the bit index should be greater than 0 is if
      * the tag datatype is BOOL.  If not the bytes should be aligned.
      * If there is a bit index then we need to 'realign' the bits so that
@@ -375,7 +375,7 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     char *newdata;
     datatype *dtype = NULL;
     cdt_member *this = NULL;
-    
+
     newdata = (char *)data + offset;
 
     if(IS_CUSTOM(type)) {
@@ -463,20 +463,26 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
 int
 dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 {
-    int i, n, result = 0;
+    int i, n, result = 0, size;
     u_int8_t *mask, *newdata;
-    
-    if(handle.type == DAX_BOOL && handle.bit > 0) {
-        mask = malloc(handle.size);
+
+    if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
+        size = handle.size;
+        /* This takes care of the case where we have an even 8 bits but
+         * we are offset from zero so we need an exta byte */
+        if(handle.bit && !(handle.count % 8)) {
+            size++;
+        }
+        mask = malloc(size);
         if(mask == NULL) return ERR_ALLOC;
-        newdata = malloc(handle.size);
+        newdata = malloc(size);
         if(newdata == NULL) {
             free(mask);
             return ERR_ALLOC;
         }
-        bzero(mask, handle.size);
-        bzero(newdata, handle.size);
-            
+        bzero(mask, size);
+        bzero(newdata, size);
+
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
             if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
@@ -485,7 +491,7 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
             mask[i / 8] |= (1 << (i % 8));
             i++;
         }
-        result = dax_mask(ds, handle.index, handle.byte, newdata, mask, handle.size);
+        result = dax_mask(ds, handle.index, handle.byte, newdata, mask, size);
         free(newdata);
         free(mask);
     } else {
@@ -508,19 +514,25 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 int
 dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 {
-    int i, n, result = 0;
+    int i, n, result = 0, size;
     u_int8_t *newmask = NULL, *newdata;
 
-    if(handle.type == DAX_BOOL && handle.bit > 0) {
-        newmask = malloc(handle.size);
+    if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
+        size = handle.size;
+        /* This takes care of the case where we have an even 8 bits but
+         * we are offset from zero so we need an exta byte */
+        if(handle.bit && !(handle.count % 8)) {
+            size++;
+        }
+        newmask = malloc(size);
         if(newmask == NULL) return ERR_ALLOC;
-        newdata = malloc(handle.size);
+        newdata = malloc(size);
         if(newdata == NULL) {
             free(newmask);
             return ERR_ALLOC;
         }
-        bzero(newmask, handle.size);
-        bzero(newdata, handle.size);
+        bzero(newmask, size);
+        bzero(newdata, size);
 
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
@@ -530,7 +542,7 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
             newmask[i / 8] |= (1 << (i % 8));
             i++;
         }
-        result = dax_mask(ds, handle.index, handle.byte, newdata, newmask, handle.size);
+        result = dax_mask(ds, handle.index, handle.byte, newdata, newmask, size);
         free(newmask);
         free(newdata);
     } else {
