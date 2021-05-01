@@ -17,7 +17,7 @@
  */
 
 /*
- *  Test function code 5 for the modbus server module
+ *  Test function code 6 (read holding registers) for modbus server
  */
 
 #include <common.h>
@@ -81,6 +81,7 @@ main(int argc, char *argv[])
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
+    dax_uint test;
     u_int8_t buff[1024], rbuff[8], bit;
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
@@ -101,7 +102,7 @@ main(int argc, char *argv[])
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
     if(result) return result;
-    result =  dax_tag_handle(ds, &h, "mb_creg", 0);
+    result =  dax_tag_handle(ds, &h, "mb_hreg", 0);
     if(result) return result;
 
     /* Open a socket to do the modbus stuff */
@@ -116,19 +117,19 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s\n", strerror(errno));
         exit(result);
     }
-    /* Loop through all the coils setting them */
+    /* Loop through all the registers setting them */
     for(n=0; n<h.count; n++) {
         printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
+        /* Set it every register in OpenDAX to zero */
         bzero(buff, h.size);
         result = dax_write_tag(ds, h, buff);
         if(result) fprintf(stderr, "Unable to write tag\n");
         /* Set the next bit */
-        buff[0] = 0xFF;
-        buff[1] = 0;
+        buff[0] = n/256;
+        buff[1] = n%256;
         sframe.tid = n;
         sframe.uid = 1;
-        sframe.fc = 5;
+        sframe.fc = 6;
         sframe.addr = n;
         sframe.size = 2;
         sframe.buff = buff;
@@ -137,57 +138,15 @@ main(int argc, char *argv[])
         rframe.buff = rbuff;
         result = _recv_frame(s, &rframe);
         assert(result == 12);
-
+        /* Read them back and verify that they are correct */
         result = dax_read_tag(ds, h, buff);
         if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] & (0x01 << (i % 8));
-            if(i == n) {
-                if(bit == 0) exit_status++;
+        for(i=0; i<h.size; i+=2) {
+            test = buff[i+1] * 256 + buff[i];
+            if(i/2==n) {
+                if(test != n) exit_status++;
             } else {
-                if(bit != 0) exit_status++;
-            }
-        }
-    }
-
-    /* Loop through all the coils clearing them */
-    for(n=0; n<h.count; n++) {
-        printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
-        memset(buff, '\xFF', h.size);
-        result = dax_write_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to write tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("[0x%X]",buff[i]);
-        }
-        printf("\n");
-        /* Set the next bit */
-        buff[0] = 0;
-        buff[1] = 0;
-        sframe.tid = n;
-        sframe.uid = 1;
-        sframe.fc = 5;
-        sframe.addr = n;
-        sframe.size = 2;
-        sframe.buff = buff;
-        result = _send_frame(s, sframe);
-        assert(result == 12);
-        rframe.buff = rbuff;
-        result = _recv_frame(s, &rframe);
-        assert(result == 12);
-
-        result = dax_read_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("<0x%X>",buff[i]);
-        }
-        printf("\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] | ~(0x01 << (i % 8));
-            if(i == n) {
-                if(bit != 0xFF) exit_status++;
-            } else {
-                if(bit == 0xFF) exit_status++;
+                if(test != 0x0000) exit_status++;
             }
         }
     }

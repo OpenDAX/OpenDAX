@@ -38,3 +38,9 @@ add_executable(module_modbus_server_fc5 modtest_server_fc5.c ../modtest_common.c
 target_link_libraries(module_modbus_server_fc5 dax)
 add_test(module_modbus_server_fc5 module_modbus_server_fc5)
 set_tests_properties(module_modbus_server_fc5 PROPERTIES TIMEOUT 10)
+
+# Test write single holding register message
+add_executable(module_modbus_server_fc6 modtest_server_fc6.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_fc6 dax)
+add_test(module_modbus_server_fc6 module_modbus_server_fc6)
+set_tests_properties(module_modbus_server_fc6 PROPERTIES TIMEOUT 10)

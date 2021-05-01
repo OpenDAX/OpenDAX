@@ -350,6 +350,7 @@ getout(int exitcode)
     exit(exitcode);
 }
 
+/* TODO: Change these to dax logging function */
 /* Callback functions for printing the serial traffic */
 void
 outdata(mb_port *mp, u_int8_t *buff, unsigned int len)
