@@ -17,9 +17,11 @@
  */
 
 /*
- *  Test function code 5 for the modbus server module
+ *  Test function code 15 for the modbus server module
  */
 
+#define _XOPEN_SOURCE
+#include <unistd.h>
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
@@ -34,7 +36,8 @@ struct mod_frame {
     u_int16_t tid;
     u_int8_t  uid;
     u_int8_t  fc;
-    u_int16_t  addr;
+    u_int16_t addr;
+    u_int16_t count;
     u_int8_t *buff;
     u_int16_t size; /* Size of buffer */
 };
@@ -54,8 +57,12 @@ _send_frame(int sock, struct mod_frame frame) {
     buff[7] = frame.fc;
     buff[8] = frame.addr>>8;
     buff[9] = frame.addr;
-    memcpy(&buff[10], frame.buff, frame.size);
-    result = send(sock, buff, 12, 0);
+    buff[10] = frame.count>>8;
+    buff[11] = frame.count;
+    buff[12] = frame.size;
+    swab(frame.buff, &buff[13], frame.size);
+    //memcpy(&buff[13], frame.buff, frame.size);
+    result = send(sock, buff, 13+frame.size, 0);
 
     return result;
 }
@@ -76,12 +83,36 @@ _recv_frame(int sock, struct mod_frame *frame) {
 }
 
 int
+_send_request(int sock, u_int16_t addr, u_int16_t count, u_int16_t *snd_buff) {
+    static u_int16_t tid;
+    int result;
+    struct mod_frame sframe, rframe;
+    u_int8_t buff[2];
+    u_int8_t rbuff[256];
+
+    buff[0] = count >> 8;
+    buff[1] = count % 256;
+    sframe.tid = tid++;
+    sframe.uid = 1;
+    sframe.fc = 16;
+    sframe.addr = addr;
+    sframe.count = count;
+    sframe.size = count * 2;
+    sframe.buff = (u_int8_t *)snd_buff;
+    result = _send_frame(sock, sframe);
+    rframe.buff = rbuff;
+    result = _recv_frame(sock, &rframe);
+    if(rframe.fc != sframe.fc) return -1; /* Check for exception */
+    return 0;
+}
+
+int
 main(int argc, char *argv[])
 {
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
-    u_int8_t buff[1024], rbuff[8], bit;
+    u_int16_t buff[1024], rbuff[1024];
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
@@ -101,7 +132,7 @@ main(int argc, char *argv[])
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
     if(result) return result;
-    result =  dax_tag_handle(ds, &h, "mb_creg", 0);
+    result =  dax_tag_handle(ds, &h, "mb_hreg", 0);
     if(result) return result;
 
     /* Open a socket to do the modbus stuff */
@@ -116,82 +147,23 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s\n", strerror(errno));
         exit(result);
     }
-    /* Loop through all the coils setting them */
-    for(n=0; n<h.count; n++) {
-        printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
-        bzero(buff, h.size);
-        result = dax_write_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to write tag\n");
-        /* Set the next bit */
-        buff[0] = 0xFF;
-        buff[1] = 0;
-        sframe.tid = n;
-        sframe.uid = 1;
-        sframe.fc = 5;
-        sframe.addr = n;
-        sframe.size = 2;
-        sframe.buff = buff;
-        result = _send_frame(s, sframe);
-        assert(result == 12);
-        rframe.buff = rbuff;
-        result = _recv_frame(s, &rframe);
-        assert(result == 12);
 
-        result = dax_read_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] & (0x01 << (i % 8));
-            if(i == n) {
-                if(bit == 0) exit_status++;
-            } else {
-                if(bit != 0) exit_status++;
-            }
-        }
+    buff[0] = 0x1234; buff[1] = 0x5678;
+    exit_status += _send_request(s, 0, 2, buff);
+    dax_read_tag(ds, h, rbuff);
+    for(i=0;i<2;i++) if(buff[i] != rbuff[i]) exit_status++;
+
+    for(i=0;i<h.count;i++) {
+        buff[i] = i;
     }
+    exit_status += _send_request(s, 0, h.count, buff);
+    dax_read_tag(ds, h, rbuff);
+    for(i=0;i<h.count;i++) if(buff[i] != rbuff[i]) exit_status++;
 
-    /* Loop through all the coils clearing them */
-    for(n=0; n<h.count; n++) {
-        printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
-        memset(buff, '\xFF', h.size);
-        result = dax_write_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to write tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("[0x%X]",buff[i]);
-        }
-        printf("\n");
-        /* Set the next bit */
-        buff[0] = 0;
-        buff[1] = 0;
-        sframe.tid = n;
-        sframe.uid = 1;
-        sframe.fc = 5;
-        sframe.addr = n;
-        sframe.size = 2;
-        sframe.buff = buff;
-        result = _send_frame(s, sframe);
-        assert(result == 12);
-        rframe.buff = rbuff;
-        result = _recv_frame(s, &rframe);
-        assert(result == 12);
-
-        result = dax_read_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("<0x%X>",buff[i]);
-        }
-        printf("\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] | ~(0x01 << (i % 8));
-            if(i == n) {
-                if(bit != 0xFF) exit_status++;
-            } else {
-                if(bit == 0xFF) exit_status++;
-            }
-        }
-    }
-
+    buff[0] = 0x1234; buff[1] = 0x5678;
+    exit_status += _send_request(s, 16, 2, buff);
+    dax_read_tag(ds, h, rbuff);
+    for(i=0;i<2;i++) if(buff[i] != rbuff[i+16]) exit_status++;
 
     close(s);
     dax_disconnect(ds);

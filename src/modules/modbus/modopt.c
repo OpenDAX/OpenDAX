@@ -60,35 +60,35 @@ _get_serial_config(lua_State *L, mb_port *p)
     if(!lua_istable(L, -1)) {
         luaL_error(L, "_get_serial_config() the top of the Lua stack is not a table");
     }
-  
+
     lua_getfield(L, -1, "device");
     device = (char *)lua_tostring(L, -1);
     if(device == NULL) {
         dax_debug(ds, 1, "No device given for serial port %s, Using /dev/serial", mb_get_port_name(p));
         device = strdup("/dev/serial");
     }
-    
+
     lua_getfield(L, -2, "baudrate");
     baudrate = (int)lua_tonumber(L, -1);
     if(baudrate == 0) {
         dax_debug(ds, 1, "Unknown Baudrate, Using 9600");
         baudrate = 9600;
     }
-    
+
     lua_getfield(L, -3, "databits");
     databits = (short)lua_tonumber(L, -1);
     if(databits < 7 || databits > 8) {
         dax_debug(ds, 1, "Unknown databits - %d, Using 8", databits);
         databits = 8;
     }
-    
+
     lua_getfield(L, -4, "stopbits");
     stopbits = (unsigned int)lua_tonumber(L, -1);
     if(stopbits != 1 && stopbits != 2) {
         dax_debug(ds, 1, "Unknown stopbits - %d, Using 1", stopbits);
         stopbits = 1;
     }
-    
+
     lua_getfield(L, -5, "parity");
     if(lua_isnumber(L, -1)) {
         parity = (unsigned char)lua_tonumber(L, -1);
@@ -163,52 +163,65 @@ static inline int
 _get_slave_config(lua_State *L, mb_port *p)
 {
     unsigned int size;
-    int result = 0;
+    u_int16_t *result = 0;
     dax_error(ds, "Slave functionality is not yet implemented");
     port_userdata *ud;
+    char *reg_name;
 
     ud = malloc(sizeof(port_userdata));
+    bzero(ud, sizeof(port_userdata));
     if(ud == NULL) return ERR_ALLOC;
-    
+
     lua_getfield(L, -1, "holdreg");
-    ud->reg[HOLD_REG].mbreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->reg[HOLD_REG].mbreg == NULL) return ERR_ALLOC;
+    reg_name = (char *)lua_tostring(L, -1);
     lua_getfield(L, -2, "holdsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    /* Need to check for NULL pointer return here */
-    mb_alloc_holdreg(p, size);
+    if(reg_name && size) {
+        ud->reg[HOLD_REG].mbreg = strdup(reg_name);
+        if(ud->reg[HOLD_REG].mbreg == NULL) return ERR_ALLOC;
+        result = mb_alloc_holdreg(p, size);
+        if(result == NULL) return ERR_ALLOC;
+    }
     lua_pop(L, 2);
-    if(result) return result;
-    
-        
+
     lua_getfield(L, -1, "inputreg");
-    ud->reg[INPUT_REG].mbreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->reg[INPUT_REG].mbreg == NULL) return ERR_ALLOC;
+    reg_name = (char *)lua_tostring(L, -1);
     lua_getfield(L, -2, "inputsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    mb_alloc_inputreg(p, size);
+    if(reg_name && size) {
+        ud->reg[INPUT_REG].mbreg = strdup(reg_name);
+        if(ud->reg[INPUT_REG].mbreg == NULL) return ERR_ALLOC;
+        result = mb_alloc_inputreg(p, size);
+        if(result == NULL) return ERR_ALLOC;
+    }
     lua_pop(L, 2);
-    if(result) return result;
-    
+
     lua_getfield(L, -1, "coilreg");
-    ud->reg[COIL_REG].mbreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->reg[COIL_REG].mbreg == NULL) return ERR_ALLOC;
+    reg_name = (char *)lua_tostring(L, -1);
     lua_getfield(L, -2, "coilsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    mb_alloc_coil(p, size);
+    if(reg_name && size) {
+        ud->reg[COIL_REG].mbreg = strdup(reg_name);
+        if(ud->reg[COIL_REG].mbreg == NULL) return ERR_ALLOC;
+        result = mb_alloc_coil(p, size);
+        if(result == NULL) return ERR_ALLOC;
+    }
     lua_pop(L, 2);
-    if(result) return result;
-    
+
     lua_getfield(L, -1, "discreg");
-    ud->reg[DISC_REG].mbreg = strdup((char *)lua_tostring(L, -1));
-    if(ud->reg[DISC_REG].mbreg == NULL) return ERR_ALLOC;
+    reg_name = (char *)lua_tostring(L, -1);
     lua_getfield(L, -2, "discsize");
     size = (unsigned int)lua_tonumber(L, -1);
-    mb_alloc_discrete(p, size);
+    if(reg_name && size) {
+        ud->reg[DISC_REG].mbreg = strdup(reg_name);
+        if(ud->reg[DISC_REG].mbreg == NULL) return ERR_ALLOC;
+        result = mb_alloc_discrete(p, size);
+        if(result == NULL) return ERR_ALLOC;
+    }
     lua_pop(L, 2);
-    
+
     mb_set_port_userdata(p, ud, NULL);
-    return result;
+    return 0;
 }
 
 /* Lua interface function for adding a port.  It takes a single

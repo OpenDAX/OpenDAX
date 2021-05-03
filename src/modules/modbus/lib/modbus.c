@@ -734,6 +734,37 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
     return (count * 2) + 3;
 }
 
+/* This function makes sure that we have a register defined for the given
+ * function code.  This is used to determine if we need to send a wrong
+ * function code exception.
+ */
+int
+_check_function_code_exception(mb_port *port, u_int8_t function) {
+    switch(function) {
+        case 1:
+        case 5:
+        case 15:/* Read Coils */
+            if(port->coilsize) return 0;
+            break;
+        case 2: /* Read Discrete Inputs */
+            if(port->discsize) return 0;
+            break;
+        case 3: /* Read Holding Registers */
+        case 6:
+        case 16:
+            if(port->holdsize) return 0;
+            break;
+        case 4: /* Read Input Registers */
+            if(port->inputsize) return 0;
+            break;
+        case 8:
+            if(port->protocol != MB_TCP) return 0;
+        default:
+            break;
+    }
+    return ME_WRONG_FUNCTION;
+}
+
 /* Creates a generic slave response.  buff should point to a buffer that
  * looks like an RTU request without the checksum.  This function will generate
  * an RTU response message, and write that back into buff.  size is the total
@@ -748,6 +779,9 @@ create_response(mb_port *port, unsigned char *buff, int size)
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
 
+    if(_check_function_code_exception(port, function)) {
+        return _create_exception(buff, ME_WRONG_FUNCTION);
+    }
     /* If we're TCP then node doesn't matter yet.  Other wise return 0 if
      * this message isn't for us. */
     if(port->protocol != MB_TCP) {

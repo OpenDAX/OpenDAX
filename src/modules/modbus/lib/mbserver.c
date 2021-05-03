@@ -266,7 +266,6 @@ server_loop(mb_port *port)
     } else {
         DEBUGMSG2("Listening on file descriptor %d", port->fd);
     }
-    
     while(1) {
         result = _receive(port);
         if(result) {

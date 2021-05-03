@@ -17,9 +17,10 @@
  */
 
 /*
- *  Test function code 5 for the modbus server module
+ *  Test function code 1 for the modbus server module
  */
 
+#define _XOPEN_SOURCE
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
@@ -28,6 +29,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 #include "../modtest_common.h"
 
 struct mod_frame {
@@ -35,6 +37,7 @@ struct mod_frame {
     u_int8_t  uid;
     u_int8_t  fc;
     u_int16_t  addr;
+    u_int8_t bytes;
     u_int8_t *buff;
     u_int16_t size; /* Size of buffer */
 };
@@ -70,9 +73,36 @@ _recv_frame(int sock, struct mod_frame *frame) {
     frame->size = ((u_int16_t)buff[4]<<8 | buff[5])-4;
     frame->uid = buff[6];
     frame->fc = buff[7];
-    frame->addr = (u_int16_t)buff[8]<<8 | buff[9];
-    memcpy(frame->buff, &buff[10], frame->size);
+    frame->bytes = buff[8];
+    memcpy(frame->buff, &buff[9], frame->bytes);
     return result;
+}
+
+int
+_test_request(int sock, u_int16_t addr, u_int16_t count, u_int8_t *cmp_buff) {
+    static u_int16_t tid;
+    int result;
+    struct mod_frame sframe, rframe;
+    u_int8_t buff[2];
+    u_int8_t rbuff[256];
+
+    buff[0] = count >> 8;
+    buff[1] = count % 256;
+    sframe.tid = tid++;
+    sframe.uid = 1;
+    sframe.fc = 2;
+    sframe.addr = addr;
+    sframe.size = 2;
+    sframe.buff = buff;
+    result = _send_frame(sock, sframe);
+    rframe.buff = rbuff;
+    result = _recv_frame(sock, &rframe);
+    printf("Checking %d bytes\n",(count-1)/8 + 1);
+    for(int i=0; i<((count-1)/8 + 1); i++) {
+        printf("rbuff[%d] = 0x%X, cmp_buff[%d] = 0x%X\n", i, rbuff[i], i, cmp_buff[i]);
+        if( rbuff[i] != cmp_buff[i] ) return 1;
+    }
+    return 0;
 }
 
 int
@@ -81,15 +111,14 @@ main(int argc, char *argv[])
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
-    u_int8_t buff[1024], rbuff[8], bit;
+    u_int8_t buff[1024];
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
     int result;
     pid_t server_pid, mod_pid;
-    struct mod_frame sframe, rframe;
 
-    /* Run the tag server andn the modbus module */
+    /* Run the tag server and the modbus module */
     server_pid = run_server();
     mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server.conf");
     /* Connect to the tag server */
@@ -101,7 +130,7 @@ main(int argc, char *argv[])
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
     if(result) return result;
-    result =  dax_tag_handle(ds, &h, "mb_creg", 0);
+    result =  dax_tag_handle(ds, &h, "mb_dreg", 0);
     if(result) return result;
 
     /* Open a socket to do the modbus stuff */
@@ -116,82 +145,34 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s\n", strerror(errno));
         exit(result);
     }
-    /* Loop through all the coils setting them */
-    for(n=0; n<h.count; n++) {
-        printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
-        bzero(buff, h.size);
-        result = dax_write_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to write tag\n");
-        /* Set the next bit */
-        buff[0] = 0xFF;
-        buff[1] = 0;
-        sframe.tid = n;
-        sframe.uid = 1;
-        sframe.fc = 5;
-        sframe.addr = n;
-        sframe.size = 2;
-        sframe.buff = buff;
-        result = _send_frame(s, sframe);
-        assert(result == 12);
-        rframe.buff = rbuff;
-        result = _recv_frame(s, &rframe);
-        assert(result == 12);
+    bzero(buff, h.size); /* Zero out the buffer */
+    buff[0]=0x01;        /* set the first bit to 1*/
+    dax_write_tag(ds, h, buff); /* Write it to OpenDAX */
+    exit_status += _test_request(s, 0, 1, buff); /* Check it */
+    /* chekc a whole byte */
+    buff[0]=0xAA; buff[1]=0x55;
+    dax_write_tag(ds, h, buff);
+    exit_status += _test_request(s, 0, 8, buff);
+    /* Check a byte and a half */
+    buff[1] = 0x05;
+    exit_status += _test_request(s, 0, 12, buff);
+    /* Check a byte and a half starting with the second byte */
+    buff[0] = 0x12; buff[1] = 0x34; buff[2] = 0x56;
+    dax_write_tag(ds, h, buff);
+    buff[2] = 0x6;
+    exit_status += _test_request(s, 8, 12, &buff[1]);
 
-        result = dax_read_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] & (0x01 << (i % 8));
-            if(i == n) {
-                if(bit == 0) exit_status++;
-            } else {
-                if(bit != 0) exit_status++;
-            }
-        }
+    buff[0] = 0x12; buff[1] = 0x34; buff[2] = 0x56;
+    dax_write_tag(ds, h, buff);
+    /* basically shifting four bits right, and removing four */
+    buff[0] = 0x41; buff[1] = 0x03;
+    exit_status += _test_request(s, 4, 12, buff);
+    /* read the whole thing */
+    for(i=0;i<h.size;i++) {
+        buff[i] = i;
     }
-
-    /* Loop through all the coils clearing them */
-    for(n=0; n<h.count; n++) {
-        printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
-        memset(buff, '\xFF', h.size);
-        result = dax_write_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to write tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("[0x%X]",buff[i]);
-        }
-        printf("\n");
-        /* Set the next bit */
-        buff[0] = 0;
-        buff[1] = 0;
-        sframe.tid = n;
-        sframe.uid = 1;
-        sframe.fc = 5;
-        sframe.addr = n;
-        sframe.size = 2;
-        sframe.buff = buff;
-        result = _send_frame(s, sframe);
-        assert(result == 12);
-        rframe.buff = rbuff;
-        result = _recv_frame(s, &rframe);
-        assert(result == 12);
-
-        result = dax_read_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("<0x%X>",buff[i]);
-        }
-        printf("\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] | ~(0x01 << (i % 8));
-            if(i == n) {
-                if(bit != 0xFF) exit_status++;
-            } else {
-                if(bit == 0xFF) exit_status++;
-            }
-        }
-    }
-
+    dax_write_tag(ds, h, buff);
+    exit_status += _test_request(s, 0, h.count, buff);
 
     close(s);
     dax_disconnect(ds);

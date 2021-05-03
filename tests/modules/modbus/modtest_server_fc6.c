@@ -90,7 +90,7 @@ main(int argc, char *argv[])
     pid_t server_pid, mod_pid;
     struct mod_frame sframe, rframe;
 
-    /* Run the tag server adn teh modbus module */
+    /* Run the tag server and the modbus module */
     server_pid = run_server();
     mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server.conf");
     /* Connect to the tag server */

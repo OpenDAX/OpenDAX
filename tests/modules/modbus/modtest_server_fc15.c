@@ -17,7 +17,7 @@
  */
 
 /*
- *  Test function code 5 for the modbus server module
+ *  Test function code 15 for the modbus server module
  */
 
 #include <common.h>
@@ -34,7 +34,8 @@ struct mod_frame {
     u_int16_t tid;
     u_int8_t  uid;
     u_int8_t  fc;
-    u_int16_t  addr;
+    u_int16_t addr;
+    u_int16_t count;
     u_int8_t *buff;
     u_int16_t size; /* Size of buffer */
 };
@@ -54,8 +55,11 @@ _send_frame(int sock, struct mod_frame frame) {
     buff[7] = frame.fc;
     buff[8] = frame.addr>>8;
     buff[9] = frame.addr;
-    memcpy(&buff[10], frame.buff, frame.size);
-    result = send(sock, buff, 12, 0);
+    buff[10] = frame.count>>8;
+    buff[11] = frame.count;
+    buff[12] = frame.size;
+    memcpy(&buff[13], frame.buff, frame.size);
+    result = send(sock, buff, 13+frame.size, 0);
 
     return result;
 }
@@ -76,12 +80,36 @@ _recv_frame(int sock, struct mod_frame *frame) {
 }
 
 int
+_send_request(int sock, u_int16_t addr, u_int16_t count, u_int8_t *snd_buff) {
+    static u_int16_t tid;
+    int result;
+    struct mod_frame sframe, rframe;
+    u_int8_t buff[2];
+    u_int8_t rbuff[256];
+
+    buff[0] = count >> 8;
+    buff[1] = count % 256;
+    sframe.tid = tid++;
+    sframe.uid = 1;
+    sframe.fc = 15;
+    sframe.addr = addr;
+    sframe.count = count;
+    sframe.size = (count - 1)/8 + 1;
+    sframe.buff = snd_buff;
+    result = _send_frame(sock, sframe);
+    rframe.buff = rbuff;
+    result = _recv_frame(sock, &rframe);
+    if(rframe.fc != sframe.fc) return -1; /* Check for exception */
+    return 0;
+}
+
+int
 main(int argc, char *argv[])
 {
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
-    u_int8_t buff[1024], rbuff[8], bit;
+    u_int8_t buff[1024], rbuff[1024];
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
@@ -116,82 +144,27 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s\n", strerror(errno));
         exit(result);
     }
-    /* Loop through all the coils setting them */
-    for(n=0; n<h.count; n++) {
-        printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
-        bzero(buff, h.size);
-        result = dax_write_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to write tag\n");
-        /* Set the next bit */
-        buff[0] = 0xFF;
-        buff[1] = 0;
-        sframe.tid = n;
-        sframe.uid = 1;
-        sframe.fc = 5;
-        sframe.addr = n;
-        sframe.size = 2;
-        sframe.buff = buff;
-        result = _send_frame(s, sframe);
-        assert(result == 12);
-        rframe.buff = rbuff;
-        result = _recv_frame(s, &rframe);
-        assert(result == 12);
 
-        result = dax_read_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] & (0x01 << (i % 8));
-            if(i == n) {
-                if(bit == 0) exit_status++;
-            } else {
-                if(bit != 0) exit_status++;
-            }
-        }
-    }
+    buff[0] = 0x5A; buff[1] = 0xA5;
+    exit_status += _send_request(s, 0, 16, buff);
+    dax_read_tag(ds, h, rbuff);
+    for(i=0;i<2;i++) if(buff[i] != rbuff[i]) exit_status++;
 
-    /* Loop through all the coils clearing them */
-    for(n=0; n<h.count; n++) {
-        printf("Testing Register %d of %d\n", n, h.count);
-        /* Set it every coil to zero */
-        memset(buff, '\xFF', h.size);
-        result = dax_write_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to write tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("[0x%X]",buff[i]);
-        }
-        printf("\n");
-        /* Set the next bit */
-        buff[0] = 0;
-        buff[1] = 0;
-        sframe.tid = n;
-        sframe.uid = 1;
-        sframe.fc = 5;
-        sframe.addr = n;
-        sframe.size = 2;
-        sframe.buff = buff;
-        result = _send_frame(s, sframe);
-        assert(result == 12);
-        rframe.buff = rbuff;
-        result = _recv_frame(s, &rframe);
-        assert(result == 12);
+    buff[0] = 0x12; buff[1] = 0x34; buff[2] = 0x56; buff[3] = 0x78;
+    buff[4] = 0x9A; buff[5] = 0xBC; buff[6] = 0xDE; buff[7] = 0xF0;
+    exit_status += _send_request(s, 0, 64, buff);
+    dax_read_tag(ds, h, rbuff);
+    for(i=0;i<8;i++) if(buff[i] != rbuff[i]) exit_status++;
 
-        result = dax_read_tag(ds, h, buff);
-        if(result) fprintf(stderr, "Unable to read tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("<0x%X>",buff[i]);
-        }
-        printf("\n");
-        for(i=0; i<h.count; i++) {
-            bit = buff[i / 8] | ~(0x01 << (i % 8));
-            if(i == n) {
-                if(bit != 0xFF) exit_status++;
-            } else {
-                if(bit == 0xFF) exit_status++;
-            }
-        }
-    }
+    bzero(buff, 8);
+    exit_status += _send_request(s, 0, 64, buff);
+    dax_read_tag(ds, h, rbuff);
+    for(i=0;i<8;i++) if(buff[i] != rbuff[i]) exit_status++;
 
+    buff[0] = 0xFF;
+    exit_status += _send_request(s, 4, 8, buff);
+    dax_read_tag(ds, h, rbuff);
+    if(rbuff[0] != 0xF0 && rbuff[1] != 0x0F) exit_status++;
 
     close(s);
     dax_disconnect(ds);

@@ -33,6 +33,42 @@ target_link_libraries(module_modbus_server_responses dax)
 add_test(module_modbus_server_responses module_modbus_server_responses)
 set_tests_properties(module_modbus_server_responses PROPERTIES TIMEOUT 10)
 
+# Check server exceptions
+add_executable(module_modbus_server_exceptions_1 modtest_server_exceptions_1.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_exceptions_1 dax)
+add_test(module_modbus_server_exceptions_1 module_modbus_server_exceptions_1)
+set_tests_properties(module_modbus_server_exceptions_1 PROPERTIES TIMEOUT 10)
+
+# Check server exceptions
+add_executable(module_modbus_server_exceptions_2 modtest_server_exceptions_2.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_exceptions_2 dax)
+add_test(module_modbus_server_exceptions_2 module_modbus_server_exceptions_2)
+set_tests_properties(module_modbus_server_exceptions_2 PROPERTIES TIMEOUT 10)
+
+# Test read coils
+add_executable(module_modbus_server_fc1 modtest_server_fc1.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_fc1 dax)
+add_test(module_modbus_server_fc1 module_modbus_server_fc1)
+set_tests_properties(module_modbus_server_fc1 PROPERTIES TIMEOUT 10)
+
+# Test read digital inputs
+add_executable(module_modbus_server_fc2 modtest_server_fc2.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_fc2 dax)
+add_test(module_modbus_server_fc2 module_modbus_server_fc2)
+set_tests_properties(module_modbus_server_fc2 PROPERTIES TIMEOUT 10)
+
+# Test read holding registers
+add_executable(module_modbus_server_fc3 modtest_server_fc3.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_fc3 dax)
+add_test(module_modbus_server_fc3 module_modbus_server_fc3)
+set_tests_properties(module_modbus_server_fc3 PROPERTIES TIMEOUT 10)
+
+# Test read holding registers
+add_executable(module_modbus_server_fc4 modtest_server_fc4.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_fc4 dax)
+add_test(module_modbus_server_fc4 module_modbus_server_fc4)
+set_tests_properties(module_modbus_server_fc4 PROPERTIES TIMEOUT 10)
+
 # Test write single coil message
 add_executable(module_modbus_server_fc5 modtest_server_fc5.c ../modtest_common.c)
 target_link_libraries(module_modbus_server_fc5 dax)
@@ -44,3 +80,15 @@ add_executable(module_modbus_server_fc6 modtest_server_fc6.c ../modtest_common.c
 target_link_libraries(module_modbus_server_fc6 dax)
 add_test(module_modbus_server_fc6 module_modbus_server_fc6)
 set_tests_properties(module_modbus_server_fc6 PROPERTIES TIMEOUT 10)
+
+# Test write multiple coil message
+add_executable(module_modbus_server_fc15 modtest_server_fc15.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_fc15 dax)
+add_test(module_modbus_server_fc15 module_modbus_server_fc15)
+set_tests_properties(module_modbus_server_fc15 PROPERTIES TIMEOUT 10)
+
+# Test write multiple coil message
+add_executable(module_modbus_server_fc16 modtest_server_fc16.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_fc16 dax)
+add_test(module_modbus_server_fc16 module_modbus_server_fc16)
+set_tests_properties(module_modbus_server_fc16 PROPERTIES TIMEOUT 10)

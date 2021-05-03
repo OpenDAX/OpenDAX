@@ -217,7 +217,7 @@ _setup_port(mb_port *port)
         size = mb_get_discrete_size(port);
         if(size) {
             _slave_reg_add(port, &ud->reg[DISC_REG], MB_REG_DISC, size);
-        }        
+        }
         mb_set_slave_write_callback(port, _slave_write_callback);
         mb_set_slave_read_callback(port, _slave_read_callback);
     }
