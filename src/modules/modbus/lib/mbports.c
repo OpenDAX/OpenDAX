@@ -501,7 +501,7 @@ mb_alloc_discrete(mb_port *port, unsigned int size)
         port->discsize = size;
         port->discreg = new;
     }
-    bzero(port->coilreg, (size - 1)/8 + 1);
+    bzero(port->discreg, (size - 1)/8 + 1);
     mb_mutex_unlock(port, &port->disc_mutex);
     return new;
 }
