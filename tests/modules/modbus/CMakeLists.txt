@@ -45,6 +45,24 @@ target_link_libraries(module_modbus_server_exceptions_2 dax)
 add_test(module_modbus_server_exceptions_2 module_modbus_server_exceptions_2)
 set_tests_properties(module_modbus_server_exceptions_2 PROPERTIES TIMEOUT 10)
 
+# Check server exceptions
+add_executable(module_modbus_server_exceptions_3 modtest_server_exceptions_3.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_exceptions_3 dax)
+add_test(module_modbus_server_exceptions_3 module_modbus_server_exceptions_3)
+set_tests_properties(module_modbus_server_exceptions_3 PROPERTIES TIMEOUT 10)
+
+# Check server exceptions
+add_executable(module_modbus_server_exceptions_4 modtest_server_exceptions_4.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_exceptions_4 dax)
+add_test(module_modbus_server_exceptions_4 module_modbus_server_exceptions_4)
+set_tests_properties(module_modbus_server_exceptions_4 PROPERTIES TIMEOUT 10)
+
+# Check server exceptions
+add_executable(module_modbus_server_exceptions_5 modtest_server_exceptions_5.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_exceptions_5 dax)
+add_test(module_modbus_server_exceptions_5 module_modbus_server_exceptions_5)
+set_tests_properties(module_modbus_server_exceptions_5 PROPERTIES TIMEOUT 10)
+
 # Test read coils
 add_executable(module_modbus_server_fc1 modtest_server_fc1.c ../modtest_common.c)
 target_link_libraries(module_modbus_server_fc1 dax)
@@ -87,8 +105,14 @@ target_link_libraries(module_modbus_server_fc15 dax)
 add_test(module_modbus_server_fc15 module_modbus_server_fc15)
 set_tests_properties(module_modbus_server_fc15 PROPERTIES TIMEOUT 10)
 
-# Test write multiple coil message
+# Test write multiple holding registers message
 add_executable(module_modbus_server_fc16 modtest_server_fc16.c ../modtest_common.c)
 target_link_libraries(module_modbus_server_fc16 dax)
 add_test(module_modbus_server_fc16 module_modbus_server_fc16)
 set_tests_properties(module_modbus_server_fc16 PROPERTIES TIMEOUT 10)
+
+# Test write multiple holding registers message
+add_executable(module_modbus_server_large_coils modtest_server_large_coils.c ../modtest_common.c)
+target_link_libraries(module_modbus_server_large_coils dax)
+add_test(module_modbus_server_large_coils module_modbus_server_large_coils)
+set_tests_properties(module_modbus_server_large_coils PROPERTIES TIMEOUT 10)

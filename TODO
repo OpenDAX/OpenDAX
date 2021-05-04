@@ -43,20 +43,14 @@ Write the command structures for connecting two modules STDIO.  When the first m
 to connect to STDIO it's STDOUT and STDERR are connected to the others STDIN and visa versa.
 Any subsequent requests by other modules to connect will either block (???) or return error.
 
+Allow 'nice' levels to be set for modules in the master
+
 Tag Server
 ---------
-
-_status tag can be written to by modules.  This should be read only.  This
-will probably need to be a CDT of some kind too.
-
-Allow 'nice' levels to be set for modules in the master
 
 There is a bug in the event handling logic when multiple modules of the
 same name are running.  Somewhere I'm using the name of the module to
 identify it and the name is not forced to be unique.
-
-There should be a hook for when a module reads the _status[] tag so that other parts of
-the system should update the tag with the latest info.
 
 Also need to remove events when modules are gone.
 

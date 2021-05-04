@@ -35,6 +35,7 @@ struct mod_frame {
     u_int8_t  uid;
     u_int8_t  fc;
     u_int16_t  addr;
+    u_int16_t  count;
     u_int8_t bytes;
     u_int8_t *buff;
     u_int16_t size; /* Size of buffer */
@@ -77,7 +78,7 @@ _recv_frame(int sock, struct mod_frame *frame) {
 }
 
 int
-_test_request(int sock, u_int16_t addr, u_int16_t count, u_int8_t *cmp_buff) {
+_test_read(int sock, u_int16_t addr, u_int16_t count, u_int8_t *cmp_buff) {
     static u_int16_t tid;
     int result;
     struct mod_frame sframe, rframe;
@@ -103,13 +104,36 @@ _test_request(int sock, u_int16_t addr, u_int16_t count, u_int8_t *cmp_buff) {
     return 0;
 }
 
+
+int
+_check_response(int sock, u_int8_t *outbuff, int outlen, u_int8_t *resbuff, int reslen) {
+    u_int8_t buff[1024];
+    int sresult, rresult;
+    int n, csize;
+
+    sresult = send(sock, outbuff, outlen, 0);
+    bzero(buff, 1024);
+    rresult = recv(sock, buff, 1024, 0);
+    csize = (buff[4] * 256 + buff[5]) + 6; /* how big should the result be */
+    if(csize != rresult) {
+        return 1;
+    }
+    for(n=0;n<reslen;n++) {
+        if(resbuff[n] != buff[n]) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int
 main(int argc, char *argv[])
 {
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
-    u_int8_t buff[1024];
+    u_int8_t buff[1024], rbuff[1024];
+    struct mod_frame sframe, rframe;
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
@@ -118,7 +142,7 @@ main(int argc, char *argv[])
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server.conf");
+    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server_large.conf");
     /* Connect to the tag server */
     ds = dax_init("test");
     if(ds == NULL) {
@@ -143,34 +167,31 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s\n", strerror(errno));
         exit(result);
     }
-    bzero(buff, h.size); /* Zero out the buffer */
-    buff[0]=0x01;        /* set the first bit to 1*/
+    /* Test Reading in a couple of places */
+    bzero(buff, h.size);
+    buff[0]=0xA5;
+    result =  dax_tag_handle(ds, &h, "mb_creg[3000]", 8);
+    if(result) return result;
     dax_write_tag(ds, h, buff); /* Write it to OpenDAX */
-    exit_status += _test_request(s, 0, 1, buff); /* Check it */
-    /* chekc a whole byte */
-    buff[0]=0xAA; buff[1]=0x55;
-    dax_write_tag(ds, h, buff);
-    exit_status += _test_request(s, 0, 8, buff);
-    /* Check a byte and a half */
-    buff[1] = 0x05;
-    exit_status += _test_request(s, 0, 12, buff);
-    /* Check a byte and a half starting with the second byte */
-    buff[0] = 0x12; buff[1] = 0x34; buff[2] = 0x56;
-    dax_write_tag(ds, h, buff);
-    buff[2] = 0x6;
-    exit_status += _test_request(s, 8, 12, &buff[1]);
+    exit_status += _test_read(s, 3000, 8, buff); /* Check it */
 
-    buff[0] = 0x12; buff[1] = 0x34; buff[2] = 0x56;
-    dax_write_tag(ds, h, buff);
-    /* basically shifting four bits right, and removing four */
-    buff[0] = 0x41; buff[1] = 0x03;
-    exit_status += _test_request(s, 4, 12, buff);
-    /* read the whole thing */
-    for(i=0;i<h.size;i++) {
-        buff[i] = i;
-    }
-    dax_write_tag(ds, h, buff);
-    exit_status += _test_request(s, 0, h.count, buff);
+    buff[0]=0x01; buff[1]=0x23; buff[2]=0x45; buff[3]=0x67;
+    buff[4]=0x89; buff[5]=0xAB; buff[6]=0xCD; buff[7]=0xEF;
+    result =  dax_tag_handle(ds, &h, "mb_creg[3936]", 64);
+    if(result) return result;
+    dax_write_tag(ds, h, buff); /* Write it to OpenDAX */
+    exit_status += _test_read(s, 3936, 64, buff); /* Check it */
+
+    buff[0]=0x89; buff[1]=0xAB; buff[2]=0xCD; buff[3]=0xEF;
+    buff[4]=0x01; buff[5]=0x23; buff[6]=0x45; buff[7]=0xF6;
+    exit_status += write_multiple_coils(s, 3936, 64, buff);
+    dax_read_tag(ds, h, rbuff);
+    for(i=0;i<8;i++) if(buff[i] != rbuff[i]) exit_status++;
+
+    /* Test clearing that last bit with FC 5 */
+    exit_status += write_single_coil(s, 3999, 0);
+    dax_read_tag(ds, h, rbuff);
+    if(rbuff[7] != 0x76) exit_status++;
 
     close(s);
     dax_disconnect(ds);

@@ -22,6 +22,8 @@
 
 #include "modtest_common.h"
 
+static int tid;
+
 pid_t
 run_server(void) {
     int status = 0;
@@ -60,4 +62,61 @@ run_module(const char *modpath, const char *modconf) {
     }
     usleep(100000);
     return pid;
+}
+
+int
+write_single_coil(int sock, u_int16_t addr, u_int8_t val) {
+    u_int8_t buff[1024];
+    int result, size;
+
+    size = 2;
+    buff[0] = tid>>8;
+    buff[1] = tid;
+    tid++;
+    buff[2] = 0;
+    buff[3] = 0;
+    buff[4] = (size + 4) >> 8;
+    buff[5] = (size + 4);
+    buff[6] = 1;
+    buff[7] = 5;
+    buff[8] = addr>>8;
+    buff[9] = addr;
+    buff[10] = val ? 0xFF : 0x00;
+    buff[11] = 0;
+    result = send(sock, buff, 12, 0);
+    result = recv(sock, buff, 1024, 0);
+    if(buff[7] != 0x05) {
+        return buff[8];
+    }
+    return 0;
+}
+
+
+int
+write_multiple_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *sbuff) {
+    u_int8_t buff[1024];
+    int result, size;
+
+    size = (count -1)/8 +1;
+    buff[0] = tid>>8;
+    buff[1] = tid;
+    tid++;
+    buff[2] = 0;
+    buff[3] = 0;
+    buff[4] = (size + 4) >> 8;
+    buff[5] = (size + 4);
+    buff[6] = 1;
+    buff[7] = 15;
+    buff[8] = addr>>8;
+    buff[9] = addr;
+    buff[10] = count>>8;
+    buff[11] = count;
+    buff[12] = size;
+    memcpy(&buff[13], sbuff, size);
+    result = send(sock, buff, 13 + size, 0);
+    result = recv(sock, buff, 1024, 0);
+    if(buff[7] != 15) {
+        return buff[8];
+    }
+    return 0;
 }

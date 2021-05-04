@@ -70,7 +70,7 @@ main(int argc, char *argv[])
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server_no_coils.conf");
+    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server_no_discretes.conf");
     /* Connect to the tag server */
 
     /* Open a socket to do the modbus stuff */
@@ -86,28 +86,18 @@ main(int argc, char *argv[])
         exit(result);
     }
 
-    /* FC 1 */
-    /* Test an address that is to big */
-    result += _check_response(s, "\x00\x01\x00\x00\x00\x06\x01\x01\x00\x00\x00\x01", 12,
-                                 "\x00\x01\x00\x00\x00\x03\x01\x81\x01", 9);
-    /* FC 5 */
-    result += _check_response(s, "\x00\x07\x00\x00\x00\x06\x01\x05\x00\x00\x00\x00", 12,
-                                 "\x00\x07\x00\x00\x00\x03\x01\x85\x01", 9);
-    /* FC 15 */
-    result += _check_response(s, "\x00\x09\x00\x00\x00\x07\x01\x0F\x00\x00\x00\x01\x01", 13,
-                                 "\x00\x09\x00\x00\x00\x03\x01\x8F\x01", 9);
+    /* FC 2 */
+    result += _check_response(s, "\x00\x01\x00\x00\x00\x06\x01\x02\x00\x00\x00\x01", 12,
+                                 "\x00\x01\x00\x00\x00\x03\x01\x82\x01", 9);
     /* Make sure the others work */
-//    result += _check_response(s, "\x00\x06\x00\x00\x00\x06\x01\x01\x00\x08\x00\x10", 12,
-//                                 "\x00\x06\x00\x00\x00\x05\x01\x01\x02\x00\x00", 11);
-    result += _check_response(s, "\x00\x07\x00\x00\x00\x06\x01\x02\x00\x00\x00\x10", 12,
-                                 "\x00\x07\x00\x00\x00\x05\x01\x02\x02\x00\x00", 11);
+    result += _check_response(s, "\x00\x06\x00\x00\x00\x06\x01\x01\x00\x08\x00\x10", 12,
+                                 "\x00\x06\x00\x00\x00\x05\x01\x01\x02\x00\x00", 11);
+//    result += _check_response(s, "\x00\x07\x00\x00\x00\x06\x01\x02\x00\x00\x00\x10", 12,
+//                                 "\x00\x07\x00\x00\x00\x05\x01\x02\x02\x00\x00", 11);
     result += _check_response(s, "\x00\x0B\x00\x00\x00\x06\x01\x03\x00\x02\x00\x02", 12,
                                  "\x00\x0B\x00\x00\x00\x07\x01\x03\x04\x00\x00\x00\x00", 13);
     result += _check_response(s, "\x00\x0C\x00\x00\x00\x06\x01\x04\x00\x02\x00\x04", 12,
                                  "\x00\x0C\x00\x00\x00\x0B\x01\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00", 17);
-
-
-
     close(s);
 
     kill(mod_pid, SIGINT);

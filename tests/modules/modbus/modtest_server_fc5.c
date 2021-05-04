@@ -157,10 +157,6 @@ main(int argc, char *argv[])
         memset(buff, '\xFF', h.size);
         result = dax_write_tag(ds, h, buff);
         if(result) fprintf(stderr, "Unable to write tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("[0x%X]",buff[i]);
-        }
-        printf("\n");
         /* Set the next bit */
         buff[0] = 0;
         buff[1] = 0;
