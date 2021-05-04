@@ -302,8 +302,8 @@ msg_receive(void)
                 } else {
                     result = buff_read(n);
                     if(result == ERR_NO_SOCKET) { /* This is the end of file */
-                        //module_unregister(n);
                         xlog(LOG_COMM, "Connection Closed for fd %d", n);
+                        module_unregister(n);
                         msg_del_fd(n);
                     } else if(result < 0) {
                         return result; /* Pass the error up */
@@ -394,8 +394,8 @@ msg_mod_register(dax_message *msg)
             _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
         }
     } else {
-        xlog(LOG_MSG, "Unregistering Module fd = %d", msg->fd);
-        module_unregister(msg->fd);
+        //xlog(LOG_MSG, "Unregistering Module fd = %d", msg->fd);
+        //module_unregister(msg->fd);
         _message_send(msg->fd, MSG_MOD_REG, buff, 0, 1);
     }
     return 0;

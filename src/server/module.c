@@ -226,7 +226,8 @@ module_unregister(int fd)
     dax_module *mod;
 
     mod = _get_module_fd(fd);
-    if(mod) {
+    if(mod != NULL) {
+        xlog(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
         events_cleanup(mod);
         module_del(mod);
     } else {
