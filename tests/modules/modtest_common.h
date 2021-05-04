@@ -19,7 +19,6 @@
 /*
  *  This contains common code for the compiled C Library tests
  */
-
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
@@ -32,6 +31,4 @@
 
 pid_t run_server(void);
 pid_t run_module(const char *modpath, const char *modconf);
-int write_single_coil(int sock, u_int16_t addr, u_int8_t val);
-int write_multiple_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *sbuff);
 

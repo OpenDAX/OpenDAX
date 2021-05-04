@@ -19,6 +19,7 @@
 /*
  *  Test function code 6 (read holding registers) for modbus server
  */
+/* TODO: Convert this to use the functions in modbus_common.c */
 
 #include <common.h>
 #include <opendax.h>

@@ -106,8 +106,6 @@ main(int argc, char *argv[])
     result += _check_response(s, "\x00\x0C\x00\x00\x00\x06\x01\x04\x00\x02\x00\x04", 12,
                                  "\x00\x0C\x00\x00\x00\x0B\x01\x04\x08\x00\x00\x00\x00\x00\x00\x00\x00", 17);
 
-
-
     close(s);
 
     kill(mod_pid, SIGINT);

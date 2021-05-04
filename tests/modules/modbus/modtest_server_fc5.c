@@ -19,6 +19,7 @@
 /*
  *  Test function code 5 for the modbus server module
  */
+/* TODO: Convert this to use the functions in modbus_common.c */
 
 #include <common.h>
 #include <opendax.h>

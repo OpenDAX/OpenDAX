@@ -19,16 +19,13 @@
 /*
  *  Test function code 1 for the modbus server module
  */
+/* TODO: Convert this to use the functions in modbus_common.c */
 
 #define _XOPEN_SOURCE
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
-#include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 #include "../modtest_common.h"
 

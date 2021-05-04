@@ -35,7 +35,7 @@ main(int argc, char *argv[])
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
-    u_int8_t buff[1024], rbuff[1024];
+    u_int16_t buff[1024], rbuff[1024];
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
@@ -71,31 +71,33 @@ main(int argc, char *argv[])
     }
     /* Test Reading in a couple of places */
     bzero(buff, h.size);
-    buff[0]=0xA5;
-    result =  dax_tag_handle(ds, &h, "mb_creg[3000]", 8);
+    buff[0]=0xA589;
+    result =  dax_tag_handle(ds, &h, "mb_hreg[3000]", 1);
     if(result) return result;
     dax_write_tag(ds, h, buff); /* Write it to OpenDAX */
-    exit_status += read_coils(s, 3000, 8, rbuff);
-    if(rbuff[0] != 0xA5) exit_status++;
+    exit_status += read_holding_registers(s, 3000, 1, rbuff);
+    printf("rbuff[0] = 0x%X\n", rbuff[0]);
+    if(rbuff[0] != buff[0]) exit_status++;
 
-    buff[0]=0x01; buff[1]=0x23; buff[2]=0x45; buff[3]=0x67;
-    buff[4]=0x89; buff[5]=0xAB; buff[6]=0xCD; buff[7]=0xEF;
-    result =  dax_tag_handle(ds, &h, "mb_creg[3936]", 64);
+    for(i=0;i<64;i++) buff[i] = 1024 + i;
+    result =  dax_tag_handle(ds, &h, "mb_hreg[3936]", 64);
     if(result) return result;
     dax_write_tag(ds, h, buff); /* Write it to OpenDAX */
-    exit_status += read_coils(s, 3936, 64, rbuff);
-    for(i=0;i<8;i++) if(buff[i] != rbuff[i]) exit_status++;
+    exit_status += read_holding_registers(s, 3936, 64, rbuff);
+    for(i=0;i<64;i++) if(buff[i] != rbuff[i]) exit_status++;
 
-    buff[0]=0x89; buff[1]=0xAB; buff[2]=0xCD; buff[3]=0xEF;
-    buff[4]=0x01; buff[5]=0x23; buff[6]=0x45; buff[7]=0xF6;
-    exit_status += write_multiple_coils(s, 3936, 64, buff);
+    exit_status += write_single_register(s, 3999, 0xAA55);
+    result =  dax_tag_handle(ds, &h, "mb_hreg[3999]", 1);
+    if(result) return result;
     dax_read_tag(ds, h, rbuff);
-    for(i=0;i<8;i++) if(buff[i] != rbuff[i]) exit_status++;
+    if(rbuff[0] != 0xAA55) exit_status++;
 
-    /* Test clearing that last bit with FC 5 */
-    exit_status += write_single_coil(s, 3999, 0);
+    result =  dax_tag_handle(ds, &h, "mb_hreg[3936]", 64);
+    if(result) return result;
+    exit_status += write_multiple_registers(s, 3936, 64, buff);
     dax_read_tag(ds, h, rbuff);
-    if(rbuff[7] != 0x76) exit_status++;
+    for(i=0;i<64;i++) if(rbuff[i] != buff[i]) exit_status++;
+
 
     close(s);
     dax_disconnect(ds);

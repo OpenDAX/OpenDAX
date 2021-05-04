@@ -19,6 +19,7 @@
 /*
  *  Test function code 15 for the modbus server module
  */
+/* TODO: Convert this to use the functions in modbus_common.c */
 
 #define _XOPEN_SOURCE
 #include <unistd.h>

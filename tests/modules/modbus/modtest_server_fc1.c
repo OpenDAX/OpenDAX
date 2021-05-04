@@ -19,6 +19,7 @@
 /*
  *  Test function code 1 for the modbus server module
  */
+/* TODO: Convert this to use the functions in modbus_common.c */
 
 #include <common.h>
 #include <opendax.h>
@@ -29,6 +30,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "../modtest_common.h"
+#include "modbus_common.h"
 
 struct mod_frame {
     u_int16_t tid;

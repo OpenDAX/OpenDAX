@@ -19,46 +19,20 @@
 /*
  *  This contains common code for the compiled C Library tests
  */
+#include <common.h>
+#include <opendax.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-#include "modtest_common.h"
-
-pid_t
-run_server(void) {
-    int status = 0;
-    int result;
-    pid_t pid;
-
-    pid = fork();
-
-    if(pid == 0) { // Child
-        execl("../../../src/server/tagserver", "../../../src/server/tagserver", NULL);
-        printf("Failed to launch tagserver\n");
-        exit(-1);
-    } else if(pid < 0) {
-        printf("Forking problem");
-        exit(-1);
-    }
-    usleep(100000);
-    return pid;
-}
-
-pid_t
-run_module(const char *modpath, const char *modconf) {
-    int status = 0;
-    int result;
-    pid_t pid;
-
-    pid = fork();
-
-    if(pid == 0) { // Child
-        execl(modpath, modpath, "-C", modconf, NULL);
-        printf("Failed to launch module\n");
-        exit(-1);
-    } else if(pid < 0) {
-        printf("Forking problem");
-        exit(-1);
-    }
-    usleep(100000);
-    return pid;
-}
+int read_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff);
+int read_discretes(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff);
+int read_holding_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff);
+int read_input_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff);
+int write_single_coil(int sock, u_int16_t addr, u_int8_t val);
+int write_single_register(int sock, u_int16_t addr, u_int16_t val);
+int write_multiple_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *sbuff);
+int write_multiple_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *sbuff);
 
