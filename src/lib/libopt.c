@@ -169,7 +169,7 @@ dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int f
         return result;
     }
     if(name == NULL) return ERR_ARG;
-        
+
     newattr = malloc(sizeof(optattr));
     if(newattr == NULL) {
         return ERR_ALLOC;
@@ -405,6 +405,7 @@ _mod_config_file(dax_state *ds) {
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
         dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
+        free(cfile);
         return ERR_GENERIC;
     } else {
         _get_lua_globals(ds);

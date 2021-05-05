@@ -48,7 +48,8 @@
 #endif /* !PID_FILE_PATH */
 
 #ifndef ETC_DIR
-  #define ETC_DIR "/etc/opendax"
+//  #define ETC_DIR "/etc/opendax"
+  #define ETC_DIR "."
 #endif
 
 #define DAX_64_ONES 0xFFFFFFFFFFFFFFFFULL
