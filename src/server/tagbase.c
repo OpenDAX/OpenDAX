@@ -27,7 +27,7 @@
 
 /* Notes:
  * The tags are stored in the server in two different arrays.  Both
- * of these arrays are alloated at runtime and the size is increased
+ * of these arrays are allocated at runtime and the size is increased
  * as needed.
  *
  * The first array is the actual tag array. It contains a pointer to

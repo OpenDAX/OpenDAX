@@ -170,7 +170,7 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
     long int sec;
     struct tm *tm;
     char tstr[16];
-    
+
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
         case DAX_BOOL:

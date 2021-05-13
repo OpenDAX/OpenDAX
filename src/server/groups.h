@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2021 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,34 +14,33 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
 
- *  Header file for opendax configuration
+ * This file contains the code for recording and dealing with the
+ * tag groups.
  */
 
-#ifndef __OPTIONS_H
-#define __OPTIONS_H
+#ifndef __DAX_GROUPS_H
+#define __DAX_GROUPS_H 1
 
 #include <common.h>
+#include <opendax.h>
 #include "daxtypes.h"
 
-#ifndef DEFAULT_PORT
-# define DEFAULT_PORT 7777
-#endif
+/* Tag groups give clients a way to modify multiple tags all in one
+ * message.  These groups are defined by the clients and then can be
+ * read and written as a whole afterwards.
+ *
+ * Each group is implemented as a linked list of tag_handles and an
+ * array of groups is allocated as necessary for each module.
+ */
 
-/* This is the default minimum number of communcation buffers that
-   will be allocated if none is specified in the configuration */
-#ifndef DEFAULT_MIN_BUFFERS
-#  define DEFAULT_MIN_BUFFERS 5
-#endif
+#define TAG_GROUP_START_COUNT 16
 
-int opt_configure(int argc, const char *argv[]);
 
-/* These functions return the configuration parameters */
-char *opt_socketname(void);
-struct in_addr opt_serverip(void);
-unsigned int opt_serverport(void);
-/* Minimum number of communication buffers to allocate */
-int opt_min_buffers(void);
-int opt_start_timeout(void);
 
-#endif /* !__OPTIONS_H */
+int add_group(dax_module *mod);
+int add_group_member(dax_module *mod, u_int32_t index, tag_handle h);
+int groups_cleanup(dax_module *mod);
+
+#endif /* !__DAX_GROUPS_H */

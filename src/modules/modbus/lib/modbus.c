@@ -759,6 +759,7 @@ _check_function_code_exception(mb_port *port, u_int8_t function) {
             break;
         case 8:
             if(port->protocol != MB_TCP) return 0;
+            break;
         default:
             break;
     }

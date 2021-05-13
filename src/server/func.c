@@ -65,7 +65,7 @@ xwrite(int fd, const void *buff, size_t nbyte)
 
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
- * something createive with them later. */
+ * something creative with them later. */
 
 void *
 xmalloc(size_t num)
@@ -143,7 +143,7 @@ set_log_topic(u_int32_t topic)
     xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
 
-/* logs the string if any of the bist in flags matches _logflags */
+/* logs the string if any of the bits in flags matches _logflags */
 void xlog(u_int32_t flags, const char *format, ...) {
     va_list val;
     if(flags & _logflags) {

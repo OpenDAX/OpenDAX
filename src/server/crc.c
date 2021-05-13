@@ -17,7 +17,7 @@
 
  *  Source code file for opendax crc checksum functions
  *
- *  CRC32 Code Contrbuted by Chris Underwood - September 2007
+ *  CRC32 Code Contributed by Chris Underwood - September 2007
  */
 
 #include <common.h>

@@ -24,24 +24,37 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <opendax.h>
 
 /* Module Flags */
 #define MFLAG_RESTART       0x01
 #define MFLAG_OPENPIPES     0x02
 #define MFLAG_REGISTER      0x04
 
+/* Type definitions for the tag group linked list */
+typedef struct tag_group_member_t {
+    tag_handle handle;
+    struct tag_group_member_t *next;
+} tag_group_member;
+
+/* Tag groups are an array of linked lists in each module */
+typedef struct tag_group_t {
+    unsigned int size;
+    tag_group_member *head;
+} tag_group;
 
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dax_Module {
     char *name;
     in_addr_t host;     /* the modules host id */
-    int exit_status;    /* modules exit status */
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
     int fd;             /* The socket file descriptor for this module */
     u_int32_t timeout;  /* Module communication timeout. */
     time_t starttime;
     int event_count;
+    tag_group *tag_groups; /* Array of tag group packet definitions */
+    u_int32_t groups_size;  /* Current size of the group array */
     struct dax_Module *next, *prev;
 } dax_module;
 
@@ -68,6 +81,5 @@ struct datatype {
 };
 
 typedef struct datatype datatype;
-
 
 #endif /* !__DAXTYPES_H */

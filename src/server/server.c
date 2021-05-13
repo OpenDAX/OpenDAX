@@ -50,19 +50,8 @@ main(int argc, const char *argv[])
     sa.sa_handler = &catch_signal;
     sigaction(SIGPIPE, &sa, NULL);
 
-    //set_log_topic(LOG_MAJOR); /*TODO: Needs to be configuration */
-    set_log_topic(-1); /*TODO: Needs to be configuration */
-
     /* Read configuration from defaults, file and command line */
     opt_configure(argc, argv);
-
-// Remove since opendax master will control this.
-    /* Go to the background */
-//    if(opt_daemonize()) {
-//        if(daemonize("OpenDAX")) {
-//            xerror("Unable to go to the background");
-//        }
-//    }
 
     result = msg_setup();    /* This creates and sets up the message sockets */
     if(result) xerror("msg_setup() returned %d", result);
@@ -71,10 +60,6 @@ main(int argc, const char *argv[])
     if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
         xfatal("Unable to create message thread");
     }
-
-    /* DO TESTING STUFF HERE */
-
-    /* END TESTING STUFF */
 
     xlog(LOG_MAJOR, "OpenDAX Tag Server Started");
 
@@ -99,8 +84,6 @@ messagethread(void)
         }
     }
 }
-
-
 
 /* this handles shutting down of the server */
 /* TODO: There's the easy way out and then there is the hard way out.

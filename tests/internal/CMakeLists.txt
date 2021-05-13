@@ -24,6 +24,8 @@ add_definitions(-DTESTING) # Compiles some testing code into the library */
 
 set(LIB_SOURCE_DIR ../../src/lib)
 set(SERVER_SOURCE_DIR ../../src/server)
+include_directories(${SERVER_SOURCE_DIR})
+include_directories(${LIB_SOURCE_DIR})
 
 # Library tests
 # tests the tag cache in the library
@@ -64,3 +66,11 @@ foreach(file ${files})
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
   )
 endforeach()
+
+add_test(internal_library_cache cachetest)
+add_test(internal_tagbase_001 tagbasetest_001)
+add_test(internal_tagbase_002 tagbasetest_002)
+add_test(internal_tagbase_003 tagbasetest_003)
+
+add_executable(groups_test groups_test.c ${SERVER_SOURCE_DIR}/groups.c)
+add_test(internal_server_tag_group groups_test)

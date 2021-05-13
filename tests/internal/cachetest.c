@@ -23,7 +23,7 @@
  */
 
 #include <libcommon.h>
-#include "../../src/lib/libdax.h"
+#include "libdax.h"
 
 
 static void

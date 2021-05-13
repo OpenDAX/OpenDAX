@@ -21,6 +21,7 @@
 #include "options.h"
 #include "func.h"
 #include "tagbase.h"
+#include "groups.h"
 
 #include <time.h>
 #include <sys/socket.h>
@@ -77,29 +78,12 @@ _get_host(int fd, in_addr_t *host)
             }
             return 0;
         } else {
-            xerror("Unable to identify socket type in module_register()\n");
+            xerror("Unable to identify socket type in module registration");
         }
     }
     return ERR_NOTFOUND;
 }
 
-
-/* TODO: Need to look for the PID of the module too. */
-//static dax_module *
-//_get_module_hostpid(in_addr_t host, pid_t pid)
-//{
-//    dax_module *last;
-//
-//    if(_current_mod == NULL) return NULL;
-//    last = _current_mod;
-//    do {
-//        if(_current_mod->host == host) {
-//            return _current_mod;
-//        }
-//        _current_mod = _current_mod->next;
-//    } while(_current_mod != last);
-//    return NULL;
-//}
 
 /* Return a pointer to the module with a matching file descriptor (fd)
  * returns NULL if not found */
@@ -126,11 +110,13 @@ module_add(char *name, unsigned int flags)
 
     new = xmalloc(sizeof(dax_module));
     if(new) {
-        printf("New module '%s' created at %p  \n", name, new);
+        xlog(LOG_MAJOR, "New module '%s' created at %p", name, new);
         new->flags = flags;
 
         new->fd = 0;
         new->event_count = 0;
+        new->tag_groups = NULL;
+        new->groups_size = 0;
 
         /* name the module */
         new->name = strdup(name);
@@ -229,6 +215,7 @@ module_unregister(int fd)
     if(mod != NULL) {
         xlog(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
         events_cleanup(mod);
+        groups_cleanup(mod);
         module_del(mod);
     } else {
         xerror("module_unregister() - Module File Descriptor %d Not Found", fd);

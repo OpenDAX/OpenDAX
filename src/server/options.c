@@ -26,17 +26,17 @@
 #include "func.h"
 
 #include <getopt.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-static char *_pidfile;
+
 static char *_configfile;
-static char *_statustag;
 static char *_socketname;
+static struct in_addr _serverip;
 static unsigned int _serverport;
 static int _verbosity;
-static int _maxstartup;
 static int _min_buffers;
-static int _start_timeout;  /* module startup stage timeout */
-//static char **_required_modules;
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
@@ -50,13 +50,10 @@ static void initconfig(void) {
             sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
     }
     _verbosity = 0;
-    _statustag = NULL;
-    _pidfile = NULL;
-    _maxstartup = 0;
     _min_buffers = 0;
     _socketname = NULL;
+    _serverip.s_addr = 0;
     _serverport = 0;
-    _start_timeout = 0;
 }
 
 /* This function sets the defaults if nothing else has been done
@@ -64,13 +61,10 @@ static void initconfig(void) {
 static void
 setdefaults(void)
 {
-//    if(_daemonize < 0) _daemonize = DEFAULT_DAEMONIZE;
-    if(!_statustag) _statustag = strdup("_status");
-    if(!_pidfile) _pidfile = strdup(DEFAULT_PID);
     if(!_min_buffers) _min_buffers = DEFAULT_MIN_BUFFERS;
     if(!_socketname) _socketname = strdup("/tmp/opendax");
     if(!_serverport) _serverport = DEFAULT_PORT;
-    if(!_start_timeout) _start_timeout = 3;
+    if(!_serverip.s_addr) inet_aton("0.0.0.0", &_serverip);
 }
 
 /* This function parses the command line options and sets
@@ -82,18 +76,16 @@ parsecommandline(int argc, const char *argv[])
 
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
-//        {"deamonize", no_argument, 0, 'D'},
         {"socketname", required_argument, 0, 'S'},
+        {"serverip", required_argument, 0, 'I'},
         {"serverport", required_argument, 0, 'P'},
-        {"start_time", required_argument, 0, 'T'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
-        {"required-modules", required_argument, 0, 'Q'},
         {0, 0, 0, 0}
     };
 
 /* Get the command line arguments */
-    while ((c = getopt_long (argc, (char * const *)argv, "C:S:VvDQ:",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:S:I:P:Vv",options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
@@ -101,25 +93,20 @@ parsecommandline(int argc, const char *argv[])
         case 'S':
             _socketname = strdup(optarg);
             break;
-//        case 'I':
-//            if(! inet_aton(optarg, &_serverip)) {
-//                xerror("Unknown IP address %s", optarg);
-//            }
-//            break;
+        case 'I':
+            if(! inet_aton(optarg, &_serverip)) {
+                xerror("Unknown IP address %s", optarg);
+            }
+            break;
         case 'P':
             _serverport = strtol(optarg, NULL, 0);
             break;
-        case 'T':
-            _start_timeout = strtol(optarg, NULL, 0);
-            break;
         case 'V':
             printf("%s Version %s\n", PACKAGE, VERSION);
+            exit(0);
             break;
         case 'v':
-            _verbosity++;
-            break;
-        case 'Q':
-            printf("Add Required Module %s\n", optarg);
+            _verbosity = LOG_ALL;
             break;
         case '?':
             printf("Got the big ?\n");
@@ -138,7 +125,7 @@ static int
 readconfigfile(void)
 {
     lua_State *L;
-    char *string;
+//    char *string;
 
     xlog(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
@@ -157,39 +144,9 @@ readconfigfile(void)
         return 1;
     }
 
-    /* tell lua to push these variables onto the stack */
-//    lua_getglobal(L, "daemonize");
-//    if(_daemonize < 0) { /* negative if not already set */
-//        _daemonize = lua_toboolean(L, -1);
-//    }
-//    lua_pop(L, 1);
-
-    lua_getglobal(L, "statustag");
-    /* Do I really need to do this???? */
-    if(_statustag == NULL) {
-        if( (string = (char *)lua_tostring(L, -1)) ) {
-            _statustag = strdup(string);
-        }
-    }
-    lua_pop(L, 1);
-
-    lua_getglobal(L, "pidfile");
-    if(_pidfile == NULL) {
-        if( (string = (char *)lua_tostring(L, -1)) ) {
-            _pidfile = strdup(string);
-        }
-    }
-    lua_pop(L, 1);
-
     lua_getglobal(L, "min_buffers");
     if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
         _min_buffers = (int)lua_tonumber(L, -1);
-    }
-    lua_pop(L, 1);
-
-    lua_getglobal(L, "start_timeout");
-    if(_start_timeout == 0) {
-        _start_timeout = (int)lua_tonumber(L, -1);
     }
     lua_pop(L, 1);
 
@@ -220,30 +177,20 @@ opt_configure(int argc, const char *argv[])
         xerror("Unable to read configuration running with defaults");
     }
     setdefaults();
-
-//    xlog(LOG_CONFIG, "Daemonize set to %d", _daemonize);
-//    xlog(LOG_CONFIG, "Status Tagname is set to %s", _statustag);
-//    xlog(LOG_CONFIG, "PID File Name set to %s", _pidfile);
-
+    set_log_topic(_verbosity);
     return 0;
 }
 
-char *
-opt_statustag(void)
+struct in_addr
+opt_serverip(void)
 {
-    return _statustag;
+    return _serverip;
 }
 
-char *
-opt_pidfile(void)
+unsigned int
+opt_serverport(void)
 {
-    return _pidfile;
-}
-
-int
-opt_maxstartup(void)
-{
-    return _maxstartup;
+    return _serverport;
 }
 
 char *
@@ -258,8 +205,3 @@ opt_min_buffers(void)
     return _min_buffers;
 }
 
-int
-opt_start_timeout(void)
-{
-    return _start_timeout;
-}
