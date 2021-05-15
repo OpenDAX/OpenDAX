@@ -47,9 +47,17 @@
 #define MSG_MAP_ADD     0x0010 /* Add a data point mapping */
 #define MSG_MAP_DEL     0x0011 /* Delete a data point mapping */
 #define MSG_MAP_GET     0x0012 /* Retrieve a data point mapping for a given tag */
+#define MSG_GRP_ADD     0x0013 /* Add a tag group to the server */
+#define MSG_GRP_DEL     0x0014 /* Delete an entire tag group from the server */
+#define MSG_GRP_MEM_ADD 0x0015 /* Add a member handle to a particular tag group */
+#define MSG_GRP_MEM_DEL 0x0016 /* Delete a member handle from a particular tag group */
+#define MSG_GRP_READ    0x0017 /* Read the data in a tag group */
+#define MSG_GRP_WRITE   0x0018 /* Write the data to a tag group */
+#define MSG_GRP_MWRITE  0x0019 /* Masked write of the data to a tag group */
+
 /* More to come */
 
-#define NUM_COMMANDS 19
+#define NUM_COMMANDS 26
 
 
 #define MSG_RESPONSE  0x01000000LL /* Flag for defining a response message */
@@ -95,6 +103,14 @@
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(tag_idx_t))
 #define MSG_TAG_GROUP_DATA_SIZE (MSG_DATA_SIZE - sizeof(u_int32_t))
+
+/* This is the initial size of the group array that will be allocated
+ * for each module the first time a group is added to that module */
+#define TAG_GROUP_START_COUNT 16
+/* This is the maximum number of groups that will be allocated.  After
+ * this the module will receive ERR_2BIG errors when trying to add a group */
+#define TAG_GROUP_MAX_COUNT 4096
+
 
 /* This is a full sized message.  It's the largest message allowed to be sent */
 struct dax_message {

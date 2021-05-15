@@ -16,8 +16,16 @@
 
 include_directories(.)
 
-add_library(dax libcdt.c libconv.c libdata.c
-            libevent.c libfunc.c libinit.c libmsg.c libopt.c)
+add_library(dax libcdt.c
+                libconv.c
+                libdata.c
+                libevent.c
+                libfunc.c
+                libinit.c
+                libgroup.c
+                libmsg.c
+                libopt.c
+                )
 
 target_link_libraries(dax ${LUA_LIBRARIES})
 if(CMAKE_BUILD_TYPE MATCHES Debug)

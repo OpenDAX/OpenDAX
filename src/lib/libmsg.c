@@ -113,27 +113,27 @@ message_get(int fd, dax_message *msg) {
 static int
 _message_recv(dax_state *ds, int command, void *payload, size_t *size, int response)
 {
-	dax_message msg;
-	int result;
-	while(1) {
-		result = message_get(ds->sfd, &msg);
-		if(result) return result;
+    dax_message msg;
+    int result;
+    while(1) {
+        result = message_get(ds->sfd, &msg);
+        if(result) return result;
 
         /* Test if the error flag is set and then return the error code */
-		if(msg.msg_type == (command | MSG_ERROR)) {
-			return stom_dint((*(int32_t *)&msg.data[0]));
-		} else if(msg.msg_type == (command | (response ? MSG_RESPONSE : 0))) {
-			if(size) {
-				memcpy(payload, msg.data, msg.size);
-				*size = msg.size;
-			}
-			return 0;
-		/* This is an event message that needs to be stored the queue */
-		} else if(msg.msg_type & MSG_EVENT) {
-			push_event(ds, &msg);
-		} else { /* This is not the command we wanted */
-			printf("TODO: Whoa we got the wrong command\n");
-		}
+        if(msg.msg_type == (command | MSG_ERROR)) {
+            return stom_dint((*(int32_t *)&msg.data[0]));
+        } else if(msg.msg_type == (command | (response ? MSG_RESPONSE : 0))) {
+            if(size) {
+                memcpy(payload, msg.data, msg.size);
+                *size = msg.size;
+            }
+            return 0;
+        /* This is an event message that needs to be stored the queue */
+        } else if(msg.msg_type & MSG_EVENT) {
+            push_event(ds, &msg);
+        } else { /* This is not the command we wanted */
+            printf("TODO: Whoa we got the wrong command\n");
+        }
     }
     return 0;
 }
@@ -1062,7 +1062,14 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
  * It takes two Handles as arguments.  The first is for the source data
  * point and the second is for the destination.  The id pointer will have
  * the unique id of the mapping if the function returns successfully.
- */
+ *
+ * @param ds Pointer to the dax state object
+ * @param src pointer to a tag handle for the data source
+ * @param dest Pointer to a tag handle for the destination of the map
+ * @param id Pointer to a structure that will be filled in with the
+ *           id of the map
+ * @returns Zero on success or an error code otherwise
+ * */
 int
 dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
 {
@@ -1117,4 +1124,107 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
     }
     libdax_unlock(ds->lock);
     return result;
+}
+
+
+/* Send message to the server to add a data group.  Groups
+ * are a way to aggregate tags or parts of tags into a single
+ * group that can be read or written all at once.
+ *
+ * @param ds Pointer to the dax state object
+ * @param index Pointer to an integer that would be used to identify
+ *              the new group.
+ * @param dest Pointer to a tag handle for the destination of the map
+ * @param id Pointer to a structure that will be filled in with the
+ *           id of the map
+ * @returns Zero on success or an error code otherwise *
+ */
+int
+dax_group_add(dax_state *ds, u_int32_t *index) {
+    int result, rindex;
+    size_t size;
+
+    char buff[MSG_DATA_SIZE];
+
+    size = 0;
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_GRP_ADD, buff, size);
+
+    if(result) {
+        libdax_unlock(ds->lock);
+        return ERR_MSG_SEND;
+    }
+
+    size = MSG_DATA_SIZE;
+    result = _message_recv(ds, MSG_GRP_ADD, buff, &size, 1);
+    if(result == 0) {
+        *index = *(u_int32_t *)buff;
+        libdax_unlock(ds->lock);
+        rindex = lib_group_add(ds, *index);
+        if(rindex) return rindex;
+    } else {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    return 0;
+}
+
+/* Add a member to the given tag group.  Members are added sequentially
+ * in the order that they are added by calls to this function.
+ *
+ * @param ds Pointer to the dax state object
+ * @param index Index of the group that was returned by dax_gropu_add().
+ * @param h tag handle of the data to be added to the group
+ * @returns the byte offset within the group where the member was placed
+ *          or a negative error code on failure
+ */
+int
+dax_group_add_member(dax_state *ds, u_int32_t index, tag_handle h) {
+    int result;
+    size_t size;
+    dax_dint temp;
+    dax_udint u_temp;
+
+    char buff[MSG_DATA_SIZE];
+    u_temp = mtos_udint(index);
+    memcpy(&buff[0], &u_temp, 4);
+    temp = mtos_dint(h.index);
+    memcpy(&buff[4], &temp, 4);
+    u_temp = mtos_udint(h.byte);
+    memcpy(&buff[8], &u_temp, 4);
+    buff[9] = h.bit;
+    u_temp = mtos_udint(h.count);
+    memcpy(&buff[13], &u_temp, 4);
+    u_temp = mtos_udint(h.size);
+    memcpy(&buff[17], &u_temp, 4);
+    u_temp = mtos_udint(h.type);
+    memcpy(&buff[21], &u_temp, 4);
+
+    size = sizeof(tag_handle) + sizeof(u_int32_t);
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_GRP_MEM_ADD, buff, size);
+
+    if(result) {
+        libdax_unlock(ds->lock);
+        return ERR_MSG_SEND;
+    }
+
+    size = MSG_DATA_SIZE;
+    result = _message_recv(ds, MSG_GRP_MEM_ADD, buff, &size, 1);
+    if(result == 0) {
+        result = lib_group_add_member(ds, index, h);
+        libdax_unlock(ds->lock);
+        if(result) return result;
+        return *(u_int32_t *)buff;
+    } else {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+}
+
+int
+dax_group_read(dax_state *ds, u_int32_t index, u_int8_t *buff) {
+
+    return 0;
 }

@@ -14,33 +14,52 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
-
- * This file contains the code for recording and dealing with the
- * tag groups.
  */
 
-#ifndef __DAX_GROUPS_H
-#define __DAX_GROUPS_H 1
+/*
+ *  This test creates a single write event and uses dax_event_poll() to
+ *  to test whether or not it is called properly
+ */
 
 #include <common.h>
 #include <opendax.h>
-#include "daxtypes.h"
-
-/* Tag groups give clients a way to modify multiple tags all in one
- * message.  These groups are defined by the clients and then can be
- * read and written as a whole afterwards.
- *
- * Each group is implemented as a linked list of tag_handles and an
- * array of groups is allocated as necessary for each module.
- */
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include "libtest_common.h"
 
 
+int
+do_test(int argc, char *argv[])
+{
+	dax_state *ds;
+    int result = 0;
+    u_int32_t idx;
+    tag_handle h;
 
-int group_add(dax_module *mod);
-int group_add_member(dax_module *mod, u_int32_t index, tag_handle h, u_int32_t *offset);
-int group_delete_member(dax_module *mod, u_int32_t index, tag_handle h);
-int group_read(dax_module *mod, u_int32_t index, u_int8_t *buff, int size);
-int groups_cleanup(dax_module *mod);
+    ds = dax_init("test");
+    dax_init_config(ds, "test");
 
-#endif /* !__DAX_GROUPS_H */
+    dax_configure(ds, argc, argv, CFG_CMDLINE);
+    result = dax_connect(ds);
+    if(result) {
+        return -1;
+    } else {
+        for(int n=0;n<10;n++) {
+            dax_group_add(ds, &idx);
+            dax_group_add_member(ds, idx, h);
+        }
+    }
+    return 0;
+}
+
+/* main inits and then calls run */
+int
+main(int argc, char *argv[])
+{
+    if(run_test(do_test, argc, argv)) {
+        exit(-1);
+    } else {
+        exit(0);
+    }
+}

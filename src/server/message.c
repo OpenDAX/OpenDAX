@@ -28,6 +28,7 @@
 #include "module.h"
 #include "tagbase.h"
 #include "options.h"
+#include "groups.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -75,6 +76,13 @@ int msg_cdt_get(dax_message *msg);
 int msg_map_add(dax_message *msg);
 int msg_map_del(dax_message *msg);
 int msg_map_get(dax_message *msg);
+int msg_group_add(dax_message *msg);
+int msg_group_del(dax_message *msg);
+int msg_group_member_add(dax_message *msg);
+int msg_group_member_del(dax_message *msg);
+int msg_group_read(dax_message *msg);
+int msg_group_write(dax_message *msg);
+int msg_group_mask_write(dax_message *msg);
 
 
 /* Generic message sending function.  If response is MSG_ERROR then it is assumed that
@@ -218,6 +226,13 @@ msg_setup(void)
     cmd_arr[MSG_MAP_ADD]    = &msg_map_add;
     cmd_arr[MSG_MAP_DEL]    = &msg_map_del;
     cmd_arr[MSG_MAP_GET]    = &msg_map_get;
+    cmd_arr[MSG_GRP_ADD]    = &msg_group_add;
+    cmd_arr[MSG_GRP_DEL]    = &msg_group_del;
+    cmd_arr[MSG_GRP_MEM_ADD]= &msg_group_member_add;
+    cmd_arr[MSG_GRP_MEM_DEL]= &msg_group_member_del;
+    cmd_arr[MSG_GRP_READ]   = &msg_group_read;
+    cmd_arr[MSG_GRP_WRITE]  = &msg_group_write;
+    cmd_arr[MSG_GRP_MWRITE] = &msg_group_mask_write;
 
     return 0;
 }
@@ -824,4 +839,88 @@ int msg_map_get(dax_message *msg)
     return 0;
 }
 
+int
+msg_group_add(dax_message *msg) {
+    dax_module *mod;
+    int id;
+
+    mod = module_find_fd(msg->fd);
+    id = group_add(mod);
+
+    if(id < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), RESPONSE);
+    }
+    return 0;
+}
+
+int
+msg_group_del(dax_message *msg) {
+    printf("Message Group Delete\n");
+    return 0;
+}
+
+int
+msg_group_member_add(dax_message *msg) {
+    dax_module *mod;
+    tag_handle h;
+    int result;
+    u_int32_t index, offset;
+
+    mod = module_find_fd(msg->fd);
+    memcpy(&index, &msg->data[0], 4);
+    memcpy(&h.index, &msg->data[4], 4);
+    memcpy(&h.byte, &msg->data[8], 4);
+    h.bit = msg->data[9];
+    memcpy(&h.count, &msg->data[13], 4);
+    memcpy(&h.size, &msg->data[17], 4);
+    memcpy(&h.type, &msg->data[21], 4);
+
+    result = group_add_member(mod, index, h, &offset);
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_GRP_MEM_ADD, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_GRP_MEM_ADD, &offset, sizeof(u_int32_t), RESPONSE);
+    }
+    return 0;
+}
+
+int
+msg_group_member_del(dax_message *msg) {
+    printf("Message Group Member Delete\n");
+    return 0;
+}
+
+int
+msg_group_read(dax_message *msg) {
+    dax_module *mod;
+    int result;
+    u_int32_t index;
+    u_int8_t buff[MSG_TAG_GROUP_DATA_SIZE];
+
+    mod = module_find_fd(msg->fd);
+    memcpy(&index, &msg->data[0], 4);
+
+    result = group_read(mod, index, buff, MSG_TAG_GROUP_DATA_SIZE);
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_GRP_READ, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_GRP_READ, buff, result, RESPONSE);
+    }
+    printf("Message Group Read\n");
+    return 0;
+}
+
+int
+msg_group_write(dax_message *msg) {
+    printf("Message Group Write\n");
+    return 0;
+}
+
+int
+msg_group_mask_write(dax_message *msg) {
+    printf("Message Group Masked Write\n");
+    return 0;
+}
 

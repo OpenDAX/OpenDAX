@@ -105,6 +105,21 @@ typedef struct event_db {
     void (*free_callback)(void *udata); /* Callback to free userdata */
 } event_db;
 
+
+typedef struct group_db_member {
+    tag_handle handle;
+    struct group_db_member *next;
+} group_db_member;
+
+/* Tag groups are an array of linked lists in each module */
+typedef struct group_db {
+    u_int8_t used;
+    unsigned int size; /* amount of memory needed to transfer this group */
+    group_db_member *head;
+} group_db;
+
+
+
 /* This is the main dax_state structure that holds all the information
    for one dax server connection */
 struct dax_state {
@@ -128,6 +143,8 @@ struct dax_state {
     int event_data_size;   /* Size of the event data that is stored here */
     char *event_data;      /* Pointer to the event data that was returned */
     dax_message *emsg_queue; /* Event Message FIFO Queue */
+    group_db *group_db;      /* Head of the tag group array */
+    int group_size;          /* Currently allocated size of the tag group array */
     int emsg_queue_size;     /* Total size of the Event Message Queue */
     int emsg_queue_count;    /* number of entries in the event message queue */
     int emsg_queue_read;     /* index to the next event to read in the queue */
@@ -205,6 +222,9 @@ int add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(dax_state 
               void (*free_callback)(void *));
 int del_event(dax_state *ds, dax_id id);
 int exec_event(dax_state *ds, dax_id id);
+
+int lib_group_add(dax_state *ds, u_int32_t index);
+int lib_group_add_member(dax_state *ds, u_int32_t index, tag_handle h);
 
 int message_get(int, dax_message *);
 

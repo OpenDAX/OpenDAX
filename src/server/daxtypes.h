@@ -31,6 +31,9 @@
 #define MFLAG_OPENPIPES     0x02
 #define MFLAG_REGISTER      0x04
 
+/* Flag bits for the tag data groups */
+#define GRP_FLAG_NOT_EMPTY  0x01
+
 /* Type definitions for the tag group linked list */
 typedef struct tag_group_member_t {
     tag_handle handle;
@@ -39,7 +42,8 @@ typedef struct tag_group_member_t {
 
 /* Tag groups are an array of linked lists in each module */
 typedef struct tag_group_t {
-    unsigned int size;
+    u_int8_t flags;    /* option flags for the group */
+    unsigned int size; /* amount of memory needed to transfer this group */
     tag_group_member *head;
 } tag_group;
 
