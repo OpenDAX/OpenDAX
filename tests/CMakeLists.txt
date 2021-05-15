@@ -107,8 +107,4 @@ set_tests_properties(lua_test_event PROPERTIES TIMEOUT 10)
 
 if(INTERNAL_TESTS)
   add_subdirectory(internal)
-  add_test(internal_library_cache internal/cachetest)
-  add_test(internal_tagbase_001 internal/tagbasetest_001)
-  add_test(internal_tagbase_002 internal/tagbasetest_002)
-  add_test(internal_tagbase_003 internal/tagbasetest_003)
 endif()

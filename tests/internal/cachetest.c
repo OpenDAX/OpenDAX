@@ -72,7 +72,7 @@ check_cache_hit(dax_state *ds, dax_tag tag)
         printf("The tag we got back was not the correct one\n");
         exit(-1);
     }
-    
+    return 0;
 }
 
 static int
@@ -91,6 +91,7 @@ check_cache_miss(dax_state *ds, dax_tag tag)
         printf("Tag with name %s was found in the cache\n", tag.name);
         exit(-1);
     }
+    return 0;
 }
 
 int

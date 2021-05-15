@@ -36,7 +36,7 @@ add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
                                      ${LIB_SOURCE_DIR}/libmsg.c
                                      ${LIB_SOURCE_DIR}/libopt.c
                                      )
-# target_link_libraries(cachetest 
+# target_link_libraries(cachetest
 target_link_libraries(cachetest ${LUA_LIBRARIES})
 
 add_executable(event_queue event_queue.c ${LIB_SOURCE_DIR}/libdata.c
@@ -64,3 +64,8 @@ foreach(file ${files})
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
   )
 endforeach()
+
+add_test(internal_library_cache cachetest)
+add_test(internal_tagbase_001 tagbasetest_001)
+add_test(internal_tagbase_002 tagbasetest_002)
+add_test(internal_tagbase_003 tagbasetest_003)

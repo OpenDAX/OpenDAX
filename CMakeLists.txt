@@ -69,10 +69,10 @@ endif()
 add_subdirectory(src)
 
 # Install the sample configurations
-file(GLOB files "etc/*.conf.sample")
-foreach(file ${files})
-  install(FILES ${file} DESTINATION etc/opendax)
-endforeach()
+#file(GLOB files "etc/*.conf.sample")
+#foreach(file ${files})
+#  install(FILES ${file} DESTINATION etc/opendax)
+#endforeach()
 
 add_subdirectory(tests)
 
