@@ -263,7 +263,7 @@ main(int argc,char *argv[]) {
     struct sigaction sa;
     int flags, result = 0, scan = 0, n;
     char *str, *tagname, *event_tag, *event_type;
-    Handle h_full, h_part;
+    tag_handle h_full, h_part;
     dax_dint data[5];
 
     /* Set up the signal handlers for controlled exit*/

@@ -72,7 +72,7 @@ extern "C" {
 #define LOG_MAJOR   0x00000002  /* Major Program Milestones */
 #define LOG_MINOR   0x00000004  /* Minor Program Milestones */
 #define LOG_FUNC    0x00000008  /* Function Entries */
-#define LOG_COMM    0x00000010  /* Communcations Milestones */
+#define LOG_COMM    0x00000010  /* Communications Milestones */
 #define LOG_MSG     0x00000020  /* Messages */
 #define LOG_MSGERR  0x00000040  /* Errors returned to Modules */
 #define LOG_CONFIG  0x00000080  /* Configurations */
@@ -105,11 +105,12 @@ extern "C" {
 #define ERR_NOTNUMBER -19 /* Non Numeric Argument */
 #define ERR_EMPTY     -20 /* Empty */
 #define ERR_BADTYPE   -21 /* Bad Datatype */
-#define ERR_AUTH      -22 /* Not Authorized */
-#define ERR_OVERFLOW  -23 /* Overflow Error */
-#define ERR_UNDERFLOW -24 /* Underflow Error */
-#define ERR_DELETED   -25 /* Object has been deleted */
-#define ERR_READONLY  -26 /* Resource is read only */
+#define ERR_BADINDEX  -22 /* Bad Index */
+#define ERR_AUTH      -23 /* Not Authorized */
+#define ERR_OVERFLOW  -24 /* Overflow Error */
+#define ERR_UNDERFLOW -25 /* Underflow Error */
+#define ERR_DELETED   -26 /* Object has been deleted */
+#define ERR_READONLY  -27 /* Resource is read only */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */
@@ -210,7 +211,6 @@ struct tag_handle {
 };
 
 typedef struct tag_handle tag_handle;
-typedef struct tag_handle Handle; /* For backward compatibility */
 
 /* This is a generic representation of a tag, it may or may
  * not actually represent how tags are stored. */
@@ -395,6 +395,9 @@ int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt
 /* Add remove and get data table mapping functions */
 int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 
+/* Tag data group functions */
+int dax_group_add(dax_state *ds, u_int32_t *index);
+int dax_group_add_member(dax_state *ds, u_int32_t index, tag_handle h);
 
 /* Convenience functions for converting strings to basic DAX values and back */
 int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);
