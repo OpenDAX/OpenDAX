@@ -78,8 +78,6 @@ int msg_map_del(dax_message *msg);
 int msg_map_get(dax_message *msg);
 int msg_group_add(dax_message *msg);
 int msg_group_del(dax_message *msg);
-int msg_group_member_add(dax_message *msg);
-int msg_group_member_del(dax_message *msg);
 int msg_group_read(dax_message *msg);
 int msg_group_write(dax_message *msg);
 int msg_group_mask_write(dax_message *msg);
@@ -228,8 +226,6 @@ msg_setup(void)
     cmd_arr[MSG_MAP_GET]    = &msg_map_get;
     cmd_arr[MSG_GRP_ADD]    = &msg_group_add;
     cmd_arr[MSG_GRP_DEL]    = &msg_group_del;
-    cmd_arr[MSG_GRP_MEM_ADD]= &msg_group_member_add;
-    cmd_arr[MSG_GRP_MEM_DEL]= &msg_group_member_del;
     cmd_arr[MSG_GRP_READ]   = &msg_group_read;
     cmd_arr[MSG_GRP_WRITE]  = &msg_group_write;
     cmd_arr[MSG_GRP_MWRITE] = &msg_group_mask_write;
@@ -843,9 +839,12 @@ int
 msg_group_add(dax_message *msg) {
     dax_module *mod;
     int id;
+    u_int8_t count; //, options;
 
     mod = module_find_fd(msg->fd);
-    id = group_add(mod);
+    count = msg->data[0];
+    //options = msg->data[1]; /* Might use this in the future to indicate maskable groups */
+    id = group_add(mod, &msg->data[2], count);
 
     if(id < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), ERROR);
@@ -858,37 +857,6 @@ msg_group_add(dax_message *msg) {
 int
 msg_group_del(dax_message *msg) {
     printf("Message Group Delete\n");
-    return 0;
-}
-
-int
-msg_group_member_add(dax_message *msg) {
-    dax_module *mod;
-    tag_handle h;
-    int result;
-    u_int32_t index, offset;
-
-    mod = module_find_fd(msg->fd);
-    memcpy(&index, &msg->data[0], 4);
-    memcpy(&h.index, &msg->data[4], 4);
-    memcpy(&h.byte, &msg->data[8], 4);
-    h.bit = msg->data[9];
-    memcpy(&h.count, &msg->data[13], 4);
-    memcpy(&h.size, &msg->data[17], 4);
-    memcpy(&h.type, &msg->data[21], 4);
-
-    result = group_add_member(mod, index, h, &offset);
-    if(result < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_GRP_MEM_ADD, &result, sizeof(int), ERROR);
-    } else {
-        _message_send(msg->fd, MSG_GRP_MEM_ADD, &offset, sizeof(u_int32_t), RESPONSE);
-    }
-    return 0;
-}
-
-int
-msg_group_member_del(dax_message *msg) {
-    printf("Message Group Member Delete\n");
     return 0;
 }
 

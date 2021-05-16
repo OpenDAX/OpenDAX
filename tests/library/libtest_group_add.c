@@ -35,19 +35,29 @@ do_test(int argc, char *argv[])
 	dax_state *ds;
     int result = 0;
     u_int32_t idx;
-    tag_handle h;
+    tag_handle h[100];
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
+    for(int n=0;n<10;n++) {
+        h[n].index = n;
+        h[n].size = 4;
+        h[n].byte = 0;
+        h[n].bit = 0;
+        h[n].count = 1;
+        h[n].type = DAX_DINT;
+    }
     if(result) {
         return -1;
     } else {
         for(int n=0;n<10;n++) {
-            dax_group_add(ds, &idx);
-            dax_group_add_member(ds, idx, h);
+            result = dax_group_add(ds, &idx, h, 10, 0);
+            if(result) return result;
+            printf("Test - Added group at index %d\n", idx);
+            if(idx != n) return -1;
         }
     }
     return 0;

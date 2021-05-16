@@ -1131,22 +1131,51 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
  * are a way to aggregate tags or parts of tags into a single
  * group that can be read or written all at once.
  *
- * @param ds Pointer to the dax state object
- * @param index Pointer to an integer that would be used to identify
- *              the new group.
- * @param dest Pointer to a tag handle for the destination of the map
- * @param id Pointer to a structure that will be filled in with the
- *           id of the map
+ * @param ds      Pointer to the dax state object
+ * @param index   Pointer to an integer that will be filled in by this
+ *                function to identify the new group.  This will be used
+ *                in all the functions that access the group
+ * @param h       Pointer to an array of tag_handles that define the group
+ * @param count   Number of handles in the array
+ * @param options Options Flags <Not Implemented set to zero>
  * @returns Zero on success or an error code otherwise *
  */
 int
-dax_group_add(dax_state *ds, u_int32_t *index) {
-    int result, rindex;
+dax_group_add(dax_state *ds, u_int32_t *index, tag_handle *h, int count, u_int8_t options) {
+    int result, offset, n;
     size_t size;
+    dax_dint temp;
+    dax_udint u_temp;
 
-    char buff[MSG_DATA_SIZE];
+    u_int8_t buff[MSG_DATA_SIZE];
 
+    /* Sanity check the sizes.  These checks are redundant because
+     * the server also does them but this will keep from sending the message */
+    if(count > TAG_GROUP_MAX_MEMBERS) return ERR_ARG;
     size = 0;
+    for(n=0; n<count; n++) {
+        size += h[n].size;
+        if(size > MSG_TAG_GROUP_DATA_SIZE) return ERR_2BIG;
+    }
+    buff[0] = count;
+    buff[1] = options; /* Not implemented yet */
+    /* size of the handles array + the count and the options bytes */
+    size = 21*count + 2;
+    for(n=0; n<count; n++) {
+        offset = 21*n + 2;
+        temp = mtos_dint(h[n].index);
+        memcpy(&buff[offset], &temp, 4);
+        u_temp = mtos_udint(h[n].byte);
+        memcpy(&buff[offset+4], &u_temp, 4);
+        buff[offset+8] = h[n].bit;
+        u_temp = mtos_udint(h[n].count);
+        memcpy(&buff[offset+9], &u_temp, 4);
+        u_temp = mtos_udint(h[n].size);
+        memcpy(&buff[offset+13], &u_temp, 4);
+        u_temp = mtos_udint(h[n].type);
+        memcpy(&buff[offset+17], &u_temp, 4);
+    }
+
     libdax_lock(ds->lock);
     result = _message_send(ds, MSG_GRP_ADD, buff, size);
 
@@ -1159,68 +1188,9 @@ dax_group_add(dax_state *ds, u_int32_t *index) {
     result = _message_recv(ds, MSG_GRP_ADD, buff, &size, 1);
     if(result == 0) {
         *index = *(u_int32_t *)buff;
-        libdax_unlock(ds->lock);
-        rindex = lib_group_add(ds, *index);
-        if(rindex) return rindex;
-    } else {
-        libdax_unlock(ds->lock);
-        return result;
     }
-    return 0;
-}
-
-/* Add a member to the given tag group.  Members are added sequentially
- * in the order that they are added by calls to this function.
- *
- * @param ds Pointer to the dax state object
- * @param index Index of the group that was returned by dax_gropu_add().
- * @param h tag handle of the data to be added to the group
- * @returns the byte offset within the group where the member was placed
- *          or a negative error code on failure
- */
-int
-dax_group_add_member(dax_state *ds, u_int32_t index, tag_handle h) {
-    int result;
-    size_t size;
-    dax_dint temp;
-    dax_udint u_temp;
-
-    char buff[MSG_DATA_SIZE];
-    u_temp = mtos_udint(index);
-    memcpy(&buff[0], &u_temp, 4);
-    temp = mtos_dint(h.index);
-    memcpy(&buff[4], &temp, 4);
-    u_temp = mtos_udint(h.byte);
-    memcpy(&buff[8], &u_temp, 4);
-    buff[9] = h.bit;
-    u_temp = mtos_udint(h.count);
-    memcpy(&buff[13], &u_temp, 4);
-    u_temp = mtos_udint(h.size);
-    memcpy(&buff[17], &u_temp, 4);
-    u_temp = mtos_udint(h.type);
-    memcpy(&buff[21], &u_temp, 4);
-
-    size = sizeof(tag_handle) + sizeof(u_int32_t);
-
-    libdax_lock(ds->lock);
-    result = _message_send(ds, MSG_GRP_MEM_ADD, buff, size);
-
-    if(result) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
-    }
-
-    size = MSG_DATA_SIZE;
-    result = _message_recv(ds, MSG_GRP_MEM_ADD, buff, &size, 1);
-    if(result == 0) {
-        result = lib_group_add_member(ds, index, h);
-        libdax_unlock(ds->lock);
-        if(result) return result;
-        return *(u_int32_t *)buff;
-    } else {
-        libdax_unlock(ds->lock);
-        return result;
-    }
+    libdax_unlock(ds->lock);
+    return result;
 }
 
 int

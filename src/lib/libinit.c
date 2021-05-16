@@ -73,8 +73,6 @@ dax_init(char *name)
     ds->emsg_queue_count = 0;    /* number of entries in the event message queue */
     ds->emsg_queue_read = 0;     /* index to the next event in the queue */
 
-    ds->group_db = NULL;
-    ds->group_size = 0;
     /* Logging functions */
     ds->dax_debug = NULL;
     ds->dax_error = NULL;

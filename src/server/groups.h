@@ -31,16 +31,14 @@
  * message.  These groups are defined by the clients and then can be
  * read and written as a whole afterwards.
  *
- * Each group is implemented as a linked list of tag_handles and an
+ * Each group is implemented as an array of tag_handles and an
  * array of groups is allocated as necessary for each module.
  */
 
-
-
-int group_add(dax_module *mod);
-int group_add_member(dax_module *mod, u_int32_t index, tag_handle h, u_int32_t *offset);
-int group_delete_member(dax_module *mod, u_int32_t index, tag_handle h);
+int group_add(dax_module *mod, u_int8_t *handles, u_int8_t count);
+int group_del(dax_module *mod, int index);
 int group_read(dax_module *mod, u_int32_t index, u_int8_t *buff, int size);
+int group_write(dax_module *mod, u_int32_t index, u_int8_t *buff);
 int groups_cleanup(dax_module *mod);
 
 #endif /* !__DAX_GROUPS_H */

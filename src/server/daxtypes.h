@@ -34,17 +34,12 @@
 /* Flag bits for the tag data groups */
 #define GRP_FLAG_NOT_EMPTY  0x01
 
-/* Type definitions for the tag group linked list */
-typedef struct tag_group_member_t {
-    tag_handle handle;
-    struct tag_group_member_t *next;
-} tag_group_member;
-
 /* Tag groups are an array of linked lists in each module */
 typedef struct tag_group_t {
     u_int8_t flags;    /* option flags for the group */
     unsigned int size; /* amount of memory needed to transfer this group */
-    tag_group_member *head;
+    u_int8_t count;    /* number of members in this group */
+    tag_handle *members;
 } tag_group;
 
 /* Modules are implemented as a circular doubly linked list */

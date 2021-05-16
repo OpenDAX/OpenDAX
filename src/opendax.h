@@ -396,8 +396,7 @@ int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt
 int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 
 /* Tag data group functions */
-int dax_group_add(dax_state *ds, u_int32_t *index);
-int dax_group_add_member(dax_state *ds, u_int32_t index, tag_handle h);
+int dax_group_add(dax_state *ds, u_int32_t *index, tag_handle *h, int count, u_int8_t options);
 
 /* Convenience functions for converting strings to basic DAX values and back */
 int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);

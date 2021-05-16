@@ -35,7 +35,7 @@ run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
     pid = fork();
 
     if(pid == 0) { // Child
-        execl("../../src/server/tagserver", "../../src/server/tagserver", NULL);
+        execl("../../src/server/tagserver", "../../src/server/tagserver", "-v", NULL);
         printf("Failed to launch tagserver\n");
         exit(-1);
     } else if(pid < 0) {

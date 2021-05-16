@@ -93,7 +93,3 @@ target_link_libraries(library_group_add dax)
 add_test(library_group_add library_group_add)
 set_tests_properties(library_group_add PROPERTIES TIMEOUT 10)
 
-add_executable(library_group_add_member libtest_group_add_member.c libtest_common.c)
-target_link_libraries(library_group_add_member dax)
-add_test(library_group_add_member library_group_add_member)
-set_tests_properties(library_group_add_member PROPERTIES TIMEOUT 10)
