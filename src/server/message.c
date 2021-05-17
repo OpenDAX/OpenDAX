@@ -844,7 +844,7 @@ msg_group_add(dax_message *msg) {
     mod = module_find_fd(msg->fd);
     count = msg->data[0];
     //options = msg->data[1]; /* Might use this in the future to indicate maskable groups */
-    id = group_add(mod, &msg->data[2], count);
+    id = group_add(mod, (u_int8_t *)&msg->data[2], count);
 
     if(id < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), ERROR);

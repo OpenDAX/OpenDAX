@@ -70,6 +70,8 @@ _group_add(dax_module *mod) {
 
 /* This adds a tag group to the given module.  It simply determines if there
  * is space on the currently allocated array and if not allocates more space.
+ * The handles array is the part of the message buffer that contains the
+ * tag handle data
  * Returns the index of the new group.
  */
 int

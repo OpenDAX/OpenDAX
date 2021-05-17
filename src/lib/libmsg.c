@@ -1126,36 +1126,44 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
     return result;
 }
 
-
 /* Send message to the server to add a data group.  Groups
  * are a way to aggregate tags or parts of tags into a single
  * group that can be read or written all at once.
  *
  * @param ds      Pointer to the dax state object
- * @param index   Pointer to an integer that will be filled in by this
- *                function to identify the new group.  This will be used
- *                in all the functions that access the group
+ * @param result  Pointer to the result 0 = success
  * @param h       Pointer to an array of tag_handles that define the group
  * @param count   Number of handles in the array
  * @param options Options Flags <Not Implemented set to zero>
- * @returns Zero on success or an error code otherwise *
+ * @returns       A pointer to a tag group object.  This will be filled in
+ *                with all the information necessary to access this group.
+ *                This will be used in all the functions that access the group.
+ *                This function allocates memory so it will have be deleted with
+ *                the dax_gropu_del() function to free everything.
  */
-int
-dax_group_add(dax_state *ds, u_int32_t *index, tag_handle *h, int count, u_int8_t options) {
-    int result, offset, n;
+tag_group_id *
+dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t options) {
+    int offset, n;
+    tag_group_id *id = NULL;
     size_t size;
     dax_dint temp;
     dax_udint u_temp;
 
     u_int8_t buff[MSG_DATA_SIZE];
-
+    *result = 0;
     /* Sanity check the sizes.  These checks are redundant because
      * the server also does them but this will keep from sending the message */
-    if(count > TAG_GROUP_MAX_MEMBERS) return ERR_ARG;
+    if(count > TAG_GROUP_MAX_MEMBERS) {
+        *result = ERR_ARG;
+        return NULL;
+    }
     size = 0;
     for(n=0; n<count; n++) {
         size += h[n].size;
-        if(size > MSG_TAG_GROUP_DATA_SIZE) return ERR_2BIG;
+        if(size > MSG_TAG_GROUP_DATA_SIZE) {
+            *result = ERR_2BIG;
+            return NULL;
+        }
     }
     buff[0] = count;
     buff[1] = options; /* Not implemented yet */
@@ -1177,24 +1185,34 @@ dax_group_add(dax_state *ds, u_int32_t *index, tag_handle *h, int count, u_int8_
     }
 
     libdax_lock(ds->lock);
-    result = _message_send(ds, MSG_GRP_ADD, buff, size);
+    *result = _message_send(ds, MSG_GRP_ADD, buff, size);
 
-    if(result) {
+    if(*result) {
         libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+        *result = ERR_MSG_SEND;
+        return NULL;
     }
-
     size = MSG_DATA_SIZE;
-    result = _message_recv(ds, MSG_GRP_ADD, buff, &size, 1);
-    if(result == 0) {
-        *index = *(u_int32_t *)buff;
+    *result = _message_recv(ds, MSG_GRP_ADD, buff, &size, 1);
+    if(*result == 0) {
+        id = (tag_group_id *)malloc(sizeof(tag_group_id));
+        if(id == NULL) {
+            libdax_unlock(ds->lock);
+            *result = ERR_ALLOC;
+            return NULL;
+        }
+        id->handles = (tag_handle *)malloc(sizeof(tag_handle)*count);
+        if(id->handles == NULL) {
+            libdax_unlock(ds->lock);
+            *result = ERR_ALLOC;
+            return NULL;
+        }
+        memcpy(id->handles, h, sizeof(tag_handle)*count);
+        id->index = *(u_int32_t *)buff;
+        id->count = count;
+        id->options = options;
     }
     libdax_unlock(ds->lock);
-    return result;
+    return id;
 }
 
-int
-dax_group_read(dax_state *ds, u_int32_t index, u_int8_t *buff) {
-
-    return 0;
-}

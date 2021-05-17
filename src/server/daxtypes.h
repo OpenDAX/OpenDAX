@@ -34,7 +34,7 @@
 /* Flag bits for the tag data groups */
 #define GRP_FLAG_NOT_EMPTY  0x01
 
-/* Tag groups are an array of linked lists in each module */
+/* Tag groups are an array of handles in each module */
 typedef struct tag_group_t {
     u_int8_t flags;    /* option flags for the group */
     unsigned int size; /* amount of memory needed to transfer this group */

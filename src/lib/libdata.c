@@ -558,3 +558,10 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
     }
     return result;
 }
+
+int
+dax_group_read(dax_state *ds, u_int32_t index, void *data) {
+
+    return 0;
+}
+

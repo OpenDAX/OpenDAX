@@ -22,7 +22,6 @@ add_library(dax libcdt.c
                 libevent.c
                 libfunc.c
                 libinit.c
-                libgroup.c
                 libmsg.c
                 libopt.c
                 )

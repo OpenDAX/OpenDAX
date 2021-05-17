@@ -37,7 +37,6 @@ add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
                                      ${LIB_SOURCE_DIR}/libinit.c
                                      ${LIB_SOURCE_DIR}/libmsg.c
                                      ${LIB_SOURCE_DIR}/libopt.c
-                                     ${LIB_SOURCE_DIR}/libgroup.c
                                      )
 # target_link_libraries(cachetest
 target_link_libraries(cachetest ${LUA_LIBRARIES})
@@ -50,7 +49,6 @@ add_executable(event_queue event_queue.c ${LIB_SOURCE_DIR}/libdata.c
                                          ${LIB_SOURCE_DIR}/libinit.c
                                          ${LIB_SOURCE_DIR}/libmsg.c
                                          ${LIB_SOURCE_DIR}/libopt.c
-                                         ${LIB_SOURCE_DIR}/libgroup.c
                                          )
 target_link_libraries(event_queue ${LUA_LIBRARIES})
 add_test(internal_library_event_queue event_queue)

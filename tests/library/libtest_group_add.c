@@ -34,7 +34,7 @@ do_test(int argc, char *argv[])
 {
 	dax_state *ds;
     int result = 0;
-    u_int32_t idx;
+    tag_group_id *idx;
     tag_handle h[100];
 
     ds = dax_init("test");
@@ -54,10 +54,9 @@ do_test(int argc, char *argv[])
         return -1;
     } else {
         for(int n=0;n<10;n++) {
-            result = dax_group_add(ds, &idx, h, 10, 0);
+            idx = dax_group_add(ds, &result, h, 10, 0);
             if(result) return result;
-            printf("Test - Added group at index %d\n", idx);
-            if(idx != n) return -1;
+            printf("Test - Added group at id %p\n", idx);
         }
     }
     return 0;

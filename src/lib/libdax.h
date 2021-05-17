@@ -80,6 +80,15 @@ struct datatype{
 
 typedef struct datatype datatype;
 
+struct tag_group_id {
+    u_int32_t index;
+    int count;
+    u_int8_t options;
+    tag_handle *handles;
+};
+
+typedef struct tag_group_id tag_group_id;
+
 #ifdef USE_PTHREAD_LOCK
 #include <pthread.h>
 /* This is all just an abstraction for using the pthread_mutex as
