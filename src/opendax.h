@@ -399,7 +399,7 @@ int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 
 /* Tag data group functions */
 tag_group_id *dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t options);
-int dax_group_read(dax_state *ds, u_int32_t index, void *data);
+int dax_group_read(dax_state *ds, tag_group_id *id, void *buff, size_t size);
 
 /* Convenience functions for converting strings to basic DAX values and back */
 int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);

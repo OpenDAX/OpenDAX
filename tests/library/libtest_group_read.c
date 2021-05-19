@@ -36,29 +36,49 @@ do_test(int argc, char *argv[])
     int result = 0;
     tag_group_id *idx;
     tag_handle h[100];
+    dax_dint temp;
+    dax_dint temp_array[5];
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
-    for(int n=0;n<10;n++) {
-        h[n].index = n;
-        h[n].size = 4;
-        h[n].byte = 0;
-        h[n].bit = 0;
-        h[n].count = 1;
-        h[n].type = DAX_DINT;
-    }
     if(result) {
         return -1;
-    } else {
-        for(int n=0;n<10;n++) {
-            idx = dax_group_add(ds, &result, h, 10, 0);
-            if(result) return result;
-            printf("Test - Added group at id %p\n", idx);
-        }
     }
+    result = 0;
+    result += dax_tag_add(ds, &h[0], "TEST1", DAX_DINT, 1);
+    result += dax_tag_add(ds, &h[1], "TEST2", DAX_DINT, 1);
+    result += dax_tag_add(ds, &h[2], "TEST3", DAX_DINT, 1);
+    result += dax_tag_add(ds, &h[3], "TEST4", DAX_DINT, 1);
+    result += dax_tag_add(ds, &h[4], "TEST5", DAX_DINT, 1);
+    if(result) return -1;
+    idx = dax_group_add(ds, &result, h, 5, 0);
+    if(result) return result;
+    printf("Test - Added group at id %p\n", idx);
+
+    result = 0;
+    temp = 0x1122;
+    result += dax_write_tag(ds, h[0], &temp);
+    temp = 0x3344;
+    result += dax_write_tag(ds, h[1], &temp);
+    temp = 0x5566;
+    result += dax_write_tag(ds, h[2], &temp);
+    temp = 0x7788;
+    result += dax_write_tag(ds, h[3], &temp);
+    temp = 0x99AA;
+    result += dax_write_tag(ds, h[4], &temp);
+    if(result) return -1;
+    result = dax_group_read(ds, idx, temp_array, 20);
+    for(int n=0;n<5;n++) {
+        printf("Array[%d] = 0x%X\n", n, temp_array[n]);
+    }
+    if(temp_array[0] != 0x1122) return -1;
+    if(temp_array[1] != 0x3344) return -1;
+    if(temp_array[2] != 0x5566) return -1;
+    if(temp_array[3] != 0x7788) return -1;
+    if(temp_array[4] != 0x99AA) return -1;
     return 0;
 }
 
@@ -72,3 +92,4 @@ main(int argc, char *argv[])
         exit(0);
     }
 }
+

@@ -314,7 +314,7 @@ initialize_tagbase(void)
     tag_type type;
     char *str;
     u_int64_t starttime;
-    
+
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!_db) {
         xfatal("Unable to allocate the database");

@@ -20,8 +20,11 @@
  * tag groups.
  */
 
+/* TODO Would be much better to pack the BOOLs together. */
+
 #include "libcommon.h"
 #include "groups.h"
+#include "tagbase.h"
 
 static void
 _init_group(tag_group *grp) {
@@ -114,11 +117,22 @@ group_del(dax_module *mod, int index) {
     return 0;
 }
 
-/* loop through the linked list of members and populate buff with
+/* loop through the array of members and populate buff with
  * the data.*/
 int
 group_read(dax_module *mod, u_int32_t index, u_int8_t *buff, int size) {
-    return 0;
+    int n, offset=0, result;
+    tag_group *group;
+
+    group = &mod->tag_groups[index];
+    if((group->flags & GRP_FLAG_NOT_EMPTY) == 0) return ERR_NOTFOUND;
+    if(group->size > size) return ERR_ARG;
+    for(n = 0;n<group->count;n++) {
+        result = tag_read(group->members[n].index, group->members[n].byte, &buff[offset], group->members[n].size);
+        if(result) return result;
+        offset += group->members[n].size;
+    }
+    return offset;
 }
 
 

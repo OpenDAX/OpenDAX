@@ -1216,3 +1216,32 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
     return id;
 }
 
+
+int
+dax_group_read(dax_state *ds, tag_group_id *id, void *buff, size_t size) {
+    int result;
+    u_int32_t u_temp;
+
+    //if(size < id->size) return ERR_ARG;
+    u_temp = mtos_udint(id->index);
+    memcpy(buff, &u_temp, 4);
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_GRP_READ, buff, 4);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return ERR_MSG_SEND;
+    }
+
+    size = MSG_DATA_SIZE;
+    result = _message_recv(ds, MSG_GRP_READ, buff, &size, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    if(result == 0) {
+        result = group_format(ds, id, buff, size);
+    }
+    libdax_unlock(ds->lock);
+    return result;
+}

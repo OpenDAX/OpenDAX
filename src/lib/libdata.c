@@ -560,8 +560,8 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 }
 
 int
-dax_group_read(dax_state *ds, u_int32_t index, void *data) {
-
+group_format(dax_state *ds, tag_group_id *id, void *buff, size_t size) {
+    /* TODO: Loop through the handles in id calling _read_format() for each one */
     return 0;
 }
 

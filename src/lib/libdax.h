@@ -83,6 +83,7 @@ typedef struct datatype datatype;
 struct tag_group_id {
     u_int32_t index;
     int count;
+    int size;
     u_int8_t options;
     tag_handle *handles;
 };
@@ -217,5 +218,7 @@ int del_event(dax_state *ds, dax_id id);
 int exec_event(dax_state *ds, dax_id id);
 
 int message_get(int, dax_message *);
+
+int group_format(dax_state *ds, tag_group_id *id, void *buff, size_t size);
 
 #endif /* !__LIBDAX_H */
