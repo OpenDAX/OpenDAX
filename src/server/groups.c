@@ -135,6 +135,23 @@ group_read(dax_module *mod, u_int32_t index, u_int8_t *buff, int size) {
     return offset;
 }
 
+/* loop through the array of members and populate buff with
+ * the data.*/
+int
+group_write(dax_module *mod, u_int32_t index, u_int8_t *buff) {
+    int n, offset=0, result;
+    tag_group *group;
+
+    group = &mod->tag_groups[index];
+    if((group->flags & GRP_FLAG_NOT_EMPTY) == 0) return ERR_NOTFOUND;
+    for(n = 0;n<group->count;n++) {
+        result = tag_write(group->members[n].index, group->members[n].byte, &buff[offset], group->members[n].size);
+        if(result) return result;
+        offset += group->members[n].size;
+    }
+    return offset;
+}
+
 
 /* Deletes all of the groups and free's the tag_groups array
  * This is called when we are removing the module */

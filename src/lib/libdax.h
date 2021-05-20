@@ -81,11 +81,11 @@ struct datatype{
 typedef struct datatype datatype;
 
 struct tag_group_id {
-    u_int32_t index;
-    int count;
-    int size;
-    u_int8_t options;
-    tag_handle *handles;
+    u_int32_t index;     /* Unique identifier that the server uses */
+    int count;           /* Number of tag handles in the group */
+    int size;            /* Total size of the group's data in bytes */
+    u_int8_t options;    /* Not implemented yet */
+    tag_handle *handles; /* Array of tag handles that describes the group */
 };
 
 typedef struct tag_group_id tag_group_id;
@@ -219,6 +219,7 @@ int exec_event(dax_state *ds, dax_id id);
 
 int message_get(int, dax_message *);
 
-int group_format(dax_state *ds, tag_group_id *id, void *buff, size_t size);
+int group_read_format(dax_state *ds, tag_group_id *id, u_int8_t *buff);
+int group_write_format(dax_state *ds, tag_group_id *id, u_int8_t *buff);
 
 #endif /* !__LIBDAX_H */

@@ -882,6 +882,19 @@ msg_group_read(dax_message *msg) {
 
 int
 msg_group_write(dax_message *msg) {
+    dax_module *mod;
+    int result;
+    u_int32_t index;
+
+    mod = module_find_fd(msg->fd);
+    memcpy(&index, &msg->data[0], 4);
+
+    result = group_write(mod, index, (u_int8_t *)&msg->data[4]);
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_GRP_READ, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_GRP_READ, NULL, 0, RESPONSE);
+    }
     printf("Message Group Write\n");
     return 0;
 }

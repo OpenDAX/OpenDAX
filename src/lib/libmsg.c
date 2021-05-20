@@ -1145,7 +1145,7 @@ tag_group_id *
 dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t options) {
     int offset, n;
     tag_group_id *id = NULL;
-    size_t size;
+    size_t size, group_size;
     dax_dint temp;
     dax_udint u_temp;
 
@@ -1159,8 +1159,8 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
     }
     size = 0;
     for(n=0; n<count; n++) {
-        size += h[n].size;
-        if(size > MSG_TAG_GROUP_DATA_SIZE) {
+        group_size += h[n].size;
+        if(group_size > MSG_TAG_GROUP_DATA_SIZE) {
             *result = ERR_2BIG;
             return NULL;
         }
@@ -1211,37 +1211,79 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
         id->index = *(u_int32_t *)buff;
         id->count = count;
         id->options = options;
+        id->size = group_size;
     }
     libdax_unlock(ds->lock);
     return id;
 }
 
-
+/* Reads a tag data group from the server.  It reads the data from the server
+ * and writes it into the data area pointed to by 'buff'.  buff must be large
+ * enough to contain the entire tag data group.
+ *
+ * @param ds      Pointer to the dax state object
+ * @param id      Pointer to the tag group id returned by group_add()
+ * @param data    Pointer to a buffer that will recieve the data
+ * @param size    Size of the above buffer
+ * @returns       0 on success an error code otherwise
+ */
 int
-dax_group_read(dax_state *ds, tag_group_id *id, void *buff, size_t size) {
+dax_group_read(dax_state *ds, tag_group_id *id, void *data, size_t size) {
     int result;
     u_int32_t u_temp;
 
-    //if(size < id->size) return ERR_ARG;
+    if(size < id->size) return ERR_ARG;
     u_temp = mtos_udint(id->index);
-    memcpy(buff, &u_temp, 4);
+    memcpy(data, &u_temp, 4);
 
     libdax_lock(ds->lock);
-    result = _message_send(ds, MSG_GRP_READ, buff, 4);
+    result = _message_send(ds, MSG_GRP_READ, data, 4);
     if(result) {
         libdax_unlock(ds->lock);
         return ERR_MSG_SEND;
     }
 
     size = MSG_DATA_SIZE;
-    result = _message_recv(ds, MSG_GRP_READ, buff, &size, 1);
+    result = _message_recv(ds, MSG_GRP_READ, data, &size, 1);
     if(result) {
         libdax_unlock(ds->lock);
         return result;
     }
     if(result == 0) {
-        result = group_format(ds, id, buff, size);
+        result = group_read_format(ds, id, data);
     }
     libdax_unlock(ds->lock);
     return result;
 }
+
+/* Writes a tag data group to the server.
+ *
+ * @param ds      Pointer to the dax state object
+ * @param id      Pointer to the tag group id returned by group_add()
+ * @param data    Pointer to a buffer that will recieve the data
+ * @returns       0 on success an error code otherwise
+ */
+int
+dax_group_write(dax_state *ds, tag_group_id *id, void *data) {
+    int result;
+    u_int32_t u_temp;
+    char buff[MSG_DATA_SIZE];
+
+    u_temp = mtos_udint(id->index);
+    memcpy(buff, &u_temp, 4);
+
+    result = group_write_format(ds, id, data);
+    if(result) return result;
+    memcpy(&buff[4], data, id->size);
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_GRP_WRITE, buff, id->size+4);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return ERR_MSG_SEND;
+    }
+
+    result = _message_recv(ds, MSG_GRP_WRITE, buff, 0, 1);
+    libdax_unlock(ds->lock);
+    return result;
+}
+

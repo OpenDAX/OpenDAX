@@ -559,9 +559,35 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
     return result;
 }
 
+/* These two functions walk through the given data using the handles in the group id
+ * to send each element of the group the the formatting routines so that they can be
+ * reformatted if need be to match the server.
+ */
 int
-group_format(dax_state *ds, tag_group_id *id, void *buff, size_t size) {
-    /* TODO: Loop through the handles in id calling _read_format() for each one */
+group_read_format(dax_state *ds, tag_group_id *id, u_int8_t *buff) {
+    int n, offset = 0, result;
+    tag_handle h;
+
+    for(n=0;n<id->count;n++) {
+        h = id->handles[n];
+        result = _read_format(ds, h.type, h.count, &buff[offset], 0);
+        if(result) return result;
+        offset += h.size;
+    }
+    return 0;
+}
+
+int
+group_write_format(dax_state *ds, tag_group_id *id, u_int8_t *buff) {
+    int n, offset = 0, result;
+    tag_handle h;
+
+    for(n=0;n<id->count;n++) {
+        h = id->handles[n];
+        result = _write_format(ds, h.type, h.count, &buff[offset], 0);
+        if(result) return result;
+        offset += h.size;
+    }
     return 0;
 }
 
