@@ -79,7 +79,8 @@ do_test(int argc, char *argv[])
     if(temp_array[2] != 0x5566) return -1;
     if(temp_array[3] != 0x7788) return -1;
     if(temp_array[4] != 0x99AA) return -1;
-    return 0;
+    result = dax_group_del(ds, idx);
+    return result;
 }
 
 /* main inits and then calls run */

@@ -1282,8 +1282,33 @@ dax_group_write(dax_state *ds, tag_group_id *id, void *data) {
         return ERR_MSG_SEND;
     }
 
-    result = _message_recv(ds, MSG_GRP_WRITE, buff, 0, 1);
+    result = _message_recv(ds, MSG_GRP_WRITE, NULL, 0, 1);
     libdax_unlock(ds->lock);
     return result;
+}
+
+int
+dax_group_del(dax_state *ds, tag_group_id *id) {
+    int result;
+     u_int32_t u_temp;
+     char buff[4];
+
+     u_temp = mtos_udint(id->index);
+     memcpy(buff, &u_temp, 4);
+
+     libdax_lock(ds->lock);
+     result = _message_send(ds, MSG_GRP_DEL, buff, 4);
+     if(result) {
+         libdax_unlock(ds->lock);
+         return ERR_MSG_SEND;
+     }
+
+     result = _message_recv(ds, MSG_GRP_DEL, NULL, 0, 1);
+     if(result == 0) {
+         free(id->handles);
+         free(id);
+     }
+     libdax_unlock(ds->lock);
+     return result;
 }
 

@@ -401,6 +401,7 @@ int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 tag_group_id *dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t options);
 int dax_group_read(dax_state *ds, tag_group_id *id, void *buff, size_t size);
 int dax_group_write(dax_state *ds, tag_group_id *id, void *buff);
+int dax_group_del(dax_state *ds, tag_group_id *id);
 
 /* Convenience functions for converting strings to basic DAX values and back */
 int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);

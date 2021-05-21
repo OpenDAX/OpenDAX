@@ -112,8 +112,15 @@ group_add(dax_module *mod, u_int8_t *handles, u_int8_t count) {
 }
 
 
+/* Deletes a single tag group from the given module */
 int
 group_del(dax_module *mod, int index) {
+    if((mod->tag_groups[index].flags & GRP_FLAG_NOT_EMPTY) == 0) return ERR_NOTFOUND;
+
+    free(mod->tag_groups[index].members);
+    mod->tag_groups[index].flags = 0x00;
+    mod->tag_groups[index].count = 0;
+    mod->groups_size--;
     return 0;
 }
 

@@ -65,7 +65,7 @@ do_test(int argc, char *argv[])
     temp_array[4] = 0x99AA;;
 
     result = dax_group_write(ds, idx, temp_array);
-
+    if(result) return -1;
     result = 0;
     result += dax_read_tag(ds, h[0], &temp);
     if(temp != 0x1122) result += 1;
@@ -78,7 +78,8 @@ do_test(int argc, char *argv[])
     result += dax_read_tag(ds, h[4], &temp);
     if(temp != 0x99AA) result += 1;
     if(result) return -1;
-    return 0;
+    result = dax_group_del(ds, idx);
+    return result;
 }
 
 /* main inits and then calls run */
