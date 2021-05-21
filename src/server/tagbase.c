@@ -21,7 +21,6 @@
 #include <common.h>
 #include "tagbase.h"
 #include "func.h"
-#include "virtualtag.h"
 #include <ctype.h>
 #include <assert.h>
 
@@ -286,22 +285,29 @@ _del_index(char *name) {
     return 0;
 }
 
-/* This function adds a virtual tag to the system. 
- * When this tag is read from the system the data will
- * come from the function given by f
+/* This function adds a virtual tag to the system.  When this tag is read, the data will
+ * come from the function given by rf. And when written the data will be passed to wf.  If
+ * rf == NULL then the tag will be write only and reads will return an error and likewise if
+ * wf == NULL then the tag will be read only and writes will return an error.
  */
-static  tag_index
-_virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *f)
+tag_index
+virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf)
 {
     tag_index idx;
+    virt_functions vf;
+
     if(IS_CUSTOM(type)) {
         return ERR_ILLEGAL;
     }
     idx = tag_add(name, type, 1);
-    /* We just allocated this data but that was just for convienience */
+    /* We just allocated this data but that was just for convenience */
     free(_db[idx].data);
-    _db[idx].data = (u_int8_t *)f;
-    _db[idx].options = TAG_OPTS_READONLY | TAG_OPTS_VIRTUAL;
+    vf.rf = rf;
+    vf.wf = wf;
+    _db[idx].data = xmalloc(sizeof(virt_functions));
+    if(_db[idx].data == NULL) return ERR_ALLOC;
+    memcpy(_db[idx].data, &vf, sizeof(virt_functions));
+    _db[idx].options = TAG_OPTS_VIRTUAL;
     return 0;
 }
 
@@ -338,8 +344,8 @@ initialize_tagbase(void)
     _db[INDEX_DBSIZE].options = TAG_OPTS_READONLY;
     assert(tag_add("_starttime", DAX_TIME, 1) == INDEX_STARTED);
     _db[INDEX_STARTED].options = TAG_OPTS_READONLY;
-    _virtual_tag_add("_time", DAX_TIME, 1, server_time);
-    
+    virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
+
     starttime = xtime();
     tag_write(INDEX_STARTED,0,&starttime,sizeof(u_int64_t));
     set_dbsize(_dbsize);
@@ -576,6 +582,7 @@ is_tag_virtual(tag_index idx) {
 int
 tag_read(tag_index idx, int offset, void *data, int size)
 {
+    virt_functions *vf;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
@@ -584,7 +591,9 @@ tag_read(tag_index idx, int offset, void *data, int size)
     if(_db[idx].options & TAG_OPTS_VIRTUAL) {
         /* virtual tags read their data from a function that should be
          * pointed to by the *data pointer */
-        return ((vfunction *)_db[idx].data)(offset, data, size);
+        vf = (virt_functions *)_db[idx].data;
+        if(vf->rf == NULL) return ERR_WRITEONLY;
+        return vf->rf(offset, data, size);
     } else {
         /* Bounds check size */
         if( (offset + size) > tag_get_size(idx)) {
@@ -604,22 +613,32 @@ tag_read(tag_index idx, int offset, void *data, int size)
 int
 tag_write(tag_index idx, int offset, void *data, int size)
 {
+    virt_functions *vf;
+
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
     }
-    /* Bounds check size */
-    if( (offset + size) > tag_get_size(idx)) {
-        return ERR_2BIG;
+    /* determine if it's a virtual tag */
+    if(_db[idx].options & TAG_OPTS_VIRTUAL) {
+       /* virtual tags read their data from a function that should be
+        * pointed to by the *data pointer */
+       vf = (virt_functions *)_db[idx].data;
+       if(vf->wf == NULL) return ERR_READONLY;
+       return vf->wf(offset, data, size);
+    } else {
+        /* Bounds check size */
+        if( (offset + size) > tag_get_size(idx)) {
+            return ERR_2BIG;
+        }
+        if(_db[idx].data == NULL) {
+            return ERR_DELETED;
+        }
+        /* Copy the data into the right place. */
+        memcpy(&(_db[idx].data[offset]), data, size);
+        event_check(idx, offset, size);
+        map_check(idx, offset, data, size);
     }
-    if(_db[idx].data == NULL) {
-        return ERR_DELETED;
-    }
-    /* Copy the data into the right place. */
-    memcpy(&(_db[idx].data[offset]), data, size);
-    event_check(idx, offset, size);
-    map_check(idx, offset, data, size);
-
     return 0;
 }
 

@@ -54,8 +54,10 @@ extern "C" {
 #define DAX_TIME    0x0036 /* milliseconds since the epoch */
 #define DAX_LREAL   0x0046
 
-/* The highest order bit shows that it's a compound datatype */
+/* The highest order bit shows that it's a custom datatype */
 #define DAX_CUSTOM  0x80000000
+/* If this bit is set then the datatype is a queue */
+#define DAX_QUEUE   0x40000000
 
 /* The size of the base datatypes are based on the lower 4 bits.  A
  * simple bit shift will give the size of the datatype */
@@ -111,6 +113,7 @@ extern "C" {
 #define ERR_UNDERFLOW -25 /* Underflow Error */
 #define ERR_DELETED   -26 /* Object has been deleted */
 #define ERR_READONLY  -27 /* Resource is read only */
+#define ERR_WRITEONLY -28 /* Resource is write only */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */

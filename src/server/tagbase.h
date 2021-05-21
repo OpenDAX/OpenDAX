@@ -19,8 +19,10 @@
  */
 
 #include <libcommon.h>
-#include "daxtypes.h"
 #include <opendax.h>
+#include "daxtypes.h"
+#include "virtualtag.h"
+
 
 #ifndef __TAGBASE_H
 #define __TAGBASE_H
@@ -109,6 +111,7 @@ typedef struct {
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
 tag_index tag_add(char *name, tag_type type, unsigned int count);
+tag_index virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf);
 int tag_del(tag_index idx);
 int tag_get_name(char *, dax_tag *);
 int tag_get_index(int, dax_tag *);

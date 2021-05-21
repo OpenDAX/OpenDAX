@@ -19,11 +19,20 @@
  */
 
 #include <common.h>
-#include "tagbase.h"
 #include "func.h"
 
 /* type definition of the virtual tag function prototype */
 typedef int vfunction(int offset, void *data, int size);
+
+/* This structure is used to hold the two virtual functions
+ * that would define a tag.  rf = the read function, wf = the
+ * write function.  If rf is NULL then the tag is write only
+ * and if rf is NULL then the tag is read only
+ */
+typedef struct virt_functions {
+    vfunction *rf;
+    vfunction *wf;
+} virt_functions;
 
 /* retrieve the current time on the server */
 int server_time(int offset, void *data, int size);

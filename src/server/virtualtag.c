@@ -39,8 +39,8 @@ int
 server_time(int offset, void *data, int size)
 {
     dax_time t;
-    
+
     t = xtime();
     memcpy(data, &t, size);
     return 0;
-}    
+}
