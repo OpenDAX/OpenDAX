@@ -102,3 +102,8 @@ add_executable(library_group_write libtest_group_write.c libtest_common.c)
 target_link_libraries(library_group_write dax)
 add_test(library_group_write library_group_write)
 set_tests_properties(library_group_write PROPERTIES TIMEOUT 10)
+
+add_executable(library_queue_test libtest_queue_test.c libtest_common.c)
+target_link_libraries(library_queue_test dax)
+add_test(library_queue_test library_queue_test)
+set_tests_properties(library_queue_test PROPERTIES TIMEOUT 10)

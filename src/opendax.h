@@ -147,6 +147,8 @@ extern "C" {
 #endif
 
 #define IS_CUSTOM(TYPE) ((TYPE) & DAX_CUSTOM)
+#define IS_QUEUE(TYPE) ((TYPE) & DAX_QUEUE)
+
 /* 8 Bit */
 #define DAX_BYTE_MIN    0
 #define DAX_BYTE_MAX    255

@@ -111,6 +111,7 @@ dax_get_typesize(dax_state *ds, tag_type type)
     unsigned int pos = 0; /* Bit position within the data area */
     cdt_member *this;
 
+    type &= ~DAX_QUEUE; /* Delete the Queue bit from the type */
     if( dax_type_to_string(ds, type) == NULL )
         return ERR_ARG;
 

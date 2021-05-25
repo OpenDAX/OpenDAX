@@ -653,6 +653,7 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
     /* It is assumed that the flags that we want to set are the first 4 bytes are in *data */
     /* If we try to read more data that can be held in a single message we return an error */
     if(sendsize > MSG_DATA_SIZE) {
+        printf("handle size = %d\n", size);
         return ERR_2BIG;
     }
 

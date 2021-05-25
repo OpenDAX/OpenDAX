@@ -36,7 +36,7 @@
 #include "virtualtag.h"
 
 int
-server_time(int offset, void *data, int size)
+server_time(int offset, void *data, int size, void *userdata)
 {
     dax_time t;
 
@@ -44,3 +44,52 @@ server_time(int offset, void *data, int size)
     memcpy(data, &t, size);
     return 0;
 }
+
+
+
+/* These functions deal with tag based queues */
+int
+write_queue(int offset, void *data, int size, void *userdata) {
+    tag_queue *q;
+
+    int next, newqsize;
+    u_int8_t *new_queue;
+
+    q = (tag_queue *)userdata;
+    /* We need to grow the queue */
+    if(q->qcount == q->qsize) {
+        newqsize = q->qsize* 2;
+        new_queue = realloc(q->queue, q->size * newqsize);
+        if(new_queue == NULL) return ERR_ALLOC;
+        q->queue = (void **)new_queue;
+        /* After the queue size is increased we need to move the fragment that is now
+         * at the beginning of the queue to the start of the new area */
+        if(q->qread > 0) {
+            memcpy(&q->queue[q->qsize],&q->queue[0], q->qread*q->size);
+        }
+        q->qsize = newqsize;
+    }
+    next = (q->qread + q->qcount) % q->qsize;
+    memcpy(&q->queue[next], data, q->size);
+    q->qcount++;
+
+    return 0;
+}
+
+int
+read_queue(int offset, void *data, int size, void *userdata) {
+    tag_queue *q;
+
+    q = (tag_queue *)userdata;
+    if(q->qcount == 0) {
+        return ERR_EMPTY;
+    }
+    memcpy(data, &q->queue[q->qread], q->size);
+    q->qread++;
+    if(q->qread == q->qsize)  {
+        q->qread = 0;
+    }
+    q->qcount--;
+    return 0;
+}
+

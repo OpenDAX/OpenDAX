@@ -22,17 +22,43 @@
 #include "func.h"
 
 /* type definition of the virtual tag function prototype */
-typedef int vfunction(int offset, void *data, int size);
+typedef int vfunction(int offset, void *data, int size, void *userdata);
 
 /* This structure is used to hold the two virtual functions
- * that would define a tag.  rf = the read function, wf = the
- * write function.  If rf is NULL then the tag is write only
+ * that would define a virtual tag as well as the userdata for
+ * that tag.
+ * rf = the read function
+ * wf = the write function
+ * userdata = userdata that may or may not be needed.
+ * If rf is NULL then the tag is write only
  * and if rf is NULL then the tag is read only
  */
 typedef struct virt_functions {
     vfunction *rf;
     vfunction *wf;
+    void *userdata;
 } virt_functions;
 
+#define START_QUEUE_SIZE 16
+#define MAX_QUEUE_SIZE 1024
+
+/* This structure represents a single tag queue.  A copy of
+ * this would be placed in the *userdata pointer of the virt_function
+ * structure in the data area of the tag.
+ */
+typedef struct tag_queue {
+    tag_type type;   /* Type of the tag items */
+    u_int32_t count; /* The number of tags of each item */
+    u_int32_t size;  /* The size of the tag item */
+    int qsize;       /* Total size of the queue in number of tag items */
+    int qcount;      /* Current number of items in the queue */
+    int qread;       /* Nest item that needs to be read */
+    void **queue;    /* Pointer to the actual queue */
+} tag_queue;
+
 /* retrieve the current time on the server */
-int server_time(int offset, void *data, int size);
+int server_time(int offset, void *data, int size, void *userdata);
+
+int write_queue(int offset, void *data, int size, void *userdata);
+int read_queue(int offset, void *data, int size, void *userdata);
+

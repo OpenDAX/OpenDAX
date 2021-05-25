@@ -239,6 +239,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     datatype *dtype = NULL;
     cdt_member *this = NULL;
 
+    type &= ~DAX_QUEUE; /* Delete the Queue bit from the type */
     newdata = (char *)data + offset;
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
@@ -376,8 +377,8 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     datatype *dtype = NULL;
     cdt_member *this = NULL;
 
+    type &= ~DAX_QUEUE; /* Delete the Queue bit from the type */
     newdata = (char *)data + offset;
-
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
         dtype = get_cdt_pointer(ds, type, NULL);

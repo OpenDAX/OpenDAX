@@ -71,6 +71,7 @@ add_test(internal_library_cache cachetest)
 add_test(internal_tagbase_001 tagbasetest_001)
 add_test(internal_tagbase_002 tagbasetest_002)
 add_test(internal_tagbase_003 tagbasetest_003)
+add_test(internal_tagbase_004 tagbasetest_004)
 
 add_executable(groups_test groups_test.c ${SERVER_SOURCE_DIR}/groups.c
                                          ${SERVER_SOURCE_DIR}/tagbase.c

@@ -550,7 +550,7 @@ msg_tag_write(dax_message *msg)
     idx = *((tag_index *)&msg->data[0]);
     offset = *((u_int32_t *)&msg->data[4]);
     data = &msg->data[8];
-   
+
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
     if(is_tag_readonly(idx)) {
         return ERR_READONLY;
@@ -580,7 +580,7 @@ msg_tag_mask_write(dax_message *msg)
     offset = *((u_int32_t *)&msg->data[4]);
     data = &msg->data[8];
     mask = &msg->data[8 + size];
-   
+
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Masked Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
     if(is_tag_readonly(idx)) {
         result =  ERR_READONLY;

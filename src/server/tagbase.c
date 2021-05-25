@@ -18,11 +18,11 @@
  * This is the source file for the tagname database handling routines
  */
 
+#include <ctype.h>
+#include <assert.h>
 #include <common.h>
 #include "tagbase.h"
 #include "func.h"
-#include <ctype.h>
-#include <assert.h>
 
 /* Notes:
  * The tags are stored in the server in two different arrays.  Both
@@ -67,6 +67,8 @@ static int
 _checktype(tag_type type)
 {
     int index;
+    /* Delete the DAX_QUEUE bit and check the type otherwise */
+    type &= ~DAX_QUEUE;
 
     if(type == DAX_BOOL)
         return 0;
@@ -252,11 +254,6 @@ _add_index(char *name, tag_index index)
     _index[n].name = temp;
     _db[index].name = temp;
     _indexsize++;
-
-    /**** TESTING STUFF ******/
-//    for(n=0;n<_tagcount;n++) {
-//        printf("_index[%d] = %s\n", n, _index[n].name);
-//    }
     return 0;
 }
 
@@ -285,6 +282,43 @@ _del_index(char *name) {
     return 0;
 }
 
+static int
+_queue_add(int idx, tag_type type, unsigned int count) {
+    virt_functions vf;
+    tag_queue *q;
+    int size;
+
+    q = (tag_queue *)malloc(sizeof(tag_queue));
+    if(q == NULL) {
+        return ERR_ALLOC;
+    }
+    size = type_size(type) * count;
+    q->size = size;
+    q->count = count;
+    q->type = type;
+    q->qcount = 0;
+    q->qread = 0;
+    q->queue = malloc(START_QUEUE_SIZE * size);
+    if(q->queue == NULL) {
+        free(q);
+        return ERR_ALLOC;
+    }
+    q->qsize = START_QUEUE_SIZE;
+    vf.rf = read_queue;
+    vf.wf = write_queue;
+    vf.userdata = (u_int8_t *)q;
+    _db[idx].data = malloc(sizeof(virt_functions));
+    if(_db[idx].data == NULL) {
+        free(q);
+        free(q->queue);
+        return ERR_ALLOC;
+    }
+    memcpy(_db[idx].data, &vf, sizeof(virt_functions));
+    _db[idx].options |= TAG_OPTS_VIRTUAL;
+    xlog(LOG_VERBOSE, "Add Queue for tag at index %d", idx);
+    return 0;
+}
+
 /* This function adds a virtual tag to the system.  When this tag is read, the data will
  * come from the function given by rf. And when written the data will be passed to wf.  If
  * rf == NULL then the tag will be write only and reads will return an error and likewise if
@@ -296,9 +330,6 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
     tag_index idx;
     virt_functions vf;
 
-    if(IS_CUSTOM(type)) {
-        return ERR_ILLEGAL;
-    }
     idx = tag_add(name, type, 1);
     /* We just allocated this data but that was just for convenience */
     free(_db[idx].data);
@@ -307,7 +338,7 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
     _db[idx].data = xmalloc(sizeof(virt_functions));
     if(_db[idx].data == NULL) return ERR_ALLOC;
     memcpy(_db[idx].data, &vf, sizeof(virt_functions));
-    _db[idx].options = TAG_OPTS_VIRTUAL;
+    _db[idx].options |= TAG_OPTS_VIRTUAL;
     return 0;
 }
 
@@ -386,10 +417,10 @@ tag_add(char *name, tag_type type, unsigned int count)
         return ERR_ARG;
     }
 
-    xlog(LOG_VERBOSE | LOG_MSG, "tag_add() called with name = %s, type = 0x%X, count = %d", name, type, count);
+    xlog(LOG_VERBOSE | LOG_MSG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
     if(_tagnextindex >= _dbsize) {
         if(_database_grow()) {
-            xerror("Failure to increae database size");
+            xerror("Failure to increase database size");
             return ERR_ALLOC;
         } else {
             xlog(LOG_MINOR, "Database increased to %d items", _dbsize);
@@ -424,7 +455,6 @@ tag_add(char *name, tag_type type, unsigned int count)
             if(newdata) {
                 _db[n].data = newdata;
                 _db[n].count = count;
-                /* TODO: Zero the new part of the allocation */
                 return n;
             } else {
                 xerror("Unable to allocate memory to grow the size of tag %s", name);
@@ -437,16 +467,23 @@ tag_add(char *name, tag_type type, unsigned int count)
     } else {
         n = _tagnextindex;
     }
+
     /* Assign everything to the new tag, copy the string and git */
     _db[n].count = count;
     _db[n].type = type;
 
-    /* Allocate the data area */
-    if((_db[n].data = xmalloc(size)) == NULL){
-        xerror("Unable to allocate memory for tag %s", name);
-        return ERR_ALLOC;
+    /* If the type is a queue the data area will be allocated in the
+     * queue_add() function instead of here */
+    if(IS_QUEUE(type)) {
+        _queue_add(n, type, count);
     } else {
-        bzero(_db[n].data, size);
+        /* Allocate the data area */
+        if((_db[n].data = xmalloc(size)) == NULL){
+            xerror("Unable to allocate memory for tag %s", name);
+            return ERR_ALLOC;
+        } else {
+            bzero(_db[n].data, size);
+        }
     }
     _db[n].nextevent = 1;
     _db[n].nextmap = 1;
@@ -593,7 +630,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
          * pointed to by the *data pointer */
         vf = (virt_functions *)_db[idx].data;
         if(vf->rf == NULL) return ERR_WRITEONLY;
-        return vf->rf(offset, data, size);
+        return vf->rf(offset, data, size, vf->userdata);
     } else {
         /* Bounds check size */
         if( (offset + size) > tag_get_size(idx)) {
@@ -625,7 +662,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
         * pointed to by the *data pointer */
        vf = (virt_functions *)_db[idx].data;
        if(vf->wf == NULL) return ERR_READONLY;
-       return vf->wf(offset, data, size);
+       return vf->wf(offset, data, size, vf->userdata);
     } else {
         /* Bounds check size */
         if( (offset + size) > tag_get_size(idx)) {
