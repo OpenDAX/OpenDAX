@@ -298,11 +298,13 @@ _queue_add(int idx, tag_type type, unsigned int count) {
     q->type = type;
     q->qcount = 0;
     q->qread = 0;
-    q->queue = malloc(START_QUEUE_SIZE * size);
+    q->queue = malloc(START_QUEUE_SIZE * sizeof(void *));
     if(q->queue == NULL) {
         free(q);
         return ERR_ALLOC;
     }
+    /* Set the pointers to zero so we know that they are not allocated */
+    bzero(q->queue, START_QUEUE_SIZE * sizeof(void *));
     q->qsize = START_QUEUE_SIZE;
     vf.rf = read_queue;
     vf.wf = write_queue;
@@ -606,6 +608,11 @@ is_tag_virtual(tag_index idx) {
     return (_db[idx].options & TAG_OPTS_VIRTUAL );
 }
 
+/* Returns true if tag at the given index is a queue */
+int
+is_tag_queue(tag_index idx) {
+    return IS_QUEUE(_db[idx].type);
+}
 
 /* These are the low level tag reading / writing interface to the
  * database.
@@ -630,7 +637,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
          * pointed to by the *data pointer */
         vf = (virt_functions *)_db[idx].data;
         if(vf->rf == NULL) return ERR_WRITEONLY;
-        return vf->rf(offset, data, size, vf->userdata);
+        return vf->rf(idx, offset, data, size, vf->userdata);
     } else {
         /* Bounds check size */
         if( (offset + size) > tag_get_size(idx)) {
@@ -662,7 +669,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
         * pointed to by the *data pointer */
        vf = (virt_functions *)_db[idx].data;
        if(vf->wf == NULL) return ERR_READONLY;
-       return vf->wf(offset, data, size, vf->userdata);
+       return vf->wf(idx, offset, data, size, vf->userdata);
     } else {
         /* Bounds check size */
         if( (offset + size) > tag_get_size(idx)) {
@@ -686,6 +693,9 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     u_int8_t *db, *newdata, *newmask;
     int n;
 
+    /* We don't allow masked writes to virtual tags.  This would be
+     * too ambiguous */
+    if(_db[idx].options & TAG_OPTS_VIRTUAL) return ERR_ILLEGAL;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;

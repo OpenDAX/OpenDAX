@@ -118,6 +118,7 @@ int tag_get_index(int, dax_tag *);
 tag_index get_tagindex(void);
 int is_tag_readonly(tag_index idx);
 int is_tag_virtual(tag_index idx);
+int is_tag_queue(tag_index idx);
 int tag_get_size(tag_index idx);
 
 

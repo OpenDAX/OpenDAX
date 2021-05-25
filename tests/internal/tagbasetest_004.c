@@ -39,11 +39,11 @@ main(int argc, char *argv[])
     set_log_topic(LOG_ALL);
     result = tag_add("queue_test", DAX_DINT | DAX_QUEUE, 1);
     if(result < 0) exit(-1);
-    for(temp = 1; temp<5; temp++) {
+    for(temp = 1; temp<25; temp++) {
         assert(tag_write(result, 0, &temp, sizeof(dax_dint))==0);
     }
 
-    for(n = 1; n<5; n++) {
+    for(n = 1; n<25; n++) {
         assert(tag_read(result, 0, &temp, sizeof(dax_dint))==0);
         printf("temp = %d\n", temp);
         assert(temp == n);

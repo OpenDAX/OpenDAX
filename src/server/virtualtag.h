@@ -18,11 +18,14 @@
  *  Header file for the virtual tag functions
  */
 
+#ifndef __VIRTUALTAG_H
+#define __VIRTUALTAG_H
+
 #include <common.h>
 #include "func.h"
 
 /* type definition of the virtual tag function prototype */
-typedef int vfunction(int offset, void *data, int size, void *userdata);
+typedef int vfunction(tag_index idx, int offset, void *data, int size, void *userdata);
 
 /* This structure is used to hold the two virtual functions
  * that would define a virtual tag as well as the userdata for
@@ -57,8 +60,9 @@ typedef struct tag_queue {
 } tag_queue;
 
 /* retrieve the current time on the server */
-int server_time(int offset, void *data, int size, void *userdata);
+int server_time(tag_index idx, int offset, void *data, int size, void *userdata);
 
-int write_queue(int offset, void *data, int size, void *userdata);
-int read_queue(int offset, void *data, int size, void *userdata);
+int write_queue(tag_index idx, int offset, void *data, int size, void *userdata);
+int read_queue(tag_index idx, int offset, void *data, int size, void *userdata);
 
+#endif  /* !__VIRTUALTAG_H */

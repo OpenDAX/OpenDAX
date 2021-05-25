@@ -403,7 +403,6 @@ void
 event_check(tag_index idx, int offset, int size) {
     _dax_event *this;
 
-    //fprintf(stderr, "Event Check Called: idx = %d, offset = %d, size = %d\n",idx, offset, size);
     this = _db[idx].events;
 
     while(this != NULL) {
@@ -411,12 +410,9 @@ event_check(tag_index idx, int offset, int size) {
          * test passes then we have manipulated the data associated with
          * this event. */
         if(offset <= (this->byte + this->size - 1) && (offset + size -1 ) >= this->byte) {
-            fprintf(stdout, "Event Hit offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
             if(_event_hit(this, idx, offset, size)) {
                 _send_event(idx, this);
             }
-        } else {
-            fprintf(stdout, "Event Miss offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
         }
         this = this->next;
     }
@@ -569,8 +565,17 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
         xlog(LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
         return ERR_ARG;
     }
-    if(is_tag_virtual(h.index)){
+    /* No events can be assigned to virtual tags unless it's a queue */
+    if(is_tag_virtual(h.index) && ! is_tag_queue(h.index)) {
         return ERR_ILLEGAL;
+    }
+    /* If the tag is a queue then we can only do write events for
+     * the entire tag not a partial handle. */
+    if(is_tag_queue(h.index)) {
+        if(h.byte != 0 || event_type != EVENT_WRITE ||
+           h.size != (tag_get_size(_db[h.index].type) * _db[h.index].count)) {
+            return ERR_ILLEGAL;
+        }
     }
     /* Bounds check size */
     if( (h.byte + h.size) > tag_get_size(h.index)) {
