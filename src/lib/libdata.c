@@ -560,6 +560,7 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
     return result;
 }
 
+
 /* These two functions walk through the given data using the handles in the group id
  * to send each element of the group the the formatting routines so that they can be
  * reformatted if need be to match the server.

@@ -653,7 +653,6 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
     /* It is assumed that the flags that we want to set are the first 4 bytes are in *data */
     /* If we try to read more data that can be held in a single message we return an error */
     if(sendsize > MSG_DATA_SIZE) {
-        printf("handle size = %d\n", size);
         return ERR_2BIG;
     }
 
@@ -737,6 +736,46 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
     return 0;
 }
 
+int
+dax_atomic_op(dax_state *ds, tag_handle h, void *data, u_int16_t operation) {
+    size_t sendsize;
+    int result;
+    u_int8_t buff[MSG_DATA_SIZE];
+
+    /* This calculates the amount of data that we can send with a single message */
+    sendsize = h.size + 21;
+    if(sendsize > MSG_DATA_SIZE) {
+        return ERR_2BIG;
+    }
+    if(IS_CUSTOM(h.type)) {
+        return ERR_ILLEGAL;
+    }
+    *(dax_dint *)buff = mtos_dint(h.index);       /* Index */
+    *(dax_dint *)&buff[4] = mtos_dint(h.byte);    /* Byte offset */
+    *(dax_dint *)&buff[8] = mtos_dint(h.count);   /* Tag Count */
+    *(dax_dint *)&buff[12] = mtos_dint(h.type);   /* Data Type */
+    buff[16]=h.bit;                               /* Bit offset */
+    *(dax_dint *)&buff[17] = mtos_uint(operation);/* Operation */
+
+    memcpy(&buff[21], data, h.size);
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_ATOMIC_OP, buff, sendsize);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_ATOMIC_OP, buff, 0, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        if(result == ERR_DELETED) {
+            cache_tag_del(ds, h.index);
+        }
+        return result;
+    }
+    libdax_unlock(ds->lock);
+    return 0;
+}
 
 /*!
  * Add an event to the tag server.  An event is triggered when the conditions

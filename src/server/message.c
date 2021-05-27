@@ -81,6 +81,7 @@ int msg_group_del(dax_message *msg);
 int msg_group_read(dax_message *msg);
 int msg_group_write(dax_message *msg);
 int msg_group_mask_write(dax_message *msg);
+int msg_atomic_op(dax_message *msg);
 
 
 /* Generic message sending function.  If response is MSG_ERROR then it is assumed that
@@ -229,6 +230,7 @@ msg_setup(void)
     cmd_arr[MSG_GRP_READ]   = &msg_group_read;
     cmd_arr[MSG_GRP_WRITE]  = &msg_group_write;
     cmd_arr[MSG_GRP_MWRITE] = &msg_group_mask_write;
+    cmd_arr[MSG_ATOMIC_OP]  = &msg_atomic_op;
 
     return 0;
 }
@@ -913,7 +915,39 @@ msg_group_write(dax_message *msg) {
 
 int
 msg_group_mask_write(dax_message *msg) {
+    int result;
+    //u_int32_t index;
+
+    result = ERR_NOTIMPLEMENTED;
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_GRP_MWRITE, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_GRP_MWRITE, NULL, 0, RESPONSE);
+    }
     printf("Message Group Masked Write\n");
+    return 0;
+}
+
+int
+msg_atomic_op(dax_message *msg) {
+    int result;
+    tag_handle h;
+    u_int16_t operation;
+
+    h.index = *(dax_dint *)msg->data;          /* Index */
+    h.byte = *(dax_dint *)&msg->data[4];       /* Byte offset */
+    h.count = *(dax_dint *)&msg->data[8];      /* Tag Count */
+    h.type = *(dax_dint *)&msg->data[12];      /* Data type */
+    h.bit = msg->data[16];                     /* Bit offset */
+    operation = *(dax_uint *)&msg->data[17];   /* Operation */
+    h.size = msg->size - 21; /* Total message size minus the above data */
+
+    result = atomic_op(h, &msg->data[21], operation);
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_ATOMIC_OP, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_ATOMIC_OP, NULL, 0, RESPONSE);
+    }
     return 0;
 }
 

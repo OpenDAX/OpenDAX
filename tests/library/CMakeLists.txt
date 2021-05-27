@@ -107,3 +107,13 @@ add_executable(library_queue_test libtest_queue_test.c libtest_common.c)
 target_link_libraries(library_queue_test dax)
 add_test(library_queue_test library_queue_test)
 set_tests_properties(library_queue_test PROPERTIES TIMEOUT 10)
+
+add_executable(library_atomic_inc libtest_atomic_inc.c libtest_common.c)
+target_link_libraries(library_atomic_inc dax)
+add_test(library_atomic_inc library_atomic_inc)
+set_tests_properties(library_atomic_inc PROPERTIES TIMEOUT 10)
+
+add_executable(library_atomic_dec libtest_atomic_dec.c libtest_common.c)
+target_link_libraries(library_atomic_dec dax)
+add_test(library_atomic_dec library_atomic_dec)
+set_tests_properties(library_atomic_dec PROPERTIES TIMEOUT 10)

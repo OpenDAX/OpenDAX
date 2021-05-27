@@ -114,6 +114,7 @@ extern "C" {
 #define ERR_DELETED   -26 /* Object has been deleted */
 #define ERR_READONLY  -27 /* Resource is read only */
 #define ERR_WRITEONLY -28 /* Resource is write only */
+#define ERR_NOTIMPLEMENTED -29 /* Function not implemented */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */
@@ -139,6 +140,16 @@ extern "C" {
 
 /* Event Options */
 #define EVENT_OPT_SEND_DATA  0x01 /* Send the affected data with the event */
+
+/* Atomic Operations */
+#define ATOMIC_OP_INC  0x0001  /* Increment */
+#define ATOMIC_OP_DEC  0x0002  /* Decrement */
+#define ATOMIC_OP_NOT  0x0003  /* Compliment */
+#define ATOMIC_OP_OR   0x0004  /* Bitwise OR */
+#define ATOMIC_OP_AND  0x0005  /* Bitwise AND */
+#define ATOMIC_OP_NOR  0x0006  /* Bitwise NOR */
+#define ATOMIC_OP_NAND 0x0007  /* Bitwise NAND */
+#define ATOMIC_OP_XOR  0x0008  /* Bitwise XOR */
 
 
 /* Defines the maximum length of a tagname */
@@ -354,6 +365,8 @@ int dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data,
 int dax_read_tag(dax_state *ds, tag_handle handle, void *data);
 int dax_write_tag(dax_state *ds, tag_handle handle, void *data);
 int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);
+
+int dax_atomic_op(dax_state *ds, tag_handle handle, void *data, u_int16_t operation);
 
 /* Event handling functions */
 int dax_event_add(dax_state *ds, tag_handle *handle, int event_type, void *data,

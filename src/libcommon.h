@@ -25,7 +25,6 @@
 
 #include <opendax.h>
 #include <sys/types.h>
-#include <assert.h>
 
 /* Message functions */
 #define MSG_MOD_REG     0x0000 /* Register the module with the server */
@@ -52,10 +51,11 @@
 #define MSG_GRP_READ    0x0015 /* Read the data in a tag group */
 #define MSG_GRP_WRITE   0x0016 /* Write the data to a tag group */
 #define MSG_GRP_MWRITE  0x0017 /* Masked write of the data to a tag group */
+#define MSG_ATOMIC_OP   0x0018 /* Perform atomic operations on tags */
 
 /* More to come */
 
-#define NUM_COMMANDS 24
+#define NUM_COMMANDS 25
 
 
 #define MSG_RESPONSE  0x01000000LL /* Flag for defining a response message */

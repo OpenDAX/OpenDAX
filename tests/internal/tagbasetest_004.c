@@ -21,12 +21,10 @@
 /* Simple test of the tag queue"
  */
 
-#include <tagbase.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <opendax.h>
-#include <time.h>
+#include <tagbase.h>
 
 int
 main(int argc, char *argv[])

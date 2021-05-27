@@ -26,7 +26,8 @@ add_executable(tagserver server.c
                          events.c
                          mapping.c
                          virtualtag.c
-                         groups.c)
+                         groups.c
+                         atomic.c)
 target_link_libraries(tagserver ${LUA_LIBRARIES})
 target_link_libraries(tagserver pthread)
 if(CMAKE_BUILD_TYPE MATCHES Debug)

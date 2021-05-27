@@ -121,10 +121,13 @@ int is_tag_virtual(tag_index idx);
 int is_tag_queue(tag_index idx);
 int tag_get_size(tag_index idx);
 
-
+/* Database reading and writing functions */
 int tag_read(tag_index handle, int offset, void *data, int size);
 int tag_write(tag_index handle, int offset, void *data, int size);
 int tag_mask_write(tag_index handle, int offset, void *data, void *mask, int size);
+
+/* Perform an atomic operation on the data */
+int atomic_op(tag_handle h, void *data, u_int16_t op);
 
 /* Custom DataType functions */
 tag_type cdt_create(char *str, int *error);
