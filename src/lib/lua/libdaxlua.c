@@ -464,6 +464,9 @@ _dax_init(lua_State *L)
 {
     char *modulename;
     modulename = (char *)lua_tostring(L, 1);
+    if(modulename == NULL) {
+        luaL_error(L, "Module name not given");
+    }
     /* TODO: Transfer the Lua 'arg' table to these variables */
     int argc = 1;
     char *argv[] = {modulename};
