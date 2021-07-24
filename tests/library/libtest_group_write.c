@@ -48,11 +48,11 @@ do_test(int argc, char *argv[])
         return -1;
     }
     result = 0;
-    result += dax_tag_add(ds, &h[0], "TEST1", DAX_DINT, 1);
-    result += dax_tag_add(ds, &h[1], "TEST2", DAX_DINT, 1);
-    result += dax_tag_add(ds, &h[2], "TEST3", DAX_DINT, 1);
-    result += dax_tag_add(ds, &h[3], "TEST4", DAX_DINT, 1);
-    result += dax_tag_add(ds, &h[4], "TEST5", DAX_DINT, 1);
+    result += dax_tag_add(ds, &h[0], "TEST1", DAX_DINT, 1, 0);
+    result += dax_tag_add(ds, &h[1], "TEST2", DAX_DINT, 1, 0);
+    result += dax_tag_add(ds, &h[2], "TEST3", DAX_DINT, 1, 0);
+    result += dax_tag_add(ds, &h[3], "TEST4", DAX_DINT, 1, 0);
+    result += dax_tag_add(ds, &h[4], "TEST5", DAX_DINT, 1, 0);
     if(result) return -1;
     idx = dax_group_add(ds, &result, h, 5, 0);
     if(result) return result;

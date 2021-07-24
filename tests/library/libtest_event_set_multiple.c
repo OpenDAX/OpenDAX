@@ -52,7 +52,7 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
+        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1, 0);
         if(result) return result;
 
         /* Set our event o to the third bit in the integer */

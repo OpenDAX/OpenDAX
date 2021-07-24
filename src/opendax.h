@@ -18,7 +18,7 @@
 
 /*! \file
  * This is the main header file for the libdax API.  This must be included
- * by all client modules.
+ * by all client modules that use the libdax C library.
  */
 
 
@@ -123,6 +123,12 @@ extern "C" {
 #define CFG_CMDLINE         0x04 /* Command line */
 #define CFG_MODCONF         0x10 /* [module].conf file */
 #define CFG_NO_VALUE        0x20 /* Don't store a value, only call callback */
+
+/* Tag attribute bits */
+#define TAG_ATTR_READONLY   0x0001 /* Read only tag */
+#define TAG_ATTR_VIRTUAL    0x0002 /* Tag is a virtual tag, read only attribute */
+#define TAG_ATTR_RETAIN     0x0004 /* Tag retention attribute */
+#define TAG_ATTR_OVERRIDE   0x0008 /* Tag override attribute */
 
 /* Module parameters */
 #define MOD_CMD_RUNNING     0x01 /* Set/Clear Modules Running Flag */
@@ -316,7 +322,7 @@ int dax_mod_get(dax_state *ds, char *modname);  /* Not implemented yet */
 int dax_mod_set(dax_state *ds, u_int8_t cmd, void *param);  /* Set module parameters in the server */
 
 /* Adds a tag to the opendax server database. */
-int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count);
+int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, u_int32_t attr);
 
 /* Delete the tag give by index */
 int dax_tag_del(dax_state *ds, tag_index index);
@@ -365,6 +371,13 @@ int dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data,
 int dax_read_tag(dax_state *ds, tag_handle handle, void *data);
 int dax_write_tag(dax_state *ds, tag_handle handle, void *data);
 int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);
+
+/* These functions handle the tag value override feature */
+int dax_tag_add_override(dax_state *ds, tag_handle handle, void *data);
+int dax_tag_del_override(dax_state *ds, tag_handle handle);
+int dax_tag_get_override(dax_state *ds, tag_handle handle, void *data);
+int dax_tag_set_override(dax_state *ds, tag_handle handle);
+int dax_tag_clr_override(dax_state *ds, tag_handle handle);
 
 int dax_atomic_op(dax_state *ds, tag_handle handle, void *data, u_int16_t operation);
 

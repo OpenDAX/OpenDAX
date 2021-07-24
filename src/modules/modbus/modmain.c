@@ -180,9 +180,9 @@ _slave_reg_add(mb_port *port, port_ud_item *item, int mbreg, int size)
     int result;
 
     if(mbreg == MB_REG_COIL || mbreg == MB_REG_DISC) {
-        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_BOOL, size);
+        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_BOOL, size, 0);
     } else {
-        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_UINT, size);
+        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_UINT, size, 0);
     }
     if(result) return result;
 

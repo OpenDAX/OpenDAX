@@ -605,7 +605,7 @@ _tag_add(lua_State *L)
         }
     }
 
-    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count);
+    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count, 0);
     if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
     return 0;
 }

@@ -52,11 +52,13 @@
 #define MSG_GRP_WRITE   0x0016 /* Write the data to a tag group */
 #define MSG_GRP_MWRITE  0x0017 /* Masked write of the data to a tag group */
 #define MSG_ATOMIC_OP   0x0018 /* Perform atomic operations on tags */
+#define MSG_MOD_OVRD    0x0019 /* Read the current override mask for the given tag */
+#define MSG_GET_OVRD    0x001A /* Read the current override mask and raw value for the given tag */
+#define MSG_SET_OVRD    0x001B /* Set or clear tag override flag */
 
 /* More to come */
 
-#define NUM_COMMANDS 25
-
+#define NUM_COMMANDS 28
 
 #define MSG_RESPONSE  0x01000000LL /* Flag for defining a response message */
 #define MSG_ERROR     0x02000000LL /* Flag for defining an error message */

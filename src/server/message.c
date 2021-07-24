@@ -82,6 +82,11 @@ int msg_group_read(dax_message *msg);
 int msg_group_write(dax_message *msg);
 int msg_group_mask_write(dax_message *msg);
 int msg_atomic_op(dax_message *msg);
+int msg_mod_override(dax_message *msg);
+int msg_get_override(dax_message *msg);
+int msg_set_override(dax_message *msg);
+int msg_clr_override(dax_message *msg);
+
 
 
 /* Generic message sending function.  If response is MSG_ERROR then it is assumed that
@@ -231,6 +236,9 @@ msg_setup(void)
     cmd_arr[MSG_GRP_WRITE]  = &msg_group_write;
     cmd_arr[MSG_GRP_MWRITE] = &msg_group_mask_write;
     cmd_arr[MSG_ATOMIC_OP]  = &msg_atomic_op;
+    cmd_arr[MSG_MOD_OVRD]   = &msg_mod_override;
+    cmd_arr[MSG_GET_OVRD]   = &msg_get_override;
+    cmd_arr[MSG_SET_OVRD]   = &msg_set_override;
 
     return 0;
 }
@@ -423,16 +431,18 @@ msg_tag_add(dax_message *msg)
     tag_index idx;
     u_int32_t type;
     u_int32_t count;
+    u_int32_t attr;
 
     type = *((u_int32_t *)&msg->data[0]);
     count = *((u_int32_t *)&msg->data[4]);
+    attr = *((u_int32_t *)&msg->data[8]);
 
-    xlog(LOG_MSG | LOG_VERBOSE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[8], msg->fd, type, count);
+    xlog(LOG_MSG | LOG_VERBOSE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[12], msg->fd, type, count);
     
-    if(msg->data[8] == '_') {
+    if(msg->data[12] == '_') {
         return ERR_ILLEGAL;
     }
-    idx = tag_add(&msg->data[8], type, count);
+    idx = tag_add(&msg->data[12], type, count, attr);
 
     if(idx >= 0) {
         _message_send(msg->fd, MSG_TAG_ADD, &idx, sizeof(tag_index), RESPONSE);
@@ -916,7 +926,6 @@ msg_group_write(dax_message *msg) {
 int
 msg_group_mask_write(dax_message *msg) {
     int result;
-    //u_int32_t index;
 
     result = ERR_NOTIMPLEMENTED;
     if(result < 0) { /* Send Error */
@@ -951,3 +960,55 @@ msg_atomic_op(dax_message *msg) {
     return 0;
 }
 
+int
+msg_mod_override(dax_message *msg) {
+    int result, size;
+    dax_dint index, byte;
+
+    index = *((tag_index *)&msg->data[0]);
+    byte = *((u_int32_t *)&msg->data[4]);
+    size = (msg->size - 12) / 2;
+    result = override_mod(index, byte, &msg->data[12], &msg->data[12+size], size);
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_MOD_OVRD, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_MOD_OVRD, NULL, 0, RESPONSE);
+    }
+    printf("Message Set Override\n");
+    return 0;
+}
+
+int
+msg_get_override(dax_message *msg) {
+    int result;
+
+    result = ERR_NOTIMPLEMENTED;
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_GET_OVRD, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_GET_OVRD, NULL, 0, RESPONSE);
+    }
+    printf("Message Get Override Mask\n");
+    return 0;
+
+}
+
+int
+msg_set_override(dax_message *msg) {
+    int result;
+    dax_dint index;
+    u_int8_t flag;
+
+    index = *((tag_index *)&msg->data[0]);
+    flag = *((u_int32_t *)&msg->data[4]);
+
+    result = override_set(index, flag);
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_SET_OVRD, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_SET_OVRD, NULL, 0, RESPONSE);
+    }
+    printf("Message Clear Override\n");
+    return 0;
+
+}

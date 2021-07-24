@@ -61,9 +61,6 @@
 #define INDEX_DBSIZE 2
 #define INDEX_STARTED 3
 
-#define TAG_OPTS_READONLY 0x0001
-#define TAG_OPTS_VIRTUAL  0x0002
-
 typedef struct dax_event_t {
     int id;              /* Unique identifier for this event definition */
 
@@ -91,7 +88,7 @@ typedef struct dax_datamap_t {
 /* This is the internal structure for the tag array. */
 typedef struct {
     tag_type type;
-    unsigned int options;
+    unsigned int attr;
     unsigned int count;
     char *name;
     int nextevent;           /* Counter for keeping track of event IDs */
@@ -99,6 +96,8 @@ typedef struct {
     _dax_event *events;      /* Linked list of events */
     _dax_datamap *mappings;  /* Linked list of mappings */
     u_int8_t *data;
+    u_int8_t *omask;        /* Override mask pointer */
+    u_int8_t *odata;        /* Override data pointer */
 } _dax_tag_db;
 
 typedef struct {
@@ -110,7 +109,7 @@ typedef struct {
 
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
-tag_index tag_add(char *name, tag_type type, unsigned int count);
+tag_index tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr);
 tag_index virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf);
 int tag_del(tag_index idx);
 int tag_get_name(char *, dax_tag *);
@@ -148,6 +147,11 @@ int map_add(tag_handle src, tag_handle dest);
 int map_del(tag_index index, int id);
 int map_del_all(_dax_datamap *head);
 int map_check(tag_index idx, int offset, u_int8_t *data, int size);
+
+int override_mod(tag_index idx, int offset, void *data, void *mask, int size);
+int override_get(tag_index idx, int offset, int size, void *data, void*mask);
+int override_set(tag_index idx, u_int8_t flag);
+
 
 #define DAX_DIAG
 #ifdef DAX_DIAG

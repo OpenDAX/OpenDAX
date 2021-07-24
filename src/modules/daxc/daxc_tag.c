@@ -78,7 +78,7 @@ tag_add(char **tokens)
         //fprintf(stderr, usage);
     }
 
-    result = dax_tag_add(ds, &handle, tokens[0], type, count);
+    result = dax_tag_add(ds, &handle, tokens[0], type, count, 0);
     if(result == 0) {
         if(!quiet_mode) printf("Tag Added at index %d\n", handle.index);
     } else {

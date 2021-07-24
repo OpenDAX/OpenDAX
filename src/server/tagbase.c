@@ -316,7 +316,7 @@ _queue_add(int idx, tag_type type, unsigned int count) {
         return ERR_ALLOC;
     }
     memcpy(_db[idx].data, &vf, sizeof(virt_functions));
-    _db[idx].options |= TAG_OPTS_VIRTUAL;
+    _db[idx].attr |= TAG_ATTR_VIRTUAL;
     xlog(LOG_VERBOSE, "Add Queue for tag at index %d", idx);
     return 0;
 }
@@ -332,7 +332,7 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
     tag_index idx;
     virt_functions vf;
 
-    idx = tag_add(name, type, 1);
+    idx = tag_add(name, type, 1, 0);
     /* We just allocated this data but that was just for convenience */
     free(_db[idx].data);
     vf.rf = rf;
@@ -340,7 +340,7 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
     _db[idx].data = xmalloc(sizeof(virt_functions));
     if(_db[idx].data == NULL) return ERR_ALLOC;
     memcpy(_db[idx].data, &vf, sizeof(virt_functions));
-    _db[idx].options |= TAG_OPTS_VIRTUAL;
+    _db[idx].attr |= TAG_ATTR_VIRTUAL;
     return 0;
 }
 
@@ -369,14 +369,14 @@ initialize_tagbase(void)
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
 
     /* Creates the system tags */
-    assert(tag_add("_tagcount", DAX_DINT, 1) == INDEX_TAGCOUNT);
-    _db[INDEX_TAGCOUNT].options = TAG_OPTS_READONLY;
-    assert(tag_add("_lastindex", DAX_DINT, 1) == INDEX_LASTINDEX);
-    _db[INDEX_LASTINDEX].options = TAG_OPTS_READONLY;
-    assert(tag_add("_dbsize", DAX_DINT, 1) == INDEX_DBSIZE);
-    _db[INDEX_DBSIZE].options = TAG_OPTS_READONLY;
-    assert(tag_add("_starttime", DAX_TIME, 1) == INDEX_STARTED);
-    _db[INDEX_STARTED].options = TAG_OPTS_READONLY;
+    assert(tag_add("_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
+    _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_lastindex", DAX_DINT, 1, 0) == INDEX_LASTINDEX);
+    _db[INDEX_LASTINDEX].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_dbsize", DAX_DINT, 1, 0) == INDEX_DBSIZE);
+    _db[INDEX_DBSIZE].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_starttime", DAX_TIME, 1, 0) == INDEX_STARTED);
+    _db[INDEX_STARTED].attr = TAG_ATTR_READONLY;
     virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
 
     starttime = xtime();
@@ -407,7 +407,7 @@ initialize_tagbase(void)
  * count is greater than 1 an array is created.  It returns the index
  * of th newly created tag or an error. */
 tag_index
-tag_add(char *name, tag_type type, unsigned int count)
+tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
 {
     int n;
     void *newdata;
@@ -473,6 +473,11 @@ tag_add(char *name, tag_type type, unsigned int count)
     /* Assign everything to the new tag, copy the string and git */
     _db[n].count = count;
     _db[n].type = type;
+    /* We only let the Tag Retention attribute to be set at this point */
+    if(attr & TAG_ATTR_RETAIN) {
+        /* TODO: add tag retention */;
+    }
+    //_db[n].attr |= TAG_ATTR_RETAIN;
 
     /* If the type is a queue the data area will be allocated in the
      * queue_add() function instead of here */
@@ -490,6 +495,8 @@ tag_add(char *name, tag_type type, unsigned int count)
     _db[n].nextevent = 1;
     _db[n].nextmap = 1;
     _db[n].events = NULL;
+    _db[n].omask = NULL;
+    _db[n].odata = NULL;
 
     if(_add_index(name, n)) {
         /* free up our previous allocation if we can't put this in the __index */
@@ -509,7 +516,7 @@ tag_add(char *name, tag_type type, unsigned int count)
     if(_db[INDEX_TAGCOUNT].data != NULL) {
         tag_write(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
-    
+
     return n;
 }
 
@@ -544,7 +551,7 @@ tag_del(tag_index idx)
     _db[idx].name = NULL;
     _db[idx].data = NULL;
     _tagcount--;
-    
+
     return 0;
 }
 
@@ -599,13 +606,13 @@ get_tagindex(void) {
 /* Returns true if the tag at the given index is read only */
 int
 is_tag_readonly(tag_index idx) {
-    return (_db[idx].options & TAG_OPTS_READONLY );
+    return (_db[idx].attr & TAG_ATTR_READONLY );
 }
 
 /* Returns true if the tag at the given index is a virtual tag */
 int
 is_tag_virtual(tag_index idx) {
-    return (_db[idx].options & TAG_OPTS_VIRTUAL );
+    return (_db[idx].attr & TAG_ATTR_VIRTUAL );
 }
 
 /* Returns true if tag at the given index is a queue */
@@ -627,12 +634,15 @@ int
 tag_read(tag_index idx, int offset, void *data, int size)
 {
     virt_functions *vf;
+    int n;
+    u_int8_t x, y;
+
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
     }
      /* determine if it's a virtual tag */
-    if(_db[idx].options & TAG_OPTS_VIRTUAL) {
+    if(_db[idx].attr & TAG_ATTR_VIRTUAL) {
         /* virtual tags read their data from a function that should be
          * pointed to by the *data pointer */
         vf = (virt_functions *)_db[idx].data;
@@ -648,6 +658,16 @@ tag_read(tag_index idx, int offset, void *data, int size)
         }
         /* Copy the data into the right place. */
         memcpy(data, &(_db[idx].data[offset]), size);
+        if(_db[idx].attr & TAG_ATTR_OVERRIDE) {
+            for(n=0; n<size; n++) {
+                 x = _db[idx].odata[n+offset] & _db[idx].omask[n+offset];
+                 y = _db[idx].data[n+offset] & ~_db[idx].omask[n+offset];
+                 ((u_int8_t *)data)[n] = x | y;
+            }
+        } else {
+            /* Copy the data into the right place. */
+            memcpy(data, &(_db[idx].data[offset]), size);
+        }
     }
 
     return 0;
@@ -664,7 +684,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
         return ERR_ARG;
     }
     /* determine if it's a virtual tag */
-    if(_db[idx].options & TAG_OPTS_VIRTUAL) {
+    if(_db[idx].attr & TAG_ATTR_VIRTUAL) {
        /* virtual tags read their data from a function that should be
         * pointed to by the *data pointer */
        vf = (virt_functions *)_db[idx].data;
@@ -695,7 +715,7 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
 
     /* We don't allow masked writes to virtual tags.  This would be
      * too ambiguous */
-    if(_db[idx].options & TAG_OPTS_VIRTUAL) return ERR_ILLEGAL;
+    if(_db[idx].attr & TAG_ATTR_VIRTUAL) return ERR_ILLEGAL;
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
@@ -735,7 +755,7 @@ _cdt_destroy(datatype *cdt) {
     if(cdt->name != NULL ) xfree(cdt->name);
 }
 
-/* Recieves a definition string in the form of "Name,Type,Count" and
+/* Receives a definition string in the form of "Name,Type,Count" and
  * appends that member to the compound datatype passed as *cdt.  Returns
  * 0 on success and dax error code on failure */
 static int
@@ -1052,6 +1072,58 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
 
     return 0;
 }
+
+int
+override_mod(tag_index idx, int offset, void *data, void*mask, int size) {
+    int tag_size;
+
+    if(idx < 0 || idx >= _tagnextindex) {
+        return ERR_ARG;
+    }
+    if(_db[idx].data == NULL) {
+        return ERR_DELETED;
+    }
+    tag_size = _db[idx].count * type_size(_db[idx].type);
+    if(_db[idx].odata == NULL) {
+        _db[idx].odata = malloc(tag_size);
+        if(_db[idx].odata == NULL) return ERR_ALLOC;
+        _db[idx].omask = malloc(tag_size);
+        if(_db[idx].omask == NULL) {
+            xfree(_db[idx].odata);
+            return ERR_ALLOC;
+        }
+        bzero(_db[idx].odata, size);
+        bzero(_db[idx].omask, size);
+    }
+    if((offset + size) > tag_size) return ERR_2BIG;
+    memcpy(&_db[idx].odata[offset], data, size);
+    memcpy(&_db[idx].omask[offset], data, size);
+
+    return 0;
+}
+
+int
+override_get(tag_index idx, int offset, int size, void *data, void*mask) {
+    return ERR_NOTIMPLEMENTED;
+}
+
+int
+override_set(tag_index idx, u_int8_t flag) {
+    if(idx < 0 || idx >= _tagnextindex) {
+        return ERR_ARG;
+    }
+    if(_db[idx].data == NULL) {
+        return ERR_DELETED;
+    }
+    if(flag) {
+        if(_db[idx].odata == NULL) return ERR_ILLEGAL;
+        _db[idx].attr |= TAG_ATTR_OVERRIDE;
+    } else {
+        _db[idx].attr &= ~TAG_ATTR_OVERRIDE;
+    }
+    return 0;
+}
+
 
 /* This function builds a string that is a serialization of
  * the datatype and all of it's members.  The pointer passed

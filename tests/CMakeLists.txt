@@ -23,11 +23,6 @@
 
 add_subdirectory(oldtests)
 
-# Compiled C tests
-add_executable(testdebug testdebug.c)
-target_link_libraries(testdebug dax)
-add_test(testdebug testdebug)
-
 add_subdirectory(library)
 
 # Python Tests

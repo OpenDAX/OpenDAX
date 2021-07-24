@@ -39,7 +39,7 @@ main(int argc, char *argv[])
     
     for(n=0;n<1000;n++) {
         sprintf(tagname, "TestTag%d", n);
-        assert(tag_add(tagname, DAX_INT, 1) > 0);
+        assert(tag_add(tagname, DAX_INT, 1, 0) > 0);
     }
     for(n=0;n<1000;n++) {
         sprintf(tagname, "TestTag%d", n);

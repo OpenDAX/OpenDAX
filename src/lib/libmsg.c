@@ -262,7 +262,6 @@ _mod_connect(dax_state *ds, char *name)
     return ds->reformat;
 }
 
-
 /*!
  * Setup the module data structures and send registration message
  * to the server.
@@ -333,7 +332,7 @@ dax_disconnect(dax_state *ds)
 int
 dax_mod_get(dax_state *ds, char *modname)
 {
-    return 0;
+    return ERR_NOTIMPLEMENTED;
 }
 
 /*!
@@ -384,7 +383,7 @@ dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
  * @returns Zero on success and an error code otherwise
  */
 int
-dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
+dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, u_int32_t attr)
 {
     int result;
     size_t size;
@@ -397,12 +396,14 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count)
             return ERR_2BIG;
         }
         /* Add the 8 bytes for type and count to one byte for NULL */
-        size += 9;
+        size += 13;
         /* TODO Need to do some more error checking here */
         *((u_int32_t *)&buff[0]) = mtos_udint(type);
         *((u_int32_t *)&buff[4]) = mtos_udint(count);
+        *((u_int32_t *)&buff[8]) = mtos_udint(attr);
 
-        strcpy(&buff[8], name);
+
+        strcpy(&buff[12], name);
     } else {
         return ERR_TAG_BAD;
     }
@@ -737,6 +738,158 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
 }
 
 int
+dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
+    int i, n, result = 0, size, sendsize;
+    u_int8_t *mask, *newdata = NULL;
+    u_int8_t buff[MSG_DATA_SIZE];
+
+    size = handle.size;
+    *((tag_index *)&buff[0]) = mtos_dint(handle.index);
+    *((u_int32_t *)&buff[4]) = mtos_dint(handle.byte);
+
+    if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
+        /* This takes care of the case where we have an even 8 bits but
+         * we are offset from zero so we need an extra byte */
+        if(handle.bit && !(handle.count % 8)) {
+            size++;
+        }
+        mask = malloc(size);
+        if(mask == NULL) return ERR_ALLOC;
+        newdata = malloc(size);
+        if(newdata == NULL) {
+            free(mask);
+            return ERR_ALLOC;
+        }
+        bzero(mask, size);
+        bzero(newdata, size);
+
+        i = handle.bit % 8;
+        for(n = 0; n < handle.count; n++) {
+            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
+                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
+            }
+            mask[i / 8] |= (1 << (i % 8));
+            i++;
+        }
+        memcpy(&buff[12], newdata, size);
+    } else {
+        mask = malloc(size);
+        if(mask == NULL) return ERR_ALLOC;
+        for(n = 0; n < size; n++) {
+            mask[n] = 0xFF;
+        }
+        memcpy(&buff[12], data, size);
+    }
+
+    memcpy(&buff[12 + size], mask, size);
+    sendsize = size * 2 + 12;
+    if(sendsize > MSG_DATA_SIZE) {
+        if(newdata != NULL) free(newdata);
+        free(mask);
+    }
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_MOD_OVRD, buff, sendsize);
+    if(newdata != NULL) free(newdata);
+    free(mask);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_MOD_OVRD, buff, 0, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    libdax_unlock(ds->lock);
+
+    return 0;
+}
+
+int
+dax_tag_del_override(dax_state *ds, tag_handle handle) {
+    return ERR_NOTIMPLEMENTED;
+}
+
+
+int
+dax_tag_get_override(dax_state *ds, tag_handle handle, void *data) {
+    return ERR_NOTIMPLEMENTED;
+}
+
+int
+dax_tag_set_override(dax_state *ds, tag_handle handle) {
+    int result = 0, sendsize;
+    u_int8_t buff[MSG_DATA_SIZE];
+
+    *((tag_index *)&buff[0]) = mtos_dint(handle.index);
+    *((u_int32_t *)&buff[4]) = 0xFF;
+
+    sendsize = 5;
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_SET_OVRD, buff, sendsize);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_SET_OVRD, buff, 0, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    libdax_unlock(ds->lock);
+
+    return 0;
+}
+
+
+int
+dax_tag_clr_override(dax_state *ds, tag_handle handle) {
+    int result = 0, sendsize;
+    u_int8_t buff[MSG_DATA_SIZE];
+
+    *((tag_index *)&buff[0]) = mtos_dint(handle.index);
+    *((u_int32_t *)&buff[4]) = 0x00;
+
+    sendsize = 5;
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_SET_OVRD, buff, sendsize);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_SET_OVRD, buff, 0, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    libdax_unlock(ds->lock);
+
+    return 0;
+}
+
+
+/*!
+ * Atomic operations are operations that take place on the server without the
+ * possibility of another client module modifying the data in during the operation.
+ * This eliminates the race condition that exists with normal read/modify/write
+ * operations.
+ *
+ * @param ds Pointer to the dax state ojbect
+ * @param h  Pointer to a handle that repreents the tag or the part of the
+ *           tag that we wish to apply the operation to.
+ * @param data Any data that may be required by this event.  For example if
+ *             the event is a Greater Than event then this data would represent
+ *             the number that the tag given by the handle would be compared against.
+ *             If not needed for the particular event type being created it should
+ *             be set to NULL.
+ * @param operation Number representing the operation that we wish to perform.
+ *
+ * @returns Zero on success or an error code otherwise.
+ */
+int
 dax_atomic_op(dax_state *ds, tag_handle h, void *data, u_int16_t operation) {
     size_t sendsize;
     int result;
@@ -803,7 +956,7 @@ dax_atomic_op(dax_state *ds, tag_handle h, void *data, u_int16_t operation) {
  *                      is deleted.  This gives the module a method to free
  *                      the udata if necessary.  Can be set to NULL if not needed.
  * 
- * @return Zero on success or an error code otherwise.
+ * @returns Zero on success or an error code otherwise.
  */
 int
 dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
@@ -914,8 +1067,8 @@ dax_event_del(dax_state *ds, dax_id id)
 int
 dax_event_get(dax_state *ds, dax_id id)
 {
-
-    return 0;
+    return ERR_NOTIMPLEMENTED;
+    //return 0;
 }
 
 /*!
