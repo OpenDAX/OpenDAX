@@ -1074,7 +1074,7 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
 }
 
 int
-override_mod(tag_index idx, int offset, void *data, void*mask, int size) {
+override_add(tag_index idx, int offset, void *data, void *mask, int size) {
     int tag_size;
 
     if(idx < 0 || idx >= _tagnextindex) {
@@ -1101,6 +1101,39 @@ override_mod(tag_index idx, int offset, void *data, void*mask, int size) {
 
     return 0;
 }
+
+int
+override_del(tag_index idx, int offset, void *mask, int size) {
+    int tag_size;
+    int n;
+
+    if(idx < 0 || idx >= _tagnextindex) {
+        return ERR_ARG;
+    }
+    if(_db[idx].data == NULL) {
+        return ERR_DELETED;
+    }
+    tag_size = _db[idx].count * type_size(_db[idx].type);
+    if(_db[idx].odata == NULL) {
+        return ERR_GENERIC;
+    }
+    for(n=0;n<size;n++) {
+        _db[idx].omask[n+offset] &= ~((u_int8_t *)mask)[n];
+        _db[idx].odata[n+offset] &= ~((u_int8_t *)mask)[n];
+    }
+    tag_size = _db[idx].count * type_size(_db[idx].type);
+    for(n=0;n<tag_size;n++) {
+        if(_db[idx].omask[n])  return 0;
+    }
+    /* If we get here then we've deleted the last of the overrides for this
+     * tag so we'll free the memory */
+    xfree(_db[idx].odata);
+    xfree(_db[idx].omask);
+    _db[idx].attr &= ~TAG_ATTR_OVERRIDE;
+
+    return 0;
+}
+
 
 int
 override_get(tag_index idx, int offset, int size, void *data, void*mask) {

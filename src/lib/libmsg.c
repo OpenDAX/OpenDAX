@@ -789,14 +789,14 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
     }
 
     libdax_lock(ds->lock);
-    result = _message_send(ds, MSG_MOD_OVRD, buff, sendsize);
+    result = _message_send(ds, MSG_ADD_OVRD, buff, sendsize);
     if(newdata != NULL) free(newdata);
     free(mask);
     if(result) {
         libdax_unlock(ds->lock);
         return result;
     }
-    result = _message_recv(ds, MSG_MOD_OVRD, buff, 0, 1);
+    result = _message_recv(ds, MSG_ADD_OVRD, buff, 0, 1);
     if(result) {
         libdax_unlock(ds->lock);
         return result;
@@ -808,7 +808,58 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
 
 int
 dax_tag_del_override(dax_state *ds, tag_handle handle) {
-    return ERR_NOTIMPLEMENTED;
+    int i, n, result = 0, size, sendsize;
+    u_int8_t *mask = NULL;
+    u_int8_t buff[MSG_DATA_SIZE];
+
+    size = handle.size;
+    *((tag_index *)&buff[0]) = mtos_dint(handle.index);
+    *((u_int32_t *)&buff[4]) = mtos_dint(handle.byte);
+
+    if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
+        /* This takes care of the case where we have an even 8 bits but
+         * we are offset from zero so we need an extra byte */
+        if(handle.bit && !(handle.count % 8)) {
+            size++;
+        }
+        mask = malloc(size);
+        if(mask == NULL) return ERR_ALLOC;
+        bzero(mask, size);
+
+        i = handle.bit % 8;
+        for(n = 0; n < handle.count; n++) {
+            mask[i / 8] |= (1 << (i % 8));
+            i++;
+        }
+    } else {
+        mask = malloc(size);
+        if(mask == NULL) return ERR_ALLOC;
+        for(n = 0; n < size; n++) {
+            mask[n] = 0xFF;
+        }
+    }
+
+    memcpy(&buff[12 + size], mask, size);
+    sendsize = size + 12;
+    if(sendsize > MSG_DATA_SIZE) {
+        free(mask);
+    }
+
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_DEL_OVRD, buff, sendsize);
+    free(mask);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    result = _message_recv(ds, MSG_DEL_OVRD, buff, 0, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    libdax_unlock(ds->lock);
+
+    return 0;
 }
 
 

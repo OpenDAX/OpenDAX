@@ -148,7 +148,8 @@ int map_del(tag_index index, int id);
 int map_del_all(_dax_datamap *head);
 int map_check(tag_index idx, int offset, u_int8_t *data, int size);
 
-int override_mod(tag_index idx, int offset, void *data, void *mask, int size);
+int override_add(tag_index idx, int offset, void *data, void *mask, int size);
+int override_del(tag_index idx, int offset, void *mask, int size);
 int override_get(tag_index idx, int offset, int size, void *data, void*mask);
 int override_set(tag_index idx, u_int8_t flag);
 

@@ -68,6 +68,14 @@ do_test(int argc, char *argv[])
     if(result) return result;
     if(temp != 12) return -1;
 
+    result = dax_tag_set_override(ds, h);
+    if(result) return result;
+    result = dax_tag_del_override(ds, h);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &temp);
+    if(result) return result;
+    if(temp != 12) return -1;
+
     return result;
 }
 
