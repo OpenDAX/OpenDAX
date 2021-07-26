@@ -75,15 +75,15 @@ __add_tags(void)
     int result;
     char tagname[256];
     snprintf(tagname, 256, "%s_quit", dax_get_attr(ds, "tagprefix"));
-    result = dax_tag_add(ds,&quit_tag, tagname, DAX_DINT, 1);
+    result = dax_tag_add(ds,&quit_tag, tagname, DAX_DINT, 1, 0);
     snprintf(tagname, 256, "%s_cpu", dax_get_attr(ds, "tagprefix"));
-    result += dax_tag_add(ds,&cpu_tag, tagname, DAX_INT, 1);
+    result += dax_tag_add(ds,&cpu_tag, tagname, DAX_INT, 1, 0);
     snprintf(tagname, 256, "%s_mem", dax_get_attr(ds, "tagprefix"));
-    result += dax_tag_add(ds,&mem_tag, tagname, DAX_DINT, 1);
+    result += dax_tag_add(ds,&mem_tag, tagname, DAX_DINT, 1, 0);
     snprintf(tagname, 256, "%s_msg", dax_get_attr(ds, "tagprefix"));
-    result += dax_tag_add(ds,&msg_tag, tagname, DAX_DINT, 1);
+    result += dax_tag_add(ds,&msg_tag, tagname, DAX_DINT, 1, 0);
     snprintf(tagname, 256, "%s_noquit", dax_get_attr(ds, "tagprefix"));
-	result += dax_tag_add(ds,&noquit_tag, tagname, DAX_BOOL, 1);
+	result += dax_tag_add(ds,&noquit_tag, tagname, DAX_BOOL, 1, 0);
 	if(result) dax_fatal(ds, "Can't Add Tags");
     dax_event_add(ds, &quit_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
     dax_event_add(ds, &cpu_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
@@ -94,7 +94,7 @@ __add_tags(void)
 
 /* This function is to waste memory.  If it fails we don't really care.  That
  * just means that we've got all we can get.  The right thing to do is keep running
- * because that might be the misbehaviour that we are looling for.
+ * because that might be the misbehavior that we are looking for.
  */
 static inline void
 __waste_memory(size_t size)

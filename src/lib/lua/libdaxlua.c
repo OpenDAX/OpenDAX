@@ -464,6 +464,9 @@ _dax_init(lua_State *L)
 {
     char *modulename;
     modulename = (char *)lua_tostring(L, 1);
+    if(modulename == NULL) {
+        luaL_error(L, "Module name not given");
+    }
     /* TODO: Transfer the Lua 'arg' table to these variables */
     int argc = 1;
     char *argv[] = {modulename};
@@ -602,7 +605,7 @@ _tag_add(lua_State *L)
         }
     }
 
-    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count);
+    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count, 0);
     if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
     return 0;
 }

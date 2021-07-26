@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2019 Phil Birkelbach
+ *  Copyright (c) 2021 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,7 @@
  */
 
 /*
- *  We use this file for debugging tests.  Most of our tests use Python
- *  ctypes and those can be hard to debug.  This file can be more easily
- *  run with gdb.
+ *  This test creates a single queue and checks that it works properly
  */
 
 #include <common.h>
@@ -27,17 +25,16 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "libtest_common.h"
 
-dax_state *ds;
-static int _quitsignal;
 
 int
 do_test(int argc, char *argv[])
 {
-    tag_handle tag;
-    int result;
-    char buff[32];
-    unsigned long x = 18446744073709551615UL;
+    dax_state *ds;
+    int result = 0;
+    tag_handle h;
+    dax_dint temp, mask, n;
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -46,39 +43,32 @@ do_test(int argc, char *argv[])
     result = dax_connect(ds);
     if(result) {
         return -1;
-    } else {
-        result = dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
-        assert(result == 0);
-        x = 0x55555555;
-        dax_write_tag(ds,  tag, &x);
-        dax_tag_del(ds, tag.index);
-        result = dax_read_tag(ds, tag, buff);
-        printf("result = %d\n", result);
     }
-    return 0;
+    result = 0;
+    result += dax_tag_add(ds, &h, "TEST1", DAX_DINT, 1, 0);
+    temp = 12;
+    result = dax_write_tag(ds, h, &temp);
+    if(result) return result;
+    temp = -125;
+    result = dax_tag_add_override(ds, h, &temp);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &temp);
+    if(result) return result;
+    if(temp != 12) return -1;
 
+    result = dax_tag_get_override(ds, h, &temp, &mask);
+    if(mask != 0xFFFFFFFF) return -1;
+    if(temp != 12) return -1;
+    return result;
 }
 
 /* main inits and then calls run */
 int
 main(int argc, char *argv[])
 {
-    int status = 0;
-    pid_t pid;
-
-    pid = fork();
-    if(pid == 0) { // Child
-        execl("../src/server/tagserver", "../src/server/tagserver", NULL);
-        printf("Failed to launch tagserver\n");
-        exit(0);
-    } else if(pid < 0) {
+    if(run_test(do_test, argc, argv)) {
         exit(-1);
     } else {
-        usleep(100000);
-        if (do_test(argc, argv)) status ++;
-        kill(pid, SIGINT);
-        if (waitpid (pid, &status, 0) != pid)
-            status ++;
+        exit(0);
     }
-    return status;
 }

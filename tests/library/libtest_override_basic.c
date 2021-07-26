@@ -17,7 +17,7 @@
  */
 
 /*
- *  This test checks that the event queue grows when it's supposed to
+ *  This test creates a single queue and checks that it works properly
  */
 
 #include <common.h>
@@ -27,22 +27,14 @@
 #include <sys/wait.h>
 #include "libtest_common.h"
 
-int validation = 0;
-
-void
-test_callback(dax_state *ds, void *udata) {
-	validation++;
-}
 
 int
 do_test(int argc, char *argv[])
 {
-	dax_state *ds;
-    tag_handle tag;
+    dax_state *ds;
     int result = 0;
-    dax_int x;
-    dax_id id;
-    int n;
+    tag_handle h;
+    dax_dint temp, n;
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -51,26 +43,40 @@ do_test(int argc, char *argv[])
     result = dax_connect(ds);
     if(result) {
         return -1;
-    } else {
-        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1, 0);
-        x = 5;
-        dax_write_tag(ds, tag, &x);
-        result = dax_event_add(ds, &tag, EVENT_WRITE, NULL, &id, test_callback, NULL, NULL);
-        if(result) return result;
-        for(n=0;n<12;n++) {
-        	x = 5 + n;
-        	result = dax_write_tag(ds, tag, &x);
-        	if(result) return result;
-        }
-        for(n=0;n<12;n++) {
-            result = dax_event_poll(ds, NULL);
-            if(result) return result;
-        }
-        /* Our Callback will increment validation it runs */
-        if(validation != 12) return -1;
-
     }
-    return 0;
+    result = 0;
+    result += dax_tag_add(ds, &h, "TEST1", DAX_DINT, 1, 0);
+    temp = 12;
+    result = dax_write_tag(ds, h, &temp);
+    if(result) return result;
+    temp = -15;
+    result = dax_tag_add_override(ds, h, &temp);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &temp);
+    if(result) return result;
+    if(temp != 12) return -1;
+
+    result = dax_tag_set_override(ds, h);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &temp);
+    if(result) return result;
+    if(temp != -15) return -1;
+
+    result = dax_tag_clr_override(ds, h);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &temp);
+    if(result) return result;
+    if(temp != 12) return -1;
+
+    result = dax_tag_set_override(ds, h);
+    if(result) return result;
+    result = dax_tag_del_override(ds, h);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &temp);
+    if(result) return result;
+    if(temp != 12) return -1;
+
+    return result;
 }
 
 /* main inits and then calls run */

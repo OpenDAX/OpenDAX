@@ -117,3 +117,13 @@ add_executable(library_atomic_dec libtest_atomic_dec.c libtest_common.c)
 target_link_libraries(library_atomic_dec dax)
 add_test(library_atomic_dec library_atomic_dec)
 set_tests_properties(library_atomic_dec PROPERTIES TIMEOUT 10)
+
+add_executable(library_override_basic libtest_override_basic.c libtest_common.c)
+target_link_libraries(library_override_basic dax)
+add_test(library_override_basic library_override_basic)
+set_tests_properties(library_override_basic PROPERTIES TIMEOUT 10)
+
+add_executable(library_override_get libtest_override_get.c libtest_common.c)
+target_link_libraries(library_override_get dax)
+add_test(library_override_get library_override_get)
+set_tests_properties(library_override_get PROPERTIES TIMEOUT 10)

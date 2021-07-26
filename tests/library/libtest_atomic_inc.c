@@ -45,7 +45,7 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     }
-    result = dax_tag_add(ds, &h, "Test1", DAX_DINT, 1);
+    result = dax_tag_add(ds, &h, "Test1", DAX_DINT, 1, 0);
     if(result) return -1;
     temp = 12;
     result = dax_write_tag(ds, h, &temp);

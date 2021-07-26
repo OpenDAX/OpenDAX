@@ -54,6 +54,7 @@ class TestSingle(unittest.TestCase):
 
     def test_tag_add_bad_names(self):
         for name in badnames:
+            print(name)
             with self.assertRaises(RuntimeError):
                 self.dax.dax_tag_add(self.ds, name, "DINT", 1)
 

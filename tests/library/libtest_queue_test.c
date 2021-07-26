@@ -17,8 +17,7 @@
  */
 
 /*
- *  This test creates a single write event and uses dax_event_poll() to
- *  to test whether or not it is called properly
+ *  This test creates a single queue and checks that it works properly
  */
 
 #include <common.h>
@@ -46,7 +45,7 @@ do_test(int argc, char *argv[])
         return -1;
     }
     result = 0;
-    result += dax_tag_add(ds, &h, "TEST1", DAX_DINT | DAX_QUEUE, 1);
+    result += dax_tag_add(ds, &h, "TEST1", DAX_DINT | DAX_QUEUE, 1, 0);
     if(result) return -1;
 
     for(temp = 1251; temp<1261; temp++) {
