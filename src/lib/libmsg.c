@@ -597,7 +597,6 @@ dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size
     int result = 0;
     u_int8_t buff[14];
 
-    
     /* If we try to read more data that can be held in a single message we return an error */
     if(size > MSG_DATA_SIZE) {
         return ERR_2BIG;
@@ -737,6 +736,14 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
     return 0;
 }
 
+/*!
+ * Used to add an override to the given tag
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ * @param data Pointer to the data that we are using as the override
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
     int i, n, result = 0, size, sendsize;
@@ -862,10 +869,44 @@ dax_tag_del_override(dax_state *ds, tag_handle handle) {
     return 0;
 }
 
-
+/*!
+ * Retrieve the override mask as well as the actual data of the tag.  When the override
+ * is set this is the only way to read the 'actual' value as the normal tag reading functions
+ * will return the override value.
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ * @param data Pointer to the data buffer
+ * @param mask Pointer to the mask buffer
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
-dax_tag_get_override(dax_state *ds, tag_handle handle, void *data) {
-    return ERR_NOTIMPLEMENTED;
+dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mask) {
+    int result = 0, sendsize;
+    size_t size;
+    u_int8_t buff[MSG_DATA_SIZE];
+
+    *((tag_index *)&buff[0]) = mtos_dint(handle.index);
+    *((u_int32_t *)&buff[4]) = mtos_dint(handle.byte);
+    *((u_int32_t *)&buff[8]) = mtos_dint(handle.size);
+
+    sendsize = 12;
+    libdax_lock(ds->lock);
+    result = _message_send(ds, MSG_GET_OVRD, buff, sendsize);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    size = handle.size * 2;
+    result = _message_recv(ds, MSG_GET_OVRD, buff, &size, 1);
+    if(result) {
+        libdax_unlock(ds->lock);
+        return result;
+    }
+    libdax_unlock(ds->lock);
+    memcpy(data, buff, handle.size);
+    memcpy(mask, &buff[handle.size], handle.size);
+    return result;
 }
 
 int

@@ -1084,6 +1084,7 @@ override_add(tag_index idx, int offset, void *data, void *mask, int size) {
         return ERR_DELETED;
     }
     tag_size = _db[idx].count * type_size(_db[idx].type);
+
     if(_db[idx].odata == NULL) {
         _db[idx].odata = malloc(tag_size);
         if(_db[idx].odata == NULL) return ERR_ALLOC;
@@ -1097,7 +1098,7 @@ override_add(tag_index idx, int offset, void *data, void *mask, int size) {
     }
     if((offset + size) > tag_size) return ERR_2BIG;
     memcpy(&_db[idx].odata[offset], data, size);
-    memcpy(&_db[idx].omask[offset], data, size);
+    memcpy(&_db[idx].omask[offset], mask, size);
 
     return 0;
 }
@@ -1121,6 +1122,7 @@ override_del(tag_index idx, int offset, void *mask, int size) {
         _db[idx].omask[n+offset] &= ~((u_int8_t *)mask)[n];
         _db[idx].odata[n+offset] &= ~((u_int8_t *)mask)[n];
     }
+    _db[idx].attr &= ~TAG_ATTR_OVERRIDE;
     tag_size = _db[idx].count * type_size(_db[idx].type);
     for(n=0;n<tag_size;n++) {
         if(_db[idx].omask[n])  return 0;
@@ -1129,15 +1131,26 @@ override_del(tag_index idx, int offset, void *mask, int size) {
      * tag so we'll free the memory */
     xfree(_db[idx].odata);
     xfree(_db[idx].omask);
-    _db[idx].attr &= ~TAG_ATTR_OVERRIDE;
 
     return 0;
 }
 
 
 int
-override_get(tag_index idx, int offset, int size, void *data, void*mask) {
-    return ERR_NOTIMPLEMENTED;
+override_get(tag_index idx, int offset, int size, void *data, void *mask) {
+    int tag_size;
+
+    if(idx < 0 || idx >= _tagnextindex) {
+        return ERR_ARG;
+    }
+    if(_db[idx].data == NULL) {
+        return ERR_DELETED;
+    }
+    tag_size = _db[idx].count * type_size(_db[idx].type);
+    if((offset + size) > tag_size) return ERR_2BIG;
+    memcpy(data, _db[idx].data, size);
+    memcpy(mask, _db[idx].omask, size);
+    return 0;
 }
 
 int

@@ -375,7 +375,7 @@ int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);
 /* These functions handle the tag value override feature */
 int dax_tag_add_override(dax_state *ds, tag_handle handle, void *data);
 int dax_tag_del_override(dax_state *ds, tag_handle handle);
-int dax_tag_get_override(dax_state *ds, tag_handle handle, void *data);
+int dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mask);
 int dax_tag_set_override(dax_state *ds, tag_handle handle);
 int dax_tag_clr_override(dax_state *ds, tag_handle handle);
 

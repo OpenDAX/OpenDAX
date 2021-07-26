@@ -976,7 +976,7 @@ msg_add_override(dax_message *msg) {
     } else {
         _message_send(msg->fd, MSG_ADD_OVRD, NULL, 0, RESPONSE);
     }
-    printf("Message Modify Override\n");
+    printf("Message Add Override\n");
     return 0;
 }
 
@@ -1000,15 +1000,21 @@ msg_del_override(dax_message *msg) {
 
 int
 msg_get_override(dax_message *msg) {
-    int result;
+    int result, size;
+    dax_dint index, byte;
+    u_int8_t buff[MSG_DATA_SIZE];
 
-    result = ERR_NOTIMPLEMENTED;
+    index = *((tag_index *)&msg->data[0]);
+    byte = *((u_int32_t *)&msg->data[4]);
+    size = *((u_int32_t *)&msg->data[8]);
+    result = override_get(index, byte, size, buff, &buff[size]);
+
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GET_OVRD, &result, sizeof(int), ERROR);
     } else {
-        _message_send(msg->fd, MSG_GET_OVRD, NULL, 0, RESPONSE);
+        _message_send(msg->fd, MSG_GET_OVRD, buff, size * 2, RESPONSE);
     }
-    printf("Message Get Override Mask\n");
+    printf("Message Get Override\n");
     return 0;
 
 }
