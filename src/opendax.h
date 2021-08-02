@@ -115,6 +115,7 @@ extern "C" {
 #define ERR_READONLY  -27 /* Resource is read only */
 #define ERR_WRITEONLY -28 /* Resource is write only */
 #define ERR_NOTIMPLEMENTED -29 /* Function not implemented */
+#define ERR_FILE_CLOSED   -30 /* File is not open */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */

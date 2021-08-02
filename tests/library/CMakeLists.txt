@@ -127,3 +127,8 @@ add_executable(library_override_get libtest_override_get.c libtest_common.c)
 target_link_libraries(library_override_get dax)
 add_test(library_override_get library_override_get)
 set_tests_properties(library_override_get PROPERTIES TIMEOUT 10)
+
+add_executable(library_retention_basic libtest_retention_basic.c libtest_common.c)
+target_link_libraries(library_retention_basic dax)
+add_test(library_retention_basic library_retention_basic)
+set_tests_properties(library_retention_basic PROPERTIES TIMEOUT 10)

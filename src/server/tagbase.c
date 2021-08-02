@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <common.h>
 #include "tagbase.h"
+#include "retain.h"
 #include "func.h"
 
 /* Notes:
@@ -367,7 +368,8 @@ initialize_tagbase(void)
     }
 
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
-
+    /* TODO: Add retention filename from configuration */
+    ret_init(NULL);
     /* Creates the system tags */
     assert(tag_add("_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
     _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
@@ -473,11 +475,6 @@ tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
     /* Assign everything to the new tag, copy the string and git */
     _db[n].count = count;
     _db[n].type = type;
-    /* We only let the Tag Retention attribute to be set at this point */
-    if(attr & TAG_ATTR_RETAIN) {
-        /* TODO: add tag retention */;
-    }
-    //_db[n].attr |= TAG_ATTR_RETAIN;
 
     /* If the type is a queue the data area will be allocated in the
      * queue_add() function instead of here */
@@ -516,6 +513,13 @@ tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
     if(_db[INDEX_TAGCOUNT].data != NULL) {
         tag_write(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
+    /* We only let the Tag Retention attribute to be set at this point */
+    if(attr & TAG_ATTR_RETAIN) {
+        /* TODO: add tag retention */;
+        ret_add_tag(n);
+        _db[n].attr |= TAG_ATTR_RETAIN;
+    }
+
 
     return n;
 }
@@ -703,6 +707,11 @@ tag_write(tag_index idx, int offset, void *data, int size)
         event_check(idx, offset, size);
         map_check(idx, offset, data, size);
     }
+
+    if(_db[idx].attr & TAG_ATTR_RETAIN) {
+        ret_tag_write(idx);
+    }
+
     return 0;
 }
 
@@ -736,6 +745,11 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     }
     event_check(idx, offset, size);
     map_check(idx, offset, data, size);
+
+    if(_db[idx].attr & TAG_ATTR_RETAIN) {
+        ret_tag_write(idx);
+    }
+
     return 0;
 }
 
