@@ -25,7 +25,7 @@
  * one of these functions.  They should all have the same prototype and
  * that prototype is...
  * 
- * int vfunction(int offset, void *data, int size);
+ * int vfunction(tag_index idx, int offset, void *data, int size, void *userdata);
  * 
  * the functions should check that size is correct and then write the
  * information into the memory pointed to by *data.  offset may be

@@ -20,6 +20,7 @@
 #include "options.h"
 #include "message.h"
 #include "tagbase.h"
+#include "retain.h"
 #include "func.h"
 #include <pthread.h>
 #include <syslog.h>
@@ -68,7 +69,8 @@ main(int argc, const char *argv[])
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
             xlog(LOG_MAJOR, "Quitting due to signal %d", quitflag);
-            msg_destroy(); /* Destroy the message queue */
+            msg_destroy(); /* Clean up messaging code */
+            ret_close();   /* Clean up tag retention system */
             exit(0);
         }
     }
