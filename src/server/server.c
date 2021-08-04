@@ -20,6 +20,7 @@
 #include "options.h"
 #include "message.h"
 #include "tagbase.h"
+#include "retain.h"
 #include "func.h"
 #include <pthread.h>
 #include <syslog.h>
@@ -56,6 +57,8 @@ main(int argc, const char *argv[])
     result = msg_setup();    /* This creates and sets up the message sockets */
     if(result) xerror("msg_setup() returned %d", result);
     initialize_tagbase(); /* initialize the tag name database */
+    /* TODO: Add retention filename from configuration */
+    ret_init(NULL);
     /* Start the message handling thread */
     if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
         xfatal("Unable to create message thread");

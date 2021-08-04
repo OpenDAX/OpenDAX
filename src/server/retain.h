@@ -22,8 +22,11 @@
 #ifndef __RETAIN_H
 #define __RETAIN_H
 
+#define RET_FLAG_DELETED 0x01
+
 int ret_init(char *filename);
 int ret_add_tag(int index);
+int ret_del_tag(int index);
 int ret_tag_write(int index);
 int ret_close(void);
 

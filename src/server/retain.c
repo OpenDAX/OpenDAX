@@ -18,7 +18,43 @@
  *  Source code file for tag retention functions
  */
 
+/* Retention File Format
+ *
+ * HEADER
+ * Byte,  Size,  Type,   Description
+ * 0      6      ASCII   "DAXRET", File Signature
+ * 6      2      UINT16   Version
+ * 8      4      UINT32   First Data Type Record Pointer
+ * 12     4      UINT32   First Tag Record Pointer
+ * 16     ~               Data Records
+ *
+ * TAG RECORD (Bytes are offsets from record start)
+ * Byte,  Size,  Type,   Description
+ * 0      4      UINT32  Pointer to the next tag record (essentially a linked list)
+ * 4      4      UINT32  The Tags Data Size
+ * 8      1      UINT8   Size of the Tag Name in the record
+ * 9      1      BYTE    Flags Byte
+ * 10     4      UINT32  Data Type (same as OpenDAX Type)
+ * 14     4      UINT32  Tag Item Count (for arrays)
+ * 18     (8)    CHAR    Tag Name (Size in Byte 8)
+ * 18+(8) (4)    VOID    Tag Data
+ *
+ * TAG FLAG BYTE
+ * Bit,   Description
+ * 0      RET_FLAG_DELETED, Tag has been deleted after initialization
+ *
+ * DATA TYPE RECORD (Currently Not Implemented) (Bytes are offsets from record start)
+ * Byte,   Size,  Type,   Description
+ * 0       4      UINT32  Pointer to the next data type record (essentially a linked list)
+ * 4       2      UINT16  Data Type description size
+ * 6       4      UINT32  Data Type ID (same as OpenDAX)
+ * 10      1      UINT8   Name Size
+ * 11      (10)   CHAR    Data Type Name
+ * 11+(10) (4)    CHAR    Data Type Description (string from serialize_datatype() function)
+ */
+
 #include <common.h>
+#include "retain.h"
 #include "func.h"
 #include "tagbase.h"
 #include <sys/stat.h>
@@ -28,10 +64,44 @@ extern _dax_tag_db *_db;
 
 static int _fd;
 static u_int16_t _version;
-static u_int32_t _last_type_pointer;
+//static u_int32_t _last_type_pointer;
 static u_int32_t _last_tag_pointer;
 //static u_int32_t _next_offset;
 
+/* read through the file and create the tags in the database */
+static int
+_create_tags(void) {
+    char buff[256];
+    u_int8_t name_size, flags;
+    u_int32_t tag_pointer, tag_size, tag_type, tag_count;
+    tag_index tag_index;
+
+    lseek(_fd, 12, SEEK_SET); /* Location of the first tag record pointer */
+    read(_fd, &tag_pointer, 4);
+    if(tag_pointer == 0) return 0; /* No tags to create, bail out */
+    while(1) {
+        lseek(_fd, tag_pointer, SEEK_SET);
+        read(_fd, &tag_pointer, 4); /* Pointer to the next tag */
+        read(_fd, &tag_size, 4);
+        read(_fd, &name_size, 1);
+        read(_fd, &flags, 1);
+        read(_fd, &tag_type, 4);
+        read(_fd, &tag_count, 4);
+        read(_fd, buff, name_size);
+        buff[name_size] = 0x00;
+        /* We don't actually delete records in the file.  We just mark the tag as deleted
+         * and then ignore it here. */
+        if((flags & RET_FLAG_DELETED) == 0x00) {
+            /* Create the tag as we found it, without the retention attribute
+             * If the rest of the system doesn't add this tag with the retention
+             * attribute then it'll be removed this go around */
+            tag_index = tag_add(buff, tag_type, tag_count, 0);
+            if(tag_index < 0) return tag_index;
+            read(_fd, _db[tag_index].data, tag_size);
+        }
+        if(tag_pointer == 0) return 0; /* We're done */
+    } /* End While */
+}
 
 int
 ret_init(char *filename) {
@@ -52,7 +122,7 @@ ret_init(char *filename) {
                 _fd = 0;
                 return ERR_GENERIC;
             }
-            result = write(_fd, "DAXRET\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00", 16);
+            result = write(_fd, "DAXRET\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
             if(result != 16) {
                 xerror("Error Writing to Retention File");
                 _fd=0;
@@ -76,7 +146,7 @@ ret_init(char *filename) {
         _fd = 0;
         return ERR_GENERIC;
     }
-    _version = (buff[6]<<8) | buff[7];
+    memcpy(&_version, &buff[6], 2);
 
     if(_version != 1) {
         xerror("Wrong File Version");
@@ -84,12 +154,16 @@ ret_init(char *filename) {
         return ERR_GENERIC;
     }
     /* If we get here then all is good */
-    /* TODO: Do the thing you do */
+    result = _create_tags();
+    /* Truncate the file and write the default header */
+    result = ftruncate(_fd, 0);
+    result = lseek(_fd, 0, SEEK_SET);
+    result = write(_fd, "DAXRET\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
     return 0;
 }
 
 static int
-_write_tag(int index, size_t offset) {
+_write_tag_def(int index, size_t offset) {
     unsigned char name_size, flags;
     u_int32_t data_size, tmp;
 
@@ -102,10 +176,12 @@ _write_tag(int index, size_t offset) {
     write(_fd, &data_size, 4); /* size of the data area */
     write(_fd, &name_size, 1); /* size of the tag name */
     write(_fd, &flags, 1); /* flag byte */
+    write(_fd, &_db[index].type, 4);
+    write(_fd, &_db[index].count, 4);
     write(_fd, _db[index].name, name_size);
     write(_fd, _db[index].data, data_size);
     /* This points to the offset in the file where we'll write this tags data */
-    _db[index].ret_file_pointer = offset + 10 + name_size;
+    _db[index].ret_file_pointer = offset + 18 + name_size;
 
     return 0; /* TODO: Handle errors */
 }
@@ -122,10 +198,10 @@ ret_add_tag(int index) {
     if(_last_tag_pointer == 0) { /* This is our first tag */
         lseek(_fd, 12, SEEK_SET); /* first tag pointer */
         write(_fd, &offset, sizeof(offset));
-        _write_tag(index, offset);
+        _write_tag_def(index, offset);
         _last_tag_pointer = offset;
     } else {
-        _write_tag(index, offset);
+        _write_tag_def(index, offset);
         lseek(_fd, _last_tag_pointer, SEEK_SET); /* Seek to the last tag */
         /* Write the offset to the tag we just added to the previous tag */
         write(_fd, &offset, 4);
@@ -133,6 +209,17 @@ ret_add_tag(int index) {
     }
     return 0;
 }
+
+int
+ret_del_tag(int index) {
+    u_int32_t offset;
+    u_int8_t flags = RET_FLAG_DELETED;
+    offset = _db[index].ret_file_pointer - strlen(_db[index].name - 9);
+    lseek(_fd, offset, SEEK_SET);
+    write(_fd, &flags, 1);
+    return 0;
+}
+
 
 int
 ret_tag_write(int index) {

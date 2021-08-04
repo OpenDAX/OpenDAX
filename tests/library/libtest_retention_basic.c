@@ -29,7 +29,7 @@
 
 
 int
-do_test(int argc, char *argv[])
+test_one(int argc, char *argv[])
 {
     dax_state *ds;
     int result = 0;
@@ -46,19 +46,49 @@ do_test(int argc, char *argv[])
     }
     result = 0;
     result += dax_tag_add(ds, &h, "TEST1", DAX_DINT, 1, TAG_ATTR_RETAIN);
+    result += dax_tag_add(ds, &h, "TEST2", DAX_DINT, 1, TAG_ATTR_RETAIN);
     temp = 0xAABBCCDD;
     result = dax_write_tag(ds, h, &temp);
 
     return result;
 }
 
-/* main inits and then calls run */
+int
+test_two(int argc, char *argv[])
+{
+    dax_state *ds;
+    int result = 0;
+    tag_handle h;
+    dax_dint temp, n;
+
+    ds = dax_init("test");
+    dax_init_config(ds, "test");
+
+    dax_configure(ds, argc, argv, CFG_CMDLINE);
+    result = dax_connect(ds);
+    if(result) {
+        return -1;
+    }
+    result = 0;
+    result += dax_tag_add(ds, &h, "TEST1", DAX_DINT, 1, TAG_ATTR_RETAIN);
+    result += dax_tag_add(ds, &h, "TEST2", DAX_DINT, 1, TAG_ATTR_RETAIN);
+    result = dax_read_tag(ds, h, &temp);
+    if(temp != 0xAABBCCDD) return -1;
+
+    return result;
+}
+
+
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(test_one, argc, argv)) {
         exit(-1);
     } else {
-        exit(0);
+        if(run_test(test_two, argc, argv)) {
+            exit(-1);
+        } else {
+            exit(0);
+        }
     }
 }
