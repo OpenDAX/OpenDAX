@@ -499,14 +499,15 @@ msg_tag_get(dax_message *msg)
         result = tag_get_name((char *)&msg->data[1], &tag);
         xlog(LOG_MSG | LOG_VERBOSE, "Tag Get Message from %d for name '%s'", msg->fd, (char *)msg->data);
     }
-    size = strlen(tag.name) + 13;
+    size = strlen(tag.name) + 17;
     buff = alloca(size);
     if(buff == NULL) result = ERR_ALLOC;
     if(!result) {
         *((u_int32_t *)&buff[0]) = tag.idx;
         *((u_int32_t *)&buff[4]) = tag.type;
         *((u_int32_t *)&buff[8]) = tag.count;
-        strcpy(&buff[12], tag.name);
+        *((u_int32_t *)&buff[12]) = tag.attr;
+        strcpy(&buff[16], tag.name);
         _message_send(msg->fd, MSG_TAG_GET, buff, size, RESPONSE);
         xlog(LOG_MSG | LOG_VERBOSE, "Returning tag - '%s':0x%X to module %d",tag.name, tag.idx, msg->fd);
     } else {

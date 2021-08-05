@@ -114,7 +114,7 @@ class TestHandles_LoopTests(unittest.TestCase):
         self.server = subprocess.Popen([testconfig.tagserver_file,
                                         "-C",
                                         "tests/config/tagserver_basic.conf"],
-                                        stdout=subprocess.DEVNULL
+#                                        stdout=subprocess.DEVNULL
                                         )
         time.sleep(0.1)
         x = self.server.poll()

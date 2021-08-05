@@ -132,3 +132,8 @@ add_executable(library_retention_basic libtest_retention_basic.c libtest_common.
 target_link_libraries(library_retention_basic dax)
 add_test(library_retention_basic library_retention_basic)
 set_tests_properties(library_retention_basic PROPERTIES TIMEOUT 10)
+
+add_executable(library_blank_tagname libtest_blank_tagname.c libtest_common.c)
+target_link_libraries(library_blank_tagname dax)
+add_test(library_blank_tagname library_blank_tagname)
+set_tests_properties(library_blank_tagname PROPERTIES TIMEOUT 10)

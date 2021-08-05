@@ -55,6 +55,7 @@ _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
     tag->idx = this->idx;
     tag->type = this->type;
     tag->count = this->count;
+    tag->attr = this->attr;
 
     /* Bubble up:
      'after' is set to the node that we swap with
@@ -133,7 +134,6 @@ check_cache_name(dax_state *ds, char *name, dax_tag *tag)
             return ERR_NOTFOUND;
         }
     }
-
     _cache_hit(ds, this, tag);
 
     return 0;
@@ -177,6 +177,7 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
     new->idx = tag->idx;
     new->type = tag->type;
     new->count = tag->count;
+    new->attr = tag->attr;
     //--print_cache();
 
     return 0;

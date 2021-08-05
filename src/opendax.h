@@ -241,6 +241,7 @@ struct dax_tag {
     tag_index idx;        /* Unique tag index */
     tag_type type;        /* Tags data type */
     unsigned int count;   /* The number of items in the tag array */
+    unsigned int attr;
     char name[DAX_TAGNAME_SIZE + 1];
 };
 

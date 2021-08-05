@@ -169,7 +169,7 @@ _write_tag_def(int index, size_t offset) {
 
     name_size = strlen(_db[index].name);
     flags = 0x00;
-    data_size = type_size(_db[index].type) * _db[index].count;
+    data_size = tag_get_size(index);
     lseek(_fd, offset, SEEK_SET);
     tmp = 0;
     write(_fd, &tmp, 4); /* pointer to next tag, 0 = we are the last one*/
@@ -225,7 +225,7 @@ int
 ret_tag_write(int index) {
     u_int32_t offset, data_size;
 
-    data_size = type_size(_db[index].type) * _db[index].count;
+    data_size = tag_get_size(index);
     offset = _db[index].ret_file_pointer;
     lseek(_fd, offset, SEEK_SET);
     write(_fd, _db[index].data, data_size);

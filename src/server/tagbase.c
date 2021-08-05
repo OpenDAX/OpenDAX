@@ -584,6 +584,7 @@ tag_get_name(char *name, dax_tag *tag)
         tag->idx = i;
         tag->type = _db[i].type;
         tag->count = _db[i].count;
+        tag->attr = _db[i].attr;
         strcpy(tag->name, _db[i].name);
         return 0;
     }
@@ -604,6 +605,7 @@ tag_get_index(int index, dax_tag *tag)
         tag->idx = index;
         tag->type = _db[index].type;
         tag->count = _db[index].count;
+        tag->attr = _db[index].attr;
         strcpy(tag->name, _db[index].name);
         return 0;
     }

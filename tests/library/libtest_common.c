@@ -45,7 +45,9 @@ run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
         result=testfunc(argc, argv);
         kill(pid, SIGINT);
         if( waitpid(pid, &status, 0) != pid )
+            unlink("retentive.db");
             return status;
     }
+    unlink("retentive.db");
     return result;
 }
