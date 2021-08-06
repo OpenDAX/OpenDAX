@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <common.h>
 #include "tagbase.h"
+#include "retain.h"
 #include "func.h"
 
 /* Notes:
@@ -367,7 +368,6 @@ initialize_tagbase(void)
     }
 
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
-
     /* Creates the system tags */
     assert(tag_add("_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
     _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
@@ -399,13 +399,24 @@ initialize_tagbase(void)
         xfatal("Unable to create default datatypes");
     }
     free(str);
-    
+
+}
+
+static void
+_set_attribute(tag_index idx, u_int32_t attr) {
+    /* We only let the Tag Retention attribute to be set at this point */
+    if(attr & TAG_ATTR_RETAIN) {
+        /* TODO: add tag retention */;
+        ret_add_tag(idx);
+        _db[idx].attr |= TAG_ATTR_RETAIN;
+    }
+
 }
 
 /* This adds a tag to the database. It takes a string for the name
  * of the tag, the type (see opendax.h for types) and a count.  If
  * count is greater than 1 an array is created.  It returns the index
- * of th newly created tag or an error. */
+ * of the newly created tag or an error. */
 tag_index
 tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
 {
@@ -449,6 +460,7 @@ tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
     if( (n = _get_by_name(name)) >= 0) {
         /* If the tag is identical or bigger then just return the handle */
         if(_db[n].type == type && _db[n].count >= count) {
+            _set_attribute(n, attr);
             return n;
         } else if(_db[n].type == type && _db[n].count < count) {
             /* If the new count is greater than the existing count then lets
@@ -457,6 +469,7 @@ tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
             if(newdata) {
                 _db[n].data = newdata;
                 _db[n].count = count;
+                _set_attribute(n, attr);
                 return n;
             } else {
                 xerror("Unable to allocate memory to grow the size of tag %s", name);
@@ -473,11 +486,6 @@ tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
     /* Assign everything to the new tag, copy the string and git */
     _db[n].count = count;
     _db[n].type = type;
-    /* We only let the Tag Retention attribute to be set at this point */
-    if(attr & TAG_ATTR_RETAIN) {
-        /* TODO: add tag retention */;
-    }
-    //_db[n].attr |= TAG_ATTR_RETAIN;
 
     /* If the type is a queue the data area will be allocated in the
      * queue_add() function instead of here */
@@ -516,6 +524,7 @@ tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
     if(_db[INDEX_TAGCOUNT].data != NULL) {
         tag_write(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
+    _set_attribute(n, attr);
 
     return n;
 }
@@ -542,6 +551,9 @@ tag_del(tag_index idx)
     }
     if(IS_CUSTOM(_db[idx].type)) {
         _cdt_dec_refcount(_db[idx].type);
+    }
+    if(_db[idx].attr & TAG_ATTR_RETAIN) {
+        ret_del_tag(idx);
     }
     events_del_all(_db[idx].events);
     map_del_all(_db[idx].mappings);
@@ -572,6 +584,7 @@ tag_get_name(char *name, dax_tag *tag)
         tag->idx = i;
         tag->type = _db[i].type;
         tag->count = _db[i].count;
+        tag->attr = _db[i].attr;
         strcpy(tag->name, _db[i].name);
         return 0;
     }
@@ -592,6 +605,7 @@ tag_get_index(int index, dax_tag *tag)
         tag->idx = index;
         tag->type = _db[index].type;
         tag->count = _db[index].count;
+        tag->attr = _db[index].attr;
         strcpy(tag->name, _db[index].name);
         return 0;
     }
@@ -703,6 +717,11 @@ tag_write(tag_index idx, int offset, void *data, int size)
         event_check(idx, offset, size);
         map_check(idx, offset, data, size);
     }
+
+    if(_db[idx].attr & TAG_ATTR_RETAIN) {
+        ret_tag_write(idx);
+    }
+
     return 0;
 }
 
@@ -736,6 +755,11 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     }
     event_check(idx, offset, size);
     map_check(idx, offset, data, size);
+
+    if(_db[idx].attr & TAG_ATTR_RETAIN) {
+        ret_tag_write(idx);
+    }
+
     return 0;
 }
 

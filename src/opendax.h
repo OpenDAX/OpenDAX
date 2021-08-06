@@ -115,6 +115,7 @@ extern "C" {
 #define ERR_READONLY  -27 /* Resource is read only */
 #define ERR_WRITEONLY -28 /* Resource is write only */
 #define ERR_NOTIMPLEMENTED -29 /* Function not implemented */
+#define ERR_FILE_CLOSED   -30 /* File is not open */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */
@@ -240,6 +241,7 @@ struct dax_tag {
     tag_index idx;        /* Unique tag index */
     tag_type type;        /* Tags data type */
     unsigned int count;   /* The number of items in the tag array */
+    unsigned int attr;
     char name[DAX_TAGNAME_SIZE + 1];
 };
 

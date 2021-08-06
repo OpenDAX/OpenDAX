@@ -435,6 +435,7 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
         tag.idx = *(tag_index *)buff;
         tag.type = type;
         tag.count = count;
+        tag.attr = attr;
         /* Just in case this call modifies the tag */
         cache_tag_del(ds, tag.idx);
         cache_tag_add(ds, &tag);
@@ -473,7 +474,7 @@ dax_tag_del(dax_state* ds, tag_index index)
 }
 
 /*!
- * Retrive a tag definition based on the tags name.
+ * Retrieve a tag definition based on the tags name.
  * 
  * @param ds Pointer to the dax state object
  * @param tag Pointer to the structure that this function will
@@ -492,12 +493,13 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
     if(name == NULL) return ERR_ARG;
 
     if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
+    if(size == 0) return ERR_NOTFOUND;
 
     libdax_lock(ds->lock);
     if(check_cache_name(ds, name, tag)) {
         /* We make buff big enough for the outgoing message and the incoming
-           response message which would have 3 additional int32s */
-        buff = malloc(size + 14);
+           response message which would have 4 additional int32s */
+        buff = malloc(size + 18);
         if(buff == NULL) return ERR_ALLOC;
         buff[0] = TAG_GET_NAME;
         strcpy(&buff[1], name);
@@ -509,7 +511,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
             libdax_unlock(ds->lock);
             return result;
         }
-        size += 14; /* This makes room for the type, count and handle */
+        size += 18; /* This makes room for the type, count and handle */
 
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
@@ -520,8 +522,9 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         tag->idx = stom_dint( *((int *)&buff[0]) );
         tag->type = stom_udint(*((u_int32_t *)&buff[4]));
         tag->count = stom_udint(*((u_int32_t *)&buff[8]));
+        tag->attr = stom_udint(*((u_int32_t *)&buff[12]));
         buff[size - 1] = '\0'; /* Just to make sure */
-        strcpy(tag->name, &buff[12]);
+        strcpy(tag->name, &buff[14]);
         cache_tag_add(ds, tag);
         free(buff);
     }
@@ -544,7 +547,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
 {
     int result;
     size_t size;
-    char buff[DAX_TAGNAME_SIZE + 13];
+    char buff[DAX_TAGNAME_SIZE + 17];
 
     libdax_lock(ds->lock);
     if(check_cache_index(ds, idx, tag)) {
@@ -556,8 +559,8 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
             libdax_unlock(ds->lock);
             return result;
         }
-        /* Maximum size of buffer, the 13 is the NULL plus three integers */
-        size = DAX_TAGNAME_SIZE + 13;
+        /* Maximum size of buffer, the 17 is the NULL plus four integers */
+        size = DAX_TAGNAME_SIZE + 17;
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
             //dax_error("Unable to retrieve tag for index %d", idx);
@@ -567,8 +570,9 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         tag->idx = stom_dint(*((int32_t *)&buff[0]));
         tag->type = stom_dint(*((int32_t *)&buff[4]));
         tag->count = stom_dint(*((int32_t *)&buff[8]));
-        buff[DAX_TAGNAME_SIZE + 12] = '\0'; /* Just to be safe */
-        strcpy(tag->name, &buff[12]);
+        tag->attr = stom_dint(*((int32_t *)&buff[12]));
+        buff[DAX_TAGNAME_SIZE + 16] = '\0'; /* Just to be safe */
+        strcpy(tag->name, &buff[16]);
         /* Add the tag to the tag cache */
         cache_tag_add(ds, tag);
     }
