@@ -34,9 +34,31 @@ show_tag(int n, dax_tag temp_tag)
     if(temp_tag.count > 1) {
         printf("[%d]", temp_tag.count);
     }
+    if(temp_tag.attr) {
+        if(temp_tag.attr & TAG_ATTR_READONLY) printf(" READONLY");
+        if(temp_tag.attr & TAG_ATTR_VIRTUAL)  printf(" VIRTUAL");
+        if(temp_tag.attr & TAG_ATTR_RETAIN)   printf(" RETAINED");
+        if(temp_tag.attr & TAG_ATTR_OVERRIDE) printf(" OVERRIDE");
+    }
     printf("\n");
 }
 
+static unsigned int
+_get_attributes(char **tokens) {
+    int n=0;
+    unsigned int attr = 0x00;
+
+    while(tokens[n]) {
+        if(!strncasecmp(tokens[n], "retain", 6)) {
+            attr |= TAG_ATTR_RETAIN;
+        } else {
+            fprintf(stderr, "ERROR: Unknown attribute %s\n", tokens[n]);
+            return 0x00;
+        }
+        n++;
+    }
+    return attr;
+}
 
 /* Adds a tag to the dax tag database. */
 int
@@ -45,7 +67,8 @@ tag_add(char **tokens)
     int count, result;
     tag_type type;
     tag_handle handle;
-    const char usage[] = "Usage: add type count\n";
+    unsigned int attr = 0x00;
+    const char usage[] = "Usage: add tag name type [count] [attributes] ... \n";
 
     /* Make sure that name is not NULL and we get the tagname */
     if( tokens[0] == NULL) {
@@ -68,9 +91,14 @@ tag_add(char **tokens)
 
     if( tokens[2] ) {
         count = strtol(tokens[2], NULL, 0);
-        if( count == 0 ) {
-            fprintf(stderr, "ERROR: Invalid Count Given\n");
-            return 1;
+        if( count == 0 ) { /* this is not a number so it might be attributes */
+            count = 1;
+            attr = _get_attributes(&tokens[2]);
+            if(attr == 0) {
+                return 1;
+            }
+        } else { /* If we have a count then see if we have attributes after */
+            attr = _get_attributes(&tokens[3]);
         }
     } else { // If no count is given make it one
         count = 1;
@@ -78,12 +106,12 @@ tag_add(char **tokens)
         //fprintf(stderr, usage);
     }
 
-    result = dax_tag_add(ds, &handle, tokens[0], type, count, 0);
+    result = dax_tag_add(ds, &handle, tokens[0], type, count, attr);
     if(result == 0) {
         if(!quiet_mode) printf("Tag Added at index %d\n", handle.index);
     } else {
         /* TODO: Print descriptive error message here */
-        printf("OPPS Can't add tag???\n");
+        printf("OPPS Can't add tag???, error = %d\n", result);
     }
     return 0;
 }

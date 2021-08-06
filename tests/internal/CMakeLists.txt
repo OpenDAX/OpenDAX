@@ -62,6 +62,7 @@ foreach(file ${files})
   add_executable(${TESTNAME} ${FILENAME} ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
+                                         ${SERVER_SOURCE_DIR}/retain.c
                                          ${SERVER_SOURCE_DIR}/mapping.c
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
   )
@@ -77,6 +78,7 @@ add_executable(groups_test groups_test.c ${SERVER_SOURCE_DIR}/groups.c
                                          ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
+                                         ${SERVER_SOURCE_DIR}/retain.c
                                          ${SERVER_SOURCE_DIR}/mapping.c
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
   )

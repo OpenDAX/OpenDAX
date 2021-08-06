@@ -55,6 +55,7 @@ typedef struct Tag_Cnode {
     tag_index idx;
     unsigned int type;
     unsigned int count;
+    unsigned int attr;
     struct Tag_Cnode *next;
     struct Tag_Cnode *prev;
     char name[DAX_TAGNAME_SIZE + 1];

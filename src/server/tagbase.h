@@ -98,6 +98,7 @@ typedef struct {
     u_int8_t *data;
     u_int8_t *omask;        /* Override mask pointer */
     u_int8_t *odata;        /* Override data pointer */
+    u_int32_t ret_file_pointer; /* Pointer to the data area of the tag retention file */
 } _dax_tag_db;
 
 typedef struct {

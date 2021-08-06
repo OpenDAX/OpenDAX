@@ -14,40 +14,21 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+ *  Header file for tag retention functions
  */
 
-/*
- *  This contains common code for the compiled C Library tests
- */
 
-#include <common.h>
-#include <opendax.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#ifndef __RETAIN_H
+#define __RETAIN_H
 
-int
-run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
-    int status = 0;
-    int result;
-    pid_t pid;
+#define RET_FLAG_DELETED 0x01
 
-    pid = fork();
+int ret_init(char *filename);
+int ret_add_tag(int index);
+int ret_del_tag(int index);
+int ret_tag_write(int index);
+int ret_close(void);
 
-    if(pid == 0) { // Child
-        execl("../../src/server/tagserver", "../../src/server/tagserver", "-v", NULL);
-        printf("Failed to launch tagserver\n");
-        exit(-1);
-    } else if(pid < 0) {
-        exit(-1);
-    } else {
-        usleep(100000);
-        result=testfunc(argc, argv);
-        kill(pid, SIGINT);
-        if( waitpid(pid, &status, 0) != pid )
-            unlink("retentive.db");
-            return status;
-    }
-    unlink("retentive.db");
-    return result;
-}
+
+#endif /* !__RETAIN_H */
