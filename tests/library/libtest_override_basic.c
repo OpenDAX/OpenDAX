@@ -17,7 +17,7 @@
  */
 
 /*
- *  This test creates a single queue and checks that it works properly
+ *  This does a basic test of the tag override feature
  */
 
 #include <common.h>

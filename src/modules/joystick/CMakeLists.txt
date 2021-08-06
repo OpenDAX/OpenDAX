@@ -14,27 +14,9 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_subdirectory(daxc)
+add_executable(daxjoystick daxjoystick.c jsopts.c)
+set_target_properties(daxjoystick PROPERTIES OUTPUT_NAME daxjoystick)
+target_link_libraries(daxjoystick dax)
 
-if(BUILD_MODBUS)
-  add_subdirectory(modbus)
-endif()
 
-if(BUILD_DAXLUA)
-  add_subdirectory(daxlua)
-endif()
-
-if(BUILD_WIO)
-  add_subdirectory(wio)
-endif()
-
-if(BUILD_MQTT)
-  add_subdirectory(mqtt)
-endif()
-
-# For now the joystick module only works in Linux
-if(BUILD_JOYSTICK AND OS_LINUX)
-  add_subdirectory(joystick)
-endif()
-
-add_subdirectory(skel)
+install(TARGETS daxjoystick DESTINATION bin)

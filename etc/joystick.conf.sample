@@ -1,0 +1,18 @@
+--This is the configuration file for the OpenDAX joystick module
+
+--device of the joystick that we are going to use
+device = "/dev/input/js0"
+
+--sets the axis to a tag, the arguments are the axis number, the tagname to write to, the offset and the scale
+set_axis(0,"Axis0", 0, 1.0)
+set_axis(1,"Axis1", 0, 1.0)
+set_axis(2,"Axis2", 0, 1.0)
+set_axis(3,"Axis3", 0, 1.0)
+
+--sets the button to a tag, the arguments are the button number, the tagname to write to
+set_button(0,"Button0")
+set_button(1,"Button1")
+set_button(2,"Button2")
+set_button(3,"Button3")
+
+

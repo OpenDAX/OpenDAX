@@ -27,7 +27,7 @@
 //      modules any more.
 #define MSTATE_STARTED      0x01 /* Module has been started */
 #define MSTATE_WAITING      0x02 /* Waiting for restart */
-#define MSTATE_CHILD        0x04 /* Module was started by this program */
+#define MSTATE_CHILD        0x04 /* Module was started by this program  <Deprecated>*/
 #define MSTATE_REGISTERED   0x08 /* Is the module registered */
 #define MSTATE_RUNNING      0x10 /* Module is running */
 
