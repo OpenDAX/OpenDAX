@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2021 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,32 +15,13 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
-
- *  Header file for the messaging code
+ *  Main source code file for the OpenDAX Bad Module
  */
 
-#ifndef __MESSAGE_H
-#define __MESSAGE_H
-
-#include <common.h>
-#include <libcommon.h>
 #include "daxtypes.h"
-#include <opendax.h>
 
-/* message.c functions */
-int msg_setup(void);
-void msg_destroy(void);
-int msg_receive(void);
-void msg_add_fd(int);
-void msg_del_fd(int);
-int msg_dispatcher(int, unsigned char *);
-
-/* buffer.c functions */
-int buff_initialize(void);
-int buff_read(int fd);
-void buff_wipe(void);
-void buff_free(int);
-void buff_freeall(void);
-
-
-#endif /* !__MESSAGE_H */
+/* Fake functions to get around undefined reference errors in the linker */
+dax_module *
+module_find_fd(int fd) {
+    return NULL;
+}

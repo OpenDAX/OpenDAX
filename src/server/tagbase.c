@@ -156,7 +156,7 @@ _get_by_name(char *name)
     max = _indexsize - 1;
     while(min <= max) {
         try = min + ((max - min) / 2);
-    
+
         i = strcmp(name, _index[try].name);
         if(i > 0) {
             min = try + 1;
@@ -221,7 +221,6 @@ _add_index(char *name, tag_index index)
     int n;
     char *temp;
     int i, min, max, try;
-
     /* Let's allocate the memory for the string first in case it fails */
     temp = strdup(name);
     if(temp == NULL)
@@ -333,7 +332,7 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
     tag_index idx;
     virt_functions vf;
 
-    idx = tag_add(name, type, 1, 0);
+    idx = tag_add(name, type, count, 0);
     /* We just allocated this data but that was just for convenience */
     free(_db[idx].data);
     vf.rf = rf;
@@ -342,6 +341,7 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
     if(_db[idx].data == NULL) return ERR_ALLOC;
     memcpy(_db[idx].data, &vf, sizeof(virt_functions));
     _db[idx].attr |= TAG_ATTR_VIRTUAL;
+    if(wf == NULL) _db[idx].attr |= TAG_ATTR_READONLY;
     return 0;
 }
 
@@ -369,19 +369,6 @@ initialize_tagbase(void)
 
     xlog(LOG_MINOR, "Database created with size = %d", _dbsize);
     /* Creates the system tags */
-    assert(tag_add("_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
-    _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_lastindex", DAX_DINT, 1, 0) == INDEX_LASTINDEX);
-    _db[INDEX_LASTINDEX].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_dbsize", DAX_DINT, 1, 0) == INDEX_DBSIZE);
-    _db[INDEX_DBSIZE].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_starttime", DAX_TIME, 1, 0) == INDEX_STARTED);
-    _db[INDEX_STARTED].attr = TAG_ATTR_READONLY;
-    virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
-
-    starttime = xtime();
-    tag_write(INDEX_STARTED,0,&starttime,sizeof(u_int64_t));
-    set_dbsize(_dbsize);
 
     /* Allocate the datatype array and set the initial counters */
     _datatypes = xmalloc(sizeof(datatype) * DAX_DATATYPE_SIZE);
@@ -392,13 +379,31 @@ initialize_tagbase(void)
     _datatype_size = DAX_DATATYPE_SIZE;
 
 /*  Create the default datatypes */
-    str = strdup("System:StartTime,TIME,1:ModuleCount,INT,1");
+    str = strdup("_module:StartTime,TIME,1:Status,UINT,1");
     assert(str != NULL);
     type = cdt_create(str, NULL);
     if(type == 0) {
         xfatal("Unable to create default datatypes");
     }
     free(str);
+
+    /* TODO: instead of using all these constants we should probably just add
+     * the tags and store the indexes for the ones that we need. */
+    assert(tag_add("_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
+    _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_lastindex", DAX_DINT, 1, 0) == INDEX_LASTINDEX);
+    _db[INDEX_LASTINDEX].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_dbsize", DAX_DINT, 1, 0) == INDEX_DBSIZE);
+    _db[INDEX_DBSIZE].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_starttime", DAX_TIME, 1, 0) == INDEX_STARTED);
+    _db[INDEX_STARTED].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_lastmodule", DAX_BYTE, DAX_TAGNAME_SIZE +1, 0) == INDEX_LASTMODULE);
+    _db[INDEX_LASTMODULE].attr = TAG_ATTR_READONLY;
+    virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
+    virtual_tag_add("_my_tagname", DAX_BYTE, DAX_TAGNAME_SIZE +1, get_module_tag_name, NULL);
+    starttime = xtime();
+    tag_write(INDEX_STARTED,0,&starttime,sizeof(u_int64_t));
+    set_dbsize(_dbsize);
 
 }
 
@@ -549,6 +554,7 @@ tag_del(tag_index idx)
         xlog(LOG_ERROR, "tag_del() trying to delete already deleted tag %d", idx);
         return ERR_DELETED;
     }
+    xlog(LOG_VERBOSE | LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
     if(IS_CUSTOM(_db[idx].type)) {
         _cdt_dec_refcount(_db[idx].type);
     }
@@ -568,7 +574,7 @@ tag_del(tag_index idx)
 }
 
 /* Finds a tag based on it's name.  Basically just a wrapper for _get_by_name().
- * Fills in the structure 'tag' and returns zero on sucess */
+ * Fills in the structure 'tag' and returns zero on success */
 int
 tag_get_name(char *name, dax_tag *tag)
 {

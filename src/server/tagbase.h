@@ -52,14 +52,15 @@
 
 
 /* This is the maximum number of mapping hops that we'll make before we print an
- * error and do some othe drastic action. */
+ * error and do some otheR drastic action. */
 #define MAX_MAP_HOPS 128
 
 /* database indexes for status tags. */
-#define INDEX_TAGCOUNT 0
-#define INDEX_LASTINDEX 1
-#define INDEX_DBSIZE 2
-#define INDEX_STARTED 3
+#define INDEX_TAGCOUNT   0
+#define INDEX_LASTINDEX  1
+#define INDEX_DBSIZE     2
+#define INDEX_STARTED    3
+#define INDEX_LASTMODULE 4
 
 typedef struct dax_event_t {
     int id;              /* Unique identifier for this event definition */

@@ -29,6 +29,7 @@
 #include "tagbase.h"
 #include "options.h"
 #include "groups.h"
+#include "virtualtag.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -359,9 +360,11 @@ msg_dispatcher(int fd, unsigned char *buff)
     message.fd = fd;
     memcpy(message.data, &buff[8], message.size);
     buff_free(fd);
+    virt_set_fd(fd);
     /* Now call the function to deal with it */
     return (*cmd_arr[message.msg_type])(&message);
 }
+
 
 /* The rest of the functions in this file are wrappers for other functions
  * in the server.  These each correspond to a message command.  They are

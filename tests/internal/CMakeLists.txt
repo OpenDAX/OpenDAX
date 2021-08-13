@@ -59,7 +59,8 @@ file(GLOB files "tagbasetest_*.c")
 foreach(file ${files})
   get_filename_component(FILENAME ${file} NAME)
   get_filename_component(TESTNAME ${file} NAME_WE)
-  add_executable(${TESTNAME} ${FILENAME} ${SERVER_SOURCE_DIR}/tagbase.c
+  add_executable(${TESTNAME} ${FILENAME} fakefunction.c
+                                         ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
                                          ${SERVER_SOURCE_DIR}/retain.c
@@ -74,7 +75,8 @@ add_test(internal_tagbase_002 tagbasetest_002)
 add_test(internal_tagbase_003 tagbasetest_003)
 add_test(internal_tagbase_004 tagbasetest_004)
 
-add_executable(groups_test groups_test.c ${SERVER_SOURCE_DIR}/groups.c
+add_executable(groups_test groups_test.c fakefunction.c
+                                         ${SERVER_SOURCE_DIR}/groups.c
                                          ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c

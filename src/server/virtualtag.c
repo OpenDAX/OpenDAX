@@ -35,6 +35,20 @@
 
 #include "virtualtag.h"
 #include "tagbase.h"
+#include "message.h"
+#include "module.h"
+
+/* This is the fd of the module of the current request.  This is so
+ * that virtual functions in tagbase.c can know which module they are
+ * dealing with.  There is probably a better way to do this but this works
+ * for now. */
+static int _current_fd;
+
+
+void
+virt_set_fd(int fd) {
+    _current_fd = fd;
+}
 
 int
 server_time(tag_index idx, int offset, void *data, int size, void *userdata)
@@ -46,6 +60,20 @@ server_time(tag_index idx, int offset, void *data, int size, void *userdata)
     return 0;
 }
 
+int
+get_module_tag_name(tag_index idx, int offset, void *data, int size, void *userdata) {
+    int result;
+    dax_tag tag;
+    dax_module *mod;
+
+    mod = module_find_fd(_current_fd);
+    if(mod == NULL) return ERR_NOTFOUND;
+    result = tag_get_index(mod->tagindex, &tag);
+    if(result) return result;
+    bzero(data, DAX_TAGNAME_SIZE);
+    memcpy(data, tag.name, strlen(tag.name)+1);
+    return 0;
+}
 
 
 /* These functions deal with tag based queues */
