@@ -274,7 +274,7 @@ _del_index(char *name) {
         } else if(i < 0) {
             max = try - 1;
         } else {
-            n = min;
+            n = try;
             break;
         }
     }
