@@ -240,7 +240,7 @@ tag_read(char **tokens)
         return ERR_ARG;
     }
 
-    buff = malloc(handle.size);
+    buff = malloc(handle.size + 1);
     if(buff == NULL) {
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
         return ERR_ALLOC;
@@ -251,6 +251,15 @@ tag_read(char **tokens)
         if(IS_CUSTOM(handle.type)) {
             /* Print Custom Stuff Here */
             fprintf(stderr, "ERROR: Given Tagname is a compound data type\n");
+        } else if(handle.type == DAX_CHAR) {
+            ((char *)buff)[handle.size] = 0x00;
+            for(n=0;n<handle.size;n++) {
+                if(((char *)buff)[n] == 0x00) {
+                    fprintf(stdout, " ");
+                }
+                fprintf(stdout, "%c", ((char *)buff)[n]);
+            }
+            fprintf(stdout, "\n");
         } else {
             for(n = 0; n < handle.count; n++) {
                 dax_val_to_string(str, 32, handle.type, buff, n);
@@ -274,8 +283,9 @@ tag_read(char **tokens)
 int
 tag_write(char **tokens, int tcount) {
     tag_handle handle;
-    int result, n, points;
+    int result, n, points, len;
     char *name;
+    u_int8_t use_mask = 0;
     void *buff, *mask;
 
     if(tokens[0]) {
@@ -284,8 +294,7 @@ tag_write(char **tokens, int tcount) {
         fprintf(stderr, "ERROR: No Tagname Given\n");
         return ERR_NOTFOUND;
     }
-    /* TODO: Should probably get a count based on how many tokens we have */
-    result = dax_tag_handle(ds, &handle, name, 0);
+    result = dax_tag_handle(ds, &handle, name, tcount-1);
     if(result) {
         /* TODO: More descriptive error messages here based on result */
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
@@ -307,14 +316,19 @@ tag_write(char **tokens, int tcount) {
     if(handle.count < points) {
         points = handle.count;
     }
-    /* TODO: I might want to add the ability to skip points with a '-'
-     * I'd have to search for any '-' and then use dax_mask_tag() instead. */
-
+    if(handle.type == DAX_BOOL) use_mask = 1;
     for(n = 0; n < points; n++) {
-        dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+        if(strncmp(tokens[n+1], "~", 1)) {
+            dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+        } else {
+            use_mask = 1; /* If we skipped any then we need to use the masked write */
+        }
     }
-    /* TODO: Check if the mask is all 1s and if so just use the dax_write_tag() function */
-    result = dax_mask_tag(ds, handle, buff, mask);
+    if(use_mask) {
+        result = dax_mask_tag(ds, handle, buff, mask);
+    } else {
+        result = dax_write_tag(ds, handle, buff);
+    }
 
     if(result) {
         if(result == ERR_READONLY) {
