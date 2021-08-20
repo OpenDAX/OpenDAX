@@ -267,6 +267,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
             case DAX_BOOL:
             case DAX_BYTE:
             case DAX_SINT:
+            case DAX_CHAR:
                 /* Since there are no conversions for byte level tags we do nothing */
                 break;
             case DAX_WORD:
@@ -405,6 +406,7 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
             case DAX_BOOL:
             case DAX_BYTE:
             case DAX_SINT:
+            case DAX_CHAR:
                 break;
             case DAX_WORD:
             case DAX_UINT:

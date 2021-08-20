@@ -46,6 +46,7 @@ _read_to_stack(lua_State *L, tag_type type, void *buff)
             lua_pushnumber(L, (double)*((dax_byte *)buff));
             break;
         case DAX_SINT:
+        case DAX_CHAR:
             lua_pushnumber(L, (double)*((dax_sint *)buff));
             break;
         case DAX_WORD:
@@ -212,6 +213,7 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             ((dax_byte *)mask)[index] = 0xFF;
             break;
         case DAX_SINT:
+        case DAX_CHAR:
             x = lua_tointeger(L, -1) % 256;
             ((dax_sint *)data)[index] = x;
             ((dax_sint *)mask)[index] = 0xFF;
@@ -844,6 +846,7 @@ _convert_lua_number(tag_type datatype, void **data, lua_Number x) {
             *data = &u1.dax_byte;
             return;
         case DAX_SINT:
+        case DAX_CHAR:
             u1.dax_sint = (dax_sint)x;
             *data = &u1.dax_sint;
             return;

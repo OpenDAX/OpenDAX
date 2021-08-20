@@ -77,6 +77,8 @@ _checktype(tag_type type)
         return 0;
     if(type == DAX_SINT)
         return 0;
+    if(type == DAX_CHAR)
+        return 0;
     if(type == DAX_WORD)
         return 0;
     if(type == DAX_INT)
@@ -397,10 +399,10 @@ initialize_tagbase(void)
     _db[INDEX_DBSIZE].attr = TAG_ATTR_READONLY;
     assert(tag_add("_starttime", DAX_TIME, 1, 0) == INDEX_STARTED);
     _db[INDEX_STARTED].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_lastmodule", DAX_BYTE, DAX_TAGNAME_SIZE +1, 0) == INDEX_LASTMODULE);
+    assert(tag_add("_lastmodule", DAX_CHAR, DAX_TAGNAME_SIZE +1, 0) == INDEX_LASTMODULE);
     _db[INDEX_LASTMODULE].attr = TAG_ATTR_READONLY;
     virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
-    virtual_tag_add("_my_tagname", DAX_BYTE, DAX_TAGNAME_SIZE +1, get_module_tag_name, NULL);
+    virtual_tag_add("_my_tagname", DAX_CHAR, DAX_TAGNAME_SIZE +1, get_module_tag_name, NULL);
     starttime = xtime();
     tag_write(INDEX_STARTED,0,&starttime,sizeof(u_int64_t));
     set_dbsize(_dbsize);
@@ -957,6 +959,8 @@ cdt_get_type(char *name)
         return DAX_BYTE;
     if(!strcasecmp(name, "SINT"))
         return DAX_SINT;
+    if(!strcasecmp(name, "CHAR"))
+        return DAX_CHAR;
     if(!strcasecmp(name, "WORD"))
         return DAX_WORD;
     if(!strcasecmp(name, "INT"))
@@ -1012,6 +1016,8 @@ cdt_get_name(tag_type type)
                 return "BYTE";
             case DAX_SINT:
                 return "SINT";
+            case DAX_CHAR:
+                return "CHAR";
             case DAX_WORD:
                 return "WORD";
             case DAX_INT:

@@ -57,6 +57,7 @@ _atomic_inc(tag_handle h, void *data) {
             *(dax_byte *)&_db[h.index].data[h.byte] += *(dax_byte *)data;
             return 0;
         case DAX_SINT:
+        case DAX_CHAR:
             *(dax_sint *)&_db[h.index].data[h.byte] += *(dax_sint *)data;
             return 0;
         case DAX_UINT:
@@ -100,6 +101,7 @@ _atomic_dec(tag_handle h, void *data) {
             *(dax_byte *)&_db[h.index].data[h.byte] -= *(dax_byte *)data;
             return 0;
         case DAX_SINT:
+        case DAX_CHAR:
             *(dax_sint *)&_db[h.index].data[h.byte] -= *(dax_sint *)data;
             return 0;
         case DAX_UINT:

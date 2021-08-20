@@ -57,6 +57,7 @@ _convert_data_str(tag_type datatype, dax_type_union *dest, char *str) {
             dest->dax_byte = (dax_byte)strtol(str, NULL, 0);
             return;
         case DAX_SINT:
+        case DAX_CHAR:
             dest->dax_sint = (dax_sint)strtol(str, NULL, 0);
             return;
         case DAX_UINT:
