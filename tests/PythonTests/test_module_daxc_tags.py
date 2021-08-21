@@ -194,6 +194,24 @@ class TestDaxc(unittest.TestCase):
         p.sendline('exit')
         p.expect(pexpect.EOF)
 
+    def test_write_char(self):
+        """check the corner cases for writing to a SINT"""
+        tests = [
+            ('A', b'A')
+        ]
+        p = pexpect.spawn(daxc_path)
+        p.expect('dax>')
+        for test in tests:
+            p.sendline('add tag dummy char')
+            p.expect('dax>')
+            p.sendline('write dummy {}'.format(test[0]))
+            p.expect('dax>')
+            h = self.dax.dax_tag_handle(self.ds, "dummy")
+            data = self.dax.dax_read_tag(self.ds, h)
+            self.assertEqual(data, test[1])
+        p.sendline('exit')
+        p.expect(pexpect.EOF)
+
     def test_write_word(self):
         """check the corner cases for writing to a WORD"""
         tests = [

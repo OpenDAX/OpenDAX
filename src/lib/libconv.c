@@ -136,6 +136,7 @@ mtos_generic(tag_type type, void *dst, void *src) {
         case DAX_BOOL:
         case DAX_BYTE:
         case DAX_SINT:
+        case DAX_CHAR:
             *(dax_byte *)dst = *(dax_byte *)src;
             break;
         case DAX_WORD:
@@ -190,6 +191,7 @@ stom_generic(tag_type type, void *dst, void *src) {
         case DAX_BOOL:
         case DAX_BYTE:
         case DAX_SINT:
+        case DAX_CHAR:
             *(dax_byte *)dst = *(dax_byte *)src;
             break;
         case DAX_WORD:

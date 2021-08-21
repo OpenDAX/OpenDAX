@@ -184,6 +184,7 @@ _generic_compare(tag_type datatype, void *data1, void *data2) {
             else if(u1.dax_byte > u2.dax_byte) return 1;
             else return 0;
         case DAX_SINT:
+        case DAX_CHAR:
             u1.dax_sint = *(dax_sint *)data1;
             u2.dax_sint = *(dax_sint *)data2;
             if(u1.dax_sint < u2.dax_sint) return -1;
@@ -287,6 +288,7 @@ _generic_deadband(_dax_event *event, void *data1, void *data2) {
             if(ABS(diff.dax_int) >= db.dax_byte) return 1;
             else return 0;
         case DAX_SINT:
+        case DAX_CHAR:
             db.dax_sint = *(dax_sint *)event->data;
             diff.dax_sint = *(dax_sint *)data1 - *(dax_sint *)data2;
             if(ABS(diff.dax_sint) >= db.dax_sint) return 1;

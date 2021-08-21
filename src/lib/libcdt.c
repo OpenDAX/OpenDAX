@@ -351,6 +351,7 @@ dax_string_to_type(dax_state *ds, char *type)
     if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
     if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
     if(!strcasecmp(type, "SINT"))  return DAX_SINT;
+    if(!strcasecmp(type, "CHAR"))  return DAX_CHAR;
     if(!strcasecmp(type, "WORD"))  return DAX_WORD;
     if(!strcasecmp(type, "INT"))   return DAX_INT;
     if(!strcasecmp(type, "UINT"))  return DAX_UINT;
@@ -419,6 +420,8 @@ dax_type_to_string(dax_state *ds, tag_type type)
                 return "BYTE";
             case DAX_SINT:
                 return "SINT";
+            case DAX_CHAR:
+                return "CHAR";
             case DAX_WORD:
                 return "WORD";
             case DAX_INT:

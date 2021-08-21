@@ -33,6 +33,7 @@
 
 static dax_module *_current_mod = NULL;
 static int _module_count = 0;
+static int _mod_uuid = 0;
 
 /* The module list is implemented as a circular double linked list.
  * There is no ordering of the list. The current pointer will stay
@@ -169,7 +170,8 @@ module_set_running(int fd)
 
     mod = _get_module_fd(fd);
     if(mod == NULL) return ERR_NOTFOUND;
-    mod->flags &= MSTATE_RUNNING;
+    mod->state |= MSTATE_RUNNING;
+    tag_write(mod->tagindex, sizeof(dax_time), &mod->state, sizeof(dax_uint));
     return 0;
 }
 
@@ -180,7 +182,11 @@ dax_module *
 module_register(char *name, u_int32_t timeout, int fd)
 {
     dax_module *mod, *test;
+    char tagname[DAX_TAGNAME_SIZE + 1];
+    int result, x;
+    dax_time starttime;
 
+    bzero(tagname, DAX_TAGNAME_SIZE + 1);
     /* If a module with the given file descriptor already exists
      * then we need to unregister that module.  It must have failed
      * or the OS would not give us the file descriptor again. */
@@ -196,6 +202,25 @@ module_register(char *name, u_int32_t timeout, int fd)
         _get_host(fd, &(mod->host));
         mod->state |= MSTATE_STARTED;
         mod->state |= MSTATE_REGISTERED;
+        strcpy(tagname, "_m");
+        strncat(tagname, name, DAX_TAGNAME_SIZE - 2);
+        if(_mod_uuid < 1000) {
+            x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -3);
+            sprintf(&tagname[x], "%03d", _mod_uuid++);
+        } else {
+            x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -5);
+            sprintf(&tagname[x], "%05d", _mod_uuid++);
+        }
+        result = tag_add(tagname, cdt_get_type("_module"), 1, TAG_ATTR_READONLY);
+        if(result < 0) {
+            xerror("Unable to add module tag- %s", tagname);
+        } else {
+            mod->tagindex = result;
+        }
+        tag_write(INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
+        starttime = xtime();
+        tag_write(result, 0, &starttime, sizeof(dax_time));
+        tag_write(result, sizeof(dax_time), &mod->state, sizeof(dax_uint));
     } else {
         xerror("Major problem registering module - %s:%d", name, fd);
         return NULL;
@@ -216,6 +241,7 @@ module_unregister(int fd)
         xlog(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
         events_cleanup(mod);
         groups_cleanup(mod);
+        tag_del(mod->tagindex);
         module_del(mod);
     } else {
         xerror("module_unregister() - Module File Descriptor %d Not Found", fd);

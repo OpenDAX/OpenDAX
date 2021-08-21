@@ -38,6 +38,7 @@ extern "C" {
 /* 8 Bits */
 #define DAX_BYTE    0x0003
 #define DAX_SINT    0x0013
+#define DAX_CHAR    0x0023
 /* 16 Bits */
 #define DAX_WORD    0x0004
 #define DAX_INT     0x0014
@@ -204,6 +205,7 @@ extern "C" {
 /* typedefs to the basic DAX_? data types */
 typedef u_int8_t   dax_byte;
 typedef int8_t     dax_sint;
+typedef char       dax_char;
 typedef u_int16_t  dax_word;
 typedef int16_t    dax_int;
 typedef u_int16_t  dax_uint;
@@ -266,6 +268,7 @@ typedef struct tag_group_id tag_group_id;
 typedef union dax_type_union {
     dax_byte   dax_byte;
     dax_sint   dax_sint;
+    dax_char   dax_char;
     dax_word   dax_word;
     dax_int    dax_int;
     dax_uint   dax_uint;

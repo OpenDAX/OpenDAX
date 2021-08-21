@@ -59,9 +59,17 @@ typedef struct tag_queue {
     void **queue;    /* Pointer to the actual queue */
 } tag_queue;
 
+/* Set virtual function execution environment variables */
+void virt_set_fd(int fd);
+
+
 /* retrieve the current time on the server */
 int server_time(tag_index idx, int offset, void *data, int size, void *userdata);
 
+/* retrieve the calling modules tag name */
+int get_module_tag_name(tag_index idx, int offset, void *data, int size, void *userdata);
+
+/* queue handling functions */
 int write_queue(tag_index idx, int offset, void *data, int size, void *userdata);
 int read_queue(tag_index idx, int offset, void *data, int size, void *userdata);
 

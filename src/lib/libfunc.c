@@ -186,6 +186,9 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
         case DAX_SINT:
             snprintf(buff, size, "%hhd", ((dax_sint *)val)[index]);
             break;
+        case DAX_CHAR:
+            snprintf(buff, size, "%c", ((dax_char *)val)[index]);
+            break;
         case DAX_WORD:
         case DAX_UINT:
             snprintf(buff, size, "%d", ((dax_uint *)val)[index]);
@@ -278,6 +281,12 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
                 ((dax_byte *)buff)[index] = temp;
             if(mask) ((dax_byte *)mask)[index] = 0xFF;
             break;
+        case DAX_CHAR:
+            if(instr[1] == 0) { /* One character */
+                ((dax_char *)buff)[index] = instr[0];
+                if(mask) ((dax_sint *)mask)[index] = 0xFF;
+                break;
+            } /* Else we fall through and treat it exactly like a SINT */
         case DAX_SINT:
             temp =  strtol(instr, NULL, 0);
             if(temp < DAX_SINT_MIN) {
