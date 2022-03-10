@@ -27,7 +27,6 @@ enable_testing()
 
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
-option(BUILD_WIO "Build Wireless I/O Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
 option(BUILD_JOYSTICK "Build Joystick Module" ON)
 option(INTERNAL_TESTS "Build and Run Internal System Tests" ON)

@@ -24,10 +24,6 @@ if(BUILD_DAXLUA)
   add_subdirectory(daxlua)
 endif()
 
-if(BUILD_WIO)
-  add_subdirectory(wio)
-endif()
-
 if(BUILD_MQTT)
   add_subdirectory(mqtt)
 endif()
