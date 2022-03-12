@@ -15,21 +15,31 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-
-/*
- *  This contains common code for the compiled C Library tests
- */
-#include <common.h>
-#include <opendax.h>
-#include <signal.h>
-#include <sys/types.h>
+#include <stdio.h>
+#include <unistd.h>
 #include <sys/wait.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <signal.h>
+#include "../modtest_common.h"
 
+int main() {
+    int result;
+    int status;
+    pid_t mpid, spid;
+    int fin, fout, ferr;
 
-pid_t run_server(void);
-pid_t run_module(const char *modpath, const char *modconf);
-pid_t run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, const char *modconf);
-int expect(int fd, char *str, int timeout);
+    spid = run_server();
+    mpid = run_module2("../../../src/modules/daxc/daxc", &fin, &fout, &ferr, NULL);
+    assert(expect(fout, "dax>", 100)==0);
+    write(fin, "exit\n", 5);
+    if( waitpid(mpid, &status, 0) != mpid ) {
+        fprintf(stderr, "Error exiting daxc module\n");
+        return -1;
+    }
+
+    kill(spid, SIGINT);
+    if( waitpid(spid, &status, 0) != spid ) {
+        fprintf(stderr, "Error killing tag server\n");
+        return -1;
+    }
+    return 0;
+}

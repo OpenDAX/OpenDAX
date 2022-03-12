@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#  Copyright (c) 2021 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -21,5 +21,9 @@
 # To run an individual test...
 # ctest -R <testname> -V
 
-add_subdirectory(modbus)
-add_subdirectory(daxc)
+
+# Check server responses
+add_executable(module_daxc_tag daxc_tag.c ../modtest_common.c)
+target_link_libraries(module_daxc_tag dax)
+add_test(module_daxc_tag module_daxc_tag)
+set_tests_properties(module_daxc_tag PROPERTIES TIMEOUT 10)
