@@ -42,6 +42,20 @@ init_tag_cache(dax_state *ds)
     return 0;
 }
 
+static void
+_free_node(dax_state *ds, tag_cnode *this) {
+    if(this->next != ds->cache_head) {
+        _free_node(ds, this->next);
+    }
+    free(this);
+}
+
+void
+free_tag_cache(dax_state *ds) {
+    _free_node(ds, ds->cache_head);
+    ds->cache_head = NULL;
+}
+
 
 /* This function assigns the data to *tag and bubbles
    this up one node in the list */

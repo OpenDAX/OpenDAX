@@ -53,8 +53,6 @@ dax_init_config(dax_state *ds, char *name)
     result += dax_add_attribute(ds, "confdir", "confdir", 'K', flags, ETC_DIR);
     //result += dax_add_attribute(ds, "", "", '', flags, "");
 
-    ds->modulename = strdup(name);
-
     if(result) {
         return ERR_GENERIC;
     } else {
