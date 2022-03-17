@@ -52,8 +52,10 @@ _free_node(dax_state *ds, tag_cnode *this) {
 
 void
 free_tag_cache(dax_state *ds) {
-    _free_node(ds, ds->cache_head);
-    ds->cache_head = NULL;
+	if(ds->cache_head != NULL) {
+        _free_node(ds, ds->cache_head);
+        ds->cache_head = NULL;
+	}
 }
 
 

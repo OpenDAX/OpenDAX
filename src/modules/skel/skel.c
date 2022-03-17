@@ -129,7 +129,7 @@ int main(int argc,char *argv[]) {
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
     dax_log(ds, "Skeleton Module Starting");
     while(1) {
-        /* Check to see if the quit flag is set.  If it is then bail */
+    	/* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);

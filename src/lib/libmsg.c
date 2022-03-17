@@ -39,6 +39,9 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
     int result;
     char buff[DAX_MSGMAX];
 
+    if(ds->sfd < 0) {
+    	return ERR_DISCONNECTED;
+    }
     /* We always send the size and command in network order */
     ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
     ((u_int32_t *)buff)[1] = htonl(command);
@@ -47,7 +50,6 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
     /* TODO: We need to set some kind of timeout here.  This could block
        forever if something goes wrong.  It may be a signal or something too. */
     result = write(ds->sfd, buff, size + MSG_HDR_SIZE);
-
     if(result < 0) {
     /* TODO: Should we handle the case when this returns due to a signal */
         dax_error(ds, "_message_send: %s", strerror(errno));
@@ -127,11 +129,13 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
 		}
 		assert(result == 0);
 	}
+	assert(ds->last_msg != NULL);
 	if(ds->last_msg->msg_type == (command | MSG_ERROR)) {
+	    result = stom_dint((*(int32_t *)&ds->last_msg->data[0]));
 		free(ds->last_msg);
 		ds->last_msg = NULL;
 		pthread_mutex_unlock(&ds->msg_lock);
-	    return stom_dint((*(int32_t *)&ds->last_msg->data[0]));
+		return result;
 	}  else if(ds->last_msg->msg_type == (command | (response ? MSG_RESPONSE : 0))) {
         if(size) {
             memcpy(payload, ds->last_msg->data, ds->last_msg->size);
@@ -322,43 +326,46 @@ _read_next_message(dax_state *ds)
     return 0;
 }
 
+static void
+_connection_cleanup(dax_state *ds) {
+	ds->sfd = -1;
+	if(ds->last_msg != NULL) free(ds->last_msg);
+	ds->last_msg = NULL;
+	free_tag_cache(ds);
+	/* TODO: Free up the event FIFO too */
+}
+
 static void *
 _connection_thread(void *arg)
 {
     int result;
-    unsigned char first_run = 1;
 
     dax_state *ds;
     ds = (dax_state *)arg;
 
-    while(1) {
-        /* This is the connection that we used for all the functional
-         * request / response messages. */
-        ds->sfd = _get_connection(ds);
-        if(ds->sfd > 0) {
-        	result = _mod_register(ds, ds->modulename);
-        	init_tag_cache(ds);
-            /* This will let the initial call to dax_connect continue */
-            if(first_run) {
-                pthread_barrier_wait(&ds->connect_barrier);
-                first_run = 0;
-            }
-            while(ds->sfd > 0) {
-            	result = _read_next_message(ds);
-            	if(result == ERR_DISCONNECTED) {
-            		ds->sfd = 0;
-            		free_tag_cache(ds);
-            	}
-            }
-            /* This flag is set if the dax_disconnect function was called */
-            if(ds->status &= STATUS_KILL) {
-            	free_tag_cache(ds);
-            	return NULL;
-            }
-        }
-        sleep(1); /* Wait one second before we try to connect again. */
-    }
-    return NULL;
+	/* This is the connection that we used for all the functional
+	 * request / response messages. */
+	ds->sfd = _get_connection(ds);
+	if(ds->sfd >= 0) {
+		result = _mod_register(ds, ds->modulename);
+		init_tag_cache(ds);
+		/* This basically let's the dax_connect function return success */
+		ds->error_code = 0;
+		pthread_barrier_wait(&ds->connect_barrier);
+		while(ds->sfd >= 0) { /* Main connection loop */
+			result = _read_next_message(ds);
+			if(result == ERR_DISCONNECTED) {
+				_connection_cleanup(ds);
+			}
+		}
+		_connection_cleanup(ds);
+		ds->error_code = result;
+		return NULL;
+	} else {
+		result = ds->sfd;
+		pthread_barrier_wait(&ds->connect_barrier);
+	}
+	return NULL;
 }
 
 
@@ -373,16 +380,15 @@ _connection_thread(void *arg)
 int
 dax_connect(dax_state *ds)
 {
-        //pthread_mutex_lock(&ds->lock);
     /* We use this barrier to stop here until we connect to the server the
      * first time. */
     pthread_barrier_init(&ds->connect_barrier, NULL, 2);
 
     pthread_create(&ds->connection_thread, NULL, _connection_thread, ds);
+    pthread_detach(ds->connection_thread);
     pthread_barrier_wait(&ds->connect_barrier);
 
-    //pthread_mutex_unlock(&ds->lock);
-    return 0;
+    return ds->error_code;
 }
 
 /*!
@@ -398,9 +404,9 @@ dax_disconnect(dax_state *ds)
 {
     int result = -1;
     size_t len;
+
     pthread_mutex_lock(&ds->lock);
     /* Tells the connection thread to exit */
-    ds->status |= STATUS_KILL;
     if(ds->sfd) {
         result = _message_send(ds, MSG_MOD_REG, NULL, 0);
         if(! result ) {
@@ -410,7 +416,6 @@ dax_disconnect(dax_state *ds)
         close(ds->sfd);
         ds->sfd = 0;
     }
-    pthread_join(ds->connection_thread, NULL);
     pthread_mutex_unlock(&ds->lock);
     return result;
 }

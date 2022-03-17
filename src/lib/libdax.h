@@ -107,7 +107,7 @@ struct dax_state {
     optattr* attr_head;
     lua_State *L;
     char* modulename;
-    unsigned char status;
+    int error_code; /* Last error code of the connection */
     int msgtimeout;
     int id;     /* ID uniquely identifies the module to the server */
     int sfd;   /* Server's File Descriptor */
@@ -147,10 +147,6 @@ struct dax_state {
 /* Data Conversion Functions */
 #define REF_INT_SWAP 0x0001
 #define REF_FLT_SWAP 0x0002
-
-#define STATUS_CONNECTED    0x01
-#define STATUS_DISCONNECTED 0x02
-#define STATUS_KILL         0x80
 
 /* 16 Bit conversion functions */
 #define mtos_word mtos_uint

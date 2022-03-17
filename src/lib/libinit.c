@@ -48,7 +48,7 @@ dax_init(char *name)
     if(ds->modulename == NULL) return NULL;
     
     ds->msgtimeout = 0;
-    ds->sfd = 0;       /* Server's File Descriptor */
+    ds->sfd = -1;       /* Server's File Descriptor */
     ds->reformat = 0;  /* Flags to show how to reformat the incoming data */
     ds->logflags = 0;
     /* Tag Cache */
