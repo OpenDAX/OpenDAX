@@ -23,6 +23,8 @@
 #include <libcommon.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <stddef.h>
+#include <pthread.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <math.h>
@@ -55,8 +57,8 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
 }
 
 /* This function retrieves a single message from the given fd. */
-int
-message_get(int fd, dax_message *msg) {
+static int
+_message_get(int fd, dax_message *msg) {
     unsigned char buff[DAX_MSGMAX];
     int index, result;
     index = 0;
@@ -71,8 +73,7 @@ message_get(int fd, dax_message *msg) {
                 return ERR_MSG_RECV;
             }
         } else if(result == 0) {
-            printf("TODO: I don't know what to do with read returning 0\n");
-            return ERR_GENERIC;
+            return ERR_DISCONNECTED;
         } else {
             index += result;
         }
@@ -87,19 +88,17 @@ message_get(int fd, dax_message *msg) {
         result = read(fd, &buff[index], msg->size-index);
         if(result < 0) {
             if(errno == EWOULDBLOCK) {
-                //dax_debug(ds, LOG_COMM, "_message_recv Timed out");
                 return ERR_TIMEOUT;
             } else {
-                //dax_debug(ds, LOG_COMM, "_message_recv failed: %s", strerror(errno));
                 return ERR_MSG_RECV;
             }
         } else if(result == 0) {
-            printf("TODO: I don't know what to do with read returning 0\n");
-            return ERR_GENERIC;
+            return ERR_DISCONNECTED;
         } else {
             index += result;
         }
     }
+    /* TODO: Use msg->data in the read functions instead of this copy */
 	memcpy(msg->data, buff, msg->size);
     return 0;
 }
@@ -113,30 +112,45 @@ message_get(int fd, dax_message *msg) {
 static int
 _message_recv(dax_state *ds, int command, void *payload, size_t *size, int response)
 {
-    dax_message msg;
-    int result;
-    while(1) {
-        result = message_get(ds->sfd, &msg);
-        if(result) return result;
+	int result;
+    struct timespec timeout;
 
-        /* Test if the error flag is set and then return the error code */
-        if(msg.msg_type == (command | MSG_ERROR)) {
-            return stom_dint((*(int32_t *)&msg.data[0]));
-        } else if(msg.msg_type == (command | (response ? MSG_RESPONSE : 0))) {
-            if(size) {
-                memcpy(payload, msg.data, msg.size);
-                *size = msg.size;
-            }
-            return 0;
-        /* This is an event message that needs to be stored the queue */
-        } else if(msg.msg_type & MSG_EVENT) {
-            push_event(ds, &msg);
-        } else { /* This is not the command we wanted */
-            printf("TODO: Whoa we got the wrong command\n");
+    pthread_mutex_lock(&ds->msg_lock);
+	while(ds->last_msg == NULL) {
+		clock_gettime(CLOCK_REALTIME, &timeout);
+		timeout.tv_sec += ds->msgtimeout;
+		result = pthread_cond_timedwait(&ds->msg_cond, &ds->msg_lock, &timeout);
+		if(result == ETIMEDOUT) {
+			printf("Timeout\n");
+			pthread_mutex_unlock(&ds->msg_lock);
+			return ERR_TIMEOUT;
+		}
+		assert(result == 0);
+	}
+	if(ds->last_msg->msg_type == (command | MSG_ERROR)) {
+		free(ds->last_msg);
+		ds->last_msg = NULL;
+		pthread_mutex_unlock(&ds->msg_lock);
+	    return stom_dint((*(int32_t *)&ds->last_msg->data[0]));
+	}  else if(ds->last_msg->msg_type == (command | (response ? MSG_RESPONSE : 0))) {
+        if(size) {
+            memcpy(payload, ds->last_msg->data, ds->last_msg->size);
+            *size = ds->last_msg->size;
         }
-    }
+		free(ds->last_msg);
+		ds->last_msg = NULL;
+        pthread_mutex_unlock(&ds->msg_lock);
+        return 0;
+	} else {
+		free(ds->last_msg);
+		ds->last_msg = NULL;
+        pthread_mutex_unlock(&ds->msg_lock);
+		dax_error(ds, "Received a response of a different type than expected\n");
+		return ERR_GENERIC;
+	}
     return 0;
 }
+
 
 /* Connect to the server.  If the "server" attribute is local we
  * connect via LOCAL domain socket called out in "socketname" else
@@ -209,11 +223,12 @@ _get_connection(dax_state *ds)
 #define CON_HDR_SIZE 8
 
 static int
-_mod_connect(dax_state *ds, char *name)
+_mod_register(dax_state *ds, char *name)
 {
     int result;
     size_t len;
     char buff[DAX_MSGMAX];
+    dax_message msg;
 
 /* TODO: Boundary check that a name that is longer than data size will
    be handled correctly. */
@@ -229,21 +244,25 @@ _mod_connect(dax_state *ds, char *name)
     *((u_int32_t *)&buff[4]) = htonl(CONNECT_SYNC);  /* registration flags */
     strcpy(&buff[CON_HDR_SIZE], name);                /* The rest is the name */
 
+    dax_debug(ds, LOG_COMM, "Sending registration for name - %s", ds->modulename);
     if((result = _message_send(ds, MSG_MOD_REG, buff, CON_HDR_SIZE + len)))
         return result;
     len = DAX_MSGMAX;
-    if((result = _message_recv(ds, MSG_MOD_REG, buff, &len, 1)))
-        return result;
+
+    result = _message_get(ds->sfd, &msg);
+    if(result) {
+    	return result;
+    }
 
     /* Store the unique ID that the server has sent us. */
-    ds->id =  *((u_int32_t *)&buff[0]);
+    ds->id =  *((u_int32_t *)&msg.data[0]);
     /* Here we check to see if the data that we got in the registration message is in the same
        format as we use here on the client module. This should be offloaded to a separate
        function that can determine what needs to be done to the incoming and outgoing data to
        get it to match with the server */
-    if( (*((u_int16_t *)&buff[4]) != REG_TEST_INT) ||
-        (*((u_int32_t *)&buff[6]) != REG_TEST_DINT) ||
-        (*((u_int64_t *)&buff[10]) != REG_TEST_LINT)) {
+    if( (*((u_int16_t *)&msg.data[4]) != REG_TEST_INT) ||
+        (*((u_int32_t *)&msg.data[6]) != REG_TEST_DINT) ||
+        (*((u_int64_t *)&msg.data[10]) != REG_TEST_LINT)) {
         /* TODO: right now this is just to show error.  We need to determine if we can
            get the right data from the server by some means. */
         ds->reformat = REF_INT_SWAP;
@@ -251,8 +270,8 @@ _mod_connect(dax_state *ds, char *name)
         ds->reformat = 0; /* this is redundant, already done in dax_init() */
     }
     /* There has got to be a better way to compare that we are getting good floating point numbers */
-    if( fabs(*((float *)&buff[18]) - REG_TEST_REAL) / REG_TEST_REAL   > 0.0000001 ||
-        fabs(*((double *)&buff[22]) - REG_TEST_LREAL) / REG_TEST_REAL > 0.0000001) {
+    if( fabs(*((float *)&msg.data[18]) - REG_TEST_REAL) / REG_TEST_REAL   > 0.0000001 ||
+        fabs(*((double *)&msg.data[22]) - REG_TEST_LREAL) / REG_TEST_REAL > 0.0000001) {
         ds->reformat |= REF_FLT_SWAP;
     }
     /* TODO: returning _reformat is only good until we figure out how to reformat the
@@ -261,6 +280,87 @@ _mod_connect(dax_state *ds, char *name)
      * won't try to communicate */
     return ds->reformat;
 }
+
+static int
+_read_next_message(dax_state *ds)
+{
+    static unsigned int events_lost;
+    dax_message *msg;
+    int result;
+
+    msg = malloc(sizeof(dax_message));
+    if(msg == NULL) return ERR_ALLOC;
+
+    result = _message_get(ds->sfd, msg);
+    if(result) {
+        free(msg);
+        return result;
+    }
+
+    if(msg->msg_type & MSG_EVENT) { /* Events we store in the FIFO */
+        pthread_mutex_lock(&ds->event_lock);
+        if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
+            if(events_lost % 20 == 0) { /* We only log every 20 of these */
+                events_lost++;
+                dax_error(ds, "Event received from the server is lost.  Total = %u\n", events_lost);
+            }
+            free(ds->emsg_queue[0]); /* Free the top one */
+            memmove(&ds->emsg_queue[0], &ds->emsg_queue[1], sizeof(dax_message) * (ds->emsg_queue_size-1));
+            ds->emsg_queue[ds->emsg_queue_size - 1] = msg;
+        } else {
+            ds->emsg_queue[ds->emsg_queue_count] = msg;
+            ds->emsg_queue_count++;
+        }
+        pthread_mutex_unlock(&ds->event_lock);
+        pthread_cond_signal(&ds->event_cond);
+    } else { /* All other messages we put here */
+    	pthread_mutex_lock(&ds->msg_lock);
+        ds->last_msg = msg;
+        pthread_mutex_unlock(&ds->msg_lock);
+        pthread_cond_signal(&ds->msg_cond);
+    }
+    return 0;
+}
+
+static void *
+_connection_thread(void *arg)
+{
+    int result;
+    unsigned char first_run = 1;
+
+    dax_state *ds;
+    ds = (dax_state *)arg;
+
+    while(1) {
+        /* This is the connection that we used for all the functional
+         * request / response messages. */
+        ds->sfd = _get_connection(ds);
+        if(ds->sfd > 0) {
+        	result = _mod_register(ds, ds->modulename);
+        	init_tag_cache(ds);
+            /* This will let the initial call to dax_connect continue */
+            if(first_run) {
+                pthread_barrier_wait(&ds->connect_barrier);
+                first_run = 0;
+            }
+            while(ds->sfd > 0) {
+            	result = _read_next_message(ds);
+            	if(result == ERR_DISCONNECTED) {
+            		ds->sfd = 0;
+            		free_tag_cache(ds);
+            	}
+            }
+            /* This flag is set if the dax_disconnect function was called */
+            if(ds->status &= STATUS_KILL) {
+            	free_tag_cache(ds);
+            	return NULL;
+            }
+        }
+        sleep(1); /* Wait one second before we try to connect again. */
+    }
+    return NULL;
+}
+
 
 /*!
  * Setup the module data structures and send registration message
@@ -273,30 +373,15 @@ _mod_connect(dax_state *ds, char *name)
 int
 dax_connect(dax_state *ds)
 {
-    int fd, result;
+        //pthread_mutex_lock(&ds->lock);
+    /* We use this barrier to stop here until we connect to the server the
+     * first time. */
+    pthread_barrier_init(&ds->connect_barrier, NULL, 2);
 
-    libdax_lock(ds->lock);
-    dax_debug(ds, LOG_COMM, "Sending registration for name - %s", ds->modulename);
+    pthread_create(&ds->connection_thread, NULL, _connection_thread, ds);
+    pthread_barrier_wait(&ds->connect_barrier);
 
-    /* This is the connection that we used for all the functional
-     * request / response messages. */
-    fd = _get_connection(ds);
-    if(fd > 0) {
-        ds->sfd = fd;
-    } else {
-        libdax_unlock(ds->lock);
-        return fd;
-    }
-
-    result = _mod_connect(ds, ds->modulename);
-    if(result) {
-        libdax_unlock(ds->lock);
-        return result;
-    }
-
-    init_tag_cache(ds);
-
-    libdax_unlock(ds->lock);
+    //pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -313,8 +398,9 @@ dax_disconnect(dax_state *ds)
 {
     int result = -1;
     size_t len;
-    libdax_lock(ds->lock);
-
+    pthread_mutex_lock(&ds->lock);
+    /* Tells the connection thread to exit */
+    ds->status |= STATUS_KILL;
     if(ds->sfd) {
         result = _message_send(ds, MSG_MOD_REG, NULL, 0);
         if(! result ) {
@@ -324,7 +410,8 @@ dax_disconnect(dax_state *ds)
         close(ds->sfd);
         ds->sfd = 0;
     }
-    libdax_unlock(ds->lock);
+    pthread_join(ds->connection_thread, NULL);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -345,7 +432,7 @@ dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
     size_t size;
     char buff[1];  /* So far this is as big as we need */
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     buff[0] = cmd;
     if(cmd == MOD_CMD_RUNNING) {
         size = 1;
@@ -356,17 +443,17 @@ dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
     result = _message_send(ds, MSG_MOD_SET, buff, size);
     if(result) {
         dax_error(ds, "Can't send MSG_MOD_SET message");
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     size = 0;
     result = _message_recv(ds, MSG_MOD_SET, buff, &size, 1);
     if(result) {
         dax_error(ds, "Problem receiving message MSG_MOD_SET : result = %d", result);
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -407,12 +494,12 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
     } else {
         return ERR_TAG_BAD;
     }
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
 
     result = _message_send(ds, MSG_TAG_ADD, buff, size);
     if(result) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     }
 
     size = 4; /* we just need the handle */
@@ -440,7 +527,7 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
         cache_tag_del(ds, tag.idx);
         cache_tag_add(ds, &tag);
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -460,16 +547,16 @@ dax_tag_del(dax_state* ds, tag_index index)
     char buff[sizeof(tag_index)];
     *((u_int32_t *)&buff[0]) = mtos_udint(index);
     
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_DEL, buff, sizeof(buff));
     if(result) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     }
 
     size = 4; /* we just need the handle */
     result = _message_recv(ds, MSG_TAG_DEL, buff, &size, 1);
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;        
 }
 
@@ -495,7 +582,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
     if((size = strlen(name)) > DAX_TAGNAME_SIZE) return ERR_2BIG;
     if(size == 0) return ERR_NOTFOUND;
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     if(check_cache_name(ds, name, tag)) {
         /* We make buff big enough for the outgoing message and the incoming
            response message which would have 4 additional int32s */
@@ -508,7 +595,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         if(result) {
             dax_error(ds, "Can't send MSG_TAG_GET message");
             free(buff);
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         size += 18; /* This makes room for the type, count and handle */
@@ -516,7 +603,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
             free(buff);
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         tag->idx = stom_dint( *((int *)&buff[0]) );
@@ -528,7 +615,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         cache_tag_add(ds, tag);
         free(buff);
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -549,14 +636,14 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
     size_t size;
     char buff[DAX_TAGNAME_SIZE + 17];
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     if(check_cache_index(ds, idx, tag)) {
         buff[0] = TAG_GET_INDEX;
         *((tag_index *)&buff[1]) = idx;
         result = _message_send(ds, MSG_TAG_GET, buff, sizeof(tag_index) + 1);
         if(result) {
             dax_error(ds, "Can't send MSG_TAG_GET message");
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         /* Maximum size of buffer, the 17 is the NULL plus four integers */
@@ -564,7 +651,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
             //dax_error("Unable to retrieve tag for index %d", idx);
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         tag->idx = stom_dint(*((int32_t *)&buff[0]));
@@ -576,7 +663,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         /* Add the tag to the tag cache */
         cache_tag_add(ds, tag);
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -610,22 +697,22 @@ dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size
     *((u_int32_t *)&buff[4]) = mtos_dint(offset);
     *((u_int32_t *)&buff[8]) = mtos_dint(size);
     
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_READ, (void *)buff, sizeof(buff));
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_TAG_READ, (char *)data, &size, 1);
 
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         if(result == ERR_DELETED) {
             cache_tag_del(ds, idx);
         }
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -666,21 +753,21 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
     
     memcpy(&buff[8], data, size);
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_WRITE, buff, sendsize);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_TAG_WRITE, buff, 0, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         if(result == ERR_DELETED) {
             cache_tag_del(ds, idx);
         }
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -722,21 +809,21 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
     memcpy(&buff[8], data, size);
     memcpy(&buff[8 + size], mask, size);
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_MWRITE, buff, sendsize);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_TAG_MWRITE, buff, 0, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         if(result == ERR_DELETED) {
             cache_tag_del(ds, idx);
         }
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -799,20 +886,20 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
         free(mask);
     }
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_ADD_OVRD, buff, sendsize);
     if(newdata != NULL) free(newdata);
     free(mask);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_ADD_OVRD, buff, 0, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
 
     return 0;
 }
@@ -856,19 +943,19 @@ dax_tag_del_override(dax_state *ds, tag_handle handle) {
         free(mask);
     }
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_DEL_OVRD, buff, sendsize);
     free(mask);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_DEL_OVRD, buff, 0, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
 
     return 0;
 }
@@ -895,19 +982,19 @@ dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mask) {
     *((u_int32_t *)&buff[8]) = mtos_dint(handle.size);
 
     sendsize = 12;
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_GET_OVRD, buff, sendsize);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     size = handle.size * 2;
     result = _message_recv(ds, MSG_GET_OVRD, buff, &size, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     memcpy(data, buff, handle.size);
     memcpy(mask, &buff[handle.size], handle.size);
     return result;
@@ -923,18 +1010,18 @@ dax_tag_set_override(dax_state *ds, tag_handle handle) {
 
     sendsize = 5;
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_SET_OVRD, buff, sendsize);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_SET_OVRD, buff, 0, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
 
     return 0;
 }
@@ -950,18 +1037,18 @@ dax_tag_clr_override(dax_state *ds, tag_handle handle) {
 
     sendsize = 5;
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_SET_OVRD, buff, sendsize);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_SET_OVRD, buff, 0, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
 
     return 0;
 }
@@ -1008,21 +1095,21 @@ dax_atomic_op(dax_state *ds, tag_handle h, void *data, u_int16_t operation) {
 
     memcpy(&buff[21], data, h.size);
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_ATOMIC_OP, buff, sendsize);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     result = _message_recv(ds, MSG_ATOMIC_OP, buff, 0, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         if(result == ERR_DELETED) {
             cache_tag_del(ds, h.index);
         }
         return result;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -1088,14 +1175,15 @@ dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
         size = 25;
     }
 
-    libdax_lock(ds->lock);
-    if(_message_send(ds, MSG_EVNT_ADD, buff, size)) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+    pthread_mutex_lock(&ds->lock);
+    result = _message_send(ds, MSG_EVNT_ADD, buff, size);
+    if(result) {
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     } else {
         test = _message_recv(ds, MSG_EVNT_ADD, &result, &size, 1);
         if(test) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return test;
         } else {
             if(id != NULL) {
@@ -1106,12 +1194,12 @@ dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
             eid.index = h->index;
             result = add_event(ds, eid, udata, callback, free_callback);
             if(result) {
-                libdax_unlock(ds->lock);
+                pthread_mutex_unlock(&ds->lock);
                 return result;
             }
         }
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -1139,20 +1227,21 @@ dax_event_del(dax_state *ds, dax_id id)
     memcpy(&buff[4], &temp, 4);
     size = 8;
 
-    libdax_lock(ds->lock);
-    if(_message_send(ds, MSG_EVNT_DEL, buff, size)) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+    pthread_mutex_lock(&ds->lock);
+    result = _message_send(ds, MSG_EVNT_DEL, buff, size);
+    if(result) {
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     } else {
         test = _message_recv(ds, MSG_EVNT_DEL, &result, &size, 1);
         if(test) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return test;
         } else {
             del_event(ds, id);
         }
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -1193,16 +1282,17 @@ dax_event_options(dax_state *ds, dax_id id, u_int32_t options)
 	memcpy(&buff[8], &temp, 4);
 	size = 12;
 
-	libdax_lock(ds->lock);
-	if(_message_send(ds, MSG_EVNT_OPT, buff, size)) {
-		libdax_unlock(ds->lock);
-		return ERR_MSG_SEND;
+	pthread_mutex_lock(&ds->lock);
+	result = _message_send(ds, MSG_EVNT_OPT, buff, size);
+	if(result) {
+		pthread_mutex_unlock(&ds->lock);
+		return result;
 	} else {
 		test = _message_recv(ds, MSG_EVNT_OPT, &result, &size, 1);
-		libdax_unlock(ds->lock);
+		pthread_mutex_unlock(&ds->lock);
 		return test;
 	}
-	libdax_unlock(ds->lock);
+	pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 
@@ -1266,11 +1356,11 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
         this = this->next;
     }
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_CDT_CREATE, buff, size);
 
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
 
@@ -1284,7 +1374,7 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
         result = add_cdt_to_cache(ds, stom_udint(*((tag_type *)rbuff)), buff);
         dax_cdt_free(cdt);
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -1328,12 +1418,12 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
         size = 5;
     }
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_CDT_GET, buff, size);
 
     if(result) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     }
 
     size = MSG_DATA_SIZE;
@@ -1342,7 +1432,7 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
         type = stom_udint(*((tag_type *)buff));
         result = add_cdt_to_cache(ds, type, &(buff[4]));
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -1395,12 +1485,12 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
 
     size = sizeof(tag_handle) * 2;
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_MAP_ADD, buff, size);
 
     if(result) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     }
 
     size = MSG_DATA_SIZE;
@@ -1411,7 +1501,7 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
             id->index = src->index;
         }
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -1473,12 +1563,11 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
         memcpy(&buff[offset+17], &u_temp, 4);
     }
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     *result = _message_send(ds, MSG_GRP_ADD, buff, size);
 
     if(*result) {
-        libdax_unlock(ds->lock);
-        *result = ERR_MSG_SEND;
+        pthread_mutex_unlock(&ds->lock);
         return NULL;
     }
     size = MSG_DATA_SIZE;
@@ -1486,13 +1575,13 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
     if(*result == 0) {
         id = (tag_group_id *)malloc(sizeof(tag_group_id));
         if(id == NULL) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             *result = ERR_ALLOC;
             return NULL;
         }
         id->handles = (tag_handle *)malloc(sizeof(tag_handle)*count);
         if(id->handles == NULL) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             *result = ERR_ALLOC;
             return NULL;
         }
@@ -1502,7 +1591,7 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
         id->options = options;
         id->size = group_size;
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return id;
 }
 
@@ -1525,23 +1614,23 @@ dax_group_read(dax_state *ds, tag_group_id *id, void *data, size_t size) {
     u_temp = mtos_udint(id->index);
     memcpy(data, &u_temp, 4);
 
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_GRP_READ, data, 4);
     if(result) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     }
 
     size = MSG_DATA_SIZE;
     result = _message_recv(ds, MSG_GRP_READ, data, &size, 1);
     if(result) {
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     if(result == 0) {
         result = group_read_format(ds, id, data);
     }
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -1564,15 +1653,15 @@ dax_group_write(dax_state *ds, tag_group_id *id, void *data) {
     result = group_write_format(ds, id, data);
     if(result) return result;
     memcpy(&buff[4], data, id->size);
-    libdax_lock(ds->lock);
+    pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_GRP_WRITE, buff, id->size+4);
     if(result) {
-        libdax_unlock(ds->lock);
-        return ERR_MSG_SEND;
+        pthread_mutex_unlock(&ds->lock);
+        return result;
     }
 
     result = _message_recv(ds, MSG_GRP_WRITE, NULL, 0, 1);
-    libdax_unlock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -1585,11 +1674,11 @@ dax_group_del(dax_state *ds, tag_group_id *id) {
      u_temp = mtos_udint(id->index);
      memcpy(buff, &u_temp, 4);
 
-     libdax_lock(ds->lock);
+     pthread_mutex_lock(&ds->lock);
      result = _message_send(ds, MSG_GRP_DEL, buff, 4);
      if(result) {
-         libdax_unlock(ds->lock);
-         return ERR_MSG_SEND;
+         pthread_mutex_unlock(&ds->lock);
+         return result;
      }
 
      result = _message_recv(ds, MSG_GRP_DEL, NULL, 0, 1);
@@ -1597,7 +1686,7 @@ dax_group_del(dax_state *ds, tag_group_id *id) {
          free(id->handles);
          free(id);
      }
-     libdax_unlock(ds->lock);
+     pthread_mutex_unlock(&ds->lock);
      return result;
 }
 

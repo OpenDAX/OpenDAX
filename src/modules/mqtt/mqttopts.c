@@ -158,7 +158,7 @@ _add_sub(lua_State *L)
 
 
 /* This function returns an index into the publishers[] array for
-   the next unassigned subscription */
+   the next unassigned publisher */
 static int
 _get_new_pub(void)
 {
@@ -177,7 +177,7 @@ _get_new_pub(void)
         if(ns != NULL) {
             publishers = ns;
         } else {
-            dax_error(ds, "Failure to allocate additional subscriptions");
+            dax_error(ds, "Failure to allocate additional publishers");
             return -1;
         }
     }

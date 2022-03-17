@@ -71,11 +71,11 @@ _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
     tag->count = this->count;
     tag->attr = this->attr;
 
-    /* Bubble up:
-     'after' is set to the node that we swap with
-     'before' is set to the node that will be before
-     us after the swap.  The special case is when our
-     node will become the first one, then we move the head. */
+  /* Bubble up:
+    'after' is set to the node that we swap with
+    'before' is set to the node that will be before
+    us after the swap.  The special case is when our
+    node will become the first one, then we move the head. */
     if(this != ds->cache_head) { /* Do nothing if we are already at the top */
         /* If there are only two then we do it the easy way */
         if(ds->cache_count == 2) {
@@ -92,7 +92,6 @@ _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
             this->prev = before;
         }
     }
-    //--print_cache();
 }
 
 /* Used to check if a tag with the given index is in the
@@ -197,7 +196,7 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
     return 0;
 }
 
-/* This function deletes the tag in the cache given by 'tagname'
+/* This function deletes the tag in the cache given by 'idx'
  * It returns 0 on success and ERR_NOTFOUND if the tag is not in the cache */
 int
 cache_tag_del(dax_state *ds, tag_index idx) {
@@ -373,9 +372,9 @@ dax_read_tag(dax_state *ds, tag_handle handle, void *data)
         memcpy(data, newdata, handle.size);
         free(newdata);
     } else {
-        libdax_lock(ds->lock);
+        pthread_mutex_lock(&ds->lock);
         result = _read_format(ds, handle.type, handle.count, data, 0);
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     return 0;
@@ -513,14 +512,14 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
         free(newdata);
         free(mask);
     } else {
-        libdax_lock(ds->lock);
+        pthread_mutex_lock(&ds->lock);
         result =  _write_format(ds, handle.type, handle.count, data, 0);
         if(result) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         /* Unlock here because dax_write() has it's own locking */
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         result = dax_write(ds, handle.index, handle.byte, data, handle.size);
     }
     return result;
@@ -564,14 +563,14 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
         free(newmask);
         free(newdata);
     } else {
-        libdax_lock(ds->lock);
+        pthread_mutex_lock(&ds->lock);
         result =  _write_format(ds, handle.type, handle.count, data, 0);
         if(result) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         /* Unlock here because dax_mask() has it's own locking */
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         result = dax_mask(ds, handle.index, handle.byte, data, mask, handle.size);
     }
     return result;

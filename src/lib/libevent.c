@@ -23,49 +23,6 @@
 #include <common.h>
 #include <arpa/inet.h>
 
-/* TODO: there is probably a better way than copying the memory */
-int
-push_event(dax_state *ds, dax_message *msg) {
-    int next, newsize;
-    dax_message *new_queue;
-
-    /* We need to grow the queue */
-    if(ds->emsg_queue_count == ds->emsg_queue_size) {
-        newsize = ds->emsg_queue_size * 2;
-        new_queue = realloc(ds->emsg_queue, sizeof(dax_message) * newsize);
-        if(new_queue == NULL) return ERR_ALLOC;
-        ds->emsg_queue = new_queue;
-        /* After the queue size is increased we need to move the fragment that is now
-         * at the beginning of the queue to the start of the new area */
-        if(ds->emsg_queue_read > 0) {
-            memcpy(&ds->emsg_queue[ds->emsg_queue_size],&ds->emsg_queue[0], ds->emsg_queue_read*sizeof(dax_message));
-        }
-        ds->emsg_queue_size = newsize;
-    }
-    next = (ds->emsg_queue_read + ds->emsg_queue_count) % ds->emsg_queue_size;
-    memcpy(&ds->emsg_queue[next], msg, sizeof(dax_message));
-    ds->emsg_queue_count++;
-
-    return 0;
-}
-
-dax_message *
-pop_event(dax_state *ds) {
-    dax_message *temp;
-
-    if(ds->emsg_queue_count == 0) {
-        return NULL;
-    }
-    temp = &ds->emsg_queue[ds->emsg_queue_read];
-    ds->emsg_queue_read++;
-    if(ds->emsg_queue_read == ds->emsg_queue_size)  {
-        ds->emsg_queue_read = 0;
-    }
-    ds->emsg_queue_count--;
-
-    return temp;
-}
-
 /*!
  * Convert the given string to a dax event type
  * that is suitable for passing to the event
@@ -201,21 +158,21 @@ dispatch_event(dax_state *ds, dax_message msg, dax_id *id)
      * This data can be retrieved in the callback by dax_event_get_dat() */
     ds->event_data = &msg.data[8];
     ds->event_data_size = msg.size-8;
-	for(n = 0; n < ds->event_count; n ++) {
-		if(ds->events[n].idx == idx && ds->events[n].id == eid) {
-			if(ds->events[n].callback != NULL) {
-				ds->events[n].callback(ds, ds->events[n].udata);
-			}
-			if(id != NULL) {
-				id->id = eid;
-				id->index = idx;
-			}
-			return 0;
-		}
-	}
-	ds->event_data = NULL; /* This indicates that the data is out of scope now */
-	dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
-	return ERR_GENERIC;
+    for(n = 0; n < ds->event_count; n ++) {
+        if(ds->events[n].idx == idx && ds->events[n].id == eid) {
+            if(ds->events[n].callback != NULL) {
+                ds->events[n].callback(ds, ds->events[n].udata);
+            }
+            if(id != NULL) {
+                id->id = eid;
+                id->index = idx;
+            }
+            return 0;
+        }
+    }
+    ds->event_data = NULL; /* This indicates that the data is out of scope now */
+    dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
+    return ERR_GENERIC;
 }
 
 
@@ -234,42 +191,10 @@ dispatch_event(dax_state *ds, dax_message msg, dax_id *id)
 int
 dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 {
-    int result;
-    struct timeval tval;
-    fd_set fds;
-    int done = 0;
-    dax_message msg;
-    dax_message *msg_ptr;
+    // TODO: Write this function
 
-    /* Check the event message queue and dispatch that event if
-         * there is one there.*/
-    msg_ptr = pop_event(ds);
-    if(msg_ptr != NULL) {
-        return dispatch_event(ds, *msg_ptr, id);
-    }
-    /* ...otherwise wait on the socket */
-    while(!done) {
-        FD_ZERO(&fds);
-        FD_SET(ds->sfd, &fds);
-        tval.tv_sec = timeout / 1000;
-        tval.tv_usec = (timeout % 1000) * 1000;
-        if(timeout > 0) {
-            result = select(ds->sfd + 1, &fds, NULL, NULL, &tval);
-        } else {
-            result = select(ds->sfd + 1, &fds, NULL, NULL, NULL);
-        }
-        if(result > 0) {
-            result = message_get(ds->sfd, &msg);
-            if(result) return result;
-            result = dispatch_event(ds, msg, id);
-            if(result == 0) done = 1;
-        } else if (result < 0) {
-            return result;
-        } else {
-            return ERR_TIMEOUT;
-        }
-    }
-    return 0;
+    sleep(timeout);
+    return ERR_TIMEOUT;
 }
 
 /*!
@@ -287,48 +212,10 @@ dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 int
 dax_event_poll(dax_state *ds, dax_id *id)
 {
-    int result;
-    struct timeval tval;
-    fd_set fds;
-    dax_message msg;
-    dax_message *msg_ptr;
 
-    /* Check the event message queue and dispatch that event if
-         * there is one there.*/
-    msg_ptr = pop_event(ds);
-    if(msg_ptr != NULL) {
-        return dispatch_event(ds, *msg_ptr, id);
-    }
-    /*... otherwise check the socket */
-    FD_ZERO(&fds);
-    FD_SET(ds->sfd, &fds);
-    tval.tv_sec = 0;
-    tval.tv_usec = 0;
-    result = select(ds->sfd + 1, &fds, NULL, NULL, &tval);
-    if(result > 0) {
-        result = message_get(ds->sfd, &msg);
-        if(result) return result;
-        return dispatch_event(ds, msg, id);
-    } else if (result < 0) {
-        return ERR_GENERIC;
-    } else {
-        return ERR_NOTFOUND;
-    }
-    return 0;
+    // TODO: Write this function
+    return ERR_NOTFOUND;
 }
-
-/*!
- * This function will return the asynchronous event handling file
- * descriptor to the module.  This is used if the module wants to handle
- * it's own file descriptor management.  Handy for event driven programs
- * that need to select() on multiple file descriptors
- */
-int
-dax_event_get_fd(dax_state *ds)
-{
-    return ds->sfd;
-}
-
 
 /*!
  * Retrieves the data that was passed back from the server when the event fired.

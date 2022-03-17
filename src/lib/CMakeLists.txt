@@ -27,6 +27,8 @@ add_library(dax libcdt.c
                 )
 
 target_link_libraries(dax ${LUA_LIBRARIES})
+target_link_libraries(dax pthread)
+
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     target_compile_options(dax PRIVATE -Wall)
 endif()
