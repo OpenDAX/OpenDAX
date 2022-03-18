@@ -146,6 +146,7 @@ int
 list_tags(char **tokens)
 {
     dax_tag temp_tag;
+    tag_handle h;
     static int lastindex;
     int result;
     char *arg[] = {NULL, NULL};
@@ -196,15 +197,25 @@ list_tags(char **tokens)
         }
     } else {
         /* List all tags */
+        result = dax_tag_handle(ds, &h, "_lastindex", 1);
+        if(result) return result;
+        result = dax_read_tag(ds, h, &lastindex);
+        if(result) return result;
+
        /* TODO: We now have a _lastindex status tag that we can
         * use to see how far to go instead of running until
         * we get an error.*/        
-        n = 0;
-        while( (result = dax_tag_byindex(ds, &temp_tag, n)) != ERR_ARG) {
-            if(result != ERR_DELETED) {
+        for(n=0; n<=lastindex; n++) {
+            result = dax_tag_byindex(ds, &temp_tag, n);
+            if(result == ERR_DELETED) {
+                ; /* do nothing */
+            } else if(result) {
+                printf("Error: %d\n", result);
+                return result;
+            } else {
+                /* Otherwise show it */
                 show_tag(n, temp_tag);
             }
-            n++;
         }
     }
     return 0;

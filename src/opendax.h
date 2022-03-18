@@ -117,7 +117,7 @@ extern "C" {
 #define ERR_WRITEONLY -28 /* Resource is write only */
 #define ERR_NOTIMPLEMENTED -29 /* Function not implemented */
 #define ERR_FILE_CLOSED   -30 /* File is not open */
-#define ERR_DISCONNECTED  -31 /* Client is dosconnected */
+#define ERR_DISCONNECTED  -31 /* Client is disconnected */
 
 /* Module configuration flags */
 #define CFG_ARG_NONE        0x00 /* No Arguments */
