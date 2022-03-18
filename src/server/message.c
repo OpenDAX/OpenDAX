@@ -957,6 +957,8 @@ msg_atomic_op(dax_message *msg) {
     operation = *(dax_uint *)&msg->data[17];   /* Operation */
     h.size = msg->size - 21; /* Total message size minus the above data */
 
+    xlog(LOG_MSG | LOG_VERBOSE, "Atomic Operation Message from module %d, index %d, offset %d, size %d", msg->fd, h.index, h.byte, h.size);
+
     result = atomic_op(h, &msg->data[21], operation);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_ATOMIC_OP, &result, sizeof(int), ERROR);

@@ -118,40 +118,41 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
     struct timespec timeout;
 
     pthread_mutex_lock(&ds->msg_lock);
-	while(ds->last_msg == NULL) {
-		clock_gettime(CLOCK_REALTIME, &timeout);
-		timeout.tv_sec += ds->msgtimeout;
-		result = pthread_cond_timedwait(&ds->msg_cond, &ds->msg_lock, &timeout);
-		if(result == ETIMEDOUT) {
-			printf("Timeout\n");
-			pthread_mutex_unlock(&ds->msg_lock);
-			return ERR_TIMEOUT;
-		}
-		assert(result == 0);
-	}
-	assert(ds->last_msg != NULL);
-	if(ds->last_msg->msg_type == (command | MSG_ERROR)) {
-	    result = stom_dint((*(int32_t *)&ds->last_msg->data[0]));
-		free(ds->last_msg);
-		ds->last_msg = NULL;
-		pthread_mutex_unlock(&ds->msg_lock);
-		return result;
-	}  else if(ds->last_msg->msg_type == (command | (response ? MSG_RESPONSE : 0))) {
+    while(ds->last_msg == NULL) {
+        clock_gettime(CLOCK_REALTIME, &timeout);
+        timeout.tv_sec += ds->msgtimeout/1000;
+        timeout.tv_nsec += ds->msgtimeout%1000 *1000000;
+        result = pthread_cond_timedwait(&ds->msg_cond, &ds->msg_lock, &timeout);
+        if(result == ETIMEDOUT) {
+            printf(" - Timeout\n");
+            pthread_mutex_unlock(&ds->msg_lock);
+            return ERR_TIMEOUT;
+        }
+        assert(result == 0);
+    }
+    assert(ds->last_msg != NULL);
+    if(ds->last_msg->msg_type == (command | MSG_ERROR)) {
+        result = stom_dint((*(int32_t *)&ds->last_msg->data[0]));
+        free(ds->last_msg);
+        ds->last_msg = NULL;
+        pthread_mutex_unlock(&ds->msg_lock);
+        return result;
+    }  else if(ds->last_msg->msg_type == (command | (response ? MSG_RESPONSE : 0))) {
         if(size) {
             memcpy(payload, ds->last_msg->data, ds->last_msg->size);
             *size = ds->last_msg->size;
         }
-		free(ds->last_msg);
-		ds->last_msg = NULL;
+        free(ds->last_msg);
+        ds->last_msg = NULL;
         pthread_mutex_unlock(&ds->msg_lock);
         return 0;
-	} else {
-		free(ds->last_msg);
-		ds->last_msg = NULL;
+    } else {
+        free(ds->last_msg);
+        ds->last_msg = NULL;
         pthread_mutex_unlock(&ds->msg_lock);
-		dax_error(ds, "Received a response of a different type than expected\n");
-		return ERR_GENERIC;
-	}
+        dax_error(ds, "Received a response of a different type than expected\n");
+        return ERR_GENERIC;
+    }
     return 0;
 }
 
@@ -176,7 +177,6 @@ _get_connection(dax_state *ds)
     if(server == NULL) return ERR_GENERIC;
 
     if( ! strcasecmp("local",  server)) {
-        //printf("...... Connecting to local socket - %s\n", dax_get_attr("socketname"));
         /* create a UNIX domain stream socket */
         if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
             dax_error(ds, "Unable to create local socket - %s", strerror(errno));
@@ -195,7 +195,6 @@ _get_connection(dax_state *ds)
             dax_debug(ds, LOG_COMM, "Connected to Local Server fd = %d", fd);
         }
     } else { /* We are supposed to connect over the network */
-        //printf("...... Connecting over the network\n");
         /* create an IPv4 TCP socket */
         if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             dax_error(ds, "Unable to create remote socket - %s", strerror(errno));
@@ -285,12 +284,17 @@ _mod_register(dax_state *ds, char *name)
     return ds->reformat;
 }
 
+/* This function retrieves one message using the _message_get() function and decides whether
+ * to add the message to a FIFO of event messages or to store it on last_msg.  The event FIFO
+ * and the last_msg pointer are both protected by a condition variable.  This function is
+ * called from the connection thread and functions that expect to either receive a response
+ * message or an event use these condition variables to wait on these mechanims. */
 static int
 _read_next_message(dax_state *ds)
 {
     static unsigned int events_lost;
     dax_message *msg;
-    int result;
+    int result, n;
 
     msg = malloc(sizeof(dax_message));
     if(msg == NULL) return ERR_ALLOC;
@@ -303,13 +307,15 @@ _read_next_message(dax_state *ds)
 
     if(msg->msg_type & MSG_EVENT) { /* Events we store in the FIFO */
         pthread_mutex_lock(&ds->event_lock);
-        if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
+    	if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
                 events_lost++;
                 dax_error(ds, "Event received from the server is lost.  Total = %u\n", events_lost);
             }
             free(ds->emsg_queue[0]); /* Free the top one */
-            memmove(&ds->emsg_queue[0], &ds->emsg_queue[1], sizeof(dax_message) * (ds->emsg_queue_size-1));
+            for(n = 0;n<ds->emsg_queue_size-1;n++) {
+                ds->emsg_queue[n] = ds->emsg_queue[n+1];
+            }
             ds->emsg_queue[ds->emsg_queue_size - 1] = msg;
         } else {
             ds->emsg_queue[ds->emsg_queue_count] = msg;
@@ -318,7 +324,7 @@ _read_next_message(dax_state *ds)
         pthread_mutex_unlock(&ds->event_lock);
         pthread_cond_signal(&ds->event_cond);
     } else { /* All other messages we put here */
-    	pthread_mutex_lock(&ds->msg_lock);
+        pthread_mutex_lock(&ds->msg_lock);
         ds->last_msg = msg;
         pthread_mutex_unlock(&ds->msg_lock);
         pthread_cond_signal(&ds->msg_cond);
@@ -328,11 +334,11 @@ _read_next_message(dax_state *ds)
 
 static void
 _connection_cleanup(dax_state *ds) {
-	ds->sfd = -1;
-	if(ds->last_msg != NULL) free(ds->last_msg);
-	ds->last_msg = NULL;
-	free_tag_cache(ds);
-	/* TODO: Free up the event FIFO too */
+    ds->sfd = -1;
+    if(ds->last_msg != NULL) free(ds->last_msg);
+    ds->last_msg = NULL;
+    free_tag_cache(ds);
+    /* TODO: Free up the event FIFO too */
 }
 
 static void *
@@ -343,29 +349,29 @@ _connection_thread(void *arg)
     dax_state *ds;
     ds = (dax_state *)arg;
 
-	/* This is the connection that we used for all the functional
-	 * request / response messages. */
-	ds->sfd = _get_connection(ds);
-	if(ds->sfd >= 0) {
-		result = _mod_register(ds, ds->modulename);
-		init_tag_cache(ds);
-		/* This basically let's the dax_connect function return success */
-		ds->error_code = 0;
-		pthread_barrier_wait(&ds->connect_barrier);
-		while(ds->sfd >= 0) { /* Main connection loop */
-			result = _read_next_message(ds);
-			if(result == ERR_DISCONNECTED) {
-				_connection_cleanup(ds);
-			}
-		}
-		_connection_cleanup(ds);
-		ds->error_code = result;
-		return NULL;
-	} else {
-		result = ds->sfd;
-		pthread_barrier_wait(&ds->connect_barrier);
-	}
-	return NULL;
+    /* This is the connection that we used for all the functional
+     * request / response messages. */
+    ds->sfd = _get_connection(ds);
+    if(ds->sfd >= 0) {
+        result = _mod_register(ds, ds->modulename);
+        init_tag_cache(ds);
+        /* This basically let's the dax_connect function return success */
+        ds->error_code = 0;
+        pthread_barrier_wait(&ds->connect_barrier);
+        while(ds->sfd >= 0) { /* Main connection loop */
+            result = _read_next_message(ds);
+            if(result == ERR_DISCONNECTED) {
+                _connection_cleanup(ds);
+            }
+        }
+        _connection_cleanup(ds);
+        ds->error_code = result;
+        return NULL;
+    } else {
+        result = ds->sfd;
+        pthread_barrier_wait(&ds->connect_barrier);
+    }
+return NULL;
 }
 
 
@@ -1273,31 +1279,31 @@ dax_event_get(dax_state *ds, dax_id id)
 int
 dax_event_options(dax_state *ds, dax_id id, u_int32_t options)
 {
-	int test;
-	size_t size;
-	dax_dint result;
-	dax_dint temp;
-	char buff[MSG_DATA_SIZE];
+    int test;
+    size_t size;
+    dax_dint result;
+    dax_dint temp;
+    char buff[MSG_DATA_SIZE];
 
-	temp = mtos_dint(id.index);      /* Tag Index */
-	memcpy(buff, &temp, 4);
-	temp = mtos_dint(id.id);         /* Event ID */
-	memcpy(&buff[4], &temp, 4);
-	temp = mtos_dint(options);       /* Options */
-	memcpy(&buff[8], &temp, 4);
-	size = 12;
+    temp = mtos_dint(id.index);      /* Tag Index */
+    memcpy(buff, &temp, 4);
+    temp = mtos_dint(id.id);         /* Event ID */
+    memcpy(&buff[4], &temp, 4);
+    temp = mtos_dint(options);       /* Options */
+    memcpy(&buff[8], &temp, 4);
+    size = 12;
 
-	pthread_mutex_lock(&ds->lock);
-	result = _message_send(ds, MSG_EVNT_OPT, buff, size);
-	if(result) {
-		pthread_mutex_unlock(&ds->lock);
-		return result;
-	} else {
-		test = _message_recv(ds, MSG_EVNT_OPT, &result, &size, 1);
-		pthread_mutex_unlock(&ds->lock);
-		return test;
-	}
-	pthread_mutex_unlock(&ds->lock);
+    pthread_mutex_lock(&ds->lock);
+    result = _message_send(ds, MSG_EVNT_OPT, buff, size);
+    if(result) {
+        pthread_mutex_unlock(&ds->lock);
+        return result;
+    } else {
+        test = _message_recv(ds, MSG_EVNT_OPT, &result, &size, 1);
+        pthread_mutex_unlock(&ds->lock);
+        return test;
+    }
+    pthread_mutex_unlock(&ds->lock);
     return 0;
 }
 

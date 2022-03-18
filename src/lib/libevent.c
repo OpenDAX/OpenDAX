@@ -147,17 +147,17 @@ del_event(dax_state *ds, dax_id id)
  * @returns zero on success or an error code otherwise
  */
 int
-dispatch_event(dax_state *ds, dax_message msg, dax_id *id)
+dispatch_event(dax_state *ds, dax_message *msg, dax_id *id)
 {
     int n;
     u_int32_t idx, eid;
 
-    idx =      ntohl(*(u_int32_t *)(&msg.data[0]));
-    eid =      ntohl(*(u_int32_t *)(&msg.data[4]));
+    idx =      ntohl(*(u_int32_t *)(&msg->data[0]));
+    eid =      ntohl(*(u_int32_t *)(&msg->data[4]));
     /* we just store the pointer to the message data in case the callback needs it
-     * This data can be retrieved in the callback by dax_event_get_dat() */
-    ds->event_data = &msg.data[8];
-    ds->event_data_size = msg.size-8;
+     * This data can be retrieved in the callback by dax_event_get_data() */
+    ds->event_data = &msg->data[8];
+    ds->event_data_size = msg->size-8;
     for(n = 0; n < ds->event_count; n ++) {
         if(ds->events[n].idx == idx && ds->events[n].id == eid) {
             if(ds->events[n].callback != NULL) {
@@ -167,6 +167,7 @@ dispatch_event(dax_state *ds, dax_message msg, dax_id *id)
                 id->id = eid;
                 id->index = idx;
             }
+            ds->event_data = NULL; /* This indicates that the data is out of scope now */
             return 0;
         }
     }
@@ -175,7 +176,21 @@ dispatch_event(dax_state *ds, dax_message msg, dax_id *id)
     return ERR_GENERIC;
 }
 
+static void
+_pop_event(dax_state *ds, dax_message *msg) {
+    int n;
 
+    msg->msg_type = ds->emsg_queue[0]->msg_type;
+    msg->size = ds->emsg_queue[0]->size;
+    msg->fd = ds->emsg_queue[0]->fd;
+    memcpy(msg->data, ds->emsg_queue[0]->data, ds->emsg_queue[0]->size);
+    free(ds->emsg_queue[0]); /* Free the top one */
+    /* Move the rest up */
+    for(n = 0;n<ds->emsg_queue_count-1;n++) {
+        ds->emsg_queue[n] = ds->emsg_queue[n+1];
+    }
+    ds->emsg_queue_count--;
+}
 /*!
  * Blocks waiting for an event to happen.  If an event is found it
  * will run the callback function for that event.
@@ -191,10 +206,29 @@ dispatch_event(dax_state *ds, dax_message msg, dax_id *id)
 int
 dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 {
-    // TODO: Write this function
+    int result;
+    struct timespec ts;
+    dax_message msg;
 
-    sleep(timeout);
-    return ERR_TIMEOUT;
+    // TODO: Write this function
+    pthread_mutex_lock(&ds->event_lock);
+    while(ds->emsg_queue_count == 0) {
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += timeout;
+        result = pthread_cond_timedwait(&ds->event_cond, &ds->event_lock, &ts);
+        if(result == ETIMEDOUT) {
+            pthread_mutex_unlock(&ds->event_lock);
+            return ERR_TIMEOUT;
+        }
+        assert(result == 0);
+    }
+    /* We should have a message once we get here */
+    /* Pop the message off of the event queue before we dispatch
+     * the event so that we can turn control back over to the connection
+     * thread. */
+    _pop_event(ds, &msg);
+    pthread_mutex_unlock(&ds->event_lock);
+    return dispatch_event(ds, &msg, id);
 }
 
 /*!
@@ -212,8 +246,15 @@ dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 int
 dax_event_poll(dax_state *ds, dax_id *id)
 {
+    dax_message msg;
 
-    // TODO: Write this function
+    pthread_mutex_lock(&ds->event_lock);
+    if(ds->emsg_queue_count > 0) {
+        _pop_event(ds, &msg);
+        pthread_mutex_unlock(&ds->event_lock);
+        return dispatch_event(ds, &msg, id);
+    }
+    pthread_mutex_unlock(&ds->event_lock);
     return ERR_NOTFOUND;
 }
 
@@ -235,12 +276,12 @@ dax_event_poll(dax_state *ds, dax_id *id)
  */
 int
 dax_event_get_data(dax_state *ds, void* buff, int len) {
-	int size;
+    int size;
 
-	size = MIN(len, ds->event_data_size);
-	if(ds->event_data == NULL) return ERR_DELETED;
-	if(ds->event_data_size == 0) return ERR_EMPTY;
+    size = MIN(len, ds->event_data_size);
+    if(ds->event_data == NULL) return ERR_DELETED;
+    if(ds->event_data_size == 0) return ERR_EMPTY;
 
-	memcpy(buff, ds->event_data, size);
-	return size;
+    memcpy(buff, ds->event_data, size);
+    return size;
 }
