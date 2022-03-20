@@ -137,3 +137,9 @@ add_executable(library_blank_tagname libtest_blank_tagname.c libtest_common.c)
 target_link_libraries(library_blank_tagname dax)
 add_test(library_blank_tagname library_blank_tagname)
 set_tests_properties(library_blank_tagname PROPERTIES TIMEOUT 10)
+
+add_executable(library_strings libtest_strings.c)
+target_link_libraries(library_strings dax)
+add_test(library_strings library_strings)
+set_tests_properties(library_strings PROPERTIES TIMEOUT 10)
+
