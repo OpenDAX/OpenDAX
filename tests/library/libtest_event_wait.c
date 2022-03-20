@@ -21,7 +21,7 @@
  *  is a basic functionality test.  It starts by creating a connection to
  *  the server, creating a tag and assigning a change event to that tag.
  *  Then it forks another process that also connects to the tagbase,
- *  waits a few hunder mSec and then changes that tag externally.
+ *  waits a few hundred mSec and then changes that tag externally.
  */
 
 #include <common.h>
@@ -105,7 +105,7 @@ do_test(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(do_test, argc, argv, 0)) {
         exit(-1);
     } else {
         exit(0);

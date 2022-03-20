@@ -82,8 +82,12 @@ main(int argc, const char *argv[])
 static void
 messagethread(void)
 {
+    int result;
+
     while(1) {
-        if(msg_receive()) {
+        result = msg_receive();
+        if(result) {
+            xerror("Message received with error: %d\n", result);
             sleep(1);
         }
     }

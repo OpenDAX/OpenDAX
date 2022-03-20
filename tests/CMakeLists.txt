@@ -25,6 +25,7 @@ add_subdirectory(oldtests)
 
 add_subdirectory(library)
 
+add_subdirectory(modules)
 
 file(GLOB files "LuaTests/*")
 foreach(file ${files})

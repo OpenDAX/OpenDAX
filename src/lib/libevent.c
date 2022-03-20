@@ -247,7 +247,6 @@ int
 dax_event_poll(dax_state *ds, dax_id *id)
 {
     dax_message msg;
-
     pthread_mutex_lock(&ds->event_lock);
     if(ds->emsg_queue_count > 0) {
         _pop_event(ds, &msg);

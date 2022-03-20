@@ -25,9 +25,10 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "libtest_common.h"
 
 int
-run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
+run_test(int (testfunc(int argc, char **argv)), int argc, char **argv, int opts) {
     int status = 0;
     int result;
     pid_t pid;
@@ -44,10 +45,13 @@ run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
         usleep(100000);
         result=testfunc(argc, argv);
         kill(pid, SIGINT);
-        if( waitpid(pid, &status, 0) != pid )
-            unlink("retentive.db");
+        if( waitpid(pid, &status, 0) != pid ) {
+            if(! opts & NO_UNLINK_RETAIN)
+                unlink("retentive.db");
             return status;
+        }
     }
-    unlink("retentive.db");
+    if(! opts & NO_UNLINK_RETAIN)
+        unlink("retentive.db");
     return result;
 }

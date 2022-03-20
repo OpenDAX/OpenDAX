@@ -87,8 +87,7 @@ _set_button(lua_State *L)
 
 int
 configure(int argc, char *argv[]) {
-    int flags, result;
-    lua_State *L;
+    int flags, result=0;
 
     /* Create and initialize the configuration subsystem in the library */
     dax_init_config(ds, "joystick");
@@ -106,5 +105,5 @@ configure(int argc, char *argv[]) {
 
     /* Free the configuration data */
     dax_free_config (ds);
-
+    return 0;
 }

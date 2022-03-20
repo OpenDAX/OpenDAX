@@ -124,7 +124,7 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
         timeout.tv_nsec += ds->msgtimeout%1000 *1000000;
         result = pthread_cond_timedwait(&ds->msg_cond, &ds->msg_lock, &timeout);
         if(result == ETIMEDOUT) {
-            printf(" - Timeout\n");
+            printf(" - _message_recv() Timeout\n");
             pthread_mutex_unlock(&ds->msg_lock);
             return ERR_TIMEOUT;
         }
@@ -301,13 +301,14 @@ _read_next_message(dax_state *ds)
 
     result = _message_get(ds->sfd, msg);
     if(result) {
+    	printf(" + _message_get() returned error %d\n", result);
         free(msg);
         return result;
     }
 
     if(msg->msg_type & MSG_EVENT) { /* Events we store in the FIFO */
         pthread_mutex_lock(&ds->event_lock);
-    	if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
+        if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
                 events_lost++;
                 dax_error(ds, "Event received from the server is lost.  Total = %u\n", events_lost);
@@ -911,7 +912,6 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
         return result;
     }
     pthread_mutex_unlock(&ds->lock);
-
     return 0;
 }
 
@@ -1020,7 +1020,6 @@ dax_tag_set_override(dax_state *ds, tag_handle handle) {
     *((u_int32_t *)&buff[4]) = 0xFF;
 
     sendsize = 5;
-
     pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_SET_OVRD, buff, sendsize);
     if(result) {
@@ -1033,7 +1032,6 @@ dax_tag_set_override(dax_state *ds, tag_handle handle) {
         return result;
     }
     pthread_mutex_unlock(&ds->lock);
-
     return 0;
 }
 

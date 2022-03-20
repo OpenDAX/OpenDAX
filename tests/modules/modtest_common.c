@@ -66,7 +66,7 @@ run_module(const char *modpath, const char *modconf) {
     return pid;
 }
 
-/* Runs the module and redirects the standard i/o streams and return those in teh given pointers */
+/* Runs the module and redirects the standard i/o streams and return those in the given pointers */
 pid_t
 run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, const char *modconf) {
     int status = 0;
