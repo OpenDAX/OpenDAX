@@ -52,7 +52,7 @@ wait_thread(void *arg) {
 
     /* We should sit in this wait loop while the other thread does a bunch of communication
      * with the server.  We'll get an error if the race condition shows up. */
-    result = dax_event_wait(ds, 1000, &id);
+    result = dax_event_wait(ds, 2000, &id);
     if(result) {
         printf("Failing because dax_event_wait returned an error\n");
         error = -1;
@@ -78,11 +78,11 @@ tag_thread(void *arg) {
         temp = n*5;
         result = dax_write_tag(ds, h, &temp);
     }
-    return NULL;
     result = dax_tag_handle(ds, &h, "Test2", 1);
     temp = 1234;
     /* This should trigger the event in the other thread */
     result = dax_write_tag(ds, h, &temp);
+    return NULL;
 }
 
 static int
@@ -110,7 +110,9 @@ _testfunc(int argc, char **argv) {
     result = pthread_create(&_tag_thread, NULL, tag_thread, ds);
 
     pthread_join(_wait_thread, NULL);
+    printf("Wait thread exited\n");
     pthread_join(_tag_thread, NULL);
+    printf("tag thread exited\n");
     if(error != 0) {
         printf("Got an error\n");
         return -1;
