@@ -27,6 +27,9 @@ add_subdirectory(library)
 
 add_subdirectory(modules)
 
+add_subdirectory(misc)
+
+
 file(GLOB files "LuaTests/*")
 foreach(file ${files})
   get_filename_component(FILENAME ${file} NAME)
