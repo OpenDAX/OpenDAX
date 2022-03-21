@@ -25,6 +25,9 @@ add_subdirectory(oldtests)
 
 add_subdirectory(library)
 
+add_subdirectory(misc)
+
+
 # Python Tests
 
 # testconfig.py is imported into all of the Python based tests and it includes
