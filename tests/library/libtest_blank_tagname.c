@@ -17,7 +17,7 @@
  */
 
 /*
- *  This test creates a single queue and checks that it works properly
+ *  This test verifies that a blank tagname given to dax_tag_handle() will fail
  */
 
 #include <common.h>

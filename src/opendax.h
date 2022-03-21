@@ -351,7 +351,13 @@ int dax_get_typesize(dax_state *ds, tag_type type);
  * They do no type checking or bounds checking of the data and should
  * be avoided by client modules unless there is a really good reason.
  */
-
+/* idx is the index of the tag, offset is the byte offset within the tag
+ * that we are requesting, *data is a pointer to the memory that we are
+ * reading or writing, size is the number of bytes that we are reading or
+ * writing. *mask is a binary mask that only allows data through where
+ * bits are high.  *data and *mask should point to data that at least
+ * 'size' bytes.
+ */
 /* simple untyped tag reading function */
 int dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size);
 /* simple untyped tag writing function */
@@ -368,12 +374,10 @@ int dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data,
  * read function doesn't overflow the buffer and that the write functions
  * don't try to dereference memory that is not allocated. */
 
-/* idx is the index of the tag that was returned by dax_tag_add() or
- * other query function.  index is the index into the tag to be written.
- * *data is a pointer to the buffer of memory that will be written or read.
- * count is the number of items in the tag to read/write.  The mask is
- * a binary mask that only allows data through where bits are high.
- * type is the tag type. */
+/* handle is the identifier of the tag that was returned by dax_tag_add() or
+ * other query function. *data is a pointer to the buffer of memory
+ * that will be written or read. The mask is a binary mask that only
+ * allows data through where bits are high. */
 int dax_read_tag(dax_state *ds, tag_handle handle, void *data);
 int dax_write_tag(dax_state *ds, tag_handle handle, void *data);
 int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);

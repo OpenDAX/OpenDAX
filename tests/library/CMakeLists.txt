@@ -143,3 +143,8 @@ target_link_libraries(library_strings dax)
 add_test(library_strings library_strings)
 set_tests_properties(library_strings PROPERTIES TIMEOUT 10)
 
+add_executable(library_handles libtest_handles.c libtest_common.c)
+target_link_libraries(library_handles dax)
+add_test(library_handles library_handles)
+set_tests_properties(library_handles PROPERTIES TIMEOUT 10)
+
