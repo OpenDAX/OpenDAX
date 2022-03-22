@@ -210,11 +210,13 @@ dax_event_wait(dax_state *ds, int timeout, dax_id *id)
     struct timespec ts;
     dax_message msg;
 
-    // TODO: Write this function
     pthread_mutex_lock(&ds->event_lock);
     while(ds->emsg_queue_count == 0) {
         clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += timeout;
+        /* TODO fix this to work with milliseconds properly.  Being lazy for now */
+        if(timeout < 1000) timeout = 1000;
+        ts.tv_sec += timeout/1000;
+        //ts.tv_nsec += timeout*1000000;
         result = pthread_cond_timedwait(&ds->event_cond, &ds->event_lock, &ts);
         if(result == ETIMEDOUT) {
             pthread_mutex_unlock(&ds->event_lock);

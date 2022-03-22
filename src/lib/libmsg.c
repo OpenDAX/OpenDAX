@@ -303,14 +303,15 @@ _read_next_message(dax_state *ds)
     if(result) {
         if(result == ERR_DISCONNECTED) {
             dax_error(ds, "Server disconnected abruptly\n");
+        } else if(result == ERR_TIMEOUT) {
+            ; /* Do nothing for timeout */
         } else {
             dax_error(ds, "_message_get() returned error %d\n", result);
         }
         free(msg);
         return result;
     }
-
-        if(msg->msg_type & MSG_EVENT) { /* Events we store in the FIFO */
+    if(msg->msg_type & MSG_EVENT) { /* Events we store in the FIFO */
         pthread_mutex_lock(&ds->event_lock);
         if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
