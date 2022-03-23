@@ -14,30 +14,22 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# This is the CList file that takes care of all of the compartmentalized tests
-# Most of the tests are written in Python and use the ctypes module to
-# interface with the libraries.
+# These are various test that call Lua scripts to exercise the Lua libraries
 
-# To run an individual test...
-# ctest -R <testname> -V
+include_directories(../../src/lib)
+include_directories(../../src/server)
 
-if(INTERNAL_TESTS)
-  add_subdirectory(internal)
-endif()
+add_definitions(-DTESTING) # Compiles some testing code into the library */
 
-add_subdirectory(library)
+set(LIB_SOURCE_DIR ../../src/lib)
+set(SERVER_SOURCE_DIR ../../src/server)
+include_directories(${SERVER_SOURCE_DIR})
+include_directories(${LIB_SOURCE_DIR})
 
-add_subdirectory(modules)
+add_executable(run_test run_test.c)
+add_executable(run_test_event run_test_event.c)
+target_link_libraries(run_test_event dax pthread)
 
-add_subdirectory(misc)
-
-file(GLOB files "LuaTests/*")
-foreach(file ${files})
-  get_filename_component(FILENAME ${file} NAME)
-  configure_file(LuaTests/${FILENAME} LuaTests/${FILENAME})
-endforeach()
-
-add_subdirectory(LuaTests)
-
-add_subdirectory(oldtests)
-
+add_test(luatest_basic "run_test" "test_basic.lua")
+add_test(luatest_tag_delete "run_test" "test_tag_delete.lua")
+add_test(luatest_event_wait "run_test_event" "test_event.lua")

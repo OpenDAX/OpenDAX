@@ -26,5 +26,4 @@ if x ~= 12 then
 end
 
 dax.free()
--- io.stderr:write(string.format("%d is the answer\n", x))
-
+io.stderr:write(string.format("%d is the answer\n", x))
