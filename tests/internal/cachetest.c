@@ -119,7 +119,7 @@ main(int argc, char *argv[])
         cache_tag_add(ds, &tags[n]);
         print_cache(ds);
     }
-    
+
     /* Delete one that we know we don't have */
     cache_tag_del(ds, 15);
     /* Make sure they are all still in there */
@@ -162,5 +162,14 @@ main(int argc, char *argv[])
     for(n=0;n<8;n++) {
         check_cache_miss(ds, tags[n]);
     }
+    printf("Free cache\n");
+    for(n=0;n<8;n++) {
+        cache_tag_add(ds, &tags[n]);
+        print_cache(ds);
+    }
+    free_tag_cache(ds);
+    print_cache(ds);
+    dax_free_config(ds);
+    dax_free(ds);
     return 0;
 }

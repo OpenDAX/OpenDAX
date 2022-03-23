@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server.conf");
+    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_server.conf");
     /* Connect to the tag server */
 
     /* Open a socket to do the modbus stuff */

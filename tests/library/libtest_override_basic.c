@@ -34,7 +34,7 @@ do_test(int argc, char *argv[])
     dax_state *ds;
     int result = 0;
     tag_handle h;
-    dax_dint temp, n;
+    dax_dint temp;
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -61,7 +61,6 @@ do_test(int argc, char *argv[])
     result = dax_read_tag(ds, h, &temp);
     if(result) return result;
     if(temp != -15) return -1;
-
     result = dax_tag_clr_override(ds, h);
     if(result) return result;
     result = dax_read_tag(ds, h, &temp);
@@ -83,7 +82,7 @@ do_test(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(do_test, argc, argv, 0)) {
         exit(-1);
     } else {
         exit(0);

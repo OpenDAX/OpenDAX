@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#  Copyright (c) 2022 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,24 +14,19 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-include_directories(.)
+# These are miscellaneous tests that didn't really fit anywhere else
 
-add_library(dax libcdt.c
-                libconv.c
-                libdata.c
-                libevent.c
-                libfunc.c
-                libinit.c
-                libmsg.c
-                libopt.c
-                )
+include_directories(../../src/lib)
+include_directories(../../src/server)
 
-target_link_libraries(dax ${LUA_LIBRARIES})
-target_link_libraries(dax pthread)
+add_definitions(-DTESTING) # Compiles some testing code into the library */
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    target_compile_options(dax PRIVATE -Wall)
-endif()
-install(TARGETS dax DESTINATION lib)
+set(LIB_SOURCE_DIR ../../src/lib)
+set(SERVER_SOURCE_DIR ../../src/server)
 
-add_subdirectory(lua)
+# Event wait race condition test
+add_executable(misc_event_wait_race misc_event_wait_race.c)
+target_link_libraries(misc_event_wait_race dax pthread)
+add_test(misc_event_wait_race misc_event_wait_race)
+set_tests_properties(misc_event_wait_race PROPERTIES TIMEOUT 10)
+

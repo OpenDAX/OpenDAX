@@ -22,3 +22,4 @@
 # ctest -R <testname> -V
 
 add_subdirectory(modbus)
+add_subdirectory(daxc)

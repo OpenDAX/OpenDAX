@@ -132,6 +132,7 @@ int main(int argc,char *argv[]) {
                             val = (event.value + axis_list[event.number].offset) + axis_list[event.number].scale;
                             dax_write_tag(ds, axis_list[event.number].handle, &val);
                         }
+                        break;
                     default:
                         /* Ignore init events. */
                         break;

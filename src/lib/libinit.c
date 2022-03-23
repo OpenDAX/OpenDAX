@@ -48,7 +48,7 @@ dax_init(char *name)
     if(ds->modulename == NULL) return NULL;
     
     ds->msgtimeout = 0;
-    ds->sfd = 0;       /* Server's File Descriptor */
+    ds->sfd = -1;       /* Server's File Descriptor */
     ds->reformat = 0;  /* Flags to show how to reformat the incoming data */
     ds->logflags = 0;
     /* Tag Cache */
@@ -68,29 +68,20 @@ dax_init(char *name)
     ds->event_size = 1;
     ds->event_count = 0;
     /* Event Message FIFO Queue */
-    ds->emsg_queue = malloc(sizeof(dax_message)*EVENT_QUEUE_SIZE);
+    ds->emsg_queue = malloc(sizeof(dax_message *)*EVENT_QUEUE_SIZE);
     ds->emsg_queue_size = EVENT_QUEUE_SIZE;     /* Total size of the Event Message Queue */
     ds->emsg_queue_count = 0;    /* number of entries in the event message queue */
-    ds->emsg_queue_read = 0;     /* index to the next event in the queue */
+    /* Initialize locks and condition variables */
+    pthread_mutex_init(&ds->lock, NULL);
+    pthread_mutex_init(&ds->event_lock, NULL);
+    pthread_mutex_init(&ds->msg_lock, NULL);
+    pthread_cond_init(&ds->event_cond, NULL);
+    pthread_cond_init(&ds->msg_cond, NULL);
 
     /* Logging functions */
     ds->dax_debug = NULL;
     ds->dax_error = NULL;
     ds->dax_log = NULL;
-    ds->lock = malloc(sizeof(dax_lock));
-    if(ds->lock == NULL) {
-        free(ds->modulename);
-        free(ds->events);
-        free(ds);
-        return NULL;
-    }
-    if(libdax_init_lock(ds->lock)) {
-        free(ds->modulename);
-        free(ds->events);
-        free(ds->lock);
-        free(ds);
-        return NULL;
-    }
 
     return ds;
 }
@@ -106,13 +97,12 @@ dax_init(char *name)
 int
 dax_free(dax_state *ds)
 {
-    libdax_unlock(ds->lock);
-    libdax_destroy_lock(ds->lock);
+    pthread_mutex_unlock(&ds->lock);
+    pthread_mutex_destroy(&ds->lock);
     free(ds->modulename);
     /* TODO: gotta loop through and free the udata in the events. */
     free(ds->events);
     free(ds->emsg_queue);
-    free(ds->lock);
     free(ds);
     return 0;
 }

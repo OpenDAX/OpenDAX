@@ -23,49 +23,6 @@
 #include <common.h>
 #include <arpa/inet.h>
 
-/* TODO: there is probably a better way than copying the memory */
-int
-push_event(dax_state *ds, dax_message *msg) {
-    int next, newsize;
-    dax_message *new_queue;
-
-    /* We need to grow the queue */
-    if(ds->emsg_queue_count == ds->emsg_queue_size) {
-        newsize = ds->emsg_queue_size * 2;
-        new_queue = realloc(ds->emsg_queue, sizeof(dax_message) * newsize);
-        if(new_queue == NULL) return ERR_ALLOC;
-        ds->emsg_queue = new_queue;
-        /* After the queue size is increased we need to move the fragment that is now
-         * at the beginning of the queue to the start of the new area */
-        if(ds->emsg_queue_read > 0) {
-            memcpy(&ds->emsg_queue[ds->emsg_queue_size],&ds->emsg_queue[0], ds->emsg_queue_read*sizeof(dax_message));
-        }
-        ds->emsg_queue_size = newsize;
-    }
-    next = (ds->emsg_queue_read + ds->emsg_queue_count) % ds->emsg_queue_size;
-    memcpy(&ds->emsg_queue[next], msg, sizeof(dax_message));
-    ds->emsg_queue_count++;
-
-    return 0;
-}
-
-dax_message *
-pop_event(dax_state *ds) {
-    dax_message *temp;
-
-    if(ds->emsg_queue_count == 0) {
-        return NULL;
-    }
-    temp = &ds->emsg_queue[ds->emsg_queue_read];
-    ds->emsg_queue_read++;
-    if(ds->emsg_queue_read == ds->emsg_queue_size)  {
-        ds->emsg_queue_read = 0;
-    }
-    ds->emsg_queue_count--;
-
-    return temp;
-}
-
 /*!
  * Convert the given string to a dax event type
  * that is suitable for passing to the event
@@ -190,35 +147,50 @@ del_event(dax_state *ds, dax_id id)
  * @returns zero on success or an error code otherwise
  */
 int
-dispatch_event(dax_state *ds, dax_message msg, dax_id *id)
+dispatch_event(dax_state *ds, dax_message *msg, dax_id *id)
 {
     int n;
     u_int32_t idx, eid;
 
-    idx =      ntohl(*(u_int32_t *)(&msg.data[0]));
-    eid =      ntohl(*(u_int32_t *)(&msg.data[4]));
+    idx =      ntohl(*(u_int32_t *)(&msg->data[0]));
+    eid =      ntohl(*(u_int32_t *)(&msg->data[4]));
     /* we just store the pointer to the message data in case the callback needs it
-     * This data can be retrieved in the callback by dax_event_get_dat() */
-    ds->event_data = &msg.data[8];
-    ds->event_data_size = msg.size-8;
-	for(n = 0; n < ds->event_count; n ++) {
-		if(ds->events[n].idx == idx && ds->events[n].id == eid) {
-			if(ds->events[n].callback != NULL) {
-				ds->events[n].callback(ds, ds->events[n].udata);
-			}
-			if(id != NULL) {
-				id->id = eid;
-				id->index = idx;
-			}
-			return 0;
-		}
-	}
-	ds->event_data = NULL; /* This indicates that the data is out of scope now */
-	dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
-	return ERR_GENERIC;
+     * This data can be retrieved in the callback by dax_event_get_data() */
+    ds->event_data = &msg->data[8];
+    ds->event_data_size = msg->size-8;
+    for(n = 0; n < ds->event_count; n ++) {
+        if(ds->events[n].idx == idx && ds->events[n].id == eid) {
+            if(ds->events[n].callback != NULL) {
+                ds->events[n].callback(ds, ds->events[n].udata);
+            }
+            if(id != NULL) {
+                id->id = eid;
+                id->index = idx;
+            }
+            ds->event_data = NULL; /* This indicates that the data is out of scope now */
+            return 0;
+        }
+    }
+    ds->event_data = NULL; /* This indicates that the data is out of scope now */
+    dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
+    return ERR_GENERIC;
 }
 
+static void
+_pop_event(dax_state *ds, dax_message *msg) {
+    int n;
 
+    msg->msg_type = ds->emsg_queue[0]->msg_type;
+    msg->size = ds->emsg_queue[0]->size;
+    msg->fd = ds->emsg_queue[0]->fd;
+    memcpy(msg->data, ds->emsg_queue[0]->data, ds->emsg_queue[0]->size);
+    free(ds->emsg_queue[0]); /* Free the top one */
+    /* Move the rest up */
+    for(n = 0;n<ds->emsg_queue_count-1;n++) {
+        ds->emsg_queue[n] = ds->emsg_queue[n+1];
+    }
+    ds->emsg_queue_count--;
+}
 /*!
  * Blocks waiting for an event to happen.  If an event is found it
  * will run the callback function for that event.
@@ -235,41 +207,30 @@ int
 dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 {
     int result;
-    struct timeval tval;
-    fd_set fds;
-    int done = 0;
+    struct timespec ts;
     dax_message msg;
-    dax_message *msg_ptr;
 
-    /* Check the event message queue and dispatch that event if
-         * there is one there.*/
-    msg_ptr = pop_event(ds);
-    if(msg_ptr != NULL) {
-        return dispatch_event(ds, *msg_ptr, id);
-    }
-    /* ...otherwise wait on the socket */
-    while(!done) {
-        FD_ZERO(&fds);
-        FD_SET(ds->sfd, &fds);
-        tval.tv_sec = timeout / 1000;
-        tval.tv_usec = (timeout % 1000) * 1000;
-        if(timeout > 0) {
-            result = select(ds->sfd + 1, &fds, NULL, NULL, &tval);
-        } else {
-            result = select(ds->sfd + 1, &fds, NULL, NULL, NULL);
-        }
-        if(result > 0) {
-            result = message_get(ds->sfd, &msg);
-            if(result) return result;
-            result = dispatch_event(ds, msg, id);
-            if(result == 0) done = 1;
-        } else if (result < 0) {
-            return result;
-        } else {
+    pthread_mutex_lock(&ds->event_lock);
+    while(ds->emsg_queue_count == 0) {
+        clock_gettime(CLOCK_REALTIME, &ts);
+        /* TODO fix this to work with milliseconds properly.  Being lazy for now */
+        if(timeout < 1000) timeout = 1000;
+        ts.tv_sec += timeout/1000;
+        //ts.tv_nsec += timeout*1000000;
+        result = pthread_cond_timedwait(&ds->event_cond, &ds->event_lock, &ts);
+        if(result == ETIMEDOUT) {
+            pthread_mutex_unlock(&ds->event_lock);
             return ERR_TIMEOUT;
         }
+        assert(result == 0);
     }
-    return 0;
+    /* We should have a message once we get here */
+    /* Pop the message off of the event queue before we dispatch
+     * the event so that we can turn control back over to the connection
+     * thread. */
+    _pop_event(ds, &msg);
+    pthread_mutex_unlock(&ds->event_lock);
+    return dispatch_event(ds, &msg, id);
 }
 
 /*!
@@ -287,48 +248,16 @@ dax_event_wait(dax_state *ds, int timeout, dax_id *id)
 int
 dax_event_poll(dax_state *ds, dax_id *id)
 {
-    int result;
-    struct timeval tval;
-    fd_set fds;
     dax_message msg;
-    dax_message *msg_ptr;
-
-    /* Check the event message queue and dispatch that event if
-         * there is one there.*/
-    msg_ptr = pop_event(ds);
-    if(msg_ptr != NULL) {
-        return dispatch_event(ds, *msg_ptr, id);
+    pthread_mutex_lock(&ds->event_lock);
+    if(ds->emsg_queue_count > 0) {
+        _pop_event(ds, &msg);
+        pthread_mutex_unlock(&ds->event_lock);
+        return dispatch_event(ds, &msg, id);
     }
-    /*... otherwise check the socket */
-    FD_ZERO(&fds);
-    FD_SET(ds->sfd, &fds);
-    tval.tv_sec = 0;
-    tval.tv_usec = 0;
-    result = select(ds->sfd + 1, &fds, NULL, NULL, &tval);
-    if(result > 0) {
-        result = message_get(ds->sfd, &msg);
-        if(result) return result;
-        return dispatch_event(ds, msg, id);
-    } else if (result < 0) {
-        return ERR_GENERIC;
-    } else {
-        return ERR_NOTFOUND;
-    }
-    return 0;
+    pthread_mutex_unlock(&ds->event_lock);
+    return ERR_NOTFOUND;
 }
-
-/*!
- * This function will return the asynchronous event handling file
- * descriptor to the module.  This is used if the module wants to handle
- * it's own file descriptor management.  Handy for event driven programs
- * that need to select() on multiple file descriptors
- */
-int
-dax_event_get_fd(dax_state *ds)
-{
-    return ds->sfd;
-}
-
 
 /*!
  * Retrieves the data that was passed back from the server when the event fired.
@@ -348,12 +277,12 @@ dax_event_get_fd(dax_state *ds)
  */
 int
 dax_event_get_data(dax_state *ds, void* buff, int len) {
-	int size;
+    int size;
 
-	size = MIN(len, ds->event_data_size);
-	if(ds->event_data == NULL) return ERR_DELETED;
-	if(ds->event_data_size == 0) return ERR_EMPTY;
+    size = MIN(len, ds->event_data_size);
+    if(ds->event_data == NULL) return ERR_DELETED;
+    if(ds->event_data_size == 0) return ERR_EMPTY;
 
-	memcpy(buff, ds->event_data, size);
-	return size;
+    memcpy(buff, ds->event_data, size);
+    return size;
 }

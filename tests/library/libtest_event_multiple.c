@@ -92,7 +92,7 @@ do_test(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(do_test, argc, argv, 0)) {
         exit(-1);
     } else {
         exit(0);

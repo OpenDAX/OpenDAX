@@ -44,7 +44,7 @@ main(int argc, char *argv[])
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server_large.conf");
+    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_server_large.conf");
     /* Connect to the tag server */
     ds = dax_init("test");
     if(ds == NULL) {

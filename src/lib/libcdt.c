@@ -241,7 +241,7 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
  * Creates an empty Custom Datatype with 'name' if
  * 'error' is non NULL then results are put there.
  * Returns NULL on error and a pointer to the new
- * datatype if successfull.
+ * datatype if successful.
  */
 dax_cdt *
 dax_cdt_new(char *name, int *error)

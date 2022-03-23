@@ -14,24 +14,22 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-include_directories(.)
+# These are various test that call Lua scripts to exercise the Lua libraries
 
-add_library(dax libcdt.c
-                libconv.c
-                libdata.c
-                libevent.c
-                libfunc.c
-                libinit.c
-                libmsg.c
-                libopt.c
-                )
+include_directories(../../src/lib)
+include_directories(../../src/server)
 
-target_link_libraries(dax ${LUA_LIBRARIES})
-target_link_libraries(dax pthread)
+add_definitions(-DTESTING) # Compiles some testing code into the library */
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    target_compile_options(dax PRIVATE -Wall)
-endif()
-install(TARGETS dax DESTINATION lib)
+set(LIB_SOURCE_DIR ../../src/lib)
+set(SERVER_SOURCE_DIR ../../src/server)
+include_directories(${SERVER_SOURCE_DIR})
+include_directories(${LIB_SOURCE_DIR})
 
-add_subdirectory(lua)
+add_executable(run_test run_test.c)
+add_executable(run_test_event run_test_event.c)
+target_link_libraries(run_test_event dax pthread)
+
+add_test(luatest_basic "run_test" "test_basic.lua")
+add_test(luatest_tag_delete "run_test" "test_tag_delete.lua")
+add_test(luatest_event_wait "run_test_event" "test_event.lua")

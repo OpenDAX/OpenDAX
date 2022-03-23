@@ -19,4 +19,6 @@
 /* Common header file for library tests
  */
 
-int run_test(int (testfunc(int argc, char **argv)), int argc, char **argv);
+#define NO_UNLINK_RETAIN 0x01
+
+int run_test(int (testfunc(int argc, char **argv)), int argc, char **argv, int opts);

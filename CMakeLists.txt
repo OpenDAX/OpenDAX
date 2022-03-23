@@ -27,13 +27,16 @@ enable_testing()
 
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
-option(BUILD_WIO "Build Wireless I/O Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
 option(BUILD_JOYSTICK "Build Joystick Module" ON)
 option(INTERNAL_TESTS "Build and Run Internal System Tests" ON)
 option(MODULE_TESTS "Build and Run Module Tests" ON)
 
 set(CMAKE_BUILD_TYPE Debug)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  add_compile_options(-Wall -O0)
+  message("Building Debug Symbols and Verbose Warnings")
+endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(OS_LINUX 1)
@@ -81,6 +84,4 @@ add_subdirectory(src)
 
 add_subdirectory(tests)
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  message("Building Debug Symbols and Verbose Warnings")
-endif()
+

@@ -17,10 +17,14 @@
  */
 
 /*
- *  This contains common code for the compiled C Library tests
+ *  This contains common code for the compiled C module tests
  */
 
+#include <string.h>
+#include <poll.h>
 #include "modtest_common.h"
+
+#define BUFF_LEN 512
 
 pid_t
 run_server(void) {
@@ -62,3 +66,67 @@ run_module(const char *modpath, const char *modconf) {
     return pid;
 }
 
+/* Runs the module and redirects the standard i/o streams and return those in the given pointers */
+pid_t
+run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, const char *modconf) {
+    int status = 0;
+    int result;
+    pid_t pid;
+
+    int infd[2];
+    int outfd[2];
+    int errfd[2];
+    pipe(infd);
+    pipe(outfd);
+    pipe(errfd);
+
+    pid = fork();
+    if(pid == 0) {
+        dup2(infd[0], STDIN_FILENO);
+        dup2(outfd[1], STDOUT_FILENO);
+        dup2(errfd[1], STDERR_FILENO);
+        close(infd[1]);
+        close(outfd[0]);
+        close(errfd[0]);
+        if(modconf != NULL) {
+            execl(modpath, modpath, "-C", modconf, NULL);
+        } else {
+            execl(modpath, modpath, NULL);
+        }
+        printf("Failed to launch module\n");
+        exit(-1);
+    } else if(pid < 0) {
+        printf("Forking problem");
+        exit(-1);
+    }
+    if(fd_stdin != NULL) *fd_stdin = infd[1];
+    close(infd[0]);
+    if(fd_stdout != NULL) *fd_stdout = outfd[0];
+    close(outfd[1]);
+    if(fd_stderr != NULL) *fd_stderr = errfd[0];
+    close(errfd[1]);
+    usleep(100000);
+
+    return pid;
+}
+
+
+int
+expect(int fd, char *str, int timeout) {
+    struct pollfd fds;
+    int result;
+    char buffer[BUFF_LEN];
+
+    bzero(buffer, BUFF_LEN);
+    fds.fd = fd;
+    fds.events = POLLIN;
+
+    result = poll(&fds, 1, timeout);
+    if(result == 1) {
+        result = read(fd, buffer, BUFF_LEN);
+        return strncmp(buffer, str, strlen(str));
+    } else {
+        return -1;
+    }
+    return -1;
+}

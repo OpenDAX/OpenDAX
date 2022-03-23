@@ -26,7 +26,7 @@
 #include <common.h>
 #include <opendax.h>
 #include <libcommon.h>
-
+#include <pthread.h>
 
 #define MIN(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAX(a, b)  (((a) > (b)) ? (a) : (b))
@@ -39,7 +39,7 @@
 //TODO: This should probably be a configure script --without-locking directive
 #define USE_PTHREAD_LOCK 1
 
-typedef struct OptAttr {
+typedef struct optattr {
     char *name;
     char *longopt;
     char shortopt;
@@ -47,17 +47,17 @@ typedef struct OptAttr {
     char *value;
     int flags;
     int (*callback)(char *name, char *value);
-    struct OptAttr *next;
+    struct optattr *next;
 } optattr;
 
 /* This is the structure for our tag cache */
-typedef struct Tag_Cnode {
+typedef struct tag_cnode {
     tag_index idx;
     unsigned int type;
     unsigned int count;
     unsigned int attr;
-    struct Tag_Cnode *next;
-    struct Tag_Cnode *prev;
+    struct tag_cnode *next;
+    struct tag_cnode *prev;
     char name[DAX_TAGNAME_SIZE + 1];
 } tag_cnode;
 
@@ -91,22 +91,6 @@ struct tag_group_id {
 
 typedef struct tag_group_id tag_group_id;
 
-#ifdef USE_PTHREAD_LOCK
-#include <pthread.h>
-/* This is all just an abstraction for using the pthread_mutex as
- * a lock within the library */
-typedef pthread_mutex_t dax_lock;
-#else
-
-typedef int dax_lock;
-
-#endif
-
-int libdax_lock(dax_lock *lock);
-int libdax_unlock(dax_lock *lock);
-int libdax_init_lock(dax_lock *lock);
-int libdax_destroy_lock(dax_lock *lock);
-
 /* Right now the event_db is stored within the dax_state as an array. */
 typedef struct event_db {
     u_int32_t idx;  /* Tag index of the event */
@@ -123,6 +107,7 @@ struct dax_state {
     optattr* attr_head;
     lua_State *L;
     char* modulename;
+    int error_code; /* Last error code of the connection */
     int msgtimeout;
     int id;     /* ID uniquely identifies the module to the server */
     int sfd;   /* Server's File Descriptor */
@@ -133,16 +118,21 @@ struct dax_state {
     int cache_count;       /* How many nodes we actually have */
     datatype *datatypes;
     unsigned int datatype_size;
-    dax_lock *lock;
+    pthread_mutex_t lock;
+    pthread_t connection_thread;
+    pthread_barrier_t connect_barrier; /* Synchronize the connection thread */
+    pthread_mutex_t event_lock, msg_lock; /* Locks for the message handling functions */
+    pthread_cond_t event_cond, msg_cond; /* Condition variables for the message handling */
     event_db *events;      /* Array of events stored for this connection */
     int event_size;        /* Current size of the events array */
     int event_count;       /* Total number of events stored in the array */
     int event_data_size;   /* Size of the event data that is stored here */
     char *event_data;      /* Pointer to the event data that was returned */
-    dax_message *emsg_queue; /* Event Message FIFO Queue */
+    dax_message **emsg_queue; /* Event Message FIFO Queue */
     int emsg_queue_size;     /* Total size of the Event Message Queue */
     int emsg_queue_count;    /* number of entries in the event message queue */
-    int emsg_queue_read;     /* index to the next event to read in the queue */
+    //int emsg_queue_read;     /* index to the next event to read in the queue */
+    dax_message *last_msg;   /* The last message received on the socket */
     void (*dax_debug)(const char *output);
     void (*dax_error)(const char *output);
     void (*dax_log)(const char *output);
@@ -200,6 +190,7 @@ int stom_generic(tag_type type, void *dst, void *src);
 
 /* These functions handle the tag cache */
 int init_tag_cache(dax_state *ds);
+void free_tag_cache(dax_state *ds);
 int check_cache_index(dax_state *, tag_index, dax_tag *);
 int check_cache_name(dax_state *, char *, dax_tag *);
 int cache_tag_add(dax_state *, dax_tag *);
@@ -217,8 +208,6 @@ int add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(dax_state 
               void (*free_callback)(void *));
 int del_event(dax_state *ds, dax_id id);
 int exec_event(dax_state *ds, dax_id id);
-
-int message_get(int, dax_message *);
 
 int group_read_format(dax_state *ds, tag_group_id *id, u_int8_t *buff);
 int group_write_format(dax_state *ds, tag_group_id *id, u_int8_t *buff);

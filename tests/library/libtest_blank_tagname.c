@@ -17,7 +17,7 @@
  */
 
 /*
- *  This test creates a single queue and checks that it works properly
+ *  This test verifies that a blank tagname given to dax_tag_handle() will fail
  */
 
 #include <common.h>
@@ -69,7 +69,7 @@ do_test(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(do_test, argc, argv, 0)) {
         exit(-1);
     } else {
         exit(0);

@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#  Copyright (c) 2021 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,5 +14,16 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_executable(wio wio.c xbee.c)
-target_link_libraries(wio dax)
+# This is the CList file that takes care of all of the compartmentalized tests
+# Most of the tests are written in Python and use the ctypes module to
+# interface with the libraries.
+
+# To run an individual test...
+# ctest -R <testname> -V
+
+
+# Check server responses
+add_executable(module_daxc_tag daxc_tag.c ../modtest_common.c)
+target_link_libraries(module_daxc_tag dax)
+add_test(module_daxc_tag module_daxc_tag)
+set_tests_properties(module_daxc_tag PROPERTIES TIMEOUT 10)

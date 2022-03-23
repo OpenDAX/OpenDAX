@@ -34,7 +34,7 @@ test_one(int argc, char *argv[])
     dax_state *ds;
     int result = 0;
     tag_handle h;
-    dax_dint temp, n;
+    dax_dint temp;
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -59,7 +59,7 @@ test_two(int argc, char *argv[])
     dax_state *ds;
     int result = 0;
     tag_handle h;
-    dax_dint temp, n;
+    dax_dint temp;
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -73,7 +73,10 @@ test_two(int argc, char *argv[])
     result += dax_tag_add(ds, &h, "TEST1", DAX_DINT, 1, TAG_ATTR_RETAIN);
     result += dax_tag_add(ds, &h, "TEST2", DAX_DINT, 1, TAG_ATTR_RETAIN);
     result = dax_read_tag(ds, h, &temp);
-    if(temp != 0xAABBCCDD) return -1;
+    if(temp != 0xAABBCCDD) {
+        printf("ERROR: Tag value does not match\n");
+        return -1;
+    }
 
     return result;
 }
@@ -82,10 +85,10 @@ test_two(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(test_one, argc, argv)) {
+    if(run_test(test_one, argc, argv, NO_UNLINK_RETAIN)) {
         exit(-1);
     } else {
-        if(run_test(test_two, argc, argv)) {
+        if(run_test(test_two, argc, argv, 0)) {
             exit(-1);
         } else {
             exit(0);

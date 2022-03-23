@@ -21,72 +21,15 @@
 # To run an individual test...
 # ctest -R <testname> -V
 
-add_subdirectory(oldtests)
+if(INTERNAL_TESTS)
+  add_subdirectory(internal)
+endif()
 
 add_subdirectory(library)
 
-# Python Tests
+add_subdirectory(modules)
 
-# testconfig.py is imported into all of the Python based tests and it includes
-# mostly definitions for where the build system is going to put the files.
-configure_file(testconfig.py.in testconfig.py)
-
-# This copies all of the Python test files to the build directory
-file(GLOB files "PythonTests/*.py")
-foreach(file ${files})
-  get_filename_component(FILENAME ${file} NAME)
-  configure_file(PythonTests/${FILENAME} PythonTests/${FILENAME} COPYONLY)
-endforeach()
-
-file(GLOB files "PythonTests/util/*.py")
-foreach(file ${files})
-  get_filename_component(FILENAME ${file} NAME)
-  configure_file(PythonTests/util/${FILENAME} PythonTests/util/${FILENAME} COPYONLY)
-endforeach()
-
-file(GLOB files "PythonTests/config/*")
-foreach(file ${files})
-  get_filename_component(FILENAME ${file} NAME)
-  configure_file(PythonTests/config/${FILENAME} PythonTests/config/${FILENAME} COPYONLY)
-endforeach()
-
-# Core system and Library Tests
-add_test(python_test_libdax_basic   "python3" "-m" "unittest"
-                                    "PythonTests.test_libdax_basic.TestBasic")
-add_test(python_test_tag_add        "python3" "-m" "unittest"
-                                    "PythonTests.test_tag_add.TestSingle")
-add_test(python_test_tag_delete     "python3" "-m" "unittest"
-                                    "PythonTests.test_tag_del.TestTagDelete")
-add_test(python_test_handles_loop   "python3" "-m" "unittest"
-                                    "PythonTests.test_handles.TestHandles_LoopTests")
-add_test(python_test_handles_flat   "python3" "-m" "unittest"
-                                    "PythonTests.test_handles.TestHandles_FlatTests")
-add_test(python_test_libdax_strings "python3" "-m" "unittest"
-                                    "PythonTests.test_libdax_strings.TestLibDAXStrings")
-add_test(python_test_mapping        "python3" "-m" "unittest"
-                                    "PythonTests.test_mapping.TestMapping")
-add_test(python_test_single         "python3" "-m" "unittest"
-                                    "PythonTests.test_single.TestSingle")
-
-if(MODULE_TESTS)
-    add_subdirectory(modules)
-	# daxc Module Tests
-	add_test(python_test_module_daxc_tags "python3" "-m" "unittest"
-	                                      "PythonTests.test_module_daxc_tags.TestDaxc")
-	add_test(python_test_module_daxc_cdt  "python3" "-m" "unittest"
-	                                      "PythonTests.test_module_daxc_cdt.TestDaxc")
-	add_test(python_test_module_daxc_list "python3" "-m" "unittest"
-                                      "PythonTests.test_module_daxc_list.TestDaxc")
-endif()
-
-
-if(BUILD_MODBUS)
-    add_test(python_test_modbus_library "python3" "-m" "unittest"
-    "PythonTests.test_modbuslib.TestRTUMaster")
-endif()
-# These are the old Lua tests
-add_test(python_oldtest_module_test    "python3" "-m" "unittest"
-                                       "PythonTests.test_module_test.TestTestModule")
+add_subdirectory(misc)
 
 file(GLOB files "LuaTests/*")
 foreach(file ${files})
@@ -94,12 +37,7 @@ foreach(file ${files})
   configure_file(LuaTests/${FILENAME} LuaTests/${FILENAME})
 endforeach()
 
-add_test(lua_test_basic             "python3" "LuaTests/run_test.py" "LuaTests/test_basic.lua")
-add_test(lua_test_tag_delete        "python3" "LuaTests/run_test.py" "LuaTests/test_tag_delete.lua")
-add_test(lua_test_event             "python3" "LuaTests/run_test.py" "LuaTests/test_event.lua" "LuaTests/helper_event.lua")
-set_tests_properties(lua_test_event PROPERTIES TIMEOUT 10)
+add_subdirectory(LuaTests)
 
+add_subdirectory(oldtests)
 
-if(INTERNAL_TESTS)
-  add_subdirectory(internal)
-endif()

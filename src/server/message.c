@@ -53,10 +53,11 @@ static fd_set _fdset;
 static int _maxfd;
 
 /* This array holds the functions for each message command */
-int (*cmd_arr[NUM_COMMANDS])(dax_message *) = {NULL};
+/* Index 0 is not used. */
+int (*cmd_arr[NUM_COMMANDS+1])(dax_message *) = {NULL};
 
 /* Macro to check whether or not the command 'x' is valid */
-#define CHECK_COMMAND(x) (((x) < 0 || (x) > (NUM_COMMANDS-1)) ? 1 : 0)
+#define CHECK_COMMAND(x) (((x) <= 0 || (x) > NUM_COMMANDS) ? 1 : 0)
 
 int msg_mod_register(dax_message *msg);
 int msg_tag_add(dax_message *msg);
@@ -957,6 +958,8 @@ msg_atomic_op(dax_message *msg) {
     operation = *(dax_uint *)&msg->data[17];   /* Operation */
     h.size = msg->size - 21; /* Total message size minus the above data */
 
+    xlog(LOG_MSG | LOG_VERBOSE, "Atomic Operation Message from module %d, index %d, offset %d, size %d", msg->fd, h.index, h.byte, h.size);
+
     result = atomic_op(h, &msg->data[21], operation);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_ATOMIC_OP, &result, sizeof(int), ERROR);
@@ -974,13 +977,15 @@ msg_add_override(dax_message *msg) {
     index = *((tag_index *)&msg->data[0]);
     byte = *((u_int32_t *)&msg->data[4]);
     size = (msg->size - 12) / 2;
+    xlog(LOG_MSG | LOG_VERBOSE, "Add Override Message from module %d, index %d, offset %d, size %d", msg->fd, index, byte, size);
+
     result = override_add(index, byte, &msg->data[12], &msg->data[12+size], size);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_ADD_OVRD, &result, sizeof(int), ERROR);
     } else {
         _message_send(msg->fd, MSG_ADD_OVRD, NULL, 0, RESPONSE);
     }
-    printf("Message Add Override\n");
+    //printf("Message Add Override\n");
     return 0;
 }
 
@@ -1011,6 +1016,8 @@ msg_get_override(dax_message *msg) {
     index = *((tag_index *)&msg->data[0]);
     byte = *((u_int32_t *)&msg->data[4]);
     size = *((u_int32_t *)&msg->data[8]);
+    xlog(LOG_MSG | LOG_VERBOSE, "Get Override Message from module %d, index %d, byte %d, size %d", msg->fd, index, byte, size);
+
     result = override_get(index, byte, size, buff, &buff[size]);
 
     if(result < 0) { /* Send Error */
@@ -1031,6 +1038,7 @@ msg_set_override(dax_message *msg) {
 
     index = *((tag_index *)&msg->data[0]);
     flag = *((u_int32_t *)&msg->data[4]);
+    xlog(LOG_MSG | LOG_VERBOSE, "Set Override Message from module %d, index %d", msg->fd, index);
 
     result = override_set(index, flag);
     if(result < 0) { /* Send Error */
@@ -1038,6 +1046,6 @@ msg_set_override(dax_message *msg) {
     } else {
         _message_send(msg->fd, MSG_SET_OVRD, NULL, 0, RESPONSE);
     }
-    printf("Message Set Override = %s\n", flag ? "True" : "False");
+    //printf("Message Set Override = %s\n", flag ? "True" : "False");
     return 0;
 }
