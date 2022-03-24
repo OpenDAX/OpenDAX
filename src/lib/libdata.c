@@ -185,7 +185,7 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
             return ERR_ALLOC;
         }
     } else {
-        //--printf("Just putting {%d}  last\n", tag->handle);
+        //--printf("Just putting {%s}  last\n", tag->name);
         new = ds->cache_head->prev;
     }
     strcpy(new->name, tag->name);

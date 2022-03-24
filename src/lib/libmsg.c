@@ -121,7 +121,11 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
     while(ds->last_msg == NULL) {
         clock_gettime(CLOCK_REALTIME, &timeout);
         timeout.tv_sec += ds->msgtimeout/1000;
-        timeout.tv_nsec += ds->msgtimeout%1000 *1000000;
+        timeout.tv_nsec += ds->msgtimeout%1000 *1e6;
+        if(timeout.tv_nsec>1e9) {
+            timeout.tv_sec++;
+            timeout.tv_nsec-=1e9;
+        }
         result = pthread_cond_timedwait(&ds->msg_cond, &ds->msg_lock, &timeout);
         if(result == ETIMEDOUT) {
             printf(" - _message_recv() Timeout\n");
@@ -628,7 +632,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         tag->count = stom_udint(*((u_int32_t *)&buff[8]));
         tag->attr = stom_udint(*((u_int32_t *)&buff[12]));
         buff[size - 1] = '\0'; /* Just to make sure */
-        strcpy(tag->name, &buff[14]);
+        strcpy(tag->name, &buff[16]);
         cache_tag_add(ds, tag);
         free(buff);
     }
