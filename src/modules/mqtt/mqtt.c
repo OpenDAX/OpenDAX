@@ -202,7 +202,6 @@ setup_publishers() {
 }
 
 
-
 void
 client_loop(void) {
     int result;

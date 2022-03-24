@@ -163,10 +163,19 @@ main(int argc, char *argv[])
         check_cache_miss(ds, tags[n]);
     }
     printf("Free cache\n");
-    for(n=0;n<8;n++) {
+    printf("Check that adding extra tags work\n");
+    for(n=0;n<9;n++) {
         cache_tag_add(ds, &tags[n]);
-        print_cache(ds);
     }
+    print_cache(ds);
+    for(n=0;n<9;n++)for(n=0;n<8;n++) {
+        if(n != 7) {
+            check_cache_hit(ds, tags[n]);
+        }
+    }
+    print_cache(ds);
+    check_cache_miss(ds, tags[7]);
+
     free_tag_cache(ds);
     print_cache(ds);
     dax_free_config(ds);

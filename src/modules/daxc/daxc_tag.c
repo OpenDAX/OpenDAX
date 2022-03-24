@@ -139,7 +139,7 @@ tag_del(char **tokens)
  * or a number.  If a tagname then we list that tag if it's a number
  * then we check for a second argument.  If we have two numbers then
  * we list from the first to the first + second if not then we list
- * the next X tags and increment lastindex. */
+ * the next X tags and increment nextindex. */
 
 
 int
@@ -147,7 +147,8 @@ list_tags(char **tokens)
 {
     dax_tag temp_tag;
     tag_handle h;
-    static int lastindex;
+    static int nextindex;
+    int lastindex;
     int result;
     char *arg[] = {NULL, NULL};
     char *end_ptr;
@@ -157,6 +158,12 @@ list_tags(char **tokens)
     	arg[0] = tokens[0];
     	if(arg[0] != NULL) arg[1] = tokens[1];
     }
+
+    result = dax_tag_handle(ds, &h, "_lastindex", 1);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &lastindex);
+    if(result) return result;
+    if(nextindex >= lastindex) nextindex=0;
 
     if(arg[0]) {
         start = strtol(arg[0], &end_ptr, 0);
@@ -173,38 +180,40 @@ list_tags(char **tokens)
             /* List tags from start to start + count */
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
-                for(n = start; n < (start + count); n++) {
-                    if(dax_tag_byindex(ds, &temp_tag, n)) {
+                nextindex = start;
+                while( n < count && nextindex <= lastindex) {
+                    result = dax_tag_byindex(ds, &temp_tag, nextindex);
+                    if(result == 0) {
+                        show_tag(nextindex, temp_tag);
+                        n++;
+                        nextindex++;
+                    } else if(result == ERR_DELETED) {
+                        nextindex++;
+                    } else {
                         printf("No More Tags To List\n");
                         return 1;
-                    } else {
-                        show_tag(n, temp_tag);
                     }
                 }
             } else {
                 /* List the next 'start' amount of tags */
-                for(n = lastindex; n < (start + lastindex); n++) {
-                    if(dax_tag_byindex(ds, &temp_tag, n)) {
-                        printf("No More Tags To List\n");
-                        lastindex = 0;
-                        return 1;
+                n = 0;
+                while(n < start && nextindex <= lastindex) {
+                    result = dax_tag_byindex(ds, &temp_tag, nextindex);
+                    if(result == 0) {
+                        show_tag(nextindex, temp_tag);
+                        n++;
+                        nextindex++;
+                    } else if(result == ERR_DELETED) {
+                        nextindex++;
                     } else {
-                        show_tag(n, temp_tag);
+                        printf("No More Tags To List\n");
+                        return 1;
                     }
                 }
-                lastindex += start;
             }
         }
     } else {
         /* List all tags */
-        result = dax_tag_handle(ds, &h, "_lastindex", 1);
-        if(result) return result;
-        result = dax_read_tag(ds, h, &lastindex);
-        if(result) return result;
-
-       /* TODO: We now have a _lastindex status tag that we can
-        * use to see how far to go instead of running until
-        * we get an error.*/        
         for(n=0; n<=lastindex; n++) {
             result = dax_tag_byindex(ds, &temp_tag, n);
             if(result == ERR_DELETED) {
@@ -217,6 +226,7 @@ list_tags(char **tokens)
                 show_tag(n, temp_tag);
             }
         }
+        nextindex = 0; /* Reset this static variable so other tag lists start at the beginning */
     }
     return 0;
 }
@@ -294,7 +304,7 @@ tag_read(char **tokens)
 int
 tag_write(char **tokens, int tcount) {
     tag_handle handle;
-    int result, n, points, len;
+    int result, n, points;
     char *name;
     u_int8_t use_mask = 0;
     void *buff, *mask;

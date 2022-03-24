@@ -88,8 +88,6 @@ int msg_add_override(dax_message *msg);
 int msg_del_override(dax_message *msg);
 int msg_get_override(dax_message *msg);
 int msg_set_override(dax_message *msg);
-int msg_clr_override(dax_message *msg);
-
 
 
 /* Generic message sending function.  If response is MSG_ERROR then it is assumed that
