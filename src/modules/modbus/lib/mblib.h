@@ -137,7 +137,7 @@ struct mb_port {
     unsigned char type;       /* 0=Master, 1=Slave */
     unsigned char devtype;    /* 0=serial, 1=network */
     unsigned char protocol;   /* [Only RTU is implemented so far] */
-    u_int8_t slaveid;         /* Slave ID 1-247 (Slave Only) */
+    uint8_t slaveid;         /* Slave ID 1-247 (Slave Only) */
     int baudrate;
     short databits;
     short stopbits;
@@ -153,13 +153,13 @@ struct mb_port {
     int timeout;     /* Response timeout */
     int maxattempts; /* Number of failed attempts to allow before closing and exiting the port */
 
-    u_int16_t *holdreg;       /* database index for holding registers (slave only) */
+    uint16_t *holdreg;       /* database index for holding registers (slave only) */
     unsigned int holdsize;    /* size of the internal holding register bank */
-    u_int16_t *inputreg;      /* database index for input registers (slave only) */
+    uint16_t *inputreg;      /* database index for input registers (slave only) */
     unsigned int inputsize;   /* size of the internal input register bank */
-    u_int16_t *coilreg;       /* database index for coils (slave only) */
+    uint16_t *coilreg;       /* database index for coils (slave only) */
     unsigned int coilsize;    /* size of the internal bank of coils in 16-bit registers */
-    u_int16_t *discreg;       /* discrete input register */
+    uint16_t *discreg;       /* discrete input register */
     unsigned int discsize;    /* size of the internal bank of coils */
 #ifdef __MB_THREAD_SAFE
     _mb_mutex_t hold_mutex;  /* mutexes used to lock the above register areas when needed */
@@ -183,8 +183,8 @@ struct mb_port {
     unsigned int inhibit_temp;
     void *userdata;
     /* These are callback function pointers for the port message data */
-    void (*out_callback)(struct mb_port *port, u_int8_t *buff, unsigned int);
-    void (*in_callback)(struct mb_port *port, u_int8_t *buff, unsigned int);
+    void (*out_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
+    void (*in_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
     void (*slave_read)(struct mb_port *port, int reg, int index, int size, void *userdata);
     void (*slave_write)(struct mb_port *port, int reg, int index, int size, void *userdata);
     void (*userdata_free)(struct mb_port *port, void *userdata);
@@ -193,12 +193,12 @@ struct mb_port {
 struct mb_cmd {
     unsigned char enable;    /* 0=disable, 1=enable */
     unsigned char mode;      /* MB_CONTINUOUS, MB_ONCHANGE */
-    u_int8_t node;           /* Modbus device ID */
-    u_int8_t function;       /* Function Code */
-    u_int16_t m_register;    /* Modbus Register */
-    u_int16_t length;        /* length of modbus data */
+    uint8_t node;           /* Modbus device ID */
+    uint8_t function;       /* Function Code */
+    uint16_t m_register;    /* Modbus Register */
+    uint16_t length;        /* length of modbus data */
     unsigned int interval;   /* number of port scans between messages */
-    u_int8_t *data;          /* pointer to the actual modbus data that this command refers */
+    uint8_t *data;          /* pointer to the actual modbus data that this command refers */
     int datasize;            /* size of the *data memory area */
     unsigned int icount;     /* number of intervals passed */
     unsigned int requests;   /* total number of times this command has been sent */
@@ -206,12 +206,12 @@ struct mb_cmd {
     unsigned int timeouts;   /* number of times this command has timed out */
     unsigned int crcerrors;  /* number of checksum errors */
     unsigned int exceptions; /* number of modbus exceptions recieved from slave */
-    u_int8_t lasterror;      /* last error on command */
-    u_int16_t lastcrc;       /* used to determine if a conditional message should be sent */
+    uint8_t lasterror;      /* last error on command */
+    uint16_t lastcrc;       /* used to determine if a conditional message should be sent */
     unsigned char firstrun;  /* Indicates that this command has been sent once */
     void *userdata;          /* Data that can be assigned by the user.  Use free function callback */
-    void (*pre_send)(struct mb_cmd *cmd, void *userdata, u_int8_t *data, int size);
-    void (*post_send)(struct mb_cmd *cmd, void *userdata, u_int8_t *data, int size);
+    void (*pre_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int size);
+    void (*post_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int size);
     void (*send_fail)(struct mb_cmd *cmd, void *userdata);
     void (*userdata_free)(struct mb_cmd *cmd, void *userdata); /* Callback to free userdata */
     struct mb_cmd* next;
@@ -231,8 +231,8 @@ int server_loop(mb_port *port);
 int create_response(mb_port * port, unsigned char *buff, int size);
 
 /* Utility Functions - defined in modutil.c */
-u_int16_t crc16(unsigned char *msg, unsigned short length);
-int crc16check(u_int8_t *buff, int length);
+uint16_t crc16(unsigned char *msg, unsigned short length);
+int crc16check(uint8_t *buff, int length);
 
 #ifdef DEBUG
  #define DEBUGMSG(x) debug(x)

@@ -45,8 +45,8 @@ struct Config {
 typedef struct cmd_temp_data {
     char *tagname;
     int index;
-    u_int8_t function;
-    u_int16_t length;
+    uint8_t function;
+    uint16_t length;
 } cmd_temp_data;
 
 /* This is a structure of information that we attach to the mb_port userdata

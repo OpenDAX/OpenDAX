@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2021 Phil Birkelbach
+ *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,17 +17,20 @@
  */
 
 /*
- *  Test function code 1 for the modbus server module
+ *  Test basic functions for rtu slave
+ *  TODO This test is a placeholder since slave functionality has not been implemented yet.
  */
-/* TODO: Convert this to use the functions in modbus_common.c */
 
-#define _XOPEN_SOURCE
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "../modtest_common.h"
+#include "modbus_common.h"
 
 struct mod_frame {
     uint16_t tid;
@@ -87,7 +90,7 @@ _test_request(int sock, uint16_t addr, uint16_t count, uint8_t *cmp_buff) {
     buff[1] = count % 256;
     sframe.tid = tid++;
     sframe.uid = 1;
-    sframe.fc = 2;
+    sframe.fc = 1;
     sframe.addr = addr;
     sframe.size = 2;
     sframe.buff = buff;
@@ -113,11 +116,12 @@ main(int argc, char *argv[])
     socklen_t addr_size;
     int status, n, i;
     int result;
-    pid_t server_pid, mod_pid;
+    pid_t server_pid, mod_pid, socat_pid;
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_server.conf");
+    socat_pid = run_socat();
+    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_RTUslave.conf");
     /* Connect to the tag server */
     ds = dax_init("test");
     if(ds == NULL) {
@@ -127,9 +131,10 @@ main(int argc, char *argv[])
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
     if(result) return result;
-    result =  dax_tag_handle(ds, &h, "mb_dreg", 0);
+    result =  dax_tag_handle(ds, &h, "mb_creg", 0);
     if(result) return result;
 
+#ifdef ASDFASFE
     /* Open a socket to do the modbus stuff */
     s = socket(PF_INET, SOCK_STREAM, 0);
     serverAddr.sin_family = AF_INET;
@@ -170,14 +175,18 @@ main(int argc, char *argv[])
     }
     dax_write_tag(ds, h, buff);
     exit_status += _test_request(s, 0, h.count, buff);
+#endif
 
     close(s);
     dax_disconnect(ds);
 
     kill(mod_pid, SIGINT);
-    kill(server_pid, SIGINT);
     if( waitpid(mod_pid, &status, 0) != mod_pid )
         fprintf(stderr, "Error killing modbus module\n");
+    kill(socat_pid, SIGINT);
+    kill(server_pid, SIGINT);
+    if( waitpid(socat_pid, &status, 0) != socat_pid )
+        fprintf(stderr, "Error killing socat\n");
     if( waitpid(server_pid, &status, 0) != server_pid )
         fprintf(stderr, "Error killing tag server\n");
 

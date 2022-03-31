@@ -73,7 +73,7 @@ static char aCRCLo[] = {
 
 /* Modbus CRC16 checksum calculation. Taken straight from the modbus specification,
  * but I fixed the typos and changed the name to protect the guilty */ 
-u_int16_t
+uint16_t
 crc16(unsigned char *msg, unsigned short length)
 {
     unsigned char CRCHi = 0xFF;
@@ -91,9 +91,9 @@ crc16(unsigned char *msg, unsigned short length)
  * length should be the length of the modbus data buffer INCLUDING the
  * two byte checksum.  Returns 1 if checksum matches */
 int
-crc16check(u_int8_t *buff, int length)
+crc16check(uint8_t *buff, int length)
 {
-    u_int16_t crcLocal, crcRemote;
+    uint16_t crcLocal, crcRemote;
     if(length < 2) return 0; /* Otherwise a bad pointer will go to crc16 */
     crcLocal = crc16(buff, length-2);
     COPYWORD(&crcRemote, &buff[length-2]);

@@ -56,7 +56,7 @@ map_add(tag_handle src, tag_handle dest)
 {
     _dax_datamap *new_map;
     int bit, offset;
-    u_int8_t *mask;
+    uint8_t *mask;
 //    printf("map_add() called\n");
 //    printf("src.byte = 0x%X\n", src.byte);
 //    printf("src.bit = 0x%X\n", src.bit);
@@ -114,7 +114,7 @@ map_add(tag_handle src, tag_handle dest)
          */
         bit = dest.bit;
         offset = 0;
-        mask = (u_int8_t *)malloc(src.size);
+        mask = (uint8_t *)malloc(src.size);
         bzero(mask, src.size);
         for(int i=0; i<src.count; i++) {
             mask[offset] |= (0x01 << bit);
@@ -173,9 +173,9 @@ map_del_all(_dax_datamap *head) {
 }
 
 int
-map_check(tag_index idx, int offset, u_int8_t *data, int size) {
+map_check(tag_index idx, int offset, uint8_t *data, int size) {
     _dax_datamap *this;
-    u_int8_t *new_data;
+    uint8_t *new_data;
     int srcByte;
     int srcBit;
     int destByte;
@@ -209,7 +209,7 @@ map_check(tag_index idx, int offset, u_int8_t *data, int size) {
                 srcBit = this->source.bit;
                 destByte = 0;
                 destBit = this->dest.bit;
-                new_data = (u_int8_t *)malloc(this->source.size);
+                new_data = (uint8_t *)malloc(this->source.size);
                 if(new_data == NULL) {
                     xerror("Unable to allocate memory for map mask");
                     return ERR_ALLOC;

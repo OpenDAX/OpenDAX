@@ -111,9 +111,9 @@ mb_enable_cmd(mb_cmd *cmd) {
 }
 
 int
-mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_int16_t length)
+mb_set_command(mb_cmd *cmd, uint8_t node, uint8_t function, uint16_t reg, uint16_t length)
 {
-    u_int8_t *newdata;
+    uint8_t *newdata;
     int newsize = 0;
 
     if(node < 1 || node > 247) {
@@ -204,7 +204,7 @@ mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd
     }
 }
 
-u_int8_t *
+uint8_t *
 mb_get_cmd_data(mb_cmd *cmd)
 {
     return cmd->data;
@@ -252,13 +252,13 @@ mb_is_write_cmd(mb_cmd *cmd)
 
 /* This sets the callback function that will be called just prior to sending a command.
  * The prototype must be...
- * void funcname(mb_cmd *cmd, void *userdata, u_int8_t data, int datasize);
+ * void funcname(mb_cmd *cmd, void *userdata, uint8_t data, int datasize);
  * The cmd is the command that is about to be sent, userdata is the pointer to the
  * userdata that was assigned by 'mb_set_userdata()', data is the internal command data
  * that would represent the data to be sent/received by the command and datasize is the
  * number of bytes that data occupies. */
 void
-mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *, void *, u_int8_t *, int))
+mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *, void *, uint8_t *, int))
 {
     cmd->pre_send = pre_send;
 }
@@ -266,7 +266,7 @@ mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *, void *, u_in
 /* This sets the callback function that will be called just after sending the command.
  * The prototype and description are the same as mb_pre_send_callback(). */
 void
-mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *, void *, u_int8_t *, int))
+mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *, void *, uint8_t *, int))
 {
     cmd->post_send = post_send;
 }

@@ -30,7 +30,7 @@ init_database(void) {
 
 /* These are the callbacks that get assigned to each command */
 static void
-_write_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
+_write_data(struct mb_cmd *c, void *userdata, uint8_t *data, int datasize)
 {
     /* It really should be this easy if we have done everything right up to here */
     dax_write_tag(ds, *((tag_handle *)userdata), data);
@@ -38,7 +38,7 @@ _write_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
 
 
 static void
-_read_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
+_read_data(struct mb_cmd *c, void *userdata, uint8_t *data, int datasize)
 {
     /* It really should be this easy if we have done everything right up to here */
     dax_read_tag(ds, *((tag_handle *)userdata), data);
@@ -51,7 +51,7 @@ _read_data(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
  * to point to the tag handle of the OpenDAX tags, free the old userdata and
  * set up the permanent callbacks that will actually handle the data */
 void
-setup_command(mb_cmd *c, void *userdata, u_int8_t *data, int datasize)
+setup_command(mb_cmd *c, void *userdata, uint8_t *data, int datasize)
 {
     int result, count;
     cmd_temp_data *cdata;

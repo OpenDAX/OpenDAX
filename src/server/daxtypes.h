@@ -36,9 +36,9 @@
 
 /* Tag groups are an array of handles in each module */
 typedef struct tag_group_t {
-    u_int8_t flags;    /* option flags for the group */
+    uint8_t flags;    /* option flags for the group */
     unsigned int size; /* amount of memory needed to transfer this group */
-    u_int8_t count;    /* number of members in this group */
+    uint8_t count;    /* number of members in this group */
     tag_handle *members;
 } tag_group;
 
@@ -50,11 +50,11 @@ typedef struct dax_Module {
     unsigned int state; /* Modules Current Running State */
     int fd;             /* The socket file descriptor for this module */
     tag_index tagindex; /* The index of the tag that represents this module */
-    u_int32_t timeout;  /* Module communication timeout. */
+    uint32_t timeout;  /* Module communication timeout. */
     time_t starttime;
     int event_count;
     tag_group *tag_groups; /* Array of tag group packet definitions */
-    u_int32_t groups_size;  /* Current size of the group array */
+    uint32_t groups_size;  /* Current size of the group array */
     struct dax_Module *next, *prev;
 } dax_module;
 
@@ -65,7 +65,7 @@ typedef struct dax_Module {
 struct cdt_member {
     char *name;
     unsigned int type;
-    u_int32_t count;
+    uint32_t count;
     struct cdt_member *next;
 };
 

@@ -51,8 +51,8 @@ typedef struct virt_functions {
  */
 typedef struct tag_queue {
     tag_type type;   /* Type of the tag items */
-    u_int32_t count; /* The number of tags of each item */
-    u_int32_t size;  /* The size of the tag item */
+    uint32_t count; /* The number of tags of each item */
+    uint32_t size;  /* The size of the tag item */
     int qsize;       /* Total size of the queue in number of tag items */
     int qcount;      /* Current number of items in the queue */
     int qread;       /* Nest item that needs to be read */

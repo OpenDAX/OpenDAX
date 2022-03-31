@@ -175,8 +175,8 @@ master_loop(mb_port *mp)
 static int
 sendRTUrequest(mb_port *mp, mb_cmd *cmd)
 {
-    u_int8_t buff[MB_FRAME_LEN], length;
-    u_int16_t crc, temp;
+    uint8_t buff[MB_FRAME_LEN], length;
+    uint16_t crc, temp;
 
     /* build the request message */
     buff[0]=cmd->node;
@@ -225,7 +225,7 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
                 if(cmd->length > 16) {
                     crc = crc16(cmd->data, cmd->datasize);
                 } else if(cmd->length > 8) {
-                    crc = *(u_int16_t *)cmd->data;
+                    crc = *(uint16_t *)cmd->data;
                 } else {
                     crc = *cmd->data;
                 }
@@ -292,7 +292,7 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
  * Returns the length of the message on success
  */
 static int
-getRTUresponse(u_int8_t *buff, mb_port *mp)
+getRTUresponse(uint8_t *buff, mb_port *mp)
 {
     unsigned int buffptr = 0;
     struct timeval oldtime, thistime;
@@ -336,7 +336,7 @@ sendASCIIrequest(mb_port *mp, mb_cmd *cmd)
 }
 
 static int
-getASCIIresponse(u_int8_t *buff, mb_port *mp)
+getASCIIresponse(uint8_t *buff, mb_port *mp)
 {
     return 0;
 }
@@ -345,8 +345,8 @@ getASCIIresponse(u_int8_t *buff, mb_port *mp)
 static int
 sendTCPrequest(mb_port *mp, mb_cmd *cmd)
 {
-    u_int8_t buff[MB_FRAME_LEN];
-    u_int16_t crc, temp, length;
+    uint8_t buff[MB_FRAME_LEN];
+    uint16_t crc, temp, length;
 
     /* build the request message */
     /* MBAP Header minus the length.  We'll set it later */
@@ -401,7 +401,7 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
                 if(cmd->length > 16) {
                     crc = crc16(cmd->data, cmd->datasize);
                 } else if(cmd->length > 8) {
-                    crc = *(u_int16_t *)cmd->data;
+                    crc = *(uint16_t *)cmd->data;
                 } else {
                     crc = *cmd->data;
                 }
@@ -461,10 +461,10 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
  * Returns the length of the message on success
  */
 static int
-getTCPresponse(u_int8_t *buff, mb_port *mp)
+getTCPresponse(uint8_t *buff, mb_port *mp)
 {
     unsigned int buffindex = 0;
-    u_int8_t tempbuff[MB_FRAME_LEN];
+    uint8_t tempbuff[MB_FRAME_LEN];
     struct timeval oldtime, thistime;
     int result;
 
@@ -514,7 +514,7 @@ getTCPresponse(u_int8_t *buff, mb_port *mp)
  */
 /* TODO: There is all kinds of buffer overflow potential here.  It should all be checked */
 static int
-handleresponse(u_int8_t *buff, mb_cmd *cmd)
+handleresponse(uint8_t *buff, mb_cmd *cmd)
 {
     int n;
 
@@ -535,7 +535,7 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
         case 4:
             /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
             for(n = 0; n < (buff[2] / 2); n++) {
-                COPYWORD(&((u_int16_t *)cmd->data)[n], &buff[(n * 2) + 3]);
+                COPYWORD(&((uint16_t *)cmd->data)[n], &buff[(n * 2) + 3]);
             }
             break;
         case 5:
@@ -563,11 +563,11 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
 int
 mb_send_command(mb_port *mp, mb_cmd *mc)
 {
-    u_int8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
+    uint8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
     int try = 1;
     int result, msglen;
     static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
-    static int (*getresponse)(u_int8_t *,struct mb_port *) = NULL;
+    static int (*getresponse)(uint8_t *,struct mb_port *) = NULL;
   /* This sets up the function pointers so we don't have to constantly check
    *  which protocol we are using for communication.  From this point on the
    *  code is generic for RTU or ASCII */
@@ -642,7 +642,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
 }
 
 static int
-_create_exception(unsigned char *buff, u_int16_t exception)
+_create_exception(unsigned char *buff, uint16_t exception)
 {
     buff[1] |= ME_EXCEPTION;
     buff[2] = exception;
@@ -655,10 +655,10 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 {
     int n, bit, word, buffbit, buffbyte;
     unsigned int regsize;
-    u_int16_t index, count, *reg;
+    uint16_t index, count, *reg;
 
-    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
+    COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+    COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of words/coils */
     if(port->slave_read) { /* Call the callback function if it has been set */
         port->slave_read(port, mbreg, index, count, port->userdata);
     }
@@ -706,10 +706,10 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 {
     int n;
     unsigned int regsize;
-    u_int16_t index, count, *reg;
+    uint16_t index, count, *reg;
 
-    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
+    COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+    COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of words/coils */
     if(port->slave_read) { /* Call the callback function if it has been set */
         port->slave_read(port, mbreg, index, count, port->userdata);
     }
@@ -739,7 +739,7 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
  * function code exception.
  */
 int
-_check_function_code_exception(mb_port *port, u_int8_t function) {
+_check_function_code_exception(mb_port *port, uint8_t function) {
     switch(function) {
         case 1:
         case 5:
@@ -774,8 +774,8 @@ _check_function_code_exception(mb_port *port, u_int8_t function) {
 int
 create_response(mb_port *port, unsigned char *buff, int size)
 {
-    u_int8_t node, function;
-    u_int16_t index, value, count;
+    uint8_t node, function;
+    uint16_t index, value, count;
     int word, bit, n;
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
@@ -798,8 +798,8 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 4: /* Read Input Registers */
             return _read_words_response(port, buff, size, MB_REG_INPUT);
         case 5: /* Write Single Coil */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&value, (u_int16_t *)&buff[4]); /* Value */
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
             if(index >= port->coilsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
@@ -813,8 +813,8 @@ create_response(mb_port *port, unsigned char *buff, int size)
             }
             return 6;
         case 6: /* Write Single Register */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&value, (u_int16_t *)&buff[4]); /* Value */
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
             if(index >= port->holdsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
@@ -826,8 +826,8 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 8:
             return size / 2;
         case 15: /* Write Multiple Coils */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&count, (u_int16_t *)&buff[4]); /* Value */
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
             if((index + count) > port->coilsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
@@ -847,8 +847,8 @@ create_response(mb_port *port, unsigned char *buff, int size)
             }
             return 6;
         case 16: /* Write Multiple Registers */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&count, (u_int16_t *)&buff[4]); /* Value */
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
             if((index + count) > port->holdsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }

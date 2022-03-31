@@ -32,17 +32,17 @@
 #include "../modtest_common.h"
 
 struct mod_frame {
-    u_int16_t tid;
-    u_int8_t  uid;
-    u_int8_t  fc;
-    u_int16_t  addr;
-    u_int8_t *buff;
-    u_int16_t size; /* Size of buffer */
+    uint16_t tid;
+    uint8_t  uid;
+    uint8_t  fc;
+    uint16_t  addr;
+    uint8_t *buff;
+    uint16_t size; /* Size of buffer */
 };
 
 int
 _send_frame(int sock, struct mod_frame frame) {
-    u_int8_t buff[2048];
+    uint8_t buff[2048];
     int result;
 
     buff[0] = frame.tid>>8;
@@ -63,15 +63,15 @@ _send_frame(int sock, struct mod_frame frame) {
 
 int
 _recv_frame(int sock, struct mod_frame *frame) {
-    u_int8_t buff[2048];
+    uint8_t buff[2048];
     int result;
 
     result = recv(sock, buff, 1024, 0);
-    frame->tid = (u_int16_t)buff[0]<<8 | buff[1];
-    frame->size = ((u_int16_t)buff[4]<<8 | buff[5])-4;
+    frame->tid = (uint16_t)buff[0]<<8 | buff[1];
+    frame->size = ((uint16_t)buff[4]<<8 | buff[5])-4;
     frame->uid = buff[6];
     frame->fc = buff[7];
-    frame->addr = (u_int16_t)buff[8]<<8 | buff[9];
+    frame->addr = (uint16_t)buff[8]<<8 | buff[9];
     memcpy(frame->buff, &buff[10], frame->size);
     return result;
 }
@@ -83,7 +83,7 @@ main(int argc, char *argv[])
     dax_state *ds;
     tag_handle h;
     dax_uint test;
-    u_int8_t buff[1024], rbuff[8], bit;
+    uint8_t buff[1024], rbuff[8], bit;
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;

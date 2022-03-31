@@ -37,29 +37,29 @@
 
 /* Contains all the information to identify a subscription */
 typedef struct {
-   u_int8_t enabled;
+   uint8_t enabled;
    char *topic;
    char **tagnames;  /* Array of tagnames */
    tag_handle *h;    /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
-   u_int8_t qos;
+   uint8_t qos;
    int format_type;
    char *format_str;
-//   u_int8_t binformat[8];
+//   uint8_t binformat[8];
 } subscriber_t;
 
 /* Contains all the information to identify a publisher */
 typedef struct {
-   u_int8_t enabled;
+   uint8_t enabled;
    char *topic;
    char **tagnames;  /* Array of tagnames */
    tag_handle *h;   /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
-   u_int8_t qos;
+   uint8_t qos;
    int format_type;
    char *format_str;
    char *update_tag;
-//   u_int8_t binformat[8];
+//   uint8_t binformat[8];
    tag_type update_mode;
    char *event_data; /* We use a string for convenience */
 } publisher_t;

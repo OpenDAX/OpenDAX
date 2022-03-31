@@ -68,8 +68,8 @@ typedef struct dax_event_t {
     int byte;            /* The byte offset where the data block starts */
     unsigned char bit;   /* The bit offset */
     int count;           /* The number of items represented by the handle */
-    u_int32_t size;      /* The total size of the data block in bytes */
-    u_int32_t options;   /* Options for the event */
+    uint32_t size;      /* The total size of the data block in bytes */
+    uint32_t options;   /* Options for the event */
     tag_type datatype;   /* The data type of the block */
     int eventtype;       /* The type of event */
     void *data;          /* Data given by module */
@@ -82,7 +82,7 @@ typedef struct dax_datamap_t {
     int id;
     tag_handle source;
     tag_handle dest;
-    u_int8_t *mask;
+    uint8_t *mask;
     struct dax_datamap_t *next;
 } _dax_datamap;
 
@@ -96,10 +96,10 @@ typedef struct {
     int nextmap;             /* Counter for keeping track of map IDs */
     _dax_event *events;      /* Linked list of events */
     _dax_datamap *mappings;  /* Linked list of mappings */
-    u_int8_t *data;
-    u_int8_t *omask;        /* Override mask pointer */
-    u_int8_t *odata;        /* Override data pointer */
-    u_int32_t ret_file_pointer; /* Pointer to the data area of the tag retention file */
+    uint8_t *data;
+    uint8_t *omask;        /* Override mask pointer */
+    uint8_t *odata;        /* Override data pointer */
+    uint32_t ret_file_pointer; /* Pointer to the data area of the tag retention file */
 } _dax_tag_db;
 
 typedef struct {
@@ -111,7 +111,7 @@ typedef struct {
 
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
-tag_index tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr);
+tag_index tag_add(char *name, tag_type type, unsigned int count, uint32_t attr);
 tag_index virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf);
 int tag_del(tag_index idx);
 int tag_get_name(char *, dax_tag *);
@@ -128,7 +128,7 @@ int tag_write(tag_index handle, int offset, void *data, int size);
 int tag_mask_write(tag_index handle, int offset, void *data, void *mask, int size);
 
 /* Perform an atomic operation on the data */
-int atomic_op(tag_handle h, void *data, u_int16_t op);
+int atomic_op(tag_handle h, void *data, uint16_t op);
 
 /* Custom DataType functions */
 tag_type cdt_create(char *str, int *error);
@@ -143,18 +143,18 @@ void event_del_check(tag_index idx);
 int event_add(tag_handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
 int events_del_all(_dax_event *head);
-int event_opt(int index, int id, u_int32_t options, dax_module *module);
+int event_opt(int index, int id, uint32_t options, dax_module *module);
 int events_cleanup(dax_module *module);
 
 int map_add(tag_handle src, tag_handle dest);
 int map_del(tag_index index, int id);
 int map_del_all(_dax_datamap *head);
-int map_check(tag_index idx, int offset, u_int8_t *data, int size);
+int map_check(tag_index idx, int offset, uint8_t *data, int size);
 
 int override_add(tag_index idx, int offset, void *data, void *mask, int size);
 int override_del(tag_index idx, int offset, void *mask, int size);
 int override_get(tag_index idx, int offset, int size, void *data, void *mask);
-int override_set(tag_index idx, u_int8_t flag);
+int override_set(tag_index idx, uint8_t flag);
 
 
 #define DAX_DIAG

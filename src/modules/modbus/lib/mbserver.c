@@ -117,7 +117,7 @@ _mb_read(mb_port *port, int fd)
     int result, size;
     unsigned char buff[100];
     struct client_buffer *cc;
-    u_int16_t msgsize;
+    uint16_t msgsize;
 
     size = 100;
     result = read(fd, buff, size);
@@ -139,7 +139,7 @@ _mb_read(mb_port *port, int fd)
     memcpy(&(cc->buff[cc->buffindex]), buff, result); /* Copy the new data to the buffer */
     cc->buffindex += result;
     if(cc->buffindex > 5) {
-        COPYWORD(&msgsize, (u_int16_t *)&cc->buff[4]); /* Get the Modbus Message size */
+        COPYWORD(&msgsize, (uint16_t *)&cc->buff[4]); /* Get the Modbus Message size */
         if(cc->buffindex >= (msgsize + 6)) {
             if(port->in_callback) {
                 port->in_callback(port, cc->buff, cc->buffindex);

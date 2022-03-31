@@ -27,12 +27,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-int read_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff);
-int read_discretes(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff);
-int read_holding_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff);
-int read_input_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff);
-int write_single_coil(int sock, u_int16_t addr, u_int8_t val);
-int write_single_register(int sock, u_int16_t addr, u_int16_t val);
-int write_multiple_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *sbuff);
-int write_multiple_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *sbuff);
+pid_t run_socat(void);
+int read_coils(int sock, uint16_t addr, uint16_t count, uint8_t *rbuff);
+int read_discretes(int sock, uint16_t addr, uint16_t count, uint8_t *rbuff);
+int read_holding_registers(int sock, uint16_t addr, uint16_t count, uint16_t *rbuff);
+int read_input_registers(int sock, uint16_t addr, uint16_t count, uint16_t *rbuff);
+int write_single_coil(int sock, uint16_t addr, uint8_t val);
+int write_single_register(int sock, uint16_t addr, uint16_t val);
+int write_multiple_coils(int sock, uint16_t addr, uint16_t count, uint8_t *sbuff);
+int write_multiple_registers(int sock, uint16_t addr, uint16_t count, uint16_t *sbuff);
 

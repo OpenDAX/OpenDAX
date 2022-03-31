@@ -305,7 +305,7 @@ tag_write(char **tokens, int tcount) {
     tag_handle handle;
     int result, n, points;
     char *name;
-    u_int8_t use_mask = 0;
+    uint8_t use_mask = 0;
     void *buff, *mask;
 
     if(tokens[0]) {

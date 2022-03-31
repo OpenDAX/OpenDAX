@@ -32,7 +32,6 @@
 #include <errno.h>
 #include <assert.h>
 #include <assert.h>
-#include <sys/types.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/select.h>

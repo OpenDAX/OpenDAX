@@ -27,10 +27,10 @@
 
 /* Error handling and logging functions */
 void logger_init(int, char *);
-void set_log_topic(u_int32_t);
+void set_log_topic(uint32_t);
 void xfatal(const char *, ...);
 void xerror(const char *, ...);
-void xlog(u_int32_t ,const char *, ...);
+void xlog(uint32_t ,const char *, ...);
 
 
 #endif /* !__LOGGER_H */

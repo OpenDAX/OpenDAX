@@ -150,10 +150,10 @@ int
 dispatch_event(dax_state *ds, dax_message *msg, dax_id *id)
 {
     int n;
-    u_int32_t idx, eid;
+    uint32_t idx, eid;
 
-    idx =      ntohl(*(u_int32_t *)(&msg->data[0]));
-    eid =      ntohl(*(u_int32_t *)(&msg->data[4]));
+    idx =      ntohl(*(uint32_t *)(&msg->data[0]));
+    eid =      ntohl(*(uint32_t *)(&msg->data[4]));
     /* we just store the pointer to the message data in case the callback needs it
      * This data can be retrieved in the callback by dax_event_get_data() */
     ds->event_data = &msg->data[8];

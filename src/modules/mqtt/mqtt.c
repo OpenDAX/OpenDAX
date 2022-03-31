@@ -45,7 +45,7 @@ void delivered(void *context, MQTTClient_deliveryToken dt)
 void
 _write_formatted_string(subscriber_t *sub, char *payload)
 {
-    u_int8_t v[8];
+    uint8_t v[8];
     
     dax_string_to_val(payload, sub->h[0].type, v, NULL, 0);
     dax_write_tag(ds, sub->h[0], v);

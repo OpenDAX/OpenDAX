@@ -26,7 +26,7 @@
 #include <modopt.h>
 #include <lib/modbus.h>
 
-void setup_command(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize);
+void setup_command(struct mb_cmd *c, void *userdata, uint8_t *data, int datasize);
 int init_database(void);
 
 #endif

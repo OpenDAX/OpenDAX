@@ -33,7 +33,7 @@ static void (*_dax_error)(const char *output) = NULL;
 static void (*_dax_log)(const char *output) = NULL;
 
 void
-dax_set_debug_topic(dax_state *ds, u_int32_t topic)
+dax_set_debug_topic(dax_state *ds, uint32_t topic)
 {
     ds->logflags = topic;
     dax_debug(ds, LOG_MAJOR, "Log Topics Set to %d", ds->logflags);
@@ -174,7 +174,7 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
         case DAX_BOOL:
-            if((0x01 << (index % 8)) & ((u_int8_t *)val)[index / 8]) {
+            if((0x01 << (index % 8)) & ((uint8_t *)val)[index / 8]) {
                 snprintf(buff, size, "1");
             } else {
                 snprintf(buff, size, "0");
@@ -259,12 +259,12 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
         case DAX_BOOL:
             temp = strtol(instr, NULL, 0);
             if(temp == 0) {
-                ((u_int8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
+                ((uint8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
             } else {
-                ((u_int8_t *)buff)[index / 8] |= (0x01 << (index % 8));
+                ((uint8_t *)buff)[index / 8] |= (0x01 << (index % 8));
             }
             if(mask) {
-                ((u_int8_t *)mask)[index / 8] |= (0x01 << (index % 8));
+                ((uint8_t *)mask)[index / 8] |= (0x01 << (index % 8));
             }
             break;
         case DAX_BYTE:
@@ -361,7 +361,7 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_REAL:
             ((dax_real *)buff)[index] = strtof(instr, NULL);
-            if(mask) ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            if(mask) ((uint32_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_LWORD:
         case DAX_ULINT:
@@ -414,7 +414,7 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_LREAL:
             ((dax_lreal *)buff)[index] = strtod(instr, NULL);
-            if(mask) ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            if(mask) ((uint64_t *)mask)[index] = DAX_64_ONES;
             break;
     }
     return retval;

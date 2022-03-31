@@ -18,16 +18,36 @@
  *
  *  This file contains common modbus function */
 
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
 #include <unistd.h>
 #include "modbus_common.h"
 
 static int tid;
 
 
+pid_t
+run_socat(void) {
+    pid_t pid;
+
+    pid = fork();
+
+    if(pid == 0) { // Child
+        execl("/usr/bin/socat", "/usr/bin/socat", "pty,raw,echo=0,link=/tmp/serial1", "pty,raw,echo=0,link=/tmp/serial2", NULL);
+        printf("Failed to launch socat\n");
+        exit(-1);
+    } else if(pid < 0) {
+        printf("Forking problem");
+        exit(-1);
+    }
+    usleep(100000);
+    return pid;
+}
+
+
+
 int
-read_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff) {
-    u_int8_t buff[256];
+read_coils(int sock, uint16_t addr, uint16_t count, uint8_t *rbuff) {
+    uint8_t buff[256];
     int result, size;
 
     buff[0] = tid>>8;
@@ -44,7 +64,9 @@ read_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff) {
     buff[10] = count>>8;
     buff[11] = count;
     result = send(sock, buff, 12, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 1) {
         return buff[8];
     }
@@ -54,8 +76,8 @@ read_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff) {
 }
 
 int
-read_discretes(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff) {
-    u_int8_t buff[256];
+read_discretes(int sock, uint16_t addr, uint16_t count, uint8_t *rbuff) {
+    uint8_t buff[256];
     int result, size;
 
     buff[0] = tid>>8;
@@ -72,7 +94,9 @@ read_discretes(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff) {
     buff[10] = count>>8;
     buff[11] = count;
     result = send(sock, buff, 12, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 2) {
         return buff[8];
     }
@@ -82,8 +106,8 @@ read_discretes(int sock, u_int16_t addr, u_int16_t count, u_int8_t *rbuff) {
 }
 
 int
-read_holding_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff) {
-    u_int8_t buff[256];
+read_holding_registers(int sock, uint16_t addr, uint16_t count, uint16_t *rbuff) {
+    uint8_t buff[256];
     int result, size;
 
     buff[0] = tid>>8;
@@ -100,7 +124,9 @@ read_holding_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbu
     buff[10] = count>>8;
     buff[11] = count;
     result = send(sock, buff, 12, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 3) {
         return buff[8];
     }
@@ -110,8 +136,8 @@ read_holding_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbu
 }
 
 int
-read_input_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff) {
-    u_int8_t buff[256];
+read_input_registers(int sock, uint16_t addr, uint16_t count, uint16_t *rbuff) {
+    uint8_t buff[256];
     int result, size;
 
     buff[0] = tid>>8;
@@ -128,7 +154,9 @@ read_input_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff
     buff[10] = count>>8;
     buff[11] = count;
     result = send(sock, buff, 12, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 4) {
         return buff[8];
     }
@@ -139,8 +167,8 @@ read_input_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *rbuff
 
 
 int
-write_single_coil(int sock, u_int16_t addr, u_int8_t val) {
-    u_int8_t buff[1024];
+write_single_coil(int sock, uint16_t addr, uint8_t val) {
+    uint8_t buff[1024];
     int result, size;
 
     size = 2;
@@ -158,7 +186,9 @@ write_single_coil(int sock, u_int16_t addr, u_int8_t val) {
     buff[10] = val ? 0xFF : 0x00;
     buff[11] = 0;
     result = send(sock, buff, 12, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 5) {
         return buff[8];
     }
@@ -166,8 +196,8 @@ write_single_coil(int sock, u_int16_t addr, u_int8_t val) {
 }
 
 int
-write_single_register(int sock, u_int16_t addr, u_int16_t val) {
-    u_int8_t buff[1024];
+write_single_register(int sock, uint16_t addr, uint16_t val) {
+    uint8_t buff[1024];
     int result, size;
 
     size = 2;
@@ -185,7 +215,9 @@ write_single_register(int sock, u_int16_t addr, u_int16_t val) {
     buff[10] = val >> 8;
     buff[11] = val;
     result = send(sock, buff, 12, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 6) {
         return buff[8];
     }
@@ -193,8 +225,8 @@ write_single_register(int sock, u_int16_t addr, u_int16_t val) {
 }
 
 int
-write_multiple_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *sbuff) {
-    u_int8_t buff[1024];
+write_multiple_coils(int sock, uint16_t addr, uint16_t count, uint8_t *sbuff) {
+    uint8_t buff[1024];
     int result, size;
 
     size = (count -1)/8 +1;
@@ -214,7 +246,9 @@ write_multiple_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *sbuff)
     buff[12] = size;
     memcpy(&buff[13], sbuff, size);
     result = send(sock, buff, 13 + size, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 15) {
         return buff[8];
     }
@@ -222,8 +256,8 @@ write_multiple_coils(int sock, u_int16_t addr, u_int16_t count, u_int8_t *sbuff)
 }
 
 int
-write_multiple_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *sbuff) {
-    u_int8_t buff[1024];
+write_multiple_registers(int sock, uint16_t addr, uint16_t count, uint16_t *sbuff) {
+    uint8_t buff[1024];
     int result, size;
 
     size = count * 2;
@@ -243,7 +277,9 @@ write_multiple_registers(int sock, u_int16_t addr, u_int16_t count, u_int16_t *s
     buff[12] = size;
     swab(sbuff, &buff[13], size);
     result = send(sock, buff, 13 + size, 0);
+    if(result < 0) return 1;
     result = recv(sock, buff, 1024, 0);
+    if(result < 0) return 1;
     if(buff[7] != 16) {
         return buff[8];
     }

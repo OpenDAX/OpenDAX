@@ -163,7 +163,7 @@ static inline int
 _get_slave_config(lua_State *L, mb_port *p)
 {
     unsigned int size;
-    u_int16_t *result = 0;
+    uint16_t *result = 0;
     dax_error(ds, "Slave functionality is not yet implemented");
     port_userdata *ud;
     char *reg_name;
@@ -388,8 +388,8 @@ _add_command(lua_State *L)
     char *string;
     cmd_temp_data *cmd_data;
     unsigned char mode;
-    u_int8_t node, function;
-    u_int16_t reg, length;
+    uint8_t node, function;
+    uint16_t reg, length;
     int p; /* Port ID */
     int tagindex;
     
@@ -441,16 +441,16 @@ _add_command(lua_State *L)
     
     
     lua_getfield(L, -1, "node");
-    node = (u_int8_t)lua_tonumber(L, -1);
+    node = (uint8_t)lua_tonumber(L, -1);
     
     lua_getfield(L, -2, "fcode");
-    function = (u_int8_t)lua_tonumber(L, -1);
+    function = (uint8_t)lua_tonumber(L, -1);
     
     lua_getfield(L, -3, "register");
-    reg = (u_int16_t)lua_tonumber(L, -1);
+    reg = (uint16_t)lua_tonumber(L, -1);
     
     lua_getfield(L, -4, "length");
-    length = (u_int16_t)lua_tonumber(L, -1);
+    length = (uint16_t)lua_tonumber(L, -1);
     
     if(mb_set_command(c, node, function, reg, length)) {
         dax_error(ds, "Unable to set command");

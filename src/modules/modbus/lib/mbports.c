@@ -317,7 +317,7 @@ mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport,
  * use if it is configured as a slave.  It will be ignored if the port is type is
  * set up as a modbus master */
 int
-mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid)
+mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, uint8_t slaveid)
 {
     if(type == MB_MASTER || type == MB_SLAVE) {
         port->type = type;
@@ -425,7 +425,7 @@ mb_get_port_protocol(mb_port *port) {
     return port->protocol;
 }
 
-u_int8_t
+uint8_t
 mb_get_port_slaveid(mb_port *port) {
     return port->slaveid;
 }
@@ -440,7 +440,7 @@ mb_get_port_slaveid(mb_port *port) {
  * number of single bit Coils or Discrete Inputs that are requested
  * These functions will calculate the actual amount of memory
  * that is required. */
-u_int16_t *
+uint16_t *
 mb_alloc_holdreg(mb_port *port, unsigned int size)
 {
     void *new;
@@ -458,7 +458,7 @@ mb_alloc_holdreg(mb_port *port, unsigned int size)
     return new;
 }
 
-u_int16_t *
+uint16_t *
 mb_alloc_inputreg(mb_port *port, unsigned int size)
 {
     void *new;
@@ -474,7 +474,7 @@ mb_alloc_inputreg(mb_port *port, unsigned int size)
     return new;
 }
 
-u_int16_t *
+uint16_t *
 mb_alloc_coil(mb_port *port, unsigned int size)
 {
     void *new;
@@ -490,7 +490,7 @@ mb_alloc_coil(mb_port *port, unsigned int size)
     return new;
 }
 
-u_int16_t *
+uint16_t *
 mb_alloc_discrete(mb_port *port, unsigned int size)
 {
     void *new;
@@ -529,9 +529,9 @@ mb_get_discrete_size(mb_port *port) {
 
 /* These functions are thread safe ways to read/write the data tables */
 int
-mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count)
+mb_write_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count)
 {
-    u_int16_t *reg_ptr;
+    uint16_t *reg_ptr;
     unsigned int reg_size, word, n;
     _mb_mutex_t *reg_mutex;
     unsigned char bit;
@@ -592,9 +592,9 @@ mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, 
 }
 
 int
-mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count)
+mb_read_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count)
 {
-    u_int16_t *reg_ptr;
+    uint16_t *reg_ptr;
     unsigned int reg_size, word, n;
     _mb_mutex_t *reg_mutex;
     unsigned char bit;
@@ -659,14 +659,14 @@ mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u
  * that are actually being sent by the modbus functions. */
 /* TODO: I know better than to have callbacks without user data */
 void
-mb_set_msgout_callback(mb_port *mp, void (*outfunc)(mb_port *port, u_int8_t *buff, unsigned int size))
+mb_set_msgout_callback(mb_port *mp, void (*outfunc)(mb_port *port, uint8_t *buff, unsigned int size))
 {
     mp->out_callback = outfunc;
 }
 
 /* The msgin callback receives the bytes that are coming in from the port */
 void
-mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,u_int8_t *buff, unsigned int size))
+mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,uint8_t *buff, unsigned int size))
 {
     mp->in_callback = infunc;
 }

@@ -35,10 +35,10 @@
  * array of groups is allocated as necessary for each module.
  */
 
-int group_add(dax_module *mod, u_int8_t *handles, u_int8_t count);
+int group_add(dax_module *mod, uint8_t *handles, uint8_t count);
 int group_del(dax_module *mod, int index);
-int group_read(dax_module *mod, u_int32_t index, u_int8_t *buff, int size);
-int group_write(dax_module *mod, u_int32_t index, u_int8_t *buff);
+int group_read(dax_module *mod, uint32_t index, uint8_t *buff, int size);
+int group_write(dax_module *mod, uint32_t index, uint8_t *buff);
 int groups_cleanup(dax_module *mod);
 
 #endif /* !__DAX_GROUPS_H */

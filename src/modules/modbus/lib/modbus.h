@@ -22,7 +22,7 @@
 #define __MODBUS_H
 
 #include <stdio.h>
-#include <sys/types.h>
+#include <stdint.h>
 
 /* Port Types */
 #define MB_MASTER 0
@@ -95,7 +95,7 @@ void mb_destroy_port(mb_port *port);
 /* Port Configuration Functions */
 int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
-int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, u_int8_t slaveid);
+int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, uint8_t slaveid);
 int mb_set_frame_time(mb_port *port, int frame);
 int mb_set_delay_time(mb_port *port, int delay);
 int mb_set_scan_rate(mb_port *port, int rate);
@@ -106,13 +106,13 @@ int mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit);
 const char *mb_get_port_name(mb_port *port);
 unsigned char mb_get_port_type(mb_port *port);
 unsigned char mb_get_port_protocol(mb_port *port);
-u_int8_t mb_get_port_slaveid(mb_port *port);
+uint8_t mb_get_port_slaveid(mb_port *port);
 
 /* These functions allocate the slave data table areas */
-u_int16_t *mb_alloc_holdreg(mb_port *port, unsigned int size);
-u_int16_t *mb_alloc_inputreg(mb_port *port, unsigned int size);
-u_int16_t *mb_alloc_coil(mb_port *port, unsigned int size);
-u_int16_t *mb_alloc_discrete(mb_port *port, unsigned int size);
+uint16_t *mb_alloc_holdreg(mb_port *port, unsigned int size);
+uint16_t *mb_alloc_inputreg(mb_port *port, unsigned int size);
+uint16_t *mb_alloc_coil(mb_port *port, unsigned int size);
+uint16_t *mb_alloc_discrete(mb_port *port, unsigned int size);
 
 unsigned int mb_get_holdreg_size(mb_port *port);
 unsigned int mb_get_inputreg_size(mb_port *port);
@@ -121,18 +121,18 @@ unsigned int mb_get_discrete_size(mb_port *port);
 
 
 /* These functions are thread safe ways to read/write the slave data tables */
-int mb_write_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count);
-int mb_read_register(mb_port *port, int regtype, u_int16_t *buff, u_int16_t index, u_int16_t count);
+int mb_write_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count);
+int mb_read_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count);
 
 // I might make these a macro for the above
-//int mb_write_coil(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
-//int mb_write_inputreg(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
-//int mb_write_coil(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
-//int mb_write_discrete(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
-//int mb_read_holdreg(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
-//int mb_read_inputreg(mb_port *port, u_int16_t *buff, u_int16_t index, u_int16_t count);
-//int mb_read_coil(mb_port *port, u_int8_t *buff, u_int16_t index, u_int16_t count);
-//int mb_read_discrete(mb_port *port, u_int8_t *buff, u_int16_t index, u_int16_t count);
+//int mb_write_coil(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
+//int mb_write_inputreg(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
+//int mb_write_coil(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
+//int mb_write_discrete(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
+//int mb_read_holdreg(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
+//int mb_read_inputreg(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
+//int mb_read_coil(mb_port *port, uint8_t *buff, uint16_t index, uint16_t count);
+//int mb_read_discrete(mb_port *port, uint8_t *buff, uint16_t index, uint16_t count);
 
 
 
@@ -141,8 +141,8 @@ int mb_open_port(mb_port *port);
 int mb_close_port(mb_port *port);
 
 /* Set callback functions that are called any time data is read or written over the port */
-void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,u_int8_t *,unsigned int));
-void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,u_int8_t *,unsigned int));
+void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,uint8_t *,unsigned int));
+void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,uint8_t *,unsigned int));
 
 /* Slave Port callbacks */
 /* Sets the port userdata pointer */
@@ -160,18 +160,18 @@ mb_cmd *mb_new_cmd(mb_port *port);
 void mb_destroy_cmd(mb_cmd *cmd);
 void mb_disable_cmd(mb_cmd *cmd);
 void mb_enable_cmd(mb_cmd *cmd);
-int mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_int16_t length);
+int mb_set_command(mb_cmd *cmd, uint8_t node, uint8_t function, uint16_t reg, uint16_t length);
 int mb_set_interval(mb_cmd *cmd, int interval);
 void mb_set_mode(mb_cmd *cmd, unsigned char mode);
 void mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd *cmd, void *userdata));
-u_int8_t *mb_get_cmd_data(mb_cmd *cmd);
+uint8_t *mb_get_cmd_data(mb_cmd *cmd);
 int mb_get_cmd_datasize(mb_cmd *cmd);
 int mb_is_write_cmd(mb_cmd *cmd);
 int mb_is_read_cmd(mb_cmd *cmd);
 
 
-void mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *cmd, void *userdata, u_int8_t *data, int datasize));
-void mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *cmd, void *userdata, u_int8_t *data, int datasize));
+void mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int datasize));
+void mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int datasize));
 void mb_send_fail_callback(mb_cmd *cmd, void (*send_fail)(struct mb_cmd *cmd, void *userdata));
 //void mb_userdata_free_callback(mb_cmd *cmd, void (*userdata_free)(struct mb_cmd *, void *));
 

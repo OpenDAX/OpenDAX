@@ -41,8 +41,8 @@ void catchpipe(int sig);
 
 static void getout(int);
 
-void outdata(mb_port *,u_int8_t *,unsigned int);
-void indata(mb_port *,u_int8_t *,unsigned int);
+void outdata(mb_port *,uint8_t *,unsigned int);
+void indata(mb_port *,uint8_t *,unsigned int);
 
 /* Silly wrapper for calling the mb_run_port() function
  * Might add some housekeeping stuff later */
@@ -59,7 +59,7 @@ _port_thread(void *port) {
 static void
 _slave_write_callback(mb_port *port, int reg, int index, int count, void *userdata)
 {
-    u_int16_t buff[count];  /* This should be big enough */
+    uint16_t buff[count];  /* This should be big enough */
     int result;
     port_userdata *ud;
     tag_handle h;
@@ -116,7 +116,7 @@ _slave_write_callback(mb_port *port, int reg, int index, int count, void *userda
 
 static void
 _slave_read_callback(mb_port *port, int reg, int index, int count, void *userdata) {
-    u_int16_t buff[count];  /* This should be big enough */
+    uint16_t buff[count];  /* This should be big enough */
     int result;
     port_userdata *ud;
     tag_handle h;
@@ -353,7 +353,7 @@ getout(int exitcode)
 /* TODO: Change these to dax logging function */
 /* Callback functions for printing the serial traffic */
 void
-outdata(mb_port *mp, u_int8_t *buff, unsigned int len)
+outdata(mb_port *mp, uint8_t *buff, unsigned int len)
 {
    int n;
    printf("%s:", mb_get_port_name(mp));
@@ -364,7 +364,7 @@ outdata(mb_port *mp, u_int8_t *buff, unsigned int len)
 }
 
 void
-indata(mb_port *mp, u_int8_t *buff, unsigned int len)
+indata(mb_port *mp, uint8_t *buff, unsigned int len)
 {
    int n;
    printf("%s:", mb_get_port_name(mp));

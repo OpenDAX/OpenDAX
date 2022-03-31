@@ -82,7 +82,7 @@ write_queue(tag_index idx, int offset, void *data, int size, void *userdata) {
     tag_queue *q;
 
     int next, newqsize;
-    u_int8_t *new_queue;
+    uint8_t *new_queue;
 
     /* We only allow writing the entire tag.  Doing otherwise
      * would be ambiguous */
