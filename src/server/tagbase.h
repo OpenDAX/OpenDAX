@@ -139,6 +139,7 @@ int serialize_datatype(tag_type type, char **str);
 
 /* The event stuff is defined in events.c */
 void event_check(tag_index idx, int offset, int size);
+void event_del_check(tag_index idx);
 int event_add(tag_handle h, int event_type, void *data, dax_module *module);
 int event_del(int index, int id, dax_module *module);
 int events_del_all(_dax_event *head);

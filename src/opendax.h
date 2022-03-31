@@ -146,6 +146,7 @@ extern "C" {
 #define EVENT_GREATER  0x07 /* Greater Than */
 #define EVENT_LESS     0x08 /* Less Than */
 #define EVENT_DEADBAND 0x09 /* Changed by X amount since last event */
+#define EVENT_DELETED  0x0A /* Tag gets deleted */
 
 /* Event Options */
 #define EVENT_OPT_SEND_DATA  0x01 /* Send the affected data with the event */

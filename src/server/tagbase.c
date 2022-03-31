@@ -557,6 +557,7 @@ tag_del(tag_index idx)
         return ERR_DELETED;
     }
     xlog(LOG_VERBOSE | LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
+    event_del_check(idx); /* Check to see if we have a deleted event for this tag */
     if(IS_CUSTOM(_db[idx].type)) {
         _cdt_dec_refcount(_db[idx].type);
     }

@@ -38,12 +38,12 @@ _send_event(tag_index idx, _dax_event *event)
     u_int32_t msgsize;
 
     if(event->options & EVENT_OPT_SEND_DATA) {
-    	msgsize = event->size + 16; /* Calculate the total size of this message */
-		*(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
-	} else {
-		msgsize = 16; /* Calculate the total size of this message */
-		*(u_int32_t *)(&buff[0])  = htonl(8); /* The size that we send */
-	}
+        msgsize = event->size + 16; /* Calculate the total size of this message */
+        *(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
+    } else {
+        msgsize = 16; /* Calculate the total size of this message */
+        *(u_int32_t *)(&buff[0])  = htonl(8); /* The size that we send */
+    }
     if(msgsize > DAX_MSGMAX) return ERR_2BIG;
     *(u_int32_t *)(&buff[4])  = htonl(MSG_EVENT | event->eventtype);
     *(u_int32_t *)(&buff[8])  = htonl(idx);
@@ -415,6 +415,24 @@ event_check(tag_index idx, int offset, int size) {
             if(_event_hit(this, idx, offset, size)) {
                 _send_event(idx, this);
             }
+        }
+        this = this->next;
+    }
+    return;
+}
+
+/* This function checks to see if the tag has a deleted event.  This
+ * should only be called from the tag_delete() function */
+void
+event_del_check(tag_index idx) {
+    _dax_event *this;
+
+    this = _db[idx].events;
+
+    while(this != NULL) {
+        /* Look for the tag delete event. */
+        if(this->eventtype == EVENT_DELETED) {
+            _send_event(idx, this);
         }
         this = this->next;
     }
