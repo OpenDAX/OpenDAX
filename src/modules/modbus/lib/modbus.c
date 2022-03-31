@@ -104,7 +104,7 @@ mb_scan_port(mb_port *mp)
 
 
 /* This is the primary event loop for a Modbus master.  It calls the functions
-   to send the request and recieve the responses.  It also takes care of the
+   to send the request and receive the responses.  It also takes care of the
    retries and the counters. */
 int
 master_loop(mb_port *mp)

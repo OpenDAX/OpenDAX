@@ -242,7 +242,7 @@ main (int argc, const char * argv[]) {
     sa.sa_handler = &catchpipe;
     sigaction(SIGPIPE, &sa, NULL);
 
-    ds = dax_init("daxlua");
+    ds = dax_init("daxmodbus");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
         return ERR_ALLOC;

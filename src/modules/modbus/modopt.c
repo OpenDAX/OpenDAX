@@ -275,7 +275,7 @@ _add_port(lua_State *L)
     lua_getfield(L, -2, "enable");
     enable = (char)lua_toboolean(L, -1);
     
-    /* The devtype is the type of device we are going to use to communicte.
+    /* The devtype is the type of device we are going to use to communicate.
      right now its either a serial port or a network socket */
     lua_getfield(L, -3, "devtype");
     string = (char *)lua_tostring(L, -1);

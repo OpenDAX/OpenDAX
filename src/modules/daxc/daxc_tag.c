@@ -141,7 +141,6 @@ tag_del(char **tokens)
  * we list from the first to the first + second if not then we list
  * the next X tags and increment nextindex. */
 
-
 int
 list_tags(char **tokens)
 {
