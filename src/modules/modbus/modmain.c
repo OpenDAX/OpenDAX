@@ -48,8 +48,7 @@ void indata(mb_port *,uint8_t *,unsigned int);
  * Might add some housekeeping stuff later */
 static void
 _port_thread(void *port) {
-    int result;
-    result = mb_run_port((mb_port *)port);
+    mb_run_port((mb_port *)port);
 }
 
 
@@ -57,14 +56,14 @@ _port_thread(void *port) {
  * library.  After the library updates the modbus tables with new information this
  * function is called which writes the data back to the OpenDAX server */
 static void
-_slave_write_callback(mb_port *port, int reg, int index, int count, void *userdata)
+_slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *data)
 {
-    uint16_t buff[count];  /* This should be big enough */
+    //uint16_t buff[count];  /* This should be big enough */
     int result;
     port_userdata *ud;
     tag_handle h;
 
-    ud = (port_userdata *)userdata;
+    ud = (port_userdata *)mb_get_port_userdata(port);
     /* We're going to cheat and build our own tag_handle */
     /* We're assuming that the server loop won't call this function
      * with bad data. */
@@ -102,26 +101,21 @@ _slave_write_callback(mb_port *port, int reg, int index, int count, void *userda
             h.type = DAX_BOOL;
             break;
     }
-    result = mb_read_register(port, reg, buff, index , count);
+
+    result = dax_write_tag(ds, h, data);
     if(result) {
-        dax_error(ds, "Unable to get data from Modbus Registers\n");
-    } else {
-        result = dax_write_tag(ds, h, buff);
-        if(result) {
-            dax_error(ds, "Unable to write tag data to server\n");
-        }
+        dax_error(ds, "Unable to write tag data to server\n");
     }
 }
 
 
 static void
-_slave_read_callback(mb_port *port, int reg, int index, int count, void *userdata) {
-    uint16_t buff[count];  /* This should be big enough */
+_slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *data) {
     int result;
     port_userdata *ud;
     tag_handle h;
 
-    ud = (port_userdata *)userdata;
+    ud = (port_userdata *)mb_get_port_userdata(port);
     /* We're going to cheat and build our own tag_handle */
     /* We're assuming that the server loop won't call this function
      * with bad data. */
@@ -159,14 +153,9 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, void *userdat
             h.type = DAX_BOOL;
             break;
     }
-    result = dax_read_tag(ds, h, buff);
+    result = dax_read_tag(ds, h, data);
     if(result) {
         dax_error(ds, "Unable to write tag data to server\n");
-    }
-
-    result = mb_write_register(port, reg, buff, index, count);
-    if(result) {
-        dax_error(ds, "Unable to write data to Modbus Registers\n");
     }
 }
 

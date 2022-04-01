@@ -153,13 +153,9 @@ struct mb_port {
     int timeout;     /* Response timeout */
     int maxattempts; /* Number of failed attempts to allow before closing and exiting the port */
 
-    uint16_t *holdreg;       /* database index for holding registers (slave only) */
     unsigned int holdsize;    /* size of the internal holding register bank */
-    uint16_t *inputreg;      /* database index for input registers (slave only) */
     unsigned int inputsize;   /* size of the internal input register bank */
-    uint16_t *coilreg;       /* database index for coils (slave only) */
     unsigned int coilsize;    /* size of the internal bank of coils in 16-bit registers */
-    uint16_t *discreg;       /* discrete input register */
     unsigned int discsize;    /* size of the internal bank of coils */
 #ifdef __MB_THREAD_SAFE
     _mb_mutex_t hold_mutex;  /* mutexes used to lock the above register areas when needed */
@@ -185,8 +181,8 @@ struct mb_port {
     /* These are callback function pointers for the port message data */
     void (*out_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
     void (*in_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
-    void (*slave_read)(struct mb_port *port, int reg, int index, int size, void *userdata);
-    void (*slave_write)(struct mb_port *port, int reg, int index, int size, void *userdata);
+    void (*slave_read)(struct mb_port *port, int reg, int index, int size, uint16_t *data);
+    void (*slave_write)(struct mb_port *port, int reg, int index, int size, uint16_t *data);
     void (*userdata_free)(struct mb_port *port, void *userdata);
 };
 

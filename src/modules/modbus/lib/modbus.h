@@ -108,34 +108,15 @@ unsigned char mb_get_port_type(mb_port *port);
 unsigned char mb_get_port_protocol(mb_port *port);
 uint8_t mb_get_port_slaveid(mb_port *port);
 
-/* These functions allocate the slave data table areas */
-uint16_t *mb_alloc_holdreg(mb_port *port, unsigned int size);
-uint16_t *mb_alloc_inputreg(mb_port *port, unsigned int size);
-uint16_t *mb_alloc_coil(mb_port *port, unsigned int size);
-uint16_t *mb_alloc_discrete(mb_port *port, unsigned int size);
+int mb_set_holdreg_size(mb_port *port, unsigned int size);
+int mb_set_inputreg_size(mb_port *port, unsigned int size);
+int mb_set_coil_size(mb_port *port, unsigned int size);
+int mb_set_discrete_size(mb_port *port, unsigned int size);
 
 unsigned int mb_get_holdreg_size(mb_port *port);
 unsigned int mb_get_inputreg_size(mb_port *port);
 unsigned int mb_get_coil_size(mb_port *port);
 unsigned int mb_get_discrete_size(mb_port *port);
-
-
-/* These functions are thread safe ways to read/write the slave data tables */
-int mb_write_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count);
-int mb_read_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count);
-
-// I might make these a macro for the above
-//int mb_write_coil(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
-//int mb_write_inputreg(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
-//int mb_write_coil(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
-//int mb_write_discrete(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
-//int mb_read_holdreg(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
-//int mb_read_inputreg(mb_port *port, uint16_t *buff, uint16_t index, uint16_t count);
-//int mb_read_coil(mb_port *port, uint8_t *buff, uint16_t index, uint16_t count);
-//int mb_read_discrete(mb_port *port, uint8_t *buff, uint16_t index, uint16_t count);
-
-
-
 
 int mb_open_port(mb_port *port);
 int mb_close_port(mb_port *port);
@@ -148,9 +129,9 @@ void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,uint8_t *,unsigne
 /* Sets the port userdata pointer */
 void mb_set_port_userdata(mb_port *mp, void *userdata, void (*freefunc)(struct mb_port *port, void *userdata));
 /* Sets the callback that is called when the Slave/Server receives a request to read data from the slave*/
-void mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata));
+void mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data));
 /* Sets the callback that is called when the Slave/Server receives a request to write data to the slave*/
-void mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata));
+void mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data));
 
 void *mb_get_port_userdata(mb_port *mp);
 

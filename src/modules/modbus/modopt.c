@@ -163,14 +163,14 @@ static inline int
 _get_slave_config(lua_State *L, mb_port *p)
 {
     unsigned int size;
-    uint16_t *result = 0;
+    int result = 0;
     dax_error(ds, "Slave functionality is not yet implemented");
     port_userdata *ud;
     char *reg_name;
 
     ud = malloc(sizeof(port_userdata));
-    bzero(ud, sizeof(port_userdata));
     if(ud == NULL) return ERR_ALLOC;
+    bzero(ud, sizeof(port_userdata));
 
     lua_getfield(L, -1, "holdreg");
     reg_name = (char *)lua_tostring(L, -1);
@@ -179,8 +179,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     if(reg_name && size) {
         ud->reg[HOLD_REG].mbreg = strdup(reg_name);
         if(ud->reg[HOLD_REG].mbreg == NULL) return ERR_ALLOC;
-        result = mb_alloc_holdreg(p, size);
-        if(result == NULL) return ERR_ALLOC;
+        result = mb_set_holdreg_size(p, size);
+        if(result) return result;
     }
     lua_pop(L, 2);
 
@@ -191,8 +191,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     if(reg_name && size) {
         ud->reg[INPUT_REG].mbreg = strdup(reg_name);
         if(ud->reg[INPUT_REG].mbreg == NULL) return ERR_ALLOC;
-        result = mb_alloc_inputreg(p, size);
-        if(result == NULL) return ERR_ALLOC;
+        result = mb_set_inputreg_size(p, size);
+        if(result) return result;
     }
     lua_pop(L, 2);
 
@@ -203,8 +203,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     if(reg_name && size) {
         ud->reg[COIL_REG].mbreg = strdup(reg_name);
         if(ud->reg[COIL_REG].mbreg == NULL) return ERR_ALLOC;
-        result = mb_alloc_coil(p, size);
-        if(result == NULL) return ERR_ALLOC;
+        result = mb_set_coil_size(p, size);
+        if(result) return result;
     }
     lua_pop(L, 2);
 
@@ -215,8 +215,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     if(reg_name && size) {
         ud->reg[DISC_REG].mbreg = strdup(reg_name);
         if(ud->reg[DISC_REG].mbreg == NULL) return ERR_ALLOC;
-        result = mb_alloc_discrete(p, size);
-        if(result == NULL) return ERR_ALLOC;
+        result = mb_set_discrete_size(p, size);
+        if(result) return result;
     }
     lua_pop(L, 2);
 
@@ -330,7 +330,7 @@ _add_port(lua_State *L)
     }
     lua_pop(L, 2);
     if(type == MB_SLAVE) {
-    	lua_getfield(L, -1, "slaveid");
+        lua_getfield(L, -1, "slaveid");
         slaveid = (int)lua_tonumber(L, -1);
         lua_pop(L, 1);
        _get_slave_config(L, p);

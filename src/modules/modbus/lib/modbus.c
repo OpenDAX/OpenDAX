@@ -655,18 +655,17 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 {
     int n, bit, word, buffbit, buffbyte;
     unsigned int regsize;
-    uint16_t index, count, *reg;
+    uint16_t index, count;
+    uint16_t reg[150];
 
     COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
-    COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of words/coils */
+    COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of disc/coils requested */
     if(port->slave_read) { /* Call the callback function if it has been set */
-        port->slave_read(port, mbreg, index, count, port->userdata);
+        port->slave_read(port, mbreg, index, count, reg);
     }
     if(mbreg == MB_REG_COIL) {
-        reg = port->coilreg;
         regsize = port->coilsize;
     } else {
-        reg = port->discreg;
         regsize = port->discsize;
     }
 
@@ -678,8 +677,8 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
     }
     buff[2] = (count - 1)/8+1;
 
-    bit = index % 16;
-    word = index / 16;
+    bit = 0;
+    word = 0;
     buffbit = 0;
     buffbyte = 3;
     for(n = 0; n < count; n++) {
@@ -706,18 +705,17 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 {
     int n;
     unsigned int regsize;
-    uint16_t index, count, *reg;
+    uint16_t index, count;
+    uint16_t reg[150]; /* This is where we will store the data */
 
     COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
     COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of words/coils */
     if(port->slave_read) { /* Call the callback function if it has been set */
-        port->slave_read(port, mbreg, index, count, port->userdata);
+        port->slave_read(port, mbreg, index, count, reg);
     }
     if(mbreg == MB_REG_HOLDING) {
-        reg = port->holdreg;
         regsize = port->holdsize;
     } else {
-        reg = port->inputreg;
         regsize = port->inputsize;
     }
 
@@ -729,7 +727,7 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
     }
     buff[2] = count * 2;
     for(n = 0; n < count; n++) {
-        COPYWORD(&buff[3+(n*2)], &reg[index+n]);
+        COPYWORD(&buff[3+(n*2)], &reg[n]);
     }
     return (count * 2) + 3;
 }
@@ -776,7 +774,9 @@ create_response(mb_port *port, unsigned char *buff, int size)
 {
     uint8_t node, function;
     uint16_t index, value, count;
+    uint16_t data[128]; /* should be the largest Modbus data size */
     int word, bit, n;
+
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
 
@@ -804,12 +804,12 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             if(value) {
-                port->coilreg[index / 16] |= (0x01 << (index % 16));
+                data[0] = 0x01;
             } else {
-                port->coilreg[index / 16] &= ~(0x01 << (index % 16));
+                data[0] = 0x00;
             }
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_COIL, index, 1, port->userdata);
+                port->slave_write(port, MB_REG_COIL, index, 1, data);
             }
             return 6;
         case 6: /* Write Single Register */
@@ -818,9 +818,9 @@ create_response(mb_port *port, unsigned char *buff, int size)
             if(index >= port->holdsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
-            port->holdreg[index] = value;
+            data[0] = value;
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_HOLDING, index, 1, port->userdata);
+                port->slave_write(port, MB_REG_HOLDING, index, 1, data);
             }
             return 6;
         case 8:
@@ -831,19 +831,19 @@ create_response(mb_port *port, unsigned char *buff, int size)
             if((index + count) > port->coilsize) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
-            word = index / 16;
-            bit = index % 16;
+            word = 0;
+            bit = 0;
             for(n = 0; n < count; n++) {
                 if(buff[7 + n/8] & (0x01 << (n%8))) {
-                    port->coilreg[word] |= (0x01 << bit);
+                    data[word] |= (0x01 << bit);
                 } else {
-                    port->coilreg[word] &= ~(0x01 << bit);
+                    data[word] &= ~(0x01 << bit);
                 }
                 bit++;
                 if(bit == 16) { bit = 0; word++; }
             }
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_COIL, index, count, port->userdata);
+                port->slave_write(port, MB_REG_COIL, index, count, data);
             }
             return 6;
         case 16: /* Write Multiple Registers */
@@ -853,10 +853,10 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             for(n = 0; n < count; n++) {
-                COPYWORD(&port->holdreg[index + n], &buff[7 + (n*2)]);
+                COPYWORD(&data[n], &buff[7 + (n*2)]);
             }
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_HOLDING, index, count, port->userdata);
+                port->slave_write(port, MB_REG_HOLDING, index, count, data);
             }
             return 6;
         default:

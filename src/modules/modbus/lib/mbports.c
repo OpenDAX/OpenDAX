@@ -44,13 +44,9 @@ initport(mb_port *p)
     p->parity = MB_NONE;
     p->bindport = 5001;
     p->scanrate = 1000;
-    p->holdreg = NULL;
     p->holdsize = 0;
-    p->inputreg = NULL;
     p->inputsize = 0;
-    p->coilreg = NULL;
     p->coilsize = 0;
-    p->discreg = NULL;
     p->discsize = 0;
     p->buff_head = NULL;
     FD_ZERO(&(p->fdset));
@@ -430,80 +426,48 @@ mb_get_port_slaveid(mb_port *port) {
     return port->slaveid;
 }
 
-
-/* These four functions allocate the data areas for a slave port
- * A valid port pointer and size should be passed.  The new pointer
- * to the data area will be returned.  A NULL pointer is returned on
- * error and the only error is failure to allocate the data.
- * The size should be passed as the number of 16 bit registers that are
- * requested for the Holding and Input Register areas and should be the
- * number of single bit Coils or Discrete Inputs that are requested
- * These functions will calculate the actual amount of memory
- * that is required. */
-uint16_t *
-mb_alloc_holdreg(mb_port *port, unsigned int size)
-{
-    void *new;
-
-    mb_mutex_lock(port, &port->hold_mutex);
-    new = realloc(port->holdreg, size * 2);
-    if(new != NULL) {
+int
+mb_set_holdreg_size(mb_port *port, unsigned int size) {
+    if(size >= 0 && size <=65536) {
         port->holdsize = size;
-        port->holdreg = new;
+    } else {
+        port->holdsize = 0;
+        return MB_ERR_BAD_ARG;
     }
-    /* TODO: At some point we should only zero the new memory but this
-     * will do for now. */
-    bzero(port->holdreg, size * 2);
-    mb_mutex_unlock(port, &port->hold_mutex);
-    return new;
+    return 0;
 }
 
-uint16_t *
-mb_alloc_inputreg(mb_port *port, unsigned int size)
-{
-    void *new;
-
-    mb_mutex_lock(port, &port->input_mutex);
-    new = realloc(port->inputreg, size * 2);
-    if(new != NULL) {
+int
+mb_set_inputreg_size(mb_port *port, unsigned int size) {
+    if(size >= 0 && size <=65536) {
         port->inputsize = size;
-        port->inputreg = new;
+    } else {
+        port->inputsize = 0;
+        return MB_ERR_BAD_ARG;
     }
-    bzero(port->inputreg, size * 2);
-    mb_mutex_unlock(port, &port->input_mutex);
-    return new;
+    return 0;
 }
 
-uint16_t *
-mb_alloc_coil(mb_port *port, unsigned int size)
-{
-    void *new;
-
-    mb_mutex_lock(port, &port->coil_mutex);
-    new = realloc(port->coilreg, (size - 1)/8 + 1);
-    if(new != NULL) {
+int
+mb_set_coil_size(mb_port *port, unsigned int size) {
+    if(size >= 0 && size <=65536) {
         port->coilsize = size;
-        port->coilreg = new;
+    } else {
+        port->coilsize = 0;
+        return MB_ERR_BAD_ARG;
     }
-    bzero(port->coilreg, (size - 1)/8 + 1);
-    mb_mutex_unlock(port, &port->coil_mutex);
-    return new;
+    return 0;
 }
 
-uint16_t *
-mb_alloc_discrete(mb_port *port, unsigned int size)
-{
-    void *new;
-
-    mb_mutex_lock(port, &port->disc_mutex);
-    new = realloc(port->discreg, (size - 1)/8 + 1);
-    if(new != NULL) {
+int
+mb_set_discrete_size(mb_port *port, unsigned int size) {
+    if(size >= 0 && size <=65536) {
         port->discsize = size;
-        port->discreg = new;
+    } else {
+        port->discsize = 0;
+        return MB_ERR_BAD_ARG;
     }
-    bzero(port->discreg, (size - 1)/8 + 1);
-    mb_mutex_unlock(port, &port->disc_mutex);
-    return new;
+    return 0;
 }
 
 unsigned int
@@ -524,134 +488,6 @@ mb_get_coil_size(mb_port *port) {
 unsigned int
 mb_get_discrete_size(mb_port *port) {
     return port->discsize;
-}
-
-
-/* These functions are thread safe ways to read/write the data tables */
-int
-mb_write_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count)
-{
-    uint16_t *reg_ptr;
-    unsigned int reg_size, word, n;
-    _mb_mutex_t *reg_mutex;
-    unsigned char bit;
-
-    switch(regtype) {
-        case MB_REG_HOLDING:
-            reg_ptr = port->holdreg;
-            reg_size = port->holdsize;
-            reg_mutex = &port->hold_mutex;
-            break;
-        case MB_REG_INPUT:
-            reg_ptr = port->inputreg;
-            reg_size = port->inputsize;
-            reg_mutex = &port->input_mutex;
-            break;
-        case MB_REG_COIL:
-            reg_ptr = port->coilreg;
-            reg_size = port->coilsize;
-            reg_mutex = &port->coil_mutex;
-            break;
-        case MB_REG_DISC:
-            reg_ptr = port->discreg;
-            reg_size = port->discsize;
-            reg_mutex = &port->disc_mutex;
-            break;
-        default:
-            return MB_ERR_BAD_ARG;
-    }
-    if((index + count) > reg_size) {
-        return MB_ERR_OVERFLOW;
-    }
-    mb_mutex_lock(port, reg_mutex);
-    switch(regtype) {
-        case MB_REG_HOLDING:
-        case MB_REG_INPUT:
-            memcpy(&(reg_ptr[index]), buff, count * 2);
-            break;
-        case MB_REG_COIL:
-        case MB_REG_DISC:
-            word = index / 16;
-            bit = index % 16;
-            for(n = 0; n < count; n++) {
-                if((0x01 << (n % 16)) & buff[n/16] ) {
-                    reg_ptr[word] |= (0x01 << bit);
-                } else {
-                    reg_ptr[word] &= ~(0x01 << bit);
-                }
-                bit ++;
-                if(bit == 16) {
-                    bit = 0;
-                    word++;
-                }
-            }
-            break;
-    }
-    mb_mutex_unlock(port, reg_mutex);
-    return 0;
-}
-
-int
-mb_read_register(mb_port *port, int regtype, uint16_t *buff, uint16_t index, uint16_t count)
-{
-    uint16_t *reg_ptr;
-    unsigned int reg_size, word, n;
-    _mb_mutex_t *reg_mutex;
-    unsigned char bit;
-
-    switch(regtype) {
-        case MB_REG_HOLDING:
-            reg_ptr = port->holdreg;
-            reg_size = port->holdsize;
-            reg_mutex = &port->hold_mutex;
-            break;
-        case MB_REG_INPUT:
-            reg_ptr = port->inputreg;
-            reg_size = port->inputsize;
-            reg_mutex = &port->input_mutex;
-            break;
-        case MB_REG_COIL:
-            reg_ptr = port->coilreg;
-            reg_size = port->coilsize;
-            reg_mutex = &port->coil_mutex;
-            break;
-        case MB_REG_DISC:
-            reg_ptr = port->discreg;
-            reg_size = port->discsize;
-            reg_mutex = &port->disc_mutex;
-            break;
-        default:
-            return MB_ERR_BAD_ARG;
-    }
-    if((index + count) > reg_size) {
-        return MB_ERR_OVERFLOW;
-    }
-    mb_mutex_lock(port, reg_mutex);
-    switch(regtype) {
-        case MB_REG_HOLDING:
-        case MB_REG_INPUT:
-            memcpy(buff, &(reg_ptr[index]), count * 2);
-            break;
-        case MB_REG_COIL:
-        case MB_REG_DISC:
-            word = index / 16;
-            bit = index % 16;
-            for(n = 0; n < count; n++) {
-                if((0x01 << bit) & reg_ptr[word] ) {
-                    buff[n / 16] |= (0x01 << (n%16));
-                } else {
-                    buff[n / 16] &= ~(0x01 << (n%16));
-                }
-                bit ++;
-                if(bit == 16) {
-                    bit = 0;
-                    word++;
-                }
-            }
-            break;
-    }
-    mb_mutex_unlock(port, reg_mutex);
-    return 0;
 }
 
 
@@ -691,7 +527,7 @@ mb_get_port_userdata(mb_port *mp) {
  * the response is sent.
  */
 void
-mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata))
+mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data))
 {
     mp->slave_read = infunc;
 }
@@ -702,7 +538,7 @@ mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int
  * used to write the changed data out to an external database.
  */
 void
-mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, void *userdata))
+mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data))
 {
     mp->slave_write = infunc;
 }
