@@ -79,6 +79,7 @@ crc16(unsigned char *msg, unsigned short length)
     unsigned char CRCHi = 0xFF;
     unsigned char CRCLo = 0xFF;
     unsigned int index;
+
     while(length--) {
         index = CRCHi ^ *msg++;
         CRCHi = CRCLo ^ aCRCHi[index];

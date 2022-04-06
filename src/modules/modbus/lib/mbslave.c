@@ -52,12 +52,12 @@ _mb_read(mb_port *port, int fd)
         if(result) {
             result = create_response(port, buff, MB_BUFF_SIZE);
             if(result > 0) { /* We have a response */
-                checksum = crc16(buff, buffindex);
+                checksum = crc16(buff, result);
                 COPYWORD(&(buff[result]), &checksum);
                 if(port->out_callback) {
                     port->out_callback(port, buff, result+2);
                 }
-                write(fd, buff, result);
+                write(fd, buff, result+2);
                 buffindex = 0;
             } else if(result < 0) {
                 fprintf(stderr, "Error Code Returned %d\n", result);
@@ -73,10 +73,7 @@ int
 slave_loop(mb_port *port) {
     int result;
 
-    fprintf(stderr, " -- %s Starting slave loop \n", __func__);
-    fflush(stderr);
-
-    while(1) {
+   while(1) {
         result = _mb_read(port, port->fd);
         if(result) {
             fprintf(stderr, " -- %s Exiting slave loop because of %d\n", __func__, result);
