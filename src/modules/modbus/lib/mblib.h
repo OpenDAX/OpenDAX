@@ -223,6 +223,9 @@ int add_cmd(mb_port *p, mb_cmd *mc);
 /* TCP Server Functions - defined in mbserver.c */
 int server_loop(mb_port *port);
 
+/* Serial Slave loop function */
+int slave_loop(mb_port *port);
+
 /* Protocol Functions - defined in modbus.c */
 int create_response(mb_port * port, unsigned char *buff, int size);
 

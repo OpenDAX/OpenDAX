@@ -275,6 +275,8 @@ _add_port(lua_State *L)
     lua_getfield(L, -2, "enable");
     enable = (char)lua_toboolean(L, -1);
     
+    lua_pop(L, 2);
+#ifdef __DELETE_8428734
     /* The devtype is the type of device we are going to use to communicate.
      right now its either a serial port or a network socket */
     lua_getfield(L, -3, "devtype");
@@ -301,22 +303,44 @@ _add_port(lua_State *L)
     } else if(devtype == NETWORK_PORT) {
         _get_network_config(L, p);
     }
+#endif
+
     /* What Modbus protocol are we going to talk on this port */
     lua_getfield(L, -1, "protocol");
     string = (char *)lua_tostring(L, -1);
     if(string) {
-        if(strcasecmp(string, "RTU") == 0) protocol = MB_RTU;
-        else if(strcasecmp(string, "ASCII") == 0) protocol = MB_ASCII;
-        else if(strcasecmp(string, "TCP") == 0) protocol = MB_TCP;
-        else {
+        if(strcasecmp(string, "RTU") == 0) {
+            protocol = MB_RTU;
+            devtype = SERIAL_PORT;
+        } else if(strcasecmp(string, "ASCII") == 0) {
+            protocol = MB_ASCII;
+            devtype = SERIAL_PORT;
+        } else if(strcasecmp(string, "TCP") == 0) {
+            protocol = MB_TCP;
+            devtype = NETWORK_PORT;
+        } else {
             dax_debug(ds, 1, "Unknown Protocol %s, assuming RTU", string);
             protocol = MB_RTU;
+            devtype = SERIAL_PORT;
         }
     } else {
         dax_debug(ds, 1, "Protocol not given, assuming RTU");
         protocol = MB_RTU;
+        devtype = SERIAL_PORT;
     }
-    lua_getfield(L, -2, "type");
+    lua_pop(L,1);
+    /* Serial port and network configurations need different data.  These
+       two functions will get the right stuff out of the table.  The table
+       is not checked to see if too much information is given only that
+       enough information is given to do the job */
+    if(devtype == SERIAL_PORT) {
+        _get_serial_config(L, p);
+    } else if(devtype == NETWORK_PORT) {
+        _get_network_config(L, p);
+    }
+
+
+    lua_getfield(L, -1, "type");
     string = (char *)lua_tostring(L, -1);
     printf("Type string = %s\n", string);
     if(strcasecmp(string, "MASTER") == 0) type = MB_MASTER;
@@ -328,7 +352,7 @@ _add_port(lua_State *L)
         dax_debug(ds, 1, "Unknown Port Type %s, assuming MASTER", string);
         type = MB_MASTER;
     }
-    lua_pop(L, 2);
+    lua_pop(L, 1);
     if(type == MB_SLAVE) {
         lua_getfield(L, -1, "slaveid");
         slaveid = (int)lua_tonumber(L, -1);

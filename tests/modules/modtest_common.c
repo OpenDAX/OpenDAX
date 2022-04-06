@@ -51,7 +51,7 @@ run_module(const char *modpath, const char *modconf) {
     pid = fork();
 
     if(pid == 0) { // Child
-        execl(modpath, modpath, "-C", modconf, NULL);
+        execl(modpath, modpath, "-T", "ALL", "-C", modconf, NULL);
         printf("Failed to launch module\n");
         exit(-1);
     } else if(pid < 0) {

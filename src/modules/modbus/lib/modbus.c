@@ -57,8 +57,8 @@ mb_run_port(struct mb_port *m_port)
             printf("mb_run_port() - Start the TCP Server Loop\n");
             return server_loop(m_port);
         } else {
-            printf("mb_run_port() - Should run slave here\n");
-            return MB_ERR_PROTOCOL;
+            printf("%s - Start Slave Loop\n", __func__);
+            return slave_loop(m_port);
         }
         /* TODO: start slave thread */
     } else {

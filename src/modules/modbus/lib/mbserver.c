@@ -278,3 +278,4 @@ server_loop(mb_port *port)
     }
     return -1; /* Can never get here */
 }
+

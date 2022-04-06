@@ -24,6 +24,9 @@
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
@@ -115,8 +118,10 @@ main(int argc, char *argv[])
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
-    int result;
+    int result, fd;
     pid_t server_pid, mod_pid, socat_pid;
+    struct termios options;
+
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
@@ -133,6 +138,44 @@ main(int argc, char *argv[])
     if(result) return result;
     result =  dax_tag_handle(ds, &h, "mb_creg", 0);
     if(result) return result;
+
+    fd = open("/tmp/serial2", O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if(fd == -1)  {
+        fprintf(stderr, "DANGIT\n");
+        return(-1);
+    } else  {
+        fcntl(fd, F_SETFL, 0);
+        tcgetattr(fd, &options);
+        /* Set the baudrate */
+        cfsetispeed(&options, 9600);
+        cfsetospeed(&options, 9600);
+        options.c_cflag |= (CLOCAL | CREAD);
+        /* Set the parity */
+        options.c_cflag &= ~PARENB;
+        /* Set stop bits */
+        options.c_cflag &= ~CSTOPB;
+        /* Set databits */
+        options.c_cflag &= ~CSIZE;
+        options.c_cflag |= CS8;
+        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+        options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
+        options.c_oflag &= ~OPOST;
+        options.c_cc[VMIN] = 0;
+        options.c_cc[VTIME] = 0;
+        /* TODO: Should check for errors here */
+        tcsetattr(fd, TCSANOW, &options);
+    }
+
+    buff[0] = 0x01;
+    buff[1] = 0x03;
+    buff[2] = 0x00;
+    buff[3] =-0x00;
+    buff[4] = 0x00;
+    buff[5] = 0x04;
+    buff[6] = 0x44;
+    buff[7] = 0x09;
+    write(fd, buff, 8);
+    usleep(2e6);
 
 #ifdef ASDFASFE
     /* Open a socket to do the modbus stuff */

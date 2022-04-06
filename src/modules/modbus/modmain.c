@@ -356,6 +356,7 @@ void
 indata(mb_port *mp, uint8_t *buff, unsigned int len)
 {
    int n;
+
    printf("%s:", mb_get_port_name(mp));
    for(n = 0; n < len; n++) {
        printf("[%X]",buff[n]);
