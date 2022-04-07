@@ -19,7 +19,6 @@
  */
 
 
-#include <mblib.h>
 #include <modbus.h>
 
 int master_loop(mb_port *);
@@ -81,7 +80,6 @@ mb_scan_port(mb_port *mp)
             mc->icount = 0;
             if(mp->maxattempts) {
                 mp->attempt++;
-                DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
             }
             result = mb_send_command(mp, mc);
             if( result > 0 ) {
@@ -130,7 +128,6 @@ master_loop(mb_port *mp)
                     mc->icount = 0;
                     if(mp->maxattempts) {
                         mp->attempt++;
-                        //DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
                     }
                     if( mb_send_command(mp, mc) > 0 )
                         mp->attempt = 0; /* Good response, reset counter */
@@ -608,7 +605,6 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
                 }
                 mc->exceptions++;
                 mc->lasterror = result | ME_EXCEPTION;
-                DEBUGMSG2("Exception Received - %d", result);
             } else { /* Everything is good */
                 if(mc->post_send != NULL) {
                     mc->post_send(mc, mc->userdata, mc->data, mc->datasize);
@@ -620,7 +616,6 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
             if(mc->send_fail != NULL) {
                 mc->send_fail(mc, mc->userdata);
             }
-            DEBUGMSG("Timeout");
             mc->timeouts++;
             mc->lasterror = ME_TIMEOUT;
         } else {
@@ -628,7 +623,6 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
             if(mc->send_fail != NULL) {
                 mc->send_fail(mc, mc->userdata);
             }
-            DEBUGMSG("Checksum");
             mc->crcerrors++;
             mc->lasterror = ME_CHECKSUM;
         }
@@ -664,9 +658,9 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
         port->slave_read(port, mbreg, index, count, reg);
     }
     if(mbreg == MB_REG_COIL) {
-        regsize = port->coilsize;
+        regsize = port->coil_size;
     } else {
-        regsize = port->discsize;
+        regsize = port->disc_size;
     }
 
     if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
@@ -714,9 +708,9 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
         port->slave_read(port, mbreg, index, count, reg);
     }
     if(mbreg == MB_REG_HOLDING) {
-        regsize = port->holdsize;
+        regsize = port->hold_size;
     } else {
-        regsize = port->inputsize;
+        regsize = port->input_size;
     }
 
     if((count * 2) > (size - 3)) { /* Make sure we have enough room */
@@ -742,18 +736,18 @@ _check_function_code_exception(mb_port *port, uint8_t function) {
         case 1:
         case 5:
         case 15:/* Read Coils */
-            if(port->coilsize) return 0;
+            if(port->coil_size) return 0;
             break;
         case 2: /* Read Discrete Inputs */
-            if(port->discsize) return 0;
+            if(port->disc_size) return 0;
             break;
         case 3: /* Read Holding Registers */
         case 6:
         case 16:
-            if(port->holdsize) return 0;
+            if(port->hold_size) return 0;
             break;
         case 4: /* Read Input Registers */
-            if(port->inputsize) return 0;
+            if(port->input_size) return 0;
             break;
         case 8:
             if(port->protocol != MB_TCP) return 0;
@@ -800,7 +794,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 5: /* Write Single Coil */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
-            if(index >= port->coilsize) {
+            if(index >= port->coil_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             if(value) {
@@ -815,7 +809,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 6: /* Write Single Register */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
-            if(index >= port->holdsize) {
+            if(index >= port->hold_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             data[0] = value;
@@ -828,7 +822,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 15: /* Write Multiple Coils */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
-            if((index + count) > port->coilsize) {
+            if((index + count) > port->coil_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             word = 0;
@@ -849,7 +843,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 16: /* Write Multiple Registers */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
-            if((index + count) > port->holdsize) {
+            if((index + count) > port->hold_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             for(n = 0; n < count; n++) {

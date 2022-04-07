@@ -27,7 +27,7 @@
 #include <pthread.h>
 #include <modopt.h>
 #include <database.h>
-#include <lib/modbus.h>
+#include <modbus.h>
 
 extern struct Config config;
 /* For now we'll keep ds as a global to simplify the code.  At some
@@ -58,18 +58,15 @@ _port_thread(void *port) {
 static void
 _slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *data)
 {
-    //uint16_t buff[count];  /* This should be big enough */
     int result;
-    port_userdata *ud;
     tag_handle h;
 
-    ud = (port_userdata *)mb_get_port_userdata(port);
     /* We're going to cheat and build our own tag_handle */
     /* We're assuming that the server loop won't call this function
      * with bad data. */
     switch(reg) {
         case MB_REG_HOLDING: /* These are the 16 bit registers */
-            h.index = ud->reg[HOLD_REG].h.index;
+            h.index = port->hold_tag.index;
             h.byte = index * 2;
             h.bit = 0;
             h.count = count;
@@ -77,7 +74,7 @@ _slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *da
             h.type = DAX_UINT;
             break;
         case MB_REG_INPUT:
-            h.index = ud->reg[INPUT_REG].h.index;
+            h.index = port->input_tag.index;
             h.byte = index * 2;
             h.bit = 0;
             h.count = count;
@@ -85,7 +82,7 @@ _slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *da
             h.type = DAX_UINT;
             break;
         case MB_REG_COIL:
-            h.index = ud->reg[COIL_REG].h.index;
+            h.index = port->coil_tag.index;
             h.byte = index / 8;
             h.bit = index % 8;
             h.count = count;
@@ -93,7 +90,7 @@ _slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *da
             h.type = DAX_BOOL;
             break;
         case MB_REG_DISC:
-            h.index = ud->reg[DISC_REG].h.index;
+            h.index = port->disc_tag.index;
             h.byte = index / 8;
             h.bit = index % 8;
             h.count = count;
@@ -112,16 +109,14 @@ _slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *da
 static void
 _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *data) {
     int result;
-    port_userdata *ud;
     tag_handle h;
 
-    ud = (port_userdata *)mb_get_port_userdata(port);
     /* We're going to cheat and build our own tag_handle */
     /* We're assuming that the server loop won't call this function
      * with bad data. */
     switch(reg) {
         case MB_REG_HOLDING: /* These are the 16 bit registers */
-            h.index = ud->reg[HOLD_REG].h.index;
+            h.index = port->hold_tag.index;
             h.byte = index * 2;
             h.bit = 0;
             h.count = count;
@@ -129,7 +124,7 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
             h.type = DAX_UINT;
             break;
         case MB_REG_INPUT:
-            h.index = ud->reg[INPUT_REG].h.index;
+            h.index = port->input_tag.index;
             h.byte = index * 2;
             h.bit = 0;
             h.count = count;
@@ -137,7 +132,7 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
             h.type = DAX_UINT;
             break;
         case MB_REG_COIL:
-            h.index = ud->reg[COIL_REG].h.index;
+            h.index = port->coil_tag.index;
             h.byte = index / 8;
             h.bit = index % 8;
             h.count = count;
@@ -145,7 +140,7 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
             h.type = DAX_BOOL;
             break;
         case MB_REG_DISC:
-            h.index = ud->reg[DISC_REG].h.index;
+            h.index = port->disc_tag.index;
             h.byte = index / 8;
             h.bit = index % 8;
             h.count = count;
@@ -160,52 +155,36 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
 }
 
 
-/* This function sets up an individual slave port register.  It's adds the
- * tag to the OpenDAX server, then allocates and sets up a slave userdata
- * structure and assigns it to a change event for the newly created tag */
-static int
-_slave_reg_add(mb_port *port, port_ud_item *item, int mbreg, int size)
-{
-    int result;
-
-    if(mbreg == MB_REG_COIL || mbreg == MB_REG_DISC) {
-        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_BOOL, size, 0);
-    } else {
-        result = dax_tag_add(ds, &item->h, item->mbreg, DAX_UINT, size, 0);
-    }
-    if(result) return result;
-
-    return 0;
-}
-
 /* When this function is called the port registers in the modbus library
  * have been setup but the OpenDAX part hasn't.  This function gets the
- * information from the port user data and determines which registers we are
- * going to use and calls the _slave_reg_add() function for those registers */
+ * information from the port and sets up the tags in opendax */
 static int
 _setup_port(mb_port *port)
 {
     unsigned int size;
-    port_userdata *ud;
+    int result;
 
-    ud = (port_userdata *)mb_get_port_userdata(port);
-
+    // TODO: check for NULL tagname strings and errors and deal with them appropriately
     if(mb_get_port_type(port) == MB_SLAVE) {
         size = mb_get_holdreg_size(port);
         if(size) {
-            _slave_reg_add(port, &ud->reg[HOLD_REG], MB_REG_HOLDING, size);
+            result = dax_tag_add(ds, &port->hold_tag, port->hold_name, DAX_UINT, size, 0);
+            if(result) dax_error(ds, "Failed to add holding register tag for port %s", port->name);
         }
         size = mb_get_inputreg_size(port);
         if(size) {
-            _slave_reg_add(port, &ud->reg[INPUT_REG], MB_REG_INPUT, size);
+            result = dax_tag_add(ds, &port->input_tag, port->input_name, DAX_UINT, size, 0);
+            if(result) dax_error(ds, "Failed to add input register tag for port %s", port->name);
         }
         size = mb_get_coil_size(port);
         if(size) {
-            _slave_reg_add(port, &ud->reg[COIL_REG], MB_REG_COIL, size);
+            result = dax_tag_add(ds, &port->coil_tag, port->coil_name, DAX_BOOL, size, 0);
+            if(result) dax_error(ds, "Failed to add coil register tag for port %s", port->name);
         }
         size = mb_get_discrete_size(port);
         if(size) {
-            _slave_reg_add(port, &ud->reg[DISC_REG], MB_REG_DISC, size);
+            result = dax_tag_add(ds, &port->disc_tag, port->disc_name, DAX_BOOL, size, 0);
+            if(result) dax_error(ds, "Failed to add discrete input tag for port %s", port->name);
         }
         mb_set_slave_write_callback(port, _slave_write_callback);
         mb_set_slave_read_callback(port, _slave_read_callback);
@@ -242,10 +221,8 @@ main (int argc, const char * argv[]) {
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
     result = modbus_configure(argc, argv);
-
-    result = init_database();
     if(result) {
-        dax_fatal(ds, "Unable to initialize the database!");
+        exit(-1);
     }
 
     if( dax_connect(ds) ) {

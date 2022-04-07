@@ -19,7 +19,8 @@
  */
 
 #include <modbus.h>
-#include <mblib.h>
+
+extern dax_state *ds;
 
 /* Initializes the port structure given by pointer p */
 static void
@@ -44,10 +45,10 @@ initport(mb_port *p)
     p->parity = MB_NONE;
     p->bindport = 5001;
     p->scanrate = 1000;
-    p->holdsize = 0;
-    p->inputsize = 0;
-    p->coilsize = 0;
-    p->discsize = 0;
+    p->hold_size = 0;
+    p->input_size = 0;
+    p->coil_size = 0;
+    p->disc_size = 0;
     p->buff_head = NULL;
     FD_ZERO(&(p->fdset));
     p->maxfd = 0;
@@ -58,14 +59,7 @@ initport(mb_port *p)
     p->in_callback = NULL;
     p->slave_read = NULL;
     p->slave_write = NULL;
-    p->userdata = NULL;
     strcpy(p->ipaddress, "0.0.0.0");
-#ifdef __MB_THREAD_SAFE
-    mb_mutex_init(&p->hold_mutex);
-    mb_mutex_init(&p->input_mutex);
-    mb_mutex_init(&p->coil_mutex);
-    mb_mutex_init(&p->disc_mutex);
-#endif
 };
 
 static int
@@ -113,7 +107,6 @@ openport(mb_port *m_port)
     /* the port is opened RW and reads will not block */
     fd = open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(fd == -1)  {
-        DEBUGMSG2("openport: %s", strerror(errno));
         return(-1);
     } else  {
         fcntl(fd, F_SETFL, 0);
@@ -170,7 +163,7 @@ openIPport(mb_port *mp)
     struct sockaddr_in addr;
     int result;
 
-    DEBUGMSG("Opening IP Port");
+    dax_debug(ds, LOG_MAJOR, "Opening IP Port");
     if(mp->socket == TCP_SOCK) {
     	fd = socket(AF_INET, SOCK_STREAM, 0);
     } else if (mp->socket == UDP_SOCK) {
@@ -182,17 +175,16 @@ openIPport(mb_port *mp)
     addr.sin_port = htons(mp->bindport);
 
     result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
-    DEBUGMSG2("Connect returned %d", result);
     if(result == -1) {
-        DEBUGMSG2( "openIPport: %s", strerror(errno));
+        dax_error(ds, "openIPport: %s", strerror(errno));
         return -1;
     }
     result = fcntl(fd, F_SETFL, O_NONBLOCK);
     if(result) {
-        DEBUGMSG( "Unable to set socket to non blocking");
+        dax_error(ds, "Unable to set socket to non blocking");
         return -1 ;
     }
-    DEBUGMSG2( "Socket Connected, fd = %d", fd);
+    dax_debug(ds, LOG_MAJOR, "Socket Connected, fd = %d", fd);
     mp->fd = fd;
     return fd;
 }
@@ -255,31 +247,31 @@ mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databi
     port->devtype = MB_SERIAL;
     port->device = strdup(device);
     if(port->device == NULL) {
-        DEBUGMSG("mb_set_serial_port() - Unable to allocate space for port");
+        dax_error(ds, "%s - Unable to allocate space for port", __func__);
         return MB_ERR_ALLOC;
     }
 
     port->baudrate = getbaudrate(baudrate);
     if(port->baudrate == 0) {
-        DEBUGMSG("mb_set_serial_port() - Bad baudrate passed");
+        dax_error(ds, "Bad baudrate passed");
         return MB_ERR_BAUDRATE;
     }
     if(databits >= 5 && databits <= 8) {
         port->databits = databits;
     } else {
-        DEBUGMSG("mb_set_serial_port() - Wrong number of databits passed");
+        dax_error(ds, "Wrong number of databits passed");
         return MB_ERR_DATABITS;
     }
     if(stopbits == 1 || stopbits == 2) {
         port->stopbits = stopbits;
     } else {
-        DEBUGMSG("mb_set_serial_port() - Wrong number of stopbits passed");
+        dax_error(ds, "Wrong number of stopbits passed");
         return MB_ERR_STOPBITS;
     }
     return 0;
 }
 
-/* This function sets the port up a network port instead of a serial port.  Normally this would be
+/* This function sets the port up as a network port instead of a serial port.  Normally this would be
  * used for Modbus TCP but with this library it can also be used for the RTU and ASCII protocols
  * as well.  Using a network port for these protocols will allow this library to talk to device
  * servers over the network. 'ipaddress' is a string representing the ipaddress i.e. "10.10.10.2"
@@ -301,7 +293,7 @@ mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport,
     if(socket == UDP_SOCK || socket == TCP_SOCK) {
         port->socket = socket;
     } else {
-        DEBUGMSG("mb_set_networ_port() - Bad argument for socket");
+        dax_error(ds, "Bad argument for socket");
         return MB_ERR_SOCKET;
     }
     return 0;
@@ -411,8 +403,6 @@ mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit)
 unsigned char
 mb_get_port_type(mb_port *port)
 {
-    DEBUGMSG2("mb_get_type() called for modbus port %s", port->name);
-    DEBUGMSG2("mb_get_type() returning %d", port->type);
     return port->type;
 }
 
@@ -429,9 +419,9 @@ mb_get_port_slaveid(mb_port *port) {
 int
 mb_set_holdreg_size(mb_port *port, unsigned int size) {
     if(size >= 0 && size <=65536) {
-        port->holdsize = size;
+        port->hold_size = size;
     } else {
-        port->holdsize = 0;
+        port->hold_size = 0;
         return MB_ERR_BAD_ARG;
     }
     return 0;
@@ -440,9 +430,9 @@ mb_set_holdreg_size(mb_port *port, unsigned int size) {
 int
 mb_set_inputreg_size(mb_port *port, unsigned int size) {
     if(size >= 0 && size <=65536) {
-        port->inputsize = size;
+        port->input_size = size;
     } else {
-        port->inputsize = 0;
+        port->input_size = 0;
         return MB_ERR_BAD_ARG;
     }
     return 0;
@@ -451,9 +441,9 @@ mb_set_inputreg_size(mb_port *port, unsigned int size) {
 int
 mb_set_coil_size(mb_port *port, unsigned int size) {
     if(size >= 0 && size <=65536) {
-        port->coilsize = size;
+        port->coil_size = size;
     } else {
-        port->coilsize = 0;
+        port->coil_size = 0;
         return MB_ERR_BAD_ARG;
     }
     return 0;
@@ -462,9 +452,9 @@ mb_set_coil_size(mb_port *port, unsigned int size) {
 int
 mb_set_discrete_size(mb_port *port, unsigned int size) {
     if(size >= 0 && size <=65536) {
-        port->discsize = size;
+        port->disc_size = size;
     } else {
-        port->discsize = 0;
+        port->disc_size = 0;
         return MB_ERR_BAD_ARG;
     }
     return 0;
@@ -472,22 +462,22 @@ mb_set_discrete_size(mb_port *port, unsigned int size) {
 
 unsigned int
 mb_get_holdreg_size(mb_port *port) {
-    return port->holdsize;
+    return port->hold_size;
 }
 
 unsigned int
 mb_get_inputreg_size(mb_port *port) {
-    return port->inputsize;
+    return port->input_size;
 }
 
 unsigned int
 mb_get_coil_size(mb_port *port) {
-    return port->coilsize;
+    return port->coil_size;
 }
 
 unsigned int
 mb_get_discrete_size(mb_port *port) {
-    return port->discsize;
+    return port->disc_size;
 }
 
 
@@ -507,18 +497,18 @@ mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,uint8_t *buff, u
     mp->in_callback = infunc;
 }
 
-void
-mb_set_port_userdata(mb_port *mp, void *userdata, void (*freefunc)(struct mb_port *port, void *userdata)) {
-    mp->userdata = userdata;
-    if(freefunc) {
-        mp->userdata_free = freefunc;
-    }
-}
-
-void *
-mb_get_port_userdata(mb_port *mp) {
-    return mp->userdata;
-}
+//void
+//mb_set_port_userdata(mb_port *mp, void *userdata, void (*freefunc)(struct mb_port *port, void *userdata)) {
+//    mp->userdata = userdata;
+//    if(freefunc) {
+//        mp->userdata_free = freefunc;
+//    }
+//}
+//
+//void *
+//mb_get_port_userdata(mb_port *mp) {
+//    return mp->userdata;
+//}
 
 /*
  * The slave_read_callback function is called by the server loop just before the response
@@ -645,10 +635,10 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
     }
     if(mp->type == MB_SLAVE) {
         fprintf(fd, "Slave ID: %d\n", mp->slaveid);
-        fprintf(fd, "Coils: %d\n", mp->coilsize);
-        fprintf(fd, "Discrete Inputs: %d\n", mp->discsize);
-        fprintf(fd, "Holding Registers: %d\n", mp->holdsize);
-        fprintf(fd, "Input Registers: %d\n", mp->holdsize);
+        fprintf(fd, "Coils: %d\n", mp->coil_size);
+        fprintf(fd, "Discrete Inputs: %d\n", mp->disc_size);
+        fprintf(fd, "Holding Registers: %d\n", mp->hold_size);
+        fprintf(fd, "Input Registers: %d\n", mp->hold_size);
     }
     fprintf(fd, "\n");
 }

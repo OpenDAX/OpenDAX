@@ -19,7 +19,7 @@
  */
 
 #include <modbus.h>
-#include <mblib.h>
+
 
 /* Sets the command values to some defaults */
 static void

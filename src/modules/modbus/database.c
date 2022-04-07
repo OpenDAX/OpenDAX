@@ -21,12 +21,6 @@
 
 extern dax_state *ds;
 
-/* This initializes all the data that we need to deal with for the database */
-int
-init_database(void) {
-    fprintf(stderr, "Initializing Database\n");
-    return 0;
-}
 
 /* These are the callbacks that get assigned to each command */
 static void

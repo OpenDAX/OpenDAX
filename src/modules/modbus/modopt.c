@@ -21,7 +21,6 @@
 #include <common.h>
 #include <modopt.h>
 #include <database.h>
-#include <lib/modbus.h>
 #include <opendax.h>
 
 #include <stdio.h>
@@ -165,20 +164,20 @@ _get_slave_config(lua_State *L, mb_port *p)
     unsigned int size;
     int result = 0;
     dax_error(ds, "Slave functionality is not yet implemented");
-    port_userdata *ud;
+    //port_userdata *ud;
     char *reg_name;
 
-    ud = malloc(sizeof(port_userdata));
-    if(ud == NULL) return ERR_ALLOC;
-    bzero(ud, sizeof(port_userdata));
+    //ud = malloc(sizeof(port_userdata));
+    //if(ud == NULL) return ERR_ALLOC;
+    //bzero(ud, sizeof(port_userdata));
 
     lua_getfield(L, -1, "holdreg");
     reg_name = (char *)lua_tostring(L, -1);
     lua_getfield(L, -2, "holdsize");
     size = (unsigned int)lua_tonumber(L, -1);
     if(reg_name && size) {
-        ud->reg[HOLD_REG].mbreg = strdup(reg_name);
-        if(ud->reg[HOLD_REG].mbreg == NULL) return ERR_ALLOC;
+        p->hold_name = strdup(reg_name);
+        if(p->hold_name == NULL) return ERR_ALLOC;
         result = mb_set_holdreg_size(p, size);
         if(result) return result;
     }
@@ -189,8 +188,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     lua_getfield(L, -2, "inputsize");
     size = (unsigned int)lua_tonumber(L, -1);
     if(reg_name && size) {
-        ud->reg[INPUT_REG].mbreg = strdup(reg_name);
-        if(ud->reg[INPUT_REG].mbreg == NULL) return ERR_ALLOC;
+        p->input_name = strdup(reg_name);
+        if(p->input_name == NULL) return ERR_ALLOC;
         result = mb_set_inputreg_size(p, size);
         if(result) return result;
     }
@@ -201,8 +200,8 @@ _get_slave_config(lua_State *L, mb_port *p)
     lua_getfield(L, -2, "coilsize");
     size = (unsigned int)lua_tonumber(L, -1);
     if(reg_name && size) {
-        ud->reg[COIL_REG].mbreg = strdup(reg_name);
-        if(ud->reg[COIL_REG].mbreg == NULL) return ERR_ALLOC;
+        p->coil_name = strdup(reg_name);
+        if(p->coil_name == NULL) return ERR_ALLOC;
         result = mb_set_coil_size(p, size);
         if(result) return result;
     }
@@ -213,14 +212,14 @@ _get_slave_config(lua_State *L, mb_port *p)
     lua_getfield(L, -2, "discsize");
     size = (unsigned int)lua_tonumber(L, -1);
     if(reg_name && size) {
-        ud->reg[DISC_REG].mbreg = strdup(reg_name);
-        if(ud->reg[DISC_REG].mbreg == NULL) return ERR_ALLOC;
+        p->disc_name = strdup(reg_name);
+        if(p->disc_name == NULL) return ERR_ALLOC;
         result = mb_set_discrete_size(p, size);
         if(result) return result;
     }
     lua_pop(L, 2);
 
-    mb_set_port_userdata(p, ud, NULL);
+    //mb_set_port_userdata(p, ud, NULL);
     return 0;
 }
 
@@ -264,7 +263,7 @@ _add_port(lua_State *L)
     lua_getfield(L, -1, "name");
     name = (char *)lua_tostring(L, -1);
     
-    config.ports[config.portcount] = mb_new_port(name, MB_FLAGS_THREAD_SAFE);
+    config.ports[config.portcount] = mb_new_port(name, 0x0000);
     /* Assign the pointer to p to make things simpler */
     p = config.ports[config.portcount];
     if(p == NULL) {

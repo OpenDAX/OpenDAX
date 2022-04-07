@@ -19,7 +19,8 @@
  */
 
 #include <modbus.h>
-#include <mblib.h>
+
+extern dax_state *ds;
 
 /* These two functions are wrappers to deal with adding and deleting
    file descriptors to the global _fdset and dealing with _maxfd */
@@ -122,10 +123,8 @@ _mb_read(mb_port *port, int fd)
     size = 100;
     result = read(fd, buff, size);
     if(result < 0) {
-        DEBUGMSG2("Unable to read data from socket %d", fd);
         return MB_ERR_RECV_FAIL;
     } if(result == 0) { /* EOF means the other guy is closed */
-        DEBUGMSG2("Received EOF on socket %d", fd);
         return MB_ERR_NO_SOCKET;
     }
 
@@ -219,11 +218,9 @@ _receive(mb_port *port)
             ; /* TODO: check to see if we should die here */
         } else {
             /* TODO: Deal with these errors */
-            DEBUGMSG2("_receive() - select error: %s", strerror(errno));
             return MB_ERR_RECV_FAIL;
         }
     } else if(result == 0) { /* Timeout */
-//        DEBUGMSG("_receive() - Timeout");
         _clear_buffers(port); /* this erases all of the _buffer nodes */
         return 0;
     } else {
@@ -233,15 +230,15 @@ _receive(mb_port *port)
                     fd = accept(n, (struct sockaddr *)&addr, &len);
                     if(fd < 0) {
                         /* TODO: Need to handle these communication errors */
-                        DEBUGMSG2("Error Accepting socket: %s", strerror(errno));
+                        dax_error(ds, "Error Accepting socket: %s", strerror(errno));
                     } else {
-                        DEBUGMSG2("Accepted socket on fd %d", n);
+                        dax_debug(ds, LOG_MAJOR, "Accepted socket on fd %d", n);
                         _add_connection(port, fd);
                     }
                 } else {
                     result = _mb_read(port, n);
                     if(result == MB_ERR_NO_SOCKET) { /* This is the end of file */
-                        DEBUGMSG2("Connection Closed for fd %d", n);
+                        dax_debug(ds, LOG_MAJOR, "Accepted socket on fd %d", n);
                         _del_connection(port, n);
                     } else if(result < 0) {
                         return result; /* Pass the error up */
@@ -261,16 +258,16 @@ server_loop(mb_port *port)
 
     result = _server_listen(port);
     if(result) {
-        DEBUGMSG2("Failed to listen on port - %s", strerror(errno));
+        dax_error(ds, "Failed to listen on port - %s", strerror(errno));
         return result;
     } else {
-        DEBUGMSG2("Listening on file descriptor %d", port->fd);
+        dax_debug(ds, LOG_MAJOR, "Listening on file descriptor %d", port->fd);
     }
     while(1) {
         result = _receive(port);
         if(result) {
             if(result == MB_ERR_OVERFLOW) {
-                DEBUGMSG("Buffer Overflow Attempt");
+                dax_error(ds, "Buffer Overflow Attempt");
             } else {
                 return result;
             }

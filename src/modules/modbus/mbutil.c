@@ -18,13 +18,7 @@
  * Source file for modbus library utility functions
  */
 
-#include <stdarg.h>
-
-#define _XOPEN_SOURCE
-#include <unistd.h>
-#undef _XOPEN_SOURCE
-#include <mblib.h>
-
+#include <modbus.h>
 
 /* CRC table straight from the modbus spec */
 static unsigned char aCRCHi[] = {
@@ -102,47 +96,3 @@ crc16check(uint8_t *buff, int length)
     else return 0;
 };
 
-#ifdef __MB_THREAD_SAFE
-int
-__mb_mutex_init(_mb_mutex_t *mutex)
-{
-	return pthread_mutex_init(mutex, NULL);
-}
-
-int
-__mb_mutex_lock(mb_port *port, _mb_mutex_t *mutex)
-{
-	if(port->flags & MB_FLAGS_THREAD_SAFE) {
-		return pthread_mutex_lock(mutex);
-	} else {
-		return 0;
-	}			
-}
-
-int
-__mb_mutex_unlock(mb_port *port, _mb_mutex_t *mutex)
-{
-	if(port->flags & MB_FLAGS_THREAD_SAFE) {
-		return pthread_mutex_unlock(mutex);
-	} else {
-		return 0;
-	}
-}
-
-#endif /* __MB_THREAD_SAFE */
-
-#ifdef DEBUG
-/* This function is only included when DEBUG is defined.  It 
- * turns into DEBUGMSGx() in the code.  Redefine to something
- * other than fprintf() ifneeded */
-void
-debug(char *format, ...)
-{
-    va_list val;
-    va_start(val, format);
-    vfprintf(stderr, format, val);
-    fprintf(stderr, "\n");
-    va_end(val);
-}
-
-#endif

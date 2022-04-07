@@ -19,8 +19,8 @@
  */
 
 #include <modbus.h>
-#include <mblib.h>
 
+extern dax_state *ds;
 
 static int
 _mb_read(mb_port *port, int fd)
@@ -32,10 +32,10 @@ _mb_read(mb_port *port, int fd)
 
     buffindex = 0;
 
-    /* Read a frame fromt the serial port */
+    /* Read a frame from the serial port */
     while((result = read(fd, &buff[buffindex], MB_BUFF_SIZE-buffindex))) {
         if(result < 0) {
-            DEBUGMSG2("Error reading Serial port on fd = %d", fd);
+            dax_error(ds, "Error reading Serial port on fd = %d", fd);
             return MB_ERR_RECV_FAIL;
         }
         if(result>0) {
@@ -60,7 +60,7 @@ _mb_read(mb_port *port, int fd)
                 write(fd, buff, result+2);
                 buffindex = 0;
             } else if(result < 0) {
-                fprintf(stderr, "Error Code Returned %d\n", result);
+                dax_error(ds, "Error reading serial port data %d\n", result);
                 return result;
             }
         }
@@ -76,8 +76,7 @@ slave_loop(mb_port *port) {
    while(1) {
         result = _mb_read(port, port->fd);
         if(result) {
-            fprintf(stderr, " -- %s Exiting slave loop because of %d\n", __func__, result);
-            fflush(stderr);
+            dax_error(ds, " Exiting slave loop because of error %d\n",  result);
             return result;
         }
     }

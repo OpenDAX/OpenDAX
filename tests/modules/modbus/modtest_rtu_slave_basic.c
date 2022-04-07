@@ -175,7 +175,6 @@ main(int argc, char *argv[])
     buff[6] = 0x44;
     buff[7] = 0x09;
     write(fd, buff, 8);
-    usleep(2e6);
 
 #ifdef ASDFASFE
     /* Open a socket to do the modbus stuff */
