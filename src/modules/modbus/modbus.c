@@ -21,6 +21,8 @@
 
 #include <modbus.h>
 
+extern dax_state *ds;
+
 int master_loop(mb_port *);
 
 /* Calculates the difference between the two times */
@@ -37,31 +39,40 @@ timediff(struct timeval oldtime,struct timeval newtime)
 int
 mb_run_port(struct mb_port *m_port)
 {
-    /* If the port is not already open */
-    if(!m_port->fd) {
-        mb_open_port(m_port);
-    }
-    /* If the port is still not open then we inhibit the port and
-     * let the _loop() functions deal with it */
-    if(m_port->fd == 0) {
-        m_port->inhibit = 1;
-    }
-    printf("mb_run_port() - Port type = %d\n", m_port->type);
+    int result;
 
-    if(m_port->type == MB_MASTER) {
-        printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
-        return master_loop(m_port);
-    } else if(m_port->type == MB_SLAVE) {
-        if(m_port->protocol == MB_TCP) {
-            printf("mb_run_port() - Start the TCP Server Loop\n");
-            return server_loop(m_port);
-        } else {
-            printf("%s - Start Slave Loop\n", __func__);
-            return slave_loop(m_port);
+    while(1) {
+        /* If the port is not already open */
+        if(!m_port->fd) {
+            result = mb_open_port(m_port);
         }
-        /* TODO: start slave thread */
-    } else {
-        return MB_ERR_PORTTYPE;
+        if(result) {
+            dax_error(ds, "Failed to open port %s", m_port->name);
+        } else {
+            /* If the port is still not open then we inhibit the port and
+             * let the _loop() functions deal with it */
+            if(m_port->fd == 0) {
+                m_port->inhibit = 1;
+            }
+
+            if(m_port->type == MB_MASTER) {
+                dax_debug(ds, LOG_MAJOR, "Calling master_loop() for %s\n", m_port->name);
+                return master_loop(m_port);
+            } else if(m_port->type == MB_SLAVE) {
+                if(m_port->protocol == MB_TCP) {
+                    dax_debug(ds, LOG_MAJOR, "Start Server Loop for port %s\n", m_port->name);
+                    result = server_loop(m_port);
+                    if(result) dax_error(ds, "Server loop exited with error, %d port %s\n", result, m_port->name);
+                } else {
+                    dax_debug(ds, LOG_MAJOR, "Start Slave Loop for port %s\n", m_port->name);
+                    result = slave_loop(m_port);
+                    if(result) dax_error(ds, "Slave loop exited with error, %d port %s\n", result, m_port->name);
+                }
+            } else {
+                return MB_ERR_PORTTYPE;
+            }
+        }
+        usleep(2e6);
     }
     return 0;
 }

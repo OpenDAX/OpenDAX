@@ -19,6 +19,8 @@
  */
 
 #include <modbus.h>
+#include <sys/stat.h>
+#include <sys/select.h>
 
 extern dax_state *ds;
 
@@ -29,17 +31,47 @@ _mb_read(mb_port *port, int fd)
     unsigned char buff[MB_BUFF_SIZE];
     int buffindex;
     uint16_t checksum;
+    struct stat staterr;
+    fd_set readfs, errfs;
+    struct timeval timeout;
+    int state=0; /* 0 = waiting */
 
     buffindex = 0;
 
     /* Read a frame from the serial port */
-    while((result = read(fd, &buff[buffindex], MB_BUFF_SIZE-buffindex))) {
-        if(result < 0) {
-            dax_error(ds, "Error reading Serial port on fd = %d", fd);
-            return MB_ERR_RECV_FAIL;
-        }
-        if(result>0) {
-            buffindex += result;
+    while(1) {
+        if(state == 0) { /* Waiting */
+            timeout.tv_usec = (port->timeout % 1000) * 1000;
+            timeout.tv_sec = port->timeout / 1000;
+            FD_ZERO(&readfs);
+            FD_SET(fd, &readfs);
+            FD_ZERO(&errfs);
+            FD_SET(fd, &errfs);
+            result = select(fd+1, &readfs, NULL, &errfs, &timeout);
+            if(FD_ISSET(fd, &readfs)) {
+                state = 1; /* We have data to read */
+            }
+        } else if(state == 1) { /* reading frame */
+            result = read(fd, &buff[buffindex], MB_BUFF_SIZE-buffindex);
+            if(result < 0) {
+                dax_error(ds, "Error reading Serial port on fd = %d", fd);
+                return MB_ERR_RECV_FAIL;
+            } else if(result > 0) {
+                buffindex += result;
+                if(buffindex > MB_BUFF_SIZE) {
+                    return MB_ERR_OVERFLOW;
+                }
+            } else {
+                result = stat(port->device, &staterr);
+                if(result) {
+                    close(fd);
+                    port->fd = 0;
+                    return MB_ERR_PORTFAIL;
+                }
+                break; /* One way or another we are at the end of our frame */
+            }
+            // TODO: Need to calculate this based on serial parameters.
+            usleep(port->frame); /* Inter byte timeout */
         }
     }
     if(buffindex > 0) {
@@ -76,7 +108,7 @@ slave_loop(mb_port *port) {
    while(1) {
         result = _mb_read(port, port->fd);
         if(result) {
-            dax_error(ds, " Exiting slave loop because of error %d\n",  result);
+            dax_error(ds, "Exiting slave loop because of error %d\n",  result);
             return result;
         }
     }

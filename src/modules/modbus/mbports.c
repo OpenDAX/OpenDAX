@@ -106,6 +106,7 @@ openport(mb_port *m_port)
 
     /* the port is opened RW and reads will not block */
     fd = open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+
     if(fd == -1)  {
         return(-1);
     } else  {
@@ -496,19 +497,6 @@ mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,uint8_t *buff, u
 {
     mp->in_callback = infunc;
 }
-
-//void
-//mb_set_port_userdata(mb_port *mp, void *userdata, void (*freefunc)(struct mb_port *port, void *userdata)) {
-//    mp->userdata = userdata;
-//    if(freefunc) {
-//        mp->userdata_free = freefunc;
-//    }
-//}
-//
-//void *
-//mb_get_port_userdata(mb_port *mp) {
-//    return mp->userdata;
-//}
 
 /*
  * The slave_read_callback function is called by the server loop just before the response
