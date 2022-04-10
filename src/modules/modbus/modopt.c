@@ -508,6 +508,9 @@ modbus_configure(int argc, const char *argv[])
     
     dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
+    dax_clear_luafunction(ds, "add_port");
+    dax_clear_luafunction(ds, "add_command");
+
     dax_free_config(ds);
     
     printconfig();
