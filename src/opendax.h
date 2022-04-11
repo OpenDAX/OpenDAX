@@ -288,6 +288,7 @@ typedef union dax_type_union {
 dax_state *dax_init(char *name);
 int dax_init_config(dax_state *ds, char *name);
 int dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name);
+int dax_clear_luafunction(dax_state *ds, char *name);
 lua_State *dax_get_luastate(dax_state *ds);
 int dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int flags, char *defvalue);
 int dax_configure(dax_state *ds, int argc, char **argv, int flags);

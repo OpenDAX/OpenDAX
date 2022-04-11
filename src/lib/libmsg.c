@@ -404,6 +404,10 @@ dax_connect(dax_state *ds)
     pthread_detach(ds->connection_thread);
     pthread_barrier_wait(&ds->connect_barrier);
 
+    if(ds->error_code == 0) {
+        opt_lua_init_func(ds);
+    }
+
     return ds->error_code;
 }
 

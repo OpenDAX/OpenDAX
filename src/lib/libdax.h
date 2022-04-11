@@ -197,6 +197,7 @@ int cache_tag_add(dax_state *, dax_tag *);
 int cache_tag_del(dax_state *, tag_index);
 
 int opt_get_msgtimeout(dax_state *);
+int opt_lua_init_func(dax_state *);
 
 datatype *get_cdt_pointer(dax_state *, tag_type, int *);
 int add_cdt_to_cache(dax_state *, tag_type type, char *typedesc);

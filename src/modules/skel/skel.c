@@ -55,7 +55,7 @@ int main(int argc,char *argv[]) {
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-    dax_log(ds, "Just seeing if I can print");
+
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("skel"); /* Replace 'skel' with your module name */
     if(ds == NULL) {
@@ -79,7 +79,7 @@ int main(int argc,char *argv[]) {
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "event_type","event_type", 'y', flags, "poll");
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE);
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
     /* Get the results of the configuration */
     tagname = strdup(dax_get_attr(ds, "tagname"));
