@@ -18,7 +18,7 @@
  * Source file for mb_port handling functions
  */
 
-#include <modbus.h>
+#include "modbus.h"
 
 extern dax_state *ds;
 
@@ -39,7 +39,7 @@ initport(mb_port *p)
     p->databits = 8;
     p->stopbits = 1;
     p->timeout = 1000;
-    p->frame = 10;
+    p->frame = 1000;
     p->delay = 0;
     p->retries = 3;
     p->parity = MB_NONE;
@@ -60,6 +60,10 @@ initport(mb_port *p)
     p->slave_read = NULL;
     p->slave_write = NULL;
     strcpy(p->ipaddress, "0.0.0.0");
+    p->connections = malloc(sizeof(tcp_connection) * MB_INIT_CONNECTION_SIZE);
+    p->connection_size = MB_INIT_CONNECTION_SIZE;
+    p->connection_count = 0;
+    p->persist = 0;
 };
 
 static int
@@ -157,14 +161,13 @@ openport(mb_port *m_port)
 
 /* Opens a IP socket instead of a serial port for both
    the TCP protocol and the LAN protocol. */
-static int
-openIPport(mb_port *mp)
+int
+openIPport(mb_port *mp, struct in_addr address, uint16_t port)
 {
     int fd = 0;
     struct sockaddr_in addr;
     int result;
 
-    dax_debug(ds, LOG_MAJOR, "Opening IP Port");
     if(mp->socket == TCP_SOCK) {
     	fd = socket(AF_INET, SOCK_STREAM, 0);
     } else if (mp->socket == UDP_SOCK) {
@@ -172,12 +175,12 @@ openIPport(mb_port *mp)
     }
 
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(mp->ipaddress);
-    addr.sin_port = htons(mp->bindport);
+    addr.sin_addr = address;
+    addr.sin_port = htons(port);
 
     result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+
     if(result == -1) {
-        dax_error(ds, "openIPport: %s", strerror(errno));
         return -1;
     }
     result = fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -185,15 +188,8 @@ openIPport(mb_port *mp)
         dax_error(ds, "Unable to set socket to non blocking");
         return -1 ;
     }
-    dax_debug(ds, LOG_MAJOR, "Socket Connected, fd = %d", fd);
-    mp->fd = fd;
     return fd;
 }
-
-
-/********************/
-/* Public Functions */
-/********************/
 
 /* This allocates and initializes a port.  Returns the pointer to the port on
  * success or NULL on failure.  'name' can either be the name to give the port
@@ -210,6 +206,10 @@ mb_new_port(const char *name, unsigned int flags)
         if(name != NULL) {
             mport->name = strdup(name);
             mport->flags = flags;
+        }
+        if(mport->connections == NULL) {
+            dax_error(ds, "Unable to allocate initial connection pool");
+            return NULL;
         }
     }
     return mport;
@@ -330,17 +330,15 @@ const char *mb_get_port_name(mb_port *port) {
 
 /* Determines whether or not the port is a serial port or an IP
  * socket and opens it appropriately */
+/* TODO This function can be eliminated */
 int
 mb_open_port(mb_port *m_port)
 {
     int fd;
 
-    /* A TCP Server will open it's socket when the event loop is called */
-    if(m_port->devtype == MB_NETWORK && m_port->type == MB_SERVER) {
-    	return 0;
-    }
+    /* Network connections will happen later */
     if(m_port->devtype == MB_NETWORK) {
-        fd = openIPport(m_port);
+        return 0;
     } else {
         fd = openport(m_port);
     }
@@ -358,19 +356,6 @@ mb_close_port(mb_port *port)
     return result;
 }
 
-int
-mb_set_frame_time(mb_port *port, int frame)
-{
-    port->frame = frame;
-    return 0;
-}
-
-int
-mb_set_delay_time(mb_port *port, int delay)
-{
-    port->delay = delay;
-    return 0;
-}
 
 int
 mb_set_scan_rate(mb_port *port, int rate)
@@ -379,12 +364,6 @@ mb_set_scan_rate(mb_port *port, int rate)
     return 0;
 }
 
-int
-mb_set_timeout(mb_port *port, int timeout)
-{
-    port->timeout = timeout;
-    return 0;
-}
 
 int
 mb_set_retries(mb_port *port, int retries)
@@ -521,17 +500,53 @@ mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, in
     mp->slave_write = infunc;
 }
 
+/* returns the next connection in the pool unless we are full then
+ * reallocate the pool and double it's size */
+static inline int
+_get_next_connection(mb_port *mp) {
+    tcp_connection *new;
 
-//void
-//mb_set_userdata_free_callback(mb_port *mp, void (*infunc)(struct mb_port *port, void *userdata))
-//{
-//    mp->userdata_free = infunc;
-//}
+    if(mp->connection_count == mp->connection_size) {
+    } else { /* need to grow the connections array */
+        if(mp->connection_size >= MB_MAX_CONNECTION_SIZE) return ERR_2BIG;
+        new = realloc(mp->connections, sizeof(tcp_connection)*mp->connection_size*2);
+        if(new == NULL) return MB_ERR_ALLOC;
+        else {
+            mp->connections = new;
+            bzero(&mp->connections[mp->connection_size], sizeof(tcp_connection)*mp->connection_size);
+            mp->connection_size *= 2;
+        }
+    }
+    return mp->connection_count++;
+}
 
+/* This function retrieves a connection from the ports connection pool
+ * if the conneciton does not exist then it attempts to make the connection
+ * and stores that in the pool for later.  Returns the file descriptor
+ * on success or an error otherwise*/
+int
+mb_get_connection(mb_port *mp, struct in_addr address, uint16_t port) {
+    int n, fd;
 
-/*********************/
-/* Utility Functions */
-/*********************/
+    for(n=0;n<mp->connection_count;n++) {
+        if(mp->connections[n].addr.s_addr == address.s_addr && mp->connections[n].port == port) {
+            /* We found one that matches */
+            DF("Found existing connection %d", mp->connections[n].fd)
+            return mp->connections[n].fd;
+        }
+    }
+    /* If we get here we didn't find one */
+    n = _get_next_connection(mp);
+    fd = openIPport(mp, address, port);
+    if(fd>=0) {
+        mp->connections[n].addr = address;
+        mp->connections[n].port = port;
+        mp->connections[n].fd = fd;
+    }
+    DF("Got connection %d\n", fd);
+    return fd;
+}
+
 
 /* Adds a new command to the linked list of commands on port p
    This is the master port threads list of commands that it sends
@@ -556,10 +571,6 @@ add_cmd(mb_port *p, mb_cmd *mc)
     }
     return 0;
 }
-
-/****************************/
-/*  Debugging Functions     */
-/****************************/
 
 /* This function is used for debugging purposes.  It could be used
  * to print the port configuration to a file as well. */
@@ -607,18 +618,33 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
     fprintf(fd, "Timeout: %d mSec\n", mp->timeout);
     fprintf(fd, "Max Failures: %d\n", mp->maxattempts);
     fprintf(fd, "Inhibit Time: %d Seconds\n", mp->inhibit_time);
+    fprintf(fd, "Persist Connection: %s\n", mp->persist ? "Yes" : "No");
 
     mc = mp->commands;
     if(mc == NULL) fprintf(fd, "No commands configured for this port\n");
     else {
-        fprintf(fd, "  Cmd  Node  FC Register Len\n");
         i = 0;
-        while(mc != NULL) {
-            fprintf(fd, " %4d  %4d  %2d %5d   %3d\n",i++,mc->node,
-                                                  mc->function,
-                                                  mc->m_register,
-                                                  mc->length);
-            mc = mc->next;
+        if(mp->protocol == MB_TCP) {
+            fprintf(fd, "  Cmd              Addr  Port Node  FC Register Len\n");
+            while(mc != NULL) {
+                fprintf(fd, " %4d  %15s %5d %4d  %2d %5d   %3d\n",i++,
+                                                            inet_ntoa(mc->ip_address),
+                                                            mc->port,
+                                                            mc->node,
+                                                            mc->function,
+                                                            mc->m_register,
+                                                            mc->length);
+                mc = mc->next;
+            }
+        } else {
+            fprintf(fd, "  Cmd  Node  FC Register Len\n");
+            while(mc != NULL) {
+                fprintf(fd, " %4d  %4d  %2d %5d   %3d\n",i++,mc->node,
+                                                      mc->function,
+                                                      mc->m_register,
+                                                      mc->length);
+                mc = mc->next;
+            }
         }
     }
     if(mp->type == MB_SLAVE) {

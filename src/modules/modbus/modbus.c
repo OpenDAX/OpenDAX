@@ -19,7 +19,8 @@
  */
 
 
-#include <modbus.h>
+#include <sys/select.h>
+#include "modbus.h"
 
 extern dax_state *ds;
 
@@ -51,12 +52,12 @@ mb_run_port(struct mb_port *m_port)
         } else {
             /* If the port is still not open then we inhibit the port and
              * let the _loop() functions deal with it */
-            if(m_port->fd == 0) {
+            if(m_port->fd == 0 && m_port->devtype != MB_NETWORK) {
                 m_port->inhibit = 1;
             }
 
             if(m_port->type == MB_MASTER) {
-                dax_debug(ds, LOG_MAJOR, "Calling master_loop() for %s\n", m_port->name);
+                dax_debug(ds, LOG_MAJOR, "Calling master_loop() for %s", m_port->name);
                 return master_loop(m_port);
             } else if(m_port->type == MB_SLAVE) {
                 if(m_port->protocol == MB_TCP) {
@@ -128,7 +129,6 @@ master_loop(mb_port *mp)
     mp->attempt = 0;
     mp->dienow = 0;
 
-    /* If enable goes negative we bail at the next scan */
     while(1) {
         gettimeofday(&start, NULL);
         if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
@@ -140,8 +140,9 @@ master_loop(mb_port *mp)
                     if(mp->maxattempts) {
                         mp->attempt++;
                     }
-                    if( mb_send_command(mp, mc) > 0 )
+                    if( mb_send_command(mp, mc) > 0 ) {
                         mp->attempt = 0; /* Good response, reset counter */
+                    }
                     if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
                         bail = 1;
                         mp->inhibit_temp = 0;
@@ -169,8 +170,9 @@ master_loop(mb_port *mp)
         gettimeofday(&end, NULL);
         time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
         /* If it takes longer than the scanrate then just go again instead of sleeping */
-        if(time_spent < mp->scanrate)
+        if(time_spent < mp->scanrate) {
             usleep((mp->scanrate - time_spent) * 1000);
+        }
     }
     /* Close the port */
     mb_close_port(mp);
@@ -471,41 +473,33 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
 static int
 getTCPresponse(uint8_t *buff, mb_port *mp)
 {
-    unsigned int buffindex = 0;
     uint8_t tempbuff[MB_FRAME_LEN];
-    struct timeval oldtime, thistime;
+    struct timeval timeout;
     int result;
+    fd_set readfs, errfs;
 
-    gettimeofday(&oldtime, NULL);
 
-    while(1) {
-        result = read(mp->fd, &tempbuff[buffindex], MB_FRAME_LEN);
-        if(result > 0) { /* Get some data */
-            buffindex += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
-        } else { /* Message is finished, good or bad */
-            if(buffindex > 0) { /* Is there any data in buffer? */
-                /* We have to convert the TCP message to it's RTU equivalent,
-                 * because that is what the calling function is expecting. */
-                buffindex -= 6;
-                memcpy(buff, &tempbuff[6], buffindex);
-
-                if(mp->in_callback) {
-                    mp->in_callback(mp, buff, buffindex);
-                }
-                return buffindex;
-
-            } else { /* No data in the buffer */
-                gettimeofday(&thistime,NULL);
-                if(timediff(oldtime, thistime) > mp->timeout) {
-                    return 0;
-                }
-            }
-        }
-        // TODO: Probably change this to the timeout value or something
-        usleep(mp->frame * 1000);
-
+    timeout.tv_usec = (mp->timeout % 1000) * 1000;
+    timeout.tv_sec = mp->timeout / 1000;
+    FD_ZERO(&readfs);
+    FD_SET(mp->fd, &readfs);
+    FD_ZERO(&errfs);
+    FD_SET(mp->fd, &errfs);
+    result = select(mp->fd+1, &readfs, NULL, &errfs, &timeout);
+    if(FD_ISSET(mp->fd, &readfs)) {
+        /* TODO Can we really assume that we'll get the whole thing in one read() */
+        result = read(mp->fd, tempbuff, MB_BUFF_SIZE);
     }
-    return 0; /* Should never get here */
+    if(result > 0) { /* Is there any data in buffer? */
+        if(mp->in_callback) {
+            mp->in_callback(mp, tempbuff, result);
+        }
+        /* We have to convert the TCP message to it's RTU equivalent,
+         * because that is what the calling function is expecting. */
+        result -= 6;
+        memcpy(buff, &tempbuff[6], result);
+    }
+    return result;
 }
 
 
@@ -548,8 +542,6 @@ handleresponse(uint8_t *buff, mb_cmd *cmd)
             break;
         case 5:
         case 6:
-            //COPYWORD(cmd->data, &buff[2]);
-            break;
         case 15:
         case 16:
             break;
@@ -557,6 +549,57 @@ handleresponse(uint8_t *buff, mb_cmd *cmd)
             break;
     }
     return 0;
+}
+
+/* This function is called before a write command request is sent.  It's purpose
+ * is to read the data from the tagserver and put it in the command buffer.  First
+ * it checks to see if we have already retrieved our handle from the
+ * tag server.  If not then we attempt to retrieve it.  Then we make sure that
+ * the sizes of the tag and the command buffer are the same and adjust if necessary.
+ * If the handles has been retrieved then we simply read the data from the
+ * tagserver and put it in the command data buffer so that it can be sent. */
+static int
+_get_write_data(mb_cmd *mc) {
+    int result;
+
+    if(mc->data_h.index == 0) {
+        result = dax_tag_handle(ds, &mc->data_h, mc->data_tag, mc->tagcount);
+        if(result) return result;
+        /* We need to check if the tag size and the data buffer size in the modbus command
+         * are the same.  If not then if the tag is smaller it's no big deal but if the command
+         * data size is smaller then we'll truncate the size in the tag handle. */
+        if(mc->data_h.size != mc->datasize) {
+            dax_error(ds, "Tag size and Modbus request size are different.  Data will be truncated");
+            if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
+        }
+    }
+    /* If we get here we assume that we now have a valid tag handle */
+    return dax_read_tag(ds, mc->data_h, mc->data);
+}
+
+/* This function is called after a command response has been received.  It's purpose
+ * is to put the data into the tagserver.  It first checks to see if we have already
+ * retrieved our handle from the tag server.  If not then we attempt to retrieve it.
+ * Then we make sure that the sizes of the tag and the command buffer are the same
+ * and adjust if necessary. If the handles has been retrieved then we simply write
+ * the data from the command data buffer to the tagserver. */
+static int
+_send_read_data(mb_cmd *mc) {
+    int result;
+
+    if(mc->data_h.index == 0) {
+        result = dax_tag_handle(ds, &mc->data_h, mc->data_tag, mc->tagcount);
+        if(result) return result;
+        /* We need to check if the tag size and the data buffer size in the modbus command
+         * are the same.  If not then if the tag is smaller it's no big deal but if the command
+         * data size is smaller then we'll truncate the size in the tag handle. */
+        if(mc->data_h.size != mc->datasize) {
+            dax_error(ds, "Tag size and Modbus request size are different.  Data will be truncated");
+            if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
+        }
+    }
+    /* If we get here we assume that we now have a valid tag handle */
+    return dax_write_tag(ds, mc->data_h, mc->data);
 }
 
 
@@ -591,11 +634,15 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     } else {
         return -1;
     }
-
-    if(mc->pre_send != NULL) {
-        mc->pre_send(mc, mc->userdata, mc->data, mc->datasize);
-        /* This is in case the pre_send() callback disables the command */
-        if(mc->enable == 0) return 0;
+    if(mp->protocol == MB_TCP) {
+        /* We get our fd from the pool for TCP connections and put it in the
+         * port fd.  This just keeps it consistent with the serial port functions
+         * so that we don't have to pass the fd to the send/get functions */
+        mp->fd = mb_get_connection(mp, mc->ip_address, mc->port);
+        if(mp->fd < 0) return MB_ERR_OPEN;
+    }
+    if(mb_is_write_cmd(mc)) {
+        result = _get_write_data(mc);
     }
     do { /* retry loop */
         result = sendrequest(mp, mc);
@@ -611,38 +658,26 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
         if(msglen > 0) {
             result = handleresponse(buff, mc); /* Returns 0 on success + on failure */
             if(result > 0) {
-                if(mc->send_fail != NULL) {
-                    mc->send_fail(mc, mc->userdata);
-                }
                 mc->exceptions++;
                 mc->lasterror = result | ME_EXCEPTION;
             } else { /* Everything is good */
-                if(mc->post_send != NULL) {
-                    mc->post_send(mc, mc->userdata, mc->data, mc->datasize);
-                }
                 mc->lasterror = 0;
+                if(mb_is_read_cmd(mc)) {
+                    result = _send_read_data(mc);
+                }
             }
             return msglen; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
-            if(mc->send_fail != NULL) {
-                mc->send_fail(mc, mc->userdata);
-            }
             mc->timeouts++;
             mc->lasterror = ME_TIMEOUT;
         } else {
             /* Checksum failed in response */
-            if(mc->send_fail != NULL) {
-                mc->send_fail(mc, mc->userdata);
-            }
             mc->crcerrors++;
             mc->lasterror = ME_CHECKSUM;
         }
     } while(try++ <= mp->retries);
     /* After all the retries get out with error */
     /* TODO: Should set error code?? */
-    if(mc->send_fail != NULL) {
-        mc->send_fail(mc, mc->userdata);
-    }
     return 0 - mc->lasterror;
 }
 

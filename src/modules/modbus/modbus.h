@@ -27,6 +27,8 @@
 #include <stdlib.h>
 
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/param.h>
 #include <string.h>
 #include <strings.h>
@@ -48,12 +50,11 @@
 #include <errno.h>
 #include <assert.h>
 #include <fcntl.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <common.h>
 #include <opendax.h>
 
 /* Port Types */
@@ -102,10 +103,10 @@
 #define ME_TIMEOUT        8
 
 /* Command Methods */
-#define	MB_DISABLE     0
-#define MB_CONTINUOUS  1
-#define	MB_ONCHANGE    2
-#define MB_TRIGGER     3
+#define MB_CONTINUOUS  0x01   /* Command is sent periodically */
+#define	MB_ONCHANGE    0x02   /* Command is sent when the data tag changes */
+#define MB_ONWRITE     0x04   /* Command is sent when written */
+#define MB_TRIGGER     0x08   /* Command is sent when trigger tag is set */
 
 /* Port Attribute Flags */
 #define MB_FLAGS_STOP_LOOP    0x01
@@ -147,6 +148,10 @@
 
 /* Maximum size of the receive buffer */
 #define MB_BUFF_SIZE 256
+/* Starting number of connections in the pool */
+#define MB_INIT_CONNECTION_SIZE 16
+/* Maximum number of connections that can be in the pool */
+#define MB_MAX_CONNECTION_SIZE 2048
 
 /* This is used in the port for client connections for the TCP Server */
 struct client_buffer {
@@ -155,6 +160,16 @@ struct client_buffer {
     unsigned char buff[MB_BUFF_SIZE];   /* data buffer */
     struct client_buffer *next;
 };
+
+/* This structure represents a single connection to a TCP server.
+ * There is a dynamic array of these in the port that are basically
+ * used as a connection pool. If fd is not zero then we are connected.
+ */
+typedef struct tcp_connection {
+    struct in_addr addr;
+    uint16_t port;
+    int fd;
+} tcp_connection;
 
 /* Internal struct that defines a single Modbus(tm) Port */
 typedef struct mb_port {
@@ -165,7 +180,7 @@ typedef struct mb_port {
     unsigned char type;       /* 0=Master, 1=Slave */
     unsigned char devtype;    /* 0=serial, 1=network */
     unsigned char protocol;   /* [Only RTU is implemented so far] */
-    uint8_t slaveid;         /* Slave ID 1-247 (Slave Only) */
+    uint8_t slaveid;          /* Slave ID 1-247 (Slave Only) */
     int baudrate;
     short databits;
     short stopbits;
@@ -207,7 +222,12 @@ typedef struct mb_port {
     unsigned char inhibit;       /* When set the port will not be started */
     unsigned int inhibit_time;   /* Number of seconds before the port will be retried */
     unsigned int inhibit_temp;
-//    void *userdata;
+
+    tcp_connection *connections;
+    int connection_size;
+    int connection_count;
+    uint8_t persist;
+
     /* These are callback function pointers for the port message data */
     void (*out_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
     void (*in_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
@@ -218,13 +238,16 @@ typedef struct mb_port {
 
 typedef struct mb_cmd {
     unsigned char enable;    /* 0=disable, 1=enable */
-    unsigned char mode;      /* MB_CONTINUOUS, MB_ONCHANGE */
-    uint8_t node;           /* Modbus device ID */
-    uint8_t function;       /* Function Code */
-    uint16_t m_register;    /* Modbus Register */
-    uint16_t length;        /* length of modbus data */
+    unsigned char mode;      /* MB_CONTINUOUS, MB_ONCHANGE, MB_ONWRITE, MB_TRIGGER */
+    struct in_addr ip_address;     /* IP address for TCP requests */
+    uint16_t port;           /* TCP port to connect to */
+    uint8_t node;            /* Modbus device ID */
+    uint8_t function;        /* Function Code */
+    uint16_t m_register;     /* Modbus Register */
+    uint16_t length;         /* length of modbus data */
+
     unsigned int interval;   /* number of port scans between messages */
-    uint8_t *data;          /* pointer to the actual modbus data that this command refers */
+    uint8_t *data;           /* pointer to the actual modbus data that this command refers */
     int datasize;            /* size of the *data memory area */
     unsigned int icount;     /* number of intervals passed */
     unsigned int requests;   /* total number of times this command has been sent */
@@ -232,14 +255,16 @@ typedef struct mb_cmd {
     unsigned int timeouts;   /* number of times this command has timed out */
     unsigned int crcerrors;  /* number of checksum errors */
     unsigned int exceptions; /* number of modbus exceptions recieved from slave */
-    uint8_t lasterror;      /* last error on command */
-    uint16_t lastcrc;       /* used to determine if a conditional message should be sent */
+    uint8_t lasterror;       /* last error on command */
+    uint16_t lastcrc;        /* used to determine if a conditional message should be sent */
     unsigned char firstrun;  /* Indicates that this command has been sent once */
-    void *userdata;          /* Data that can be assigned by the user.  Use free function callback */
-    void (*pre_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int size);
-    void (*post_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int size);
-    void (*send_fail)(struct mb_cmd *cmd, void *userdata);
-    void (*userdata_free)(struct mb_cmd *cmd, void *userdata); /* Callback to free userdata */
+
+    char *trigger_tag;       /* Tagname for tag that will be used to trigger this command must be BOOL */
+    char *data_tag;          /* Tagname for the tag that will represent the data for this command. */
+    uint32_t tagcount;       /* Number of tag items to read/write */
+    tag_handle trigger_h;    /* Handle to trigger tag */
+    tag_handle data_h;       /* Handle to data tag */
+
     struct mb_cmd* next;
 } mb_cmd;
 
@@ -251,10 +276,7 @@ void mb_destroy_port(mb_port *port);
 int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
 int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, uint8_t slaveid);
-int mb_set_frame_time(mb_port *port, int frame);
-int mb_set_delay_time(mb_port *port, int delay);
 int mb_set_scan_rate(mb_port *port, int rate);
-int mb_set_timeout(mb_port *port, int timeout);
 int mb_set_retries(mb_port *port, int retries);
 int mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit);
 
@@ -275,14 +297,12 @@ unsigned int mb_get_discrete_size(mb_port *port);
 
 int mb_open_port(mb_port *port);
 int mb_close_port(mb_port *port);
-
+int mb_get_connection(mb_port *mp, struct in_addr address, uint16_t port);
 /* Set callback functions that are called any time data is read or written over the port */
 void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,uint8_t *,unsigned int));
 void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,uint8_t *,unsigned int));
 
 /* Slave Port callbacks */
-/* Sets the port userdata pointer */
-//void mb_set_port_userdata(mb_port *mp, void *userdata, void (*freefunc)(struct mb_port *port, void *userdata));
 /* Sets the callback that is called when the Slave/Server receives a request to read data from the slave*/
 void mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data));
 /* Sets the callback that is called when the Slave/Server receives a request to write data to the slave*/
@@ -294,22 +314,13 @@ void *mb_get_port_userdata(mb_port *mp);
 mb_cmd *mb_new_cmd(mb_port *port);
 /* Free the memory allocated with mb_new_cmd() */
 void mb_destroy_cmd(mb_cmd *cmd);
-void mb_disable_cmd(mb_cmd *cmd);
-void mb_enable_cmd(mb_cmd *cmd);
 int mb_set_command(mb_cmd *cmd, uint8_t node, uint8_t function, uint16_t reg, uint16_t length);
 int mb_set_interval(mb_cmd *cmd, int interval);
 void mb_set_mode(mb_cmd *cmd, unsigned char mode);
-void mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd *cmd, void *userdata));
-uint8_t *mb_get_cmd_data(mb_cmd *cmd);
-int mb_get_cmd_datasize(mb_cmd *cmd);
+
 int mb_is_write_cmd(mb_cmd *cmd);
 int mb_is_read_cmd(mb_cmd *cmd);
 
-
-void mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int datasize));
-void mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *cmd, void *userdata, uint8_t *data, int datasize));
-void mb_send_fail_callback(mb_cmd *cmd, void (*send_fail)(struct mb_cmd *cmd, void *userdata));
-//void mb_userdata_free_callback(mb_cmd *cmd, void (*userdata_free)(struct mb_cmd *, void *));
 
 int mb_scan_port(mb_port *mp);
 
@@ -320,8 +331,6 @@ return pointer to cmd's userdata
 */
 
 /* End New Interface */
-//--int mb_add_cmd(mb_port *,mb_cmd *);
-//--mb_cmd *mb_get_cmd(mb_port *, unsigned int);
 int mb_run_port(mb_port *);
 int mb_send_command(mb_port *, mb_cmd *);
 

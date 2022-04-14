@@ -243,7 +243,6 @@ main (int argc, const char * argv[]) {
         } else {
             mb_set_msgout_callback(config.ports[n], outdata);
             mb_set_msgin_callback(config.ports[n], indata);
-            printf("Starting Thread for port - %s\n",mb_get_port_name(config.ports[n]));
             if(pthread_create(&config.threads[n], &attr, (void *)&_port_thread, (void *)config.ports[n])) {
                 dax_error(ds, "Unable to start thread for port - %s", mb_get_port_name(config.ports[n]));
             } else {

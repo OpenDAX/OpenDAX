@@ -21,7 +21,7 @@
  * the Lua programming language.
  */
 
-#include <libdaxlua.h>
+#include "libdaxlua.h"
 
 static dax_state *ds;
 

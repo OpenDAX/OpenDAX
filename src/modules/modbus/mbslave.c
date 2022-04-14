@@ -18,7 +18,7 @@
  * Source file for TCP Server functionality
  */
 
-#include <modbus.h>
+#include "modbus.h"
 #include <sys/stat.h>
 #include <sys/select.h>
 
