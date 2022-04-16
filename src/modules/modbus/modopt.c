@@ -18,11 +18,13 @@
  * Source file containing the configuration options
  */
 
+#define _GNU_SOURCE
 #include <common.h>
 #include "modopt.h"
-#include <database.h>
+//#include <database.h>
 #include <opendax.h>
 
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
@@ -63,7 +65,7 @@ _get_serial_config(lua_State *L, mb_port *p)
     lua_getfield(L, -1, "device");
     device = (char *)lua_tostring(L, -1);
     if(device == NULL) {
-        dax_debug(ds, 1, "No device given for serial port %s, Using /dev/serial", mb_get_port_name(p));
+        dax_debug(ds, 1, "No device given for serial port %s, Using /dev/serial", p->name);
         device = strdup("/dev/serial");
     }
 
@@ -383,7 +385,6 @@ _add_command(lua_State *L)
     mb_cmd *c;
     const char *string;
     int result;
-    unsigned char mode;
     uint8_t node, function;
     uint16_t reg, length;
     int p; /* Port ID */
@@ -398,7 +399,7 @@ _add_command(lua_State *L)
         luaL_error(L, "add_command() received an argument that is not a table");
     }
     port = config.ports[p];
-    if(mb_get_port_type(port) != MB_MASTER) {
+    if(port->type != MB_MASTER) {
         dax_debug(ds, 1, "Adding commands only makes sense for a Master or Client port");
         return 0;
     }
@@ -413,18 +414,17 @@ _add_command(lua_State *L)
     lua_getfield(L, -1, "mode");
     string = (char *)lua_tostring(L, -1);
     if(string != NULL) {
-        if(strncasecmp(string, "CONT", 4) == 0) mode = MB_CONTINUOUS;
-        else if(strcasecmp(string, "CHANGE") == 0) mode = MB_ONCHANGE;
-        else if(strcasecmp(string, "ONCHANGE") == 0) mode = MB_ONCHANGE;
-        else {
-            dax_debug(ds, 1, "Unknown Command Mode %s, assuming CONTINUOUS", string);
-            mode = MB_CONTINUOUS;
-        }
-    } else {
-        dax_debug(ds, 1, "Command Mode not given, assuming CONTINUOUS");
-        mode = MB_CONTINUOUS;
+        if(strcasestr(string, "CONT") != NULL) c->mode = MB_CONTINUOUS;
+        //else if(strncasecmp(string, "COND", 4) == 0) c->mode = MB_CONDITIONAL;
+        //else if(strcasecmp(string, "CHANGE") == 0) c->mode = MB_ONCHANGE;
+        if(strcasestr(string, "CHANGE") != NULL) c->mode |= MB_ONCHANGE;
+        if(strcasestr(string, "WRITE") != NULL) c->mode |= MB_ONWRITE;
+        if(strcasestr(string, "TRIGGER") != NULL) c->mode |= MB_TRIGGER;
     }
-    mb_set_mode(c, mode);
+    if(c->mode == 0) {
+        dax_debug(ds, 1, "Command Mode not given, assuming CONTINUOUS");
+        c->mode = MB_CONTINUOUS;
+    }
     lua_pop(L, 1);
     
     lua_getfield(L, -1, "enable");
@@ -434,7 +434,7 @@ _add_command(lua_State *L)
         c->enable = 0;
     }
     lua_pop(L, 1);
-    
+
     /* We'll need ip address and port if we are a TCP port */
     if(port->protocol == MB_TCP) {
         lua_getfield(L, -1, "ipaddress");
@@ -483,12 +483,23 @@ _add_command(lua_State *L)
     }
     lua_pop(L,1);
     lua_getfield(L, -1, "tagcount");
-        c->tagcount = lua_tointeger(L, -1);
-        if(c->tagcount == 0) {
-            dax_error(ds, "No tag count given.  Using 1 as default");
-            c->tagcount = 1;
-        }
-        lua_pop(L,1);
+    c->tagcount = lua_tointeger(L, -1);
+    if(c->tagcount == 0) {
+        dax_error(ds, "No tag count given.  Using 1 as default");
+        c->tagcount = 1;
+    }
+    lua_pop(L,1);
+
+    lua_getfield(L, -1, "trigger");
+    string = (char *)lua_tostring(L, -1);
+    if(string != NULL) {
+        DF("Got trigger named %s", string);
+        c->trigger_tag = strdup(string);
+    } else {
+        dax_error(ds, "No Tagname Given for Trigger on Port %d", p);
+    }
+    lua_pop(L,1);
+
     lua_getfield(L, -1, "interval");
     mb_set_interval(c, (int)lua_tonumber(L, -1));
     lua_pop(L,1);

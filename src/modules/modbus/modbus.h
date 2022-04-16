@@ -42,9 +42,7 @@
 #ifndef __USE_XOPEN
  #define __USE_XOPEN
 #endif
-#define _XOPEN_SOURCE
 #include <unistd.h>
-#undef _XOPEN_SOURCE
 
 #include <termios.h>
 #include <errno.h>
@@ -104,9 +102,10 @@
 
 /* Command Methods */
 #define MB_CONTINUOUS  0x01   /* Command is sent periodically */
-#define	MB_ONCHANGE    0x02   /* Command is sent when the data tag changes */
-#define MB_ONWRITE     0x04   /* Command is sent when written */
-#define MB_TRIGGER     0x08   /* Command is sent when trigger tag is set */
+#define MB_CONDITIONAL 0X02   /* Command is sent only if it is different */
+#define	MB_ONCHANGE    0x04   /* Command is sent when the data tag changes */
+#define MB_ONWRITE     0x08   /* Command is sent when written */
+#define MB_TRIGGER     0x10   /* Command is sent when trigger tag is set */
 
 /* Port Attribute Flags */
 #define MB_FLAGS_STOP_LOOP    0x01
@@ -171,6 +170,7 @@ typedef struct tcp_connection {
     int fd;
 } tcp_connection;
 
+
 /* Internal struct that defines a single Modbus(tm) Port */
 typedef struct mb_port {
     char *name;               /* Port name if needed : Maybe we don't need this */
@@ -179,7 +179,7 @@ typedef struct mb_port {
     unsigned char enable;     /* 0=Pause, 1=Run */
     unsigned char type;       /* 0=Master, 1=Slave */
     unsigned char devtype;    /* 0=serial, 1=network */
-    unsigned char protocol;   /* [Only RTU is implemented so far] */
+    unsigned char protocol;   /* MB_RTU, MB_ASCII or MB_TCP*/
     uint8_t slaveid;          /* Slave ID 1-247 (Slave Only) */
     int baudrate;
     short databits;
@@ -223,10 +223,12 @@ typedef struct mb_port {
     unsigned int inhibit_time;   /* Number of seconds before the port will be retried */
     unsigned int inhibit_temp;
 
-    tcp_connection *connections;
+    tcp_connection *connections;  /* Network connection pool */
     int connection_size;
     int connection_count;
-    uint8_t persist;
+    uint8_t persist;              /* If true the port(s) stay open */
+
+    pthread_mutex_t send_lock;
 
     /* These are callback function pointers for the port message data */
     void (*out_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
@@ -262,11 +264,17 @@ typedef struct mb_cmd {
     char *trigger_tag;       /* Tagname for tag that will be used to trigger this command must be BOOL */
     char *data_tag;          /* Tagname for the tag that will represent the data for this command. */
     uint32_t tagcount;       /* Number of tag items to read/write */
-    tag_handle trigger_h;    /* Handle to trigger tag */
     tag_handle data_h;       /* Handle to data tag */
 
     struct mb_cmd* next;
 } mb_cmd;
+
+typedef struct event_ud {
+    mb_port *port;
+    mb_cmd *cmd;
+    tag_handle h;
+} event_ud;
+
 
 /* Create a New Modbus Port with the given name */
 mb_port *mb_new_port(const char *name, unsigned int flags);
@@ -277,23 +285,12 @@ int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short da
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
 int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, uint8_t slaveid);
 int mb_set_scan_rate(mb_port *port, int rate);
-int mb_set_retries(mb_port *port, int retries);
 int mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit);
-
-const char *mb_get_port_name(mb_port *port);
-unsigned char mb_get_port_type(mb_port *port);
-unsigned char mb_get_port_protocol(mb_port *port);
-uint8_t mb_get_port_slaveid(mb_port *port);
 
 int mb_set_holdreg_size(mb_port *port, unsigned int size);
 int mb_set_inputreg_size(mb_port *port, unsigned int size);
 int mb_set_coil_size(mb_port *port, unsigned int size);
 int mb_set_discrete_size(mb_port *port, unsigned int size);
-
-unsigned int mb_get_holdreg_size(mb_port *port);
-unsigned int mb_get_inputreg_size(mb_port *port);
-unsigned int mb_get_coil_size(mb_port *port);
-unsigned int mb_get_discrete_size(mb_port *port);
 
 int mb_open_port(mb_port *port);
 int mb_close_port(mb_port *port);
@@ -320,15 +317,6 @@ void mb_set_mode(mb_cmd *cmd, unsigned char mode);
 
 int mb_is_write_cmd(mb_cmd *cmd);
 int mb_is_read_cmd(mb_cmd *cmd);
-
-
-int mb_scan_port(mb_port *mp);
-
-/* Functions to add...
-add free function to cmd
-assign memory to the cmd's userdata
-return pointer to cmd's userdata
-*/
 
 /* End New Interface */
 int mb_run_port(mb_port *);

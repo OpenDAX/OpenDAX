@@ -26,7 +26,7 @@ static void
 initcmd(struct mb_cmd *c)
 {
     c->enable = 1;
-    c->mode = MB_CONTINUOUS;
+    c->mode = 0;
     c->node = 0;
     c->function = 0;
     c->m_register = 0;
@@ -45,7 +45,6 @@ initcmd(struct mb_cmd *c)
     c->lastcrc = 0;
     c->firstrun = 0;
     bzero(&c->data_h, sizeof(tag_handle));
-    bzero(&c->trigger_h, sizeof(tag_handle));
     c->next = NULL;
 };
 

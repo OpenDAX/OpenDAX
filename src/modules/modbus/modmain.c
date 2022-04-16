@@ -154,6 +154,26 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
     }
 }
 
+static void
+_change_callback(dax_state *_ds, void *ud) {
+    event_ud *event = (event_ud *)ud;
+    DF("Change callback");
+    mb_send_command(event->port, event->cmd);
+}
+
+static void
+_trigger_callback(dax_state *_ds, void *ud) {
+    uint8_t bit=0;
+    event_ud *event = (event_ud *)ud;
+    DF("Trigger callback");
+    mb_send_command(event->port, event->cmd);
+    dax_write_tag(_ds, event->h, &bit);
+}
+
+static void
+_free_ud(void *ud) {
+    free(ud);
+}
 
 /* When this function is called the port registers in the modbus library
  * have been setup but the OpenDAX part hasn't.  This function gets the
@@ -161,33 +181,98 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
 static int
 _setup_port(mb_port *port)
 {
+    struct mb_cmd *mc;
     unsigned int size;
     int result;
+    event_ud *ud; /* This is the userdata for change and trigger events */
 
     // TODO: check for NULL tagname strings and errors and deal with them appropriately
-    if(mb_get_port_type(port) == MB_SLAVE) {
-        size = mb_get_holdreg_size(port);
+    if(port->type == MB_SLAVE) {
+        size = port->hold_size;
         if(size) {
             result = dax_tag_add(ds, &port->hold_tag, port->hold_name, DAX_UINT, size, 0);
             if(result) dax_error(ds, "Failed to add holding register tag for port %s", port->name);
         }
-        size = mb_get_inputreg_size(port);
+        size = port->input_size;
         if(size) {
             result = dax_tag_add(ds, &port->input_tag, port->input_name, DAX_UINT, size, 0);
             if(result) dax_error(ds, "Failed to add input register tag for port %s", port->name);
         }
-        size = mb_get_coil_size(port);
+        size = port->coil_size;
         if(size) {
             result = dax_tag_add(ds, &port->coil_tag, port->coil_name, DAX_BOOL, size, 0);
             if(result) dax_error(ds, "Failed to add coil register tag for port %s", port->name);
         }
-        size = mb_get_discrete_size(port);
+        size = port->disc_size;
         if(size) {
             result = dax_tag_add(ds, &port->disc_tag, port->disc_name, DAX_BOOL, size, 0);
             if(result) dax_error(ds, "Failed to add discrete input tag for port %s", port->name);
         }
         mb_set_slave_write_callback(port, _slave_write_callback);
         mb_set_slave_read_callback(port, _slave_read_callback);
+    } else { /* Port must be a master or client */
+         mc = port->commands;
+         while(mc != NULL) {
+             DF("command mode = %X", mc->mode);
+             if(mc->mode & MB_ONWRITE) {
+                 ud = malloc(sizeof(event_ud));
+                 if(ud == NULL) return ERR_ALLOC;
+                 ud->port = port;
+                 ud->cmd = mc;
+                 result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
+                 if(result) {
+                     dax_error(ds, "Unable to find tag for command write event");
+                     free(ud);
+                     return result;
+                 }
+                 result = dax_event_add(ds, &ud->h, EVENT_WRITE, NULL, NULL, _change_callback, ud, _free_ud);
+                 if(result) {
+                     dax_error(ds, "Unable to add event for command write event");
+                     free(ud);
+                     return result;
+                 }
+             /* We only setup the change event if we don't have a write event
+              * it's redundant otherwise */
+             } else if(mc->mode & MB_ONCHANGE) {
+                 ud = malloc(sizeof(event_ud));
+                 if(ud == NULL) return ERR_ALLOC;
+                 ud->port = port;
+                 ud->cmd = mc;
+                 result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
+                 if(result) {
+                     dax_error(ds, "Unable to find tag for command change event");
+                     free(ud);
+                     return result;
+                 }
+                 result = dax_event_add(ds, &ud->h, EVENT_CHANGE, NULL, NULL, _change_callback, ud, _free_ud);
+                 DF("dax_event_add() returned %d",result);
+                 if(result) {
+                     dax_error(ds, "Unable to add event for command change event");
+                     free(ud);
+                     return result;
+                 }
+             }
+             if(mc->mode & MB_TRIGGER) {
+                 ud = malloc(sizeof(event_ud));
+                 if(ud == NULL) return ERR_ALLOC;
+                 ud->port = port;
+                 ud->cmd = mc;
+                 result = dax_tag_handle(ds, &ud->h, mc->trigger_tag, 1);
+                 if(result) {
+                     dax_error(ds, "Unable to find tag for command trigger event");
+                     free(ud);
+                     return result;
+                 }
+                 result = dax_event_add(ds, &ud->h, EVENT_SET, NULL, NULL, _trigger_callback, ud, _free_ud);
+                 if(result) {
+                     dax_error(ds, "Unable to add event for command trigger event");
+                     free(ud);
+                     return result;
+                 }
+
+             }
+             mc = mc->next;
+         }
     }
     return 0;
 }
@@ -239,23 +324,22 @@ main (int argc, const char * argv[]) {
 
     for(n = 0; n < config.portcount; n++) {
         if(_setup_port(config.ports[n])) {
-            dax_error(ds, "Problem setting up port - %s", mb_get_port_name(config.ports[n]));
+            dax_error(ds, "Problem setting up port - %s", config.ports[n]->name);
         } else {
             mb_set_msgout_callback(config.ports[n], outdata);
             mb_set_msgin_callback(config.ports[n], indata);
             if(pthread_create(&config.threads[n], &attr, (void *)&_port_thread, (void *)config.ports[n])) {
-                dax_error(ds, "Unable to start thread for port - %s", mb_get_port_name(config.ports[n]));
+                dax_error(ds, "Unable to start thread for port - %s", config.ports[n]->name);
             } else {
-                dax_debug(ds, LOG_MAJOR, "Started Thread for port - %s", mb_get_port_name(config.ports[n]));
+                dax_debug(ds, LOG_MAJOR, "Started Thread for port - %s", config.ports[n]->name);
             }
         }
     }
-    /* TODO: Need some kind of semaphore here to signal when we can go to the running state */
-    /* This might be a problem since the threads may not have actually started yet */
+
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
 
     while(1) {
-        sleep(1);
+        dax_event_wait(ds, 1000, NULL);
         if(_caught_signal) {
             if(_caught_signal == SIGHUP) {
                 dax_log(ds, "Should be Reconfiguring Now");
@@ -321,7 +405,7 @@ void
 outdata(mb_port *mp, uint8_t *buff, unsigned int len)
 {
    int n;
-   printf("%s:", mb_get_port_name(mp));
+   printf("%s:", mp->name);
    for(n = 0; n < len; n++) {
        printf("(%X)", buff[n]);
    }
@@ -333,7 +417,7 @@ indata(mb_port *mp, uint8_t *buff, unsigned int len)
 {
    int n;
 
-   printf("%s:", mb_get_port_name(mp));
+   printf("%s:", mp->name);
    for(n = 0; n < len; n++) {
        printf("[%X]",buff[n]);
    }

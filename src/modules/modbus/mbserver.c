@@ -18,7 +18,7 @@
  * Source file for TCP Server functionality
  */
 
-#include <modbus.h>
+#include "modbus.h"
 
 extern dax_state *ds;
 

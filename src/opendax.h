@@ -401,7 +401,7 @@ int dax_event_get(dax_state *ds, dax_id id);
 int dax_event_options(dax_state *ds, dax_id id, uint32_t options);
 int dax_event_wait(dax_state *ds, int timeout, dax_id *id);
 int dax_event_poll(dax_state *ds, dax_id *id);
-int dax_event_get_fd(dax_state *ds);
+//int dax_event_get_fd(dax_state *ds);
 int dax_event_get_data(dax_state *ds, void* buff, int len);
 
 /* Event Utility Functions */

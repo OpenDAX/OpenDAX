@@ -20,11 +20,13 @@
 
 
 #include <sys/select.h>
+#include <pthread.h>
 #include "modbus.h"
 
 extern dax_state *ds;
 
 int master_loop(mb_port *);
+int client_loop(mb_port *);
 
 /* Calculates the difference between the two times */
 unsigned long long
@@ -57,8 +59,13 @@ mb_run_port(struct mb_port *m_port)
             }
 
             if(m_port->type == MB_MASTER) {
-                dax_debug(ds, LOG_MAJOR, "Calling master_loop() for %s", m_port->name);
-                return master_loop(m_port);
+                if(m_port->protocol == MB_TCP) {
+                    dax_debug(ds, LOG_MAJOR, "Starting client loop for %s", m_port->name);
+                    return client_loop(m_port);
+                } else {
+                    dax_debug(ds, LOG_MAJOR, "Starting master loop for %s", m_port->name);
+                    return master_loop(m_port);
+                }
             } else if(m_port->type == MB_SLAVE) {
                 if(m_port->protocol == MB_TCP) {
                     dax_debug(ds, LOG_MAJOR, "Start Server Loop for port %s\n", m_port->name);
@@ -78,39 +85,66 @@ mb_run_port(struct mb_port *m_port)
     return 0;
 }
 
+
+/* This is the primary event loop for a Modbus TCP client.  It calls the functions
+   to send the request and receive the responses.  It also takes care of the
+   retries and the counters. */
 int
-mb_scan_port(mb_port *mp)
+client_loop(mb_port *mp)
 {
-    int cmds_sent = 0;
-    int result;
-    mb_cmd *mc;
+    long time_spent;
+//    int result;
+    struct mb_cmd *mc;
+    struct timeval start, end;
 
-    mc = mp->commands;
-    while(mc != NULL && mp->inhibit == 0) {
-        /* Only if the command is enabled and the interval counter is over */
-        if(mc->enable && (++mc->icount >= mc->interval)) {
-            mc->icount = 0;
-            if(mp->maxattempts) {
-                mp->attempt++;
-            }
-            result = mb_send_command(mp, mc);
-            if( result > 0 ) {
-                mp->attempt = 0; /* Good response, reset counter */
-                cmds_sent++;
+    mp->running = 1; /* Tells the world that we are going */
+    mp->attempt = 0;
+    mp->dienow = 0;
+
+    while(1) {
+        gettimeofday(&start, NULL);
+        if(mp->enable) { /* If enable=0 then pause for the scanrate and try again. */
+            mc = mp->commands;
+
+            while(mc != NULL) {
+                /* Only if the command is enabled and the interval counter is over */
+                if(mc->enable && mc->mode & MB_CONTINUOUS) {
+                    DF("passed with %X", mc->mode & MB_CONTINUOUS);
+                    mc->icount = 0;
+                    if(mp->maxattempts) {
+                        mp->attempt++;
+                    }
+                    if( mb_send_command(mp, mc) > 0 ) {
+                        mp->attempt = 0; /* Good response, reset counter */
+                    }
+//                    if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
+//                        mp->inhibit_temp = 0;
+//                        mp->inhibit = 1;
+//                    }
+                }
                 if(mp->delay > 0) usleep(mp->delay * 1000);
-            } else if( result == 0 ) mp->maxattempts--; /* Conditional command that was not sent */
-
-            if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
-                mp->inhibit_temp = 0;
-                mp->inhibit = 1;
-            }
-
+                mc = mc->next; /* get next command from the linked list */
+            } /* End of while for sending commands */
         }
-        mc = mc->next; /* get next command from the linked list */
-    } /* End of while for sending commands */
-    return cmds_sent;
+        if(!mp->persist) {
+            mb_close_port(mp);
+        }
+        /* This calculates the length of time that it took to send the messages on this port
+           and then subtracts that time from the port's scanrate and calls usleep to hold
+           for the right amount of time.  */
+        gettimeofday(&end, NULL);
+        time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
+        /* If it takes longer than the scanrate then just go again instead of sleeping */
+        if(time_spent < mp->scanrate) {
+            usleep((mp->scanrate - time_spent) * 1000);
+        }
+    }
+    /* Close the port */
+    mb_close_port(mp);
+    mp->dienow = 0;
+    mp->running = 0;
+    return MB_ERR_PORTFAIL;
 }
-
 
 
 /* This is the primary event loop for a Modbus master.  It calls the functions
@@ -133,25 +167,27 @@ master_loop(mb_port *mp)
         gettimeofday(&start, NULL);
         if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
-            while(mc != NULL && !bail) {
-                /* Only if the command is enabled and the interval counter is over */
-                if(mc->enable && (++mc->icount >= mc->interval)) {
-                    mc->icount = 0;
-                    if(mp->maxattempts) {
-                        mp->attempt++;
+            if(mc->mode & MB_CONTINUOUS && mc->enable) {
+                while(mc != NULL && !bail) {
+                    /* Only if the command is enabled and the interval counter is over */
+                    if(mc->enable && (++mc->icount >= mc->interval)) {
+                        mc->icount = 0;
+                        if(mp->maxattempts) {
+                            mp->attempt++;
+                        }
+                        if( mb_send_command(mp, mc) > 0 ) {
+                            mp->attempt = 0; /* Good response, reset counter */
+                        }
+                        if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
+                            bail = 1;
+                            mp->inhibit_temp = 0;
+                            mp->inhibit = 1;
+                        }
                     }
-                    if( mb_send_command(mp, mc) > 0 ) {
-                        mp->attempt = 0; /* Good response, reset counter */
-                    }
-                    if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
-                        bail = 1;
-                        mp->inhibit_temp = 0;
-                        mp->inhibit = 1;
-                    }
-                }
-                if(mp->delay > 0) usleep(mp->delay * 1000);
-                mc = mc->next; /* get next command from the linked list */
-            } /* End of while for sending commands */
+                    if(mp->delay > 0) usleep(mp->delay * 1000);
+                    mc = mc->next; /* get next command from the linked list */
+                } /* End of while for sending commands */
+            }
         }
         if(mp->inhibit) {
             bail = 0;
@@ -163,6 +199,9 @@ master_loop(mb_port *mp)
             } else {
                 return MB_ERR_PORTFAIL;
             }
+        }
+        if(!mp->persist) {
+            mb_close_port(mp);
         }
         /* This calculates the length of time that it took to send the messages on this port
            and then subtracts that time from the port's scanrate and calls usleep to hold
@@ -619,6 +658,8 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     int result, msglen;
     static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
     static int (*getresponse)(uint8_t *,struct mb_port *) = NULL;
+
+    if(!mc->enable) return 0; /* If we are not enabled we don't send */
   /* This sets up the function pointers so we don't have to constantly check
    *  which protocol we are using for communication.  From this point on the
    *  code is generic for RTU or ASCII */
@@ -634,13 +675,18 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     } else {
         return -1;
     }
+    pthread_mutex_lock(&mp->send_lock);
     if(mp->protocol == MB_TCP) {
         /* We get our fd from the pool for TCP connections and put it in the
          * port fd.  This just keeps it consistent with the serial port functions
          * so that we don't have to pass the fd to the send/get functions */
         mp->fd = mb_get_connection(mp, mc->ip_address, mc->port);
-        if(mp->fd < 0) return MB_ERR_OPEN;
+        if(mp->fd < 0) {
+            pthread_mutex_unlock(&mp->send_lock);
+            return MB_ERR_OPEN;
+        }
     }
+    /* Retrieve the data from the tag server */
     if(mb_is_write_cmd(mc)) {
         result = _get_write_data(mc);
     }
@@ -650,8 +696,10 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
             msglen = getresponse(buff, mp);
         } else if(result == 0) {
             /* Should be 0 when a conditional command simply doesn't run */
+            pthread_mutex_unlock(&mp->send_lock);
             return result;
         } else {
+            pthread_mutex_unlock(&mp->send_lock);
             return -1;
         }
 
@@ -662,10 +710,12 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
                 mc->lasterror = result | ME_EXCEPTION;
             } else { /* Everything is good */
                 mc->lasterror = 0;
+                /* Send the data to the tag server */
                 if(mb_is_read_cmd(mc)) {
                     result = _send_read_data(mc);
                 }
             }
+            pthread_mutex_unlock(&mp->send_lock);
             return msglen; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
             mc->timeouts++;
@@ -678,6 +728,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     } while(try++ <= mp->retries);
     /* After all the retries get out with error */
     /* TODO: Should set error code?? */
+    pthread_mutex_unlock(&mp->send_lock);
     return 0 - mc->lasterror;
 }
 

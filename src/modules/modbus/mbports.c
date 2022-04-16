@@ -63,7 +63,8 @@ initport(mb_port *p)
     p->connections = malloc(sizeof(tcp_connection) * MB_INIT_CONNECTION_SIZE);
     p->connection_size = MB_INIT_CONNECTION_SIZE;
     p->connection_count = 0;
-    p->persist = 0;
+    p->persist = 1;
+    pthread_mutex_init(&p->send_lock, NULL);
 };
 
 static int
@@ -351,26 +352,27 @@ mb_close_port(mb_port *port)
 {
     int result;
 
-    result = close(port->fd);
-    port->fd = 0;
-    return result;
-}
-
-
-int
-mb_set_scan_rate(mb_port *port, int rate)
-{
-    port->scanrate = rate;
+    if(port->devtype == MB_NETWORK) {
+        for(int n=0; n<port->connection_count; n++) {
+            result = close(port->connections[n].fd);
+            port->connections[n].addr.s_addr = 0x0000;
+            port->connections[n].port = 0;
+            port->connections[n].fd = 0;
+            if(result) {
+                dax_error(ds, "Error closing network file descriptor %d", port->connections[n].fd);
+            }
+        }
+        port->connection_count = 0;
+    } else {
+         result = close(port->fd);
+         port->fd = 0;
+         if(result) {
+              dax_error(ds, "Error closing file descriptor %d", port->fd);
+         }
+    }
     return 0;
 }
 
-
-int
-mb_set_retries(mb_port *port, int retries)
-{
-    port->retries = retries;
-    return 0;
-}
 
 int
 mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit)
@@ -381,19 +383,8 @@ mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit)
 }
 
 unsigned char
-mb_get_port_type(mb_port *port)
-{
-    return port->type;
-}
-
-unsigned char
 mb_get_port_protocol(mb_port *port) {
     return port->protocol;
-}
-
-uint8_t
-mb_get_port_slaveid(mb_port *port) {
-    return port->slaveid;
 }
 
 int
@@ -438,26 +429,6 @@ mb_set_discrete_size(mb_port *port, unsigned int size) {
         return MB_ERR_BAD_ARG;
     }
     return 0;
-}
-
-unsigned int
-mb_get_holdreg_size(mb_port *port) {
-    return port->hold_size;
-}
-
-unsigned int
-mb_get_inputreg_size(mb_port *port) {
-    return port->input_size;
-}
-
-unsigned int
-mb_get_coil_size(mb_port *port) {
-    return port->coil_size;
-}
-
-unsigned int
-mb_get_discrete_size(mb_port *port) {
-    return port->disc_size;
 }
 
 
@@ -507,7 +478,8 @@ _get_next_connection(mb_port *mp) {
     tcp_connection *new;
 
     if(mp->connection_count == mp->connection_size) {
-    } else { /* need to grow the connections array */
+        /* need to grow the connections array */
+        DF("Growing connection pool array");
         if(mp->connection_size >= MB_MAX_CONNECTION_SIZE) return ERR_2BIG;
         new = realloc(mp->connections, sizeof(tcp_connection)*mp->connection_size*2);
         if(new == NULL) return MB_ERR_ALLOC;
@@ -531,12 +503,13 @@ mb_get_connection(mb_port *mp, struct in_addr address, uint16_t port) {
     for(n=0;n<mp->connection_count;n++) {
         if(mp->connections[n].addr.s_addr == address.s_addr && mp->connections[n].port == port) {
             /* We found one that matches */
-            DF("Found existing connection %d", mp->connections[n].fd)
+            DF("Found existing connection %d at index %d", mp->connections[n].fd, n)
             return mp->connections[n].fd;
         }
     }
     /* If we get here we didn't find one */
     n = _get_next_connection(mp);
+    DF("Opening new connection at index %d", n);
     fd = openIPport(mp, address, port);
     if(fd>=0) {
         mp->connections[n].addr = address;
