@@ -167,7 +167,6 @@ master_loop(mb_port *mp)
         gettimeofday(&start, NULL);
         if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
-            DF("mode = %d", mc->mode);
             while(mc != NULL && !bail) {
                 /* Only if the command is enabled and the interval counter is over */
                 if(mc->enable && (mc->mode & MB_CONTINUOUS) && (++mc->icount >= mc->interval)) {

@@ -165,9 +165,31 @@ static void
 _trigger_callback(dax_state *_ds, void *ud) {
     uint8_t bit=0;
     event_ud *event = (event_ud *)ud;
-    DF("Trigger callback");
     mb_send_command(event->port, event->cmd);
     dax_write_tag(_ds, event->h, &bit);
+}
+
+static void
+_enable_callback(dax_state *_ds, void *ud) {
+    unsigned int n;
+    mb_cmd *mc;
+    enable_ud *enable = (enable_ud *)ud;
+    uint8_t bits[enable->h.size];
+
+    // TODO: This isn't working for some reason
+    //dax_event_get_data(_ds, bits, enable->h.size);
+    dax_read_tag(ds, enable->h, bits);
+    n=0;
+    mc = enable->port->commands;
+    while(mc != NULL) {
+        if(bits[n/8] & (0x01 << n%8)) {
+            mc->enable = 0x01;
+        } else {
+            mc->enable = 0x00;
+        }
+        n++;
+        mc = mc->next;
+    }
 }
 
 static void
@@ -175,19 +197,19 @@ _free_ud(void *ud) {
     free(ud);
 }
 
-/* When this function is called the port registers in the modbus library
- * have been setup but the OpenDAX part hasn't.  This function gets the
- * information from the port and sets up the tags in opendax */
+/* Setup slave ports tags and set the read/write callbacks */
 static int
 _setup_port(mb_port *port)
 {
-    struct mb_cmd *mc;
-    unsigned int size;
+    unsigned int size, n;
     int result;
-    event_ud *ud; /* This is the userdata for change and trigger events */
+    char ctag[256];
+    enable_ud *ud;
+    uint8_t *bits;
+    mb_cmd *mc;
 
-    // TODO: check for NULL tagname strings and errors and deal with them appropriately
     if(port->type == MB_SLAVE) {
+        // TODO: check for NULL tagname strings and errors and deal with them appropriately
         size = port->hold_size;
         if(size) {
             result = dax_tag_add(ds, &port->hold_tag, port->hold_name, DAX_UINT, size, 0);
@@ -208,78 +230,134 @@ _setup_port(mb_port *port)
             result = dax_tag_add(ds, &port->disc_tag, port->disc_name, DAX_BOOL, size, 0);
             if(result) dax_error(ds, "Failed to add discrete input tag for port %s", port->name);
         }
+        /* TODO: We probably don't need these to be callbacks anymore since we got rid of the library */
         mb_set_slave_write_callback(port, _slave_write_callback);
         mb_set_slave_read_callback(port, _slave_read_callback);
-    } else { /* Port must be a master or client */
-         mc = port->commands;
-         while(mc != NULL) {
-             DF("command mode = %X", mc->mode);
-             if(mc->mode & MB_ONWRITE) {
-                 ud = malloc(sizeof(event_ud));
-                 if(ud == NULL) return ERR_ALLOC;
-                 ud->port = port;
-                 ud->cmd = mc;
-                 result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
-                 if(result) {
-                     dax_error(ds, "Unable to find tag for command write event");
-                     free(ud);
-                     return result;
-                 }
-                 result = dax_event_add(ds, &ud->h, EVENT_WRITE, NULL, NULL, _change_callback, ud, _free_ud);
-                 if(result) {
-                     dax_error(ds, "Unable to add event for command write event");
-                     free(ud);
-                     return result;
-                 }
-             /* We only setup the change event if we don't have a write event
-              * it's redundant otherwise */
-             } else if(mc->mode & MB_ONCHANGE) {
-                 ud = malloc(sizeof(event_ud));
-                 if(ud == NULL) return ERR_ALLOC;
-                 ud->port = port;
-                 ud->cmd = mc;
-                 result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
-                 if(result) {
-                     dax_error(ds, "Unable to find tag for command change event");
-                     free(ud);
-                     return result;
-                 }
-                 result = dax_event_add(ds, &ud->h, EVENT_CHANGE, NULL, NULL, _change_callback, ud, _free_ud);
-                 DF("dax_event_add() returned %d",result);
-                 if(result) {
-                     dax_error(ds, "Unable to add event for command change event");
-                     free(ud);
-                     return result;
-                 }
-             }
-             if(mc->mode & MB_TRIGGER) {
-                 ud = malloc(sizeof(event_ud));
-                 if(ud == NULL) return ERR_ALLOC;
-                 ud->port = port;
-                 ud->cmd = mc;
-                 result = dax_tag_handle(ds, &ud->h, mc->trigger_tag, 1);
-                 if(result) {
-                     dax_error(ds, "Unable to find tag for command trigger event");
-                     free(ud);
-                     return result;
-                 }
-                 result = dax_event_add(ds, &ud->h, EVENT_SET, NULL, NULL, _trigger_callback, ud, _free_ud);
-                 if(result) {
-                     dax_error(ds, "Unable to add event for command trigger event");
-                     free(ud);
-                     return result;
-                 }
-
-             }
-             mc = mc->next;
-         }
+    } else { /* We must be a master port */
+        /* Here we add the command enable tag for the ports */
+        mc = port->commands;
+        size = 0; /* Count the commands */
+        while(mc != NULL) {
+            size++;
+            mc = mc->next;
+        }
+        snprintf(ctag, 256, "%s_cmd_en", port->name);
+        ud = malloc(sizeof(enable_ud));
+        if(ud == NULL) return ERR_ALLOC;
+        result = dax_tag_add(ds, &ud->h, ctag, DAX_BOOL, size, 0x00);
+        if(result) {
+            dax_error(ds, "Unable to add connection enable tag for port %s", port->name);
+        } else {
+            bits = malloc(ud->h.size);
+            if(bits == NULL) return ERR_ALLOC;
+            mc = port->commands;
+            n=0;
+            while(mc != NULL) {
+                if(mc->enable) {
+                    bits[n/8] |= 0x01 << n%8;
+                } else {
+                    bits[n/8] &= ~(0x01 << n%8);
+                }
+                n++;
+                mc = mc->next;
+            }
+            dax_write_tag(ds, ud->h, bits);
+            ud->port = port;
+            dax_event_add(ds, &ud->h, EVENT_CHANGE, bits, NULL, _enable_callback, ud, _free_ud);
+        }
     }
     return 0;
 }
 
+/* This function scans the commands in the port and sets up the events that are
+ * supposed to send that command.  It increments an error counter so that the
+ * calling function can call it repeatedly until all of the tags have been created.*/
+static int
+_setup_master_events(mb_port *port) {
+    int result=0;
+    struct mb_cmd *mc;
+    event_ud *ud; /* This is the userdata for change and trigger events */
+
+    mc = port->commands;
+    while(mc != NULL) {
+        if(mc->mode & MB_ONWRITE) {
+            ud = malloc(sizeof(event_ud));
+            if(ud == NULL) return ERR_ALLOC;
+            ud->port = port;
+            ud->cmd = mc;
+            result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
+            if(result) {
+                dax_error(ds, "Unable to find tag for command write event");
+                free(ud);
+                result++;
+            } else {
+                result = dax_event_add(ds, &ud->h, EVENT_WRITE, NULL, NULL, _change_callback, ud, _free_ud);
+                if(result) {
+                    dax_error(ds, "Unable to add event for command write event");
+                    free(ud);
+                    result++;
+                } else {
+                    /* Success... Turn the mode bit off so that we don't do this again if
+                     * the function is called again. We turn of the change bit if it's set
+                     * since a change event would be redundant */
+                    mc->mode &= ~(MB_ONWRITE | MB_ONCHANGE);
+                }
+            }
+        }
+        if(mc->mode & MB_ONCHANGE) {
+            ud = malloc(sizeof(event_ud));
+            if(ud == NULL) return ERR_ALLOC;
+            ud->port = port;
+            ud->cmd = mc;
+            result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
+            if(result) {
+                dax_error(ds, "Unable to find tag for command change event");
+                free(ud);
+                result++;
+            } else {
+                result = dax_event_add(ds, &ud->h, EVENT_CHANGE, NULL, NULL, _change_callback, ud, _free_ud);
+                DF("dax_event_add() returned %d",result);
+                if(result) {
+                    dax_error(ds, "Unable to add event for command change event");
+                    free(ud);
+                    result++;
+                } else {
+                    /* Success */
+                    mc->mode &= ~(MB_ONCHANGE);
+                }
+            }
+        }
+        if(mc->mode & MB_TRIGGER) {
+            ud = malloc(sizeof(event_ud));
+            if(ud == NULL) return ERR_ALLOC;
+            ud->port = port;
+            ud->cmd = mc;
+            result = dax_tag_handle(ds, &ud->h, mc->trigger_tag, 1);
+            if(result) {
+                dax_error(ds, "Unable to find tag for command trigger event");
+                free(ud);
+                result++;
+            } else {
+                result = dax_event_add(ds, &ud->h, EVENT_SET, NULL, NULL, _trigger_callback, ud, _free_ud);
+                if(result) {
+                    dax_error(ds, "Unable to add event for command trigger event");
+                    free(ud);
+                    result++;
+                } else {
+                    /* Success */
+                    mc->mode &= ~(MB_TRIGGER);
+                }
+            }
+        }
+        mc = mc->next;
+    }
+    return result;
+}
+
 int
 main (int argc, const char * argv[]) {
-    int result, n;
+    int result, n, master_errors=-1;
+    uint32_t loop_count=0;
     struct sigaction sa;
     pthread_attr_t attr;
 
@@ -339,6 +417,14 @@ main (int argc, const char * argv[]) {
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
 
     while(1) {
+        /* for the first minute or until we have all the errors clear in the event
+         * setting logic we try to setup the events in the master port */
+        if(master_errors && loop_count < 60) {
+            for(n = 0; n < config.portcount; n++) {
+                master_errors = 0;
+                master_errors += _setup_master_events(config.ports[n]);
+            }
+        }
         dax_event_wait(ds, 1000, NULL);
         if(_caught_signal) {
             if(_caught_signal == SIGHUP) {
@@ -360,6 +446,7 @@ main (int argc, const char * argv[]) {
                 _caught_signal = 0;
             }
         }
+        loop_count++;
         /*TODO: Should scan ports to make sure that they are all still running */
     }
 

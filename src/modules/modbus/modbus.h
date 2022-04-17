@@ -276,6 +276,10 @@ typedef struct event_ud {
     tag_handle h;
 } event_ud;
 
+typedef struct enable_ud {
+    mb_port *port;
+    tag_handle h;
+} enable_ud;
 
 /* Create a New Modbus Port with the given name */
 mb_port *mb_new_port(const char *name, unsigned int flags);

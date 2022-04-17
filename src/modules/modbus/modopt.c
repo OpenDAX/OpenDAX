@@ -411,15 +411,48 @@ _add_command(lua_State *L)
         luaL_error(L, "Can't allocate memory for the command");
     }
 
+    lua_getfield(L, -1, "node");
+    node = (uint8_t)lua_tonumber(L, -1);
+
+    lua_getfield(L, -2, "fcode");
+    function = (uint8_t)lua_tonumber(L, -1);
+
+    lua_getfield(L, -3, "register");
+    reg = (uint16_t)lua_tonumber(L, -1);
+
+    lua_getfield(L, -4, "length");
+    length = (uint16_t)lua_tonumber(L, -1);
+
+    if(mb_set_command(c, node, function, reg, length)) {
+        dax_error(ds, "Unable to set command");
+    }
+    lua_pop(L, 4);
+
+    /* mode is how the command will be sent...
+     *    CONTINUOUS = sent periodically at each "interval" of the ports scanrate
+     *    TRIGGER = is sent when the trigger tag is set
+     *    CHANGE = sent when the data tag has changed
+     *    WRITE = sent when another client module writes to the data tag regarless of chagne
+     */
     lua_getfield(L, -1, "mode");
     string = (char *)lua_tostring(L, -1);
     if(string != NULL) {
         if(strcasestr(string, "CONT") != NULL) c->mode = MB_CONTINUOUS;
-        //else if(strncasecmp(string, "COND", 4) == 0) c->mode = MB_CONDITIONAL;
-        //else if(strcasecmp(string, "CHANGE") == 0) c->mode = MB_ONCHANGE;
-        if(strcasestr(string, "CHANGE") != NULL) c->mode |= MB_ONCHANGE;
-        if(strcasestr(string, "WRITE") != NULL) c->mode |= MB_ONWRITE;
         if(strcasestr(string, "TRIGGER") != NULL) c->mode |= MB_TRIGGER;
+        if(strcasestr(string, "CHANGE") != NULL) {
+            if(mb_is_write_cmd(c)) {
+                c->mode |= MB_ONCHANGE;
+            } else {
+                dax_error(ds, "ON CHANGE command trigger only makes sense for write commands");
+            }
+        }
+        if(strcasestr(string, "WRITE") != NULL) {
+            if(mb_is_write_cmd(c)) {
+                c->mode |= MB_ONWRITE;
+            } else {
+                dax_error(ds, "ON WRITE command trigger only makes sense for write commands");
+            }
+        }
     }
     if(c->mode == 0) {
         dax_debug(ds, 1, "Command Mode not given, assuming CONTINUOUS");
@@ -457,23 +490,6 @@ _add_command(lua_State *L)
         lua_pop(L, 1);
     }
 
-    lua_getfield(L, -1, "node");
-    node = (uint8_t)lua_tonumber(L, -1);
-    
-    lua_getfield(L, -2, "fcode");
-    function = (uint8_t)lua_tonumber(L, -1);
-    
-    lua_getfield(L, -3, "register");
-    reg = (uint16_t)lua_tonumber(L, -1);
-    
-    lua_getfield(L, -4, "length");
-    length = (uint16_t)lua_tonumber(L, -1);
-    
-    if(mb_set_command(c, node, function, reg, length)) {
-        dax_error(ds, "Unable to set command");
-    }
-    lua_pop(L, 4);
-    
     lua_getfield(L, -1, "tagname");
     string = (char *)lua_tostring(L, -1);
     if(string != NULL) {
@@ -490,15 +506,17 @@ _add_command(lua_State *L)
     }
     lua_pop(L,1);
 
-    lua_getfield(L, -1, "trigger");
-    string = (char *)lua_tostring(L, -1);
-    if(string != NULL) {
-        DF("Got trigger named %s", string);
-        c->trigger_tag = strdup(string);
-    } else {
-        dax_error(ds, "No Tagname Given for Trigger on Port %d", p);
+    if(c->mode & MB_TRIGGER) {
+        lua_getfield(L, -1, "trigger");
+        string = (char *)lua_tostring(L, -1);
+        if(string != NULL) {
+            c->trigger_tag = strdup(string);
+        } else {
+            dax_error(ds, "No Tagname Given for Trigger on Port %d", p);
+            c->mode &= ~MB_TRIGGER;
+        }
+        lua_pop(L,1);
     }
-    lua_pop(L,1);
 
     lua_getfield(L, -1, "interval");
     mb_set_interval(c, (int)lua_tonumber(L, -1));
