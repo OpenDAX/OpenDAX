@@ -93,7 +93,6 @@ int
 client_loop(mb_port *mp)
 {
     long time_spent;
-//    int result;
     struct mb_cmd *mc;
     struct timeval start, end;
 
@@ -108,8 +107,7 @@ client_loop(mb_port *mp)
 
             while(mc != NULL) {
                 /* Only if the command is enabled and the interval counter is over */
-                if(mc->enable && mc->mode & MB_CONTINUOUS) {
-                    DF("passed with %X", mc->mode & MB_CONTINUOUS);
+                if(mc->enable && (mc->mode & MB_CONTINUOUS) && (++mc->icount >= mc->interval)) {
                     mc->icount = 0;
                     if(mp->maxattempts) {
                         mp->attempt++;
@@ -126,9 +124,6 @@ client_loop(mb_port *mp)
                 mc = mc->next; /* get next command from the linked list */
             } /* End of while for sending commands */
         }
-        if(!mp->persist) {
-            mb_close_port(mp);
-        }
         /* This calculates the length of time that it took to send the messages on this port
            and then subtracts that time from the port's scanrate and calls usleep to hold
            for the right amount of time.  */
@@ -136,7 +131,12 @@ client_loop(mb_port *mp)
         time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
         /* If it takes longer than the scanrate then just go again instead of sleeping */
         if(time_spent < mp->scanrate) {
+            if(!mp->persist) {
+                mb_close_port(mp);
+            }
+            mp->scanning = 0; /* We're going to assume this is atomic for now */
             usleep((mp->scanrate - time_spent) * 1000);
+            mp->scanning = 1;
         }
     }
     /* Close the port */
@@ -167,27 +167,26 @@ master_loop(mb_port *mp)
         gettimeofday(&start, NULL);
         if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
-            if(mc->mode & MB_CONTINUOUS && mc->enable) {
-                while(mc != NULL && !bail) {
-                    /* Only if the command is enabled and the interval counter is over */
-                    if(mc->enable && (++mc->icount >= mc->interval)) {
-                        mc->icount = 0;
-                        if(mp->maxattempts) {
-                            mp->attempt++;
-                        }
-                        if( mb_send_command(mp, mc) > 0 ) {
-                            mp->attempt = 0; /* Good response, reset counter */
-                        }
-                        if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
-                            bail = 1;
-                            mp->inhibit_temp = 0;
-                            mp->inhibit = 1;
-                        }
+            DF("mode = %d", mc->mode);
+            while(mc != NULL && !bail) {
+                /* Only if the command is enabled and the interval counter is over */
+                if(mc->enable && (mc->mode & MB_CONTINUOUS) && (++mc->icount >= mc->interval)) {
+                    mc->icount = 0;
+                    if(mp->maxattempts) {
+                        mp->attempt++;
                     }
-                    if(mp->delay > 0) usleep(mp->delay * 1000);
-                    mc = mc->next; /* get next command from the linked list */
-                } /* End of while for sending commands */
-            }
+                    if( mb_send_command(mp, mc) > 0 ) {
+                        mp->attempt = 0; /* Good response, reset counter */
+                    }
+                    if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
+                        bail = 1;
+                        mp->inhibit_temp = 0;
+                        mp->inhibit = 1;
+                    }
+                }
+                if(mp->delay > 0) usleep(mp->delay * 1000);
+                mc = mc->next; /* get next command from the linked list */
+            } /* End of while for sending commands */
         }
         if(mp->inhibit) {
             bail = 0;
@@ -200,9 +199,6 @@ master_loop(mb_port *mp)
                 return MB_ERR_PORTFAIL;
             }
         }
-        if(!mp->persist) {
-            mb_close_port(mp);
-        }
         /* This calculates the length of time that it took to send the messages on this port
            and then subtracts that time from the port's scanrate and calls usleep to hold
            for the right amount of time.  */
@@ -210,6 +206,9 @@ master_loop(mb_port *mp)
         time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
         /* If it takes longer than the scanrate then just go again instead of sleeping */
         if(time_spent < mp->scanrate) {
+            if(!mp->persist) {
+                mb_close_port(mp);
+            }
             usleep((mp->scanrate - time_spent) * 1000);
         }
     }
@@ -350,7 +349,7 @@ getRTUresponse(uint8_t *buff, mb_port *mp)
     gettimeofday(&oldtime, NULL);
 
     while(1) {
-        usleep(mp->frame * 1000);
+        usleep(mp->frame);
         result = read(mp->fd, &buff[buffptr], MB_FRAME_LEN);
         if(result > 0) { /* Get some data */
             buffptr += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
@@ -696,9 +695,11 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
             msglen = getresponse(buff, mp);
         } else if(result == 0) {
             /* Should be 0 when a conditional command simply doesn't run */
+            if(!mp->scanning && !mp->persist) close(mp->fd);
             pthread_mutex_unlock(&mp->send_lock);
             return result;
         } else {
+            if(!mp->scanning && !mp->persist) close(mp->fd);
             pthread_mutex_unlock(&mp->send_lock);
             return -1;
         }
@@ -715,6 +716,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
                     result = _send_read_data(mc);
                 }
             }
+            if(!mp->scanning && !mp->persist) close(mp->fd);
             pthread_mutex_unlock(&mp->send_lock);
             return msglen; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
@@ -728,6 +730,7 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     } while(try++ <= mp->retries);
     /* After all the retries get out with error */
     /* TODO: Should set error code?? */
+    if(!mp->scanning && !mp->persist) close(mp->fd);
     pthread_mutex_unlock(&mp->send_lock);
     return 0 - mc->lasterror;
 }

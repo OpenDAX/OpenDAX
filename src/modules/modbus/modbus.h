@@ -227,6 +227,7 @@ typedef struct mb_port {
     int connection_size;
     int connection_count;
     uint8_t persist;              /* If true the port(s) stay open */
+    uint8_t scanning;             /* A flag to tell us if we are currently scanning the port */
 
     pthread_mutex_t send_lock;
 
