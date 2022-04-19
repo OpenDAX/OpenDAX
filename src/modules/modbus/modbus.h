@@ -171,6 +171,38 @@ typedef struct tcp_connection {
 } tcp_connection;
 
 
+typedef struct mb_cmd {
+    unsigned char enable;    /* 0=disable, 1=enable */
+    unsigned char mode;      /* MB_CONTINUOUS, MB_ONCHANGE, MB_ONWRITE, MB_TRIGGER */
+    struct in_addr ip_address;     /* IP address for TCP requests */
+    uint16_t port;           /* TCP port to connect to */
+    uint8_t node;            /* Modbus device ID */
+    uint8_t function;        /* Function Code */
+    uint16_t m_register;     /* Modbus Register */
+    uint16_t length;         /* length of modbus data */
+
+    unsigned int interval;   /* number of port scans between messages */
+    uint8_t *data;           /* pointer to the actual modbus data that this command refers */
+    int datasize;            /* size of the *data memory area */
+    unsigned int icount;     /* number of intervals passed */
+    unsigned int requests;   /* total number of times this command has been sent */
+    unsigned int responses;  /* number of valid modbus responses (exceptions included) */
+    unsigned int timeouts;   /* number of times this command has timed out */
+    unsigned int crcerrors;  /* number of checksum errors */
+    unsigned int exceptions; /* number of modbus exceptions recieved from slave */
+    uint8_t lasterror;       /* last error on command */
+    uint16_t lastcrc;        /* used to determine if a conditional message should be sent */
+    unsigned char firstrun;  /* Indicates that this command has been sent once */
+
+    char *trigger_tag;       /* Tagname for tag that will be used to trigger this command must be BOOL */
+    char *data_tag;          /* Tagname for the tag that will represent the data for this command. */
+    uint32_t tagcount;       /* Number of tag items to read/write */
+    tag_handle data_h;       /* Handle to data tag */
+
+    struct mb_cmd* next;
+} mb_cmd;
+
+
 /* Internal struct that defines a single Modbus(tm) Port */
 typedef struct mb_port {
     char *name;               /* Port name if needed : Maybe we don't need this */
@@ -230,6 +262,8 @@ typedef struct mb_port {
     uint8_t scanning;             /* A flag to tell us if we are currently scanning the port */
 
     pthread_mutex_t send_lock;
+    tag_handle command_h;         /* Handle to command tag */
+    mb_cmd *cmd;                  /* Pointer to the asynchronous command structure */
 
     /* These are callback function pointers for the port message data */
     void (*out_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
@@ -239,36 +273,6 @@ typedef struct mb_port {
     void (*userdata_free)(struct mb_port *port, void *userdata);
 } mb_port;
 
-typedef struct mb_cmd {
-    unsigned char enable;    /* 0=disable, 1=enable */
-    unsigned char mode;      /* MB_CONTINUOUS, MB_ONCHANGE, MB_ONWRITE, MB_TRIGGER */
-    struct in_addr ip_address;     /* IP address for TCP requests */
-    uint16_t port;           /* TCP port to connect to */
-    uint8_t node;            /* Modbus device ID */
-    uint8_t function;        /* Function Code */
-    uint16_t m_register;     /* Modbus Register */
-    uint16_t length;         /* length of modbus data */
-
-    unsigned int interval;   /* number of port scans between messages */
-    uint8_t *data;           /* pointer to the actual modbus data that this command refers */
-    int datasize;            /* size of the *data memory area */
-    unsigned int icount;     /* number of intervals passed */
-    unsigned int requests;   /* total number of times this command has been sent */
-    unsigned int responses;  /* number of valid modbus responses (exceptions included) */
-    unsigned int timeouts;   /* number of times this command has timed out */
-    unsigned int crcerrors;  /* number of checksum errors */
-    unsigned int exceptions; /* number of modbus exceptions recieved from slave */
-    uint8_t lasterror;       /* last error on command */
-    uint16_t lastcrc;        /* used to determine if a conditional message should be sent */
-    unsigned char firstrun;  /* Indicates that this command has been sent once */
-
-    char *trigger_tag;       /* Tagname for tag that will be used to trigger this command must be BOOL */
-    char *data_tag;          /* Tagname for the tag that will represent the data for this command. */
-    uint32_t tagcount;       /* Number of tag items to read/write */
-    tag_handle data_h;       /* Handle to data tag */
-
-    struct mb_cmd* next;
-} mb_cmd;
 
 typedef struct event_ud {
     mb_port *port;

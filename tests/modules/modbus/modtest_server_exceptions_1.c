@@ -50,7 +50,7 @@ _check_response(int sock, char *outbuff, int outlen, char *resbuff, int reslen) 
         return 1;
     }
     for(n=0;n<reslen;n++) {
-        if(resbuff[n] != buff[n]) {
+        if(((uint8_t *)resbuff)[n] != buff[n]) {
             return 1;
         }
     }

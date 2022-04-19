@@ -192,9 +192,91 @@ _enable_callback(dax_state *_ds, void *ud) {
     }
 }
 
+#define MOD_DATA_REG_COUNT 120
+
+/* This is the callback function that gets called when the 'send' bit
+ * of the ports command tag gets set.  It should send the command on
+ * the port that is passed as userdata, set the 'response' status member
+ * of the tag and reset the send bit. */
+static void
+_async_command_callback(dax_state *_ds, void *ud) {
+    mb_port *port = (mb_port *)ud;
+    uint8_t buff[port->command_h.size];
+    int result;
+
+    result = dax_read_tag(_ds, port->command_h, buff);
+    if(result) {
+        dax_error(_ds, "Unable to read commadn tag for port %s", port->name);
+    } else {
+        port->cmd->ip_address.s_addr = (buff[6]<<24) + (buff[5]<<16) + (buff[4]<<8) + buff[3];
+        port->cmd->port = *(dax_uint *)&buff[7];
+        port->cmd->node = buff[9];
+        port->cmd->function = buff[10];
+        port->cmd->m_register = *(dax_uint *)&buff[11];
+        port->cmd->length = *(dax_uint *)&buff[13];
+        result = mb_send_command(port, port->cmd);
+        buff[0] = 0;
+        *(dax_int *)&buff[1] = port->cmd->lasterror;
+        dax_write_tag(_ds, port->command_h, buff);
+    }
+
+}
+
 static void
 _free_ud(void *ud) {
     free(ud);
+}
+
+static inline int
+_add_async_command_tag(mb_port *port) {
+    int result;
+    char ctag[256];
+    static int type_added;
+    dax_cdt *cdt;
+    tag_type type;
+    tag_handle h;
+
+    if(type_added == 0) { /* First time we're called we add the CDT */
+        cdt = dax_cdt_new("mb_command", &result);
+        result = dax_cdt_member(ds, cdt, "send", DAX_BOOL, 1);
+        result = dax_cdt_member(ds, cdt, "response", DAX_INT, 1);
+        result = dax_cdt_member(ds, cdt, "ipaddress", DAX_BYTE, 4);
+        result = dax_cdt_member(ds, cdt, "port", DAX_UINT, 1);
+        result = dax_cdt_member(ds, cdt, "node", DAX_BYTE, 1);
+        result = dax_cdt_member(ds, cdt, "function", DAX_BYTE, 1);
+        result = dax_cdt_member(ds, cdt, "register", DAX_UINT, 1);
+        result = dax_cdt_member(ds, cdt, "length", DAX_UINT, 1);
+        result = dax_cdt_member(ds, cdt, "data", DAX_UINT, MOD_DATA_REG_COUNT);
+
+        result = dax_cdt_create(ds,cdt, &type);
+        type_added = 1;
+    }
+    /* Add our command tag and store the handle in the port */
+    snprintf(ctag, 256, "%s_cmd", port->name);
+    result = dax_tag_add(ds, &port->command_h, ctag, type, 1, 0x00);
+    if(result) {
+        dax_error(ds, "Unable to add tag %s", ctag);
+    } else {
+        port->command_h.size -= MOD_DATA_REG_COUNT*2; /* shrink handle to not include the data */
+        port->cmd = mb_new_cmd(NULL); /* Allocate a command for the port */
+        if(port->cmd == NULL) {
+            dax_error(ds, "Unable to allocate command to send");
+        } else { /* Put a handle to the data area in our new command so mb_send_command() will work */
+            snprintf(ctag, 256, "%s_cmd.data", port->name);
+            dax_tag_handle(ds, &port->cmd->data_h, ctag, MOD_DATA_REG_COUNT);
+            /* Allocate the data area to hold the whole data part of the command */
+            port->cmd->data = malloc(port->cmd->data_h.size);
+            if(port->cmd->data == NULL) {
+                dax_error(ds, "Unable to allocate data for command");
+                mb_destroy_cmd(port->cmd);
+            } else { /* Create a set event for the .send member */
+                snprintf(ctag, 256, "%s_cmd.send", port->name);
+                dax_tag_handle(ds, &h, ctag, 1);
+                result = dax_event_add(ds, &h, EVENT_SET, NULL, NULL, _async_command_callback, port, NULL);
+            }
+        }
+    }
+    return 0;
 }
 
 /* Setup slave ports tags and set the read/write callbacks */
@@ -264,6 +346,10 @@ _setup_port(mb_port *port)
             dax_write_tag(ds, ud->h, bits);
             ud->port = port;
             dax_event_add(ds, &ud->h, EVENT_CHANGE, bits, NULL, _enable_callback, ud, _free_ud);
+        }
+        result = _add_async_command_tag(port);
+        if(result) {
+            dax_error(ds, "Unable to add Asynchronous Command Tag");
         }
     }
     return 0;

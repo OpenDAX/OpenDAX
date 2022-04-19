@@ -81,7 +81,9 @@ mb_new_cmd(mb_port *port)
 
 void
 mb_destroy_cmd(mb_cmd *cmd) {
-
+    if(cmd->data != NULL) {
+        free(cmd->data);
+    }
     free(cmd);
 }
 
