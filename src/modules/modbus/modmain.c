@@ -157,7 +157,6 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
 static void
 _change_callback(dax_state *_ds, void *ud) {
     event_ud *event = (event_ud *)ud;
-    DF("Change callback");
     mb_send_command(event->port, event->cmd);
 }
 

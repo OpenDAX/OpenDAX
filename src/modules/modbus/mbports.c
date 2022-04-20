@@ -503,20 +503,17 @@ mb_get_connection(mb_port *mp, struct in_addr address, uint16_t port) {
     for(n=0;n<mp->connection_count;n++) {
         if(mp->connections[n].addr.s_addr == address.s_addr && mp->connections[n].port == port) {
             /* We found one that matches */
-            DF("Found existing connection %d at index %d", mp->connections[n].fd, n)
             return mp->connections[n].fd;
         }
     }
     /* If we get here we didn't find one */
     n = _get_next_connection(mp);
-    DF("Opening new connection at index %d", n);
     fd = openIPport(mp, address, port);
     if(fd>=0) {
         mp->connections[n].addr = address;
         mp->connections[n].port = port;
         mp->connections[n].fd = fd;
     }
-    DF("Got connection %d\n", fd);
     return fd;
 }
 

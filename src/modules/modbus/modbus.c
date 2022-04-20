@@ -388,6 +388,8 @@ getASCIIresponse(uint8_t *buff, mb_port *mp)
     return 0;
 }
 
+static uint16_t _req_tid;
+
 /* This function formulates and sends the Modbus TCP client request */
 static int
 sendTCPrequest(mb_port *mp, mb_cmd *cmd)
@@ -397,8 +399,8 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
 
     /* build the request message */
     /* MBAP Header minus the length.  We'll set it later */
-    buff[0] = 0x77;  /* Transaction ID */
-    buff[1] = 0x70;  /* Transaction ID */
+    buff[0] = _req_tid>>8;  /* Transaction ID */
+    buff[1] = _req_tid++;   /* Transaction ID */
     buff[2] = 0x00;  /* Protocol ID */
     buff[3] = 0x00;  /* Protocol ID */
     /* Modbus RTU PDU */
