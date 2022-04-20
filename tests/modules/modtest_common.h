@@ -19,12 +19,17 @@
 /*
  *  This contains common code for the compiled C Library tests
  */
-
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 
 pid_t run_server(void);
 pid_t run_module(const char *modpath, const char *modconf);
+pid_t run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, const char *modconf);
+int expect(int fd, char *str, int timeout);

@@ -24,10 +24,13 @@ if(BUILD_DAXLUA)
   add_subdirectory(daxlua)
 endif()
 
-if(BUILD_WIO)
-  add_subdirectory(wio)
-endif()
-
 if(BUILD_MQTT)
   add_subdirectory(mqtt)
 endif()
+
+# For now the joystick module only works in Linux
+if(BUILD_JOYSTICK AND OS_LINUX)
+  add_subdirectory(joystick)
+endif()
+
+add_subdirectory(skel)

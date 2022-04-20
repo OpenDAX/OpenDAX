@@ -24,24 +24,37 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <opendax.h>
 
 /* Module Flags */
 #define MFLAG_RESTART       0x01
 #define MFLAG_OPENPIPES     0x02
 #define MFLAG_REGISTER      0x04
 
+/* Flag bits for the tag data groups */
+#define GRP_FLAG_NOT_EMPTY  0x01
+
+/* Tag groups are an array of handles in each module */
+typedef struct tag_group_t {
+    uint8_t flags;    /* option flags for the group */
+    unsigned int size; /* amount of memory needed to transfer this group */
+    uint8_t count;    /* number of members in this group */
+    tag_handle *members;
+} tag_group;
 
 /* Modules are implemented as a circular doubly linked list */
 typedef struct dax_Module {
     char *name;
     in_addr_t host;     /* the modules host id */
-    int exit_status;    /* modules exit status */
     unsigned int flags; /* Configuration Flags for the module */
     unsigned int state; /* Modules Current Running State */
     int fd;             /* The socket file descriptor for this module */
-    u_int32_t timeout;  /* Module communication timeout. */
+    tag_index tagindex; /* The index of the tag that represents this module */
+    uint32_t timeout;  /* Module communication timeout. */
     time_t starttime;
     int event_count;
+    tag_group *tag_groups; /* Array of tag group packet definitions */
+    uint32_t groups_size;  /* Current size of the group array */
     struct dax_Module *next, *prev;
 } dax_module;
 
@@ -52,7 +65,7 @@ typedef struct dax_Module {
 struct cdt_member {
     char *name;
     unsigned int type;
-    u_int32_t count;
+    uint32_t count;
     struct cdt_member *next;
 };
 
@@ -68,6 +81,5 @@ struct datatype {
 };
 
 typedef struct datatype datatype;
-
 
 #endif /* !__DAXTYPES_H */

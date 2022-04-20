@@ -15,8 +15,20 @@
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include_directories(.)
-add_executable(tagserver server.c options.c func.c module.c message.c
-               tagbase.c crc.c buffer.c events.c mapping.c virtualtag.c)
+add_executable(tagserver server.c
+                         options.c
+                         func.c
+                         module.c
+                         message.c
+                         tagbase.c
+                         crc.c
+                         buffer.c
+                         events.c
+                         mapping.c
+                         virtualtag.c
+                         groups.c
+                         atomic.c
+                         retain.c)
 target_link_libraries(tagserver ${LUA_LIBRARIES})
 target_link_libraries(tagserver pthread)
 if(CMAKE_BUILD_TYPE MATCHES Debug)

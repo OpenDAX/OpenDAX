@@ -104,7 +104,7 @@ class LibDaxWrapper:
             raise RuntimeError
         return b
 
-    def dax_tag_add(self, ds, name, datatype, count=1):
+    def dax_tag_add(self, ds, name, datatype, count=1, attr = 0):
         h = Handle()
         if isinstance(datatype, str):
             t = self.libdax.dax_string_to_type(ds, datatype.encode('utf-8'))
@@ -113,7 +113,7 @@ class LibDaxWrapper:
                 raise RuntimeError
         else:
             t = datatype
-        x = self.libdax.dax_tag_add(ds, byref(h), name.encode('utf-8'), t, count)
+        x = self.libdax.dax_tag_add(ds, byref(h), name.encode('utf-8'), t, count, 0)
         if x < 0:
             raise RuntimeError
         return h

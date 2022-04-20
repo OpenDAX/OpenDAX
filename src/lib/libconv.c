@@ -35,8 +35,8 @@ mtos_int(int16_t x)
     return x;
 }
 
-u_int16_t
-mtos_uint(u_int16_t x)
+uint16_t
+mtos_uint(uint16_t x)
 {
     return x;
 }
@@ -47,8 +47,8 @@ stom_int(int16_t x)
     return x;
 }
 
-u_int16_t
-stom_uint(u_int16_t x)
+uint16_t
+stom_uint(uint16_t x)
 {
     return x;
 }
@@ -60,8 +60,8 @@ mtos_dint(int32_t x)
     return x;
 }
 
-u_int32_t
-mtos_udint(u_int32_t x)
+uint32_t
+mtos_udint(uint32_t x)
 {
     return x;
 }
@@ -78,8 +78,8 @@ stom_dint(int32_t x)
     return x;
 }
 
-u_int32_t
-stom_udint(u_int32_t x)
+uint32_t
+stom_udint(uint32_t x)
 {
     return x;
 }
@@ -136,6 +136,7 @@ mtos_generic(tag_type type, void *dst, void *src) {
         case DAX_BOOL:
         case DAX_BYTE:
         case DAX_SINT:
+        case DAX_CHAR:
             *(dax_byte *)dst = *(dax_byte *)src;
             break;
         case DAX_WORD:
@@ -190,6 +191,7 @@ stom_generic(tag_type type, void *dst, void *src) {
         case DAX_BOOL:
         case DAX_BYTE:
         case DAX_SINT:
+        case DAX_CHAR:
             *(dax_byte *)dst = *(dax_byte *)src;
             break;
         case DAX_WORD:

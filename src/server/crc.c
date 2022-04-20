@@ -17,14 +17,14 @@
 
  *  Source code file for opendax crc checksum functions
  *
- *  CRC32 Code Contrbuted by Chris Underwood - September 2007
+ *  CRC32 Code Contributed by Chris Underwood - September 2007
  */
 
 #include <common.h>
 #include "crc.h"
 
 #ifndef __CRC32_INIT
-static u_int32_t gCRC32Tbl[] = {    0x0000, 0xC0C1,
+static uint32_t gCRC32Tbl[] = {    0x0000, 0xC0C1,
                     0xC181, 0x0140, 0xC301, 0x03C0, 0x0280,
                     0xC241, 0xC601, 0x06C0, 0x0780, 0xC741,
                     0x0500, 0xC5C1, 0xC481, 0x0440, 0xCC01,
@@ -79,7 +79,7 @@ static u_int32_t gCRC32Tbl[] = {    0x0000, 0xC0C1,
 
 #else
 
-static u_int32_t gCRC32Tbl[256];
+static uint32_t gCRC32Tbl[256];
 
 static unsigned long Reflect(unsigned long vulReference, char vcCurrent) {
     unsigned long lulValue = 0;
@@ -100,7 +100,7 @@ static unsigned long Reflect(unsigned long vulReference, char vcCurrent) {
 static void InitCRC32Table(void) {
     /* This is the official polynomial used by CRC-32
        in PKZip, WinZip and Ethernet. */
-    u_int32_t lulPolynomial = 0x04c11db7;
+    uint32_t lulPolynomial = 0x04c11db7;
     int iBanana,iApple;
 
     /* 256 values representing ASCII character codes. */

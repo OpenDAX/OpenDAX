@@ -8,4 +8,6 @@
 #cmakedefine HAVE_STRINGS_H @HAVE_STRINGS_H@
 #cmakedefine HAVE_SYS_SELECT_H @HAVE_SYS_SELECT_H@
 
+#cmakedefine OS_LINUX @OS_LINUX@
+
 #define DEBUG 1

@@ -25,9 +25,10 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "libtest_common.h"
 
 int
-run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
+run_test(int (testfunc(int argc, char **argv)), int argc, char **argv, int opts) {
     int status = 0;
     int result;
     pid_t pid;
@@ -35,7 +36,7 @@ run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
     pid = fork();
 
     if(pid == 0) { // Child
-        execl("../../src/server/tagserver", "../../src/server/tagserver", NULL);
+        execl("../../src/server/tagserver", "../../src/server/tagserver", "-v", NULL);
         printf("Failed to launch tagserver\n");
         exit(-1);
     } else if(pid < 0) {
@@ -44,8 +45,13 @@ run_test(int (testfunc(int argc, char **argv)), int argc, char **argv) {
         usleep(100000);
         result=testfunc(argc, argv);
         kill(pid, SIGINT);
-        if( waitpid(pid, &status, 0) != pid )
+        if( waitpid(pid, &status, 0) != pid ) {
+            if(! opts & NO_UNLINK_RETAIN)
+                unlink("retentive.db");
             return status;
+        }
     }
+    if(! opts & NO_UNLINK_RETAIN)
+        unlink("retentive.db");
     return result;
 }

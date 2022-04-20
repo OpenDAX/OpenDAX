@@ -34,9 +34,31 @@ show_tag(int n, dax_tag temp_tag)
     if(temp_tag.count > 1) {
         printf("[%d]", temp_tag.count);
     }
+    if(temp_tag.attr) {
+        if(temp_tag.attr & TAG_ATTR_READONLY) printf(" READONLY");
+        if(temp_tag.attr & TAG_ATTR_VIRTUAL)  printf(" VIRTUAL");
+        if(temp_tag.attr & TAG_ATTR_RETAIN)   printf(" RETAINED");
+        if(temp_tag.attr & TAG_ATTR_OVERRIDE) printf(" OVERRIDE");
+    }
     printf("\n");
 }
 
+static unsigned int
+_get_attributes(char **tokens) {
+    int n=0;
+    unsigned int attr = 0x00;
+
+    while(tokens[n]) {
+        if(!strncasecmp(tokens[n], "retain", 6)) {
+            attr |= TAG_ATTR_RETAIN;
+        } else {
+            fprintf(stderr, "ERROR: Unknown attribute %s\n", tokens[n]);
+            return 0x00;
+        }
+        n++;
+    }
+    return attr;
+}
 
 /* Adds a tag to the dax tag database. */
 int
@@ -45,7 +67,8 @@ tag_add(char **tokens)
     int count, result;
     tag_type type;
     tag_handle handle;
-    const char usage[] = "Usage: add type count\n";
+    unsigned int attr = 0x00;
+    const char usage[] = "Usage: add tag name type [count] [attributes] ... \n";
 
     /* Make sure that name is not NULL and we get the tagname */
     if( tokens[0] == NULL) {
@@ -68,9 +91,14 @@ tag_add(char **tokens)
 
     if( tokens[2] ) {
         count = strtol(tokens[2], NULL, 0);
-        if( count == 0 ) {
-            fprintf(stderr, "ERROR: Invalid Count Given\n");
-            return 1;
+        if( count == 0 ) { /* this is not a number so it might be attributes */
+            count = 1;
+            attr = _get_attributes(&tokens[2]);
+            if(attr == 0) {
+                return 1;
+            }
+        } else { /* If we have a count then see if we have attributes after */
+            attr = _get_attributes(&tokens[3]);
         }
     } else { // If no count is given make it one
         count = 1;
@@ -78,12 +106,12 @@ tag_add(char **tokens)
         //fprintf(stderr, usage);
     }
 
-    result = dax_tag_add(ds, &handle, tokens[0], type, count);
+    result = dax_tag_add(ds, &handle, tokens[0], type, count, attr);
     if(result == 0) {
         if(!quiet_mode) printf("Tag Added at index %d\n", handle.index);
     } else {
         /* TODO: Print descriptive error message here */
-        printf("OPPS Can't add tag???\n");
+        printf("OPPS Can't add tag???, error = %d\n", result);
     }
     return 0;
 }
@@ -111,14 +139,15 @@ tag_del(char **tokens)
  * or a number.  If a tagname then we list that tag if it's a number
  * then we check for a second argument.  If we have two numbers then
  * we list from the first to the first + second if not then we list
- * the next X tags and increment lastindex. */
-
+ * the next X tags and increment nextindex. */
 
 int
 list_tags(char **tokens)
 {
     dax_tag temp_tag;
-    static int lastindex;
+    tag_handle h;
+    static int nextindex;
+    int lastindex;
     int result;
     char *arg[] = {NULL, NULL};
     char *end_ptr;
@@ -128,6 +157,12 @@ list_tags(char **tokens)
     	arg[0] = tokens[0];
     	if(arg[0] != NULL) arg[1] = tokens[1];
     }
+
+    result = dax_tag_handle(ds, &h, "_lastindex", 1);
+    if(result) return result;
+    result = dax_read_tag(ds, h, &lastindex);
+    if(result) return result;
+    if(nextindex >= lastindex) nextindex=0;
 
     if(arg[0]) {
         start = strtol(arg[0], &end_ptr, 0);
@@ -144,40 +179,53 @@ list_tags(char **tokens)
             /* List tags from start to start + count */
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
-                for(n = start; n < (start + count); n++) {
-                    if(dax_tag_byindex(ds, &temp_tag, n)) {
+                nextindex = start;
+                while( n < count && nextindex <= lastindex) {
+                    result = dax_tag_byindex(ds, &temp_tag, nextindex);
+                    if(result == 0) {
+                        show_tag(nextindex, temp_tag);
+                        n++;
+                        nextindex++;
+                    } else if(result == ERR_DELETED) {
+                        nextindex++;
+                    } else {
                         printf("No More Tags To List\n");
                         return 1;
-                    } else {
-                        show_tag(n, temp_tag);
                     }
                 }
             } else {
                 /* List the next 'start' amount of tags */
-                for(n = lastindex; n < (start + lastindex); n++) {
-                    if(dax_tag_byindex(ds, &temp_tag, n)) {
-                        printf("No More Tags To List\n");
-                        lastindex = 0;
-                        return 1;
+                n = 0;
+                while(n < start && nextindex <= lastindex) {
+                    result = dax_tag_byindex(ds, &temp_tag, nextindex);
+                    if(result == 0) {
+                        show_tag(nextindex, temp_tag);
+                        n++;
+                        nextindex++;
+                    } else if(result == ERR_DELETED) {
+                        nextindex++;
                     } else {
-                        show_tag(n, temp_tag);
+                        printf("No More Tags To List\n");
+                        return 1;
                     }
                 }
-                lastindex += start;
             }
         }
     } else {
         /* List all tags */
-       /* TODO: We now have a _lastindex status tag that we can
-        * use to see how far to go instead of running until
-        * we get an error.*/        
-        n = 0;
-        while( (result = dax_tag_byindex(ds, &temp_tag, n)) != ERR_ARG) {
-            if(result != ERR_DELETED) {
+        for(n=0; n<=lastindex; n++) {
+            result = dax_tag_byindex(ds, &temp_tag, n);
+            if(result == ERR_DELETED) {
+                ; /* do nothing */
+            } else if(result) {
+                printf("Error: %d\n", result);
+                return result;
+            } else {
+                /* Otherwise show it */
                 show_tag(n, temp_tag);
             }
-            n++;
         }
+        nextindex = 0; /* Reset this static variable so other tag lists start at the beginning */
     }
     return 0;
 }
@@ -212,7 +260,7 @@ tag_read(char **tokens)
         return ERR_ARG;
     }
 
-    buff = malloc(handle.size);
+    buff = malloc(handle.size + 1);
     if(buff == NULL) {
         fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
         return ERR_ALLOC;
@@ -223,6 +271,15 @@ tag_read(char **tokens)
         if(IS_CUSTOM(handle.type)) {
             /* Print Custom Stuff Here */
             fprintf(stderr, "ERROR: Given Tagname is a compound data type\n");
+        } else if(handle.type == DAX_CHAR) {
+            ((char *)buff)[handle.size] = 0x00;
+            for(n=0;n<handle.size;n++) {
+                if(((char *)buff)[n] == 0x00) {
+                    fprintf(stdout, " ");
+                }
+                fprintf(stdout, "%c", ((char *)buff)[n]);
+            }
+            fprintf(stdout, "\n");
         } else {
             for(n = 0; n < handle.count; n++) {
                 dax_val_to_string(str, 32, handle.type, buff, n);
@@ -248,6 +305,7 @@ tag_write(char **tokens, int tcount) {
     tag_handle handle;
     int result, n, points;
     char *name;
+    uint8_t use_mask = 0;
     void *buff, *mask;
 
     if(tokens[0]) {
@@ -256,8 +314,7 @@ tag_write(char **tokens, int tcount) {
         fprintf(stderr, "ERROR: No Tagname Given\n");
         return ERR_NOTFOUND;
     }
-    /* TODO: Should probably get a count based on how many tokens we have */
-    result = dax_tag_handle(ds, &handle, name, 0);
+    result = dax_tag_handle(ds, &handle, name, tcount-1);
     if(result) {
         /* TODO: More descriptive error messages here based on result */
         fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
@@ -279,14 +336,19 @@ tag_write(char **tokens, int tcount) {
     if(handle.count < points) {
         points = handle.count;
     }
-    /* TODO: I might want to add the ability to skip points with a '-'
-     * I'd have to search for any '-' and then use dax_mask_tag() instead. */
-
+    if(handle.type == DAX_BOOL) use_mask = 1;
     for(n = 0; n < points; n++) {
-        dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+        if(strncmp(tokens[n+1], "~", 1)) {
+            dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+        } else {
+            use_mask = 1; /* If we skipped any then we need to use the masked write */
+        }
     }
-    /* TODO: Check if the mask is all 1s and if so just use the dax_write_tag() function */
-    result = dax_mask_tag(ds, handle, buff, mask);
+    if(use_mask) {
+        result = dax_mask_tag(ds, handle, buff, mask);
+    } else {
+        result = dax_write_tag(ds, handle, buff);
+    }
 
     if(result) {
         if(result == ERR_READONLY) {

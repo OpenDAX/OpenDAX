@@ -56,7 +56,7 @@ do_test(int argc, char *argv[])
         /* Setup the tags and events */
         for(i=0; i<5; i++) {
             sprintf(tagname, "Dummy%d", i);
-            dax_tag_add(ds, &tags[i], tagname, DAX_INT, 1);
+            dax_tag_add(ds, &tags[i], tagname, DAX_INT, 1, 0);
             x = 5 + i;
             dax_write_tag(ds, tags[i], &x);
             if(result) return result;
@@ -92,7 +92,7 @@ do_test(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(do_test, argc, argv, 0)) {
         exit(-1);
     } else {
         exit(0);

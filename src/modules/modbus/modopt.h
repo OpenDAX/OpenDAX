@@ -20,7 +20,7 @@
 #define __OPTIONS_H
 
 #include <opendax.h>
-#include <lib/modbus.h>
+#include "modbus.h"
 
 
 #ifndef DEFAULT_DEVICE
@@ -45,26 +45,15 @@ struct Config {
 typedef struct cmd_temp_data {
     char *tagname;
     int index;
-    u_int8_t function;
-    u_int16_t length;
+    uint8_t function;
+    uint16_t length;
 } cmd_temp_data;
 
-/* This is a structure of information that we attach to the mb_port userdata
- * field that helps us keep track of information that our module needs */
-typedef struct port_ud_item {
-    char *mbreg;        /* OpenDAX Tagname */
-    tag_handle h;       /* OpenDAX Handle */
-    dax_id event; /* Event identification */
-} port_ud_item;
 
 #define HOLD_REG 0
 #define INPUT_REG 1
 #define COIL_REG 2
 #define DISC_REG 3
-
-typedef struct port_userdata {
-    port_ud_item reg[4];
-} port_userdata;
 
 
 int modbus_configure(int, const char **);

@@ -35,19 +35,19 @@ _send_event(tag_index idx, _dax_event *event)
 {
     int result;
     char buff[DAX_MSGMAX];
-    u_int32_t msgsize;
+    uint32_t msgsize;
 
     if(event->options & EVENT_OPT_SEND_DATA) {
-    	msgsize = event->size + 16; /* Calculate the total size of this message */
-		*(u_int32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
-	} else {
-		msgsize = 16; /* Calculate the total size of this message */
-		*(u_int32_t *)(&buff[0])  = htonl(8); /* The size that we send */
-	}
+        msgsize = event->size + 16; /* Calculate the total size of this message */
+        *(uint32_t *)(&buff[0])  = htonl(event->size + 8); /* The size that we send */
+    } else {
+        msgsize = 16; /* Calculate the total size of this message */
+        *(uint32_t *)(&buff[0])  = htonl(8); /* The size that we send */
+    }
     if(msgsize > DAX_MSGMAX) return ERR_2BIG;
-    *(u_int32_t *)(&buff[4])  = htonl(MSG_EVENT | event->eventtype);
-    *(u_int32_t *)(&buff[8])  = htonl(idx);
-    *(u_int32_t *)(&buff[12])  = htonl(event->id);
+    *(uint32_t *)(&buff[4])  = htonl(MSG_EVENT | event->eventtype);
+    *(uint32_t *)(&buff[8])  = htonl(idx);
+    *(uint32_t *)(&buff[12])  = htonl(event->id);
     if(event->options & EVENT_OPT_SEND_DATA) {
         memcpy(&buff[16], &_db[idx].data[event->byte], event->size);
     }
@@ -64,8 +64,8 @@ _send_event(tag_index idx, _dax_event *event)
 static inline int
 _event_change(_dax_event *event, tag_index idx, int offset, int size) {
     int bit, n, i, len, result;
-    u_int8_t *this, *that;
-    u_int8_t mask;
+    uint8_t *this, *that;
+    uint8_t mask;
     result = 0;
 
 
@@ -73,8 +73,8 @@ _event_change(_dax_event *event, tag_index idx, int offset, int size) {
         /* TODO: Only check the bits that have changed.  For now we are just
          * looping through each bit in the event to see if anything has
          * changed.  This can be made much more efficient. */
-        this = (u_int8_t *)event->test;
-        that = (u_int8_t *)&(_db[idx].data[event->byte]);
+        this = (uint8_t *)event->test;
+        that = (uint8_t *)&(_db[idx].data[event->byte]);
         bit = event->bit;
         i = 0;
         for(n = 0; n < event->count; n++) {
@@ -91,8 +91,8 @@ _event_change(_dax_event *event, tag_index idx, int offset, int size) {
         }
 
     } else {
-        this = (u_int8_t *)event->test + MAX(0, offset - event->byte);
-        that = (u_int8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
+        this = (uint8_t *)event->test + MAX(0, offset - event->byte);
+        that = (uint8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
         len = MIN(event->byte + event->size, offset + size) - MAX(offset, event->byte);
 
         for(n = 0; n < len; n++) {
@@ -109,15 +109,15 @@ _event_change(_dax_event *event, tag_index idx, int offset, int size) {
 static inline int
 _event_set(_dax_event *event, tag_index idx, int offset, int size) {
     int bit, n, i, result;
-    u_int8_t *this, *that;
-    u_int8_t mask;
+    uint8_t *this, *that;
+    uint8_t mask;
     result = 0;
 
     /* TODO: Only check the bits that have changed.  For now we are just
      * looping through each bit in the event to see if anything has
      * changed.  This can be made much more efficient. */
-    this = (u_int8_t *)event->test;
-    that = (u_int8_t *)&(_db[idx].data[event->byte]);
+    this = (uint8_t *)event->test;
+    that = (uint8_t *)&(_db[idx].data[event->byte]);
     bit = event->bit;
     i = 0;
     for(n = 0; n < event->count; n++) {
@@ -142,15 +142,15 @@ _event_set(_dax_event *event, tag_index idx, int offset, int size) {
 static inline int
 _event_reset(_dax_event *event, tag_index idx, int offset, int size) {
     int bit, n, i, result;
-    u_int8_t *this, *that;
-    u_int8_t mask;
+    uint8_t *this, *that;
+    uint8_t mask;
     result = 0;
 
     /* TODO: Only check the bits that have changed.  For now we are just
      * looping through each bit in the event to see if anything has
      * changed.  This can be made much more efficient. */
-    this = (u_int8_t *)event->test;
-    that = (u_int8_t *)&(_db[idx].data[event->byte]);
+    this = (uint8_t *)event->test;
+    that = (uint8_t *)&(_db[idx].data[event->byte]);
     bit = event->bit;
     i = 0;
     for(n = 0; n < event->count; n++) {
@@ -184,6 +184,7 @@ _generic_compare(tag_type datatype, void *data1, void *data2) {
             else if(u1.dax_byte > u2.dax_byte) return 1;
             else return 0;
         case DAX_SINT:
+        case DAX_CHAR:
             u1.dax_sint = *(dax_sint *)data1;
             u2.dax_sint = *(dax_sint *)data2;
             if(u1.dax_sint < u2.dax_sint) return -1;
@@ -249,15 +250,15 @@ _generic_compare(tag_type datatype, void *data1, void *data2) {
 static int
 _event_compare(_dax_event *event, tag_index idx, int offset, int size, int compare) {
     int n, inc, bit, len, result;
-    u_int8_t *this, *that;
-    u_int8_t mask;
+    uint8_t *this, *that;
+    uint8_t mask;
     result = 0;
 
     inc = TYPESIZE(event->datatype) / 8;
     /* For these 'this' is a bit field */
     bit = MAX(0, (offset - event->byte) / inc);
-    this = (u_int8_t *)event->test;
-    that = (u_int8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
+    this = (uint8_t *)event->test;
+    that = (uint8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
     len = MIN(event->byte + event->size, offset + size) - MAX(offset, event->byte);
     for(n = 0; n < len; n += inc) {
         mask = 0x01<<(bit%8);
@@ -287,6 +288,7 @@ _generic_deadband(_dax_event *event, void *data1, void *data2) {
             if(ABS(diff.dax_int) >= db.dax_byte) return 1;
             else return 0;
         case DAX_SINT:
+        case DAX_CHAR:
             db.dax_sint = *(dax_sint *)event->data;
             diff.dax_sint = *(dax_sint *)data1 - *(dax_sint *)data2;
             if(ABS(diff.dax_sint) >= db.dax_sint) return 1;
@@ -344,12 +346,12 @@ _generic_deadband(_dax_event *event, void *data1, void *data2) {
 static inline int
 _event_deadband(_dax_event *event, tag_index idx, int offset, int size) {
     int n, inc, len, result;
-    u_int8_t *this, *that;
+    uint8_t *this, *that;
     result = 0;
 
     inc = TYPESIZE(event->datatype) / 8;
-    this = (u_int8_t *)event->test + MAX(0, offset - event->byte);
-    that = (u_int8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
+    this = (uint8_t *)event->test + MAX(0, offset - event->byte);
+    that = (uint8_t *)&(_db[idx].data[MAX(offset, event->byte)]);
     len = MIN(event->byte + event->size, offset + size) - MAX(offset, event->byte);
 
     for(n = 0; n < len; n += inc) {
@@ -403,7 +405,6 @@ void
 event_check(tag_index idx, int offset, int size) {
     _dax_event *this;
 
-    //fprintf(stderr, "Event Check Called: idx = %d, offset = %d, size = %d\n",idx, offset, size);
     this = _db[idx].events;
 
     while(this != NULL) {
@@ -411,12 +412,27 @@ event_check(tag_index idx, int offset, int size) {
          * test passes then we have manipulated the data associated with
          * this event. */
         if(offset <= (this->byte + this->size - 1) && (offset + size -1 ) >= this->byte) {
-            fprintf(stdout, "Event Hit offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
             if(_event_hit(this, idx, offset, size)) {
                 _send_event(idx, this);
             }
-        } else {
-            fprintf(stdout, "Event Miss offset = %d, size = %d, event.byte = %d, event.size = %d\n",offset, size, this->byte, this->size);
+        }
+        this = this->next;
+    }
+    return;
+}
+
+/* This function checks to see if the tag has a deleted event.  This
+ * should only be called from the tag_delete() function */
+void
+event_del_check(tag_index idx) {
+    _dax_event *this;
+
+    this = _db[idx].events;
+
+    while(this != NULL) {
+        /* Look for the tag delete event. */
+        if(this->eventtype == EVENT_DELETED) {
+            _send_event(idx, this);
         }
         this = this->next;
     }
@@ -569,8 +585,17 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
         xlog(LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
         return ERR_ARG;
     }
-    if(is_tag_virtual(h.index)){
+    /* No events can be assigned to virtual tags unless it's a queue */
+    if(is_tag_virtual(h.index) && ! is_tag_queue(h.index)) {
         return ERR_ILLEGAL;
+    }
+    /* If the tag is a queue then we can only do write events for
+     * the entire tag not a partial handle. */
+    if(is_tag_queue(h.index)) {
+        if(h.byte != 0 || event_type != EVENT_WRITE ||
+           h.size != (tag_get_size(_db[h.index].type) * _db[h.index].count)) {
+            return ERR_ILLEGAL;
+        }
     }
     /* Bounds check size */
     if( (h.byte + h.size) > tag_get_size(h.index)) {
@@ -695,7 +720,7 @@ events_del_all(_dax_event *head) {
 }
 
 int
-event_opt(int index, int id, u_int32_t options, dax_module *module) {
+event_opt(int index, int id, uint32_t options, dax_module *module) {
     _dax_event *event;
     int result;
 

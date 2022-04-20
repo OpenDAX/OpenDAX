@@ -46,8 +46,8 @@ void xfree(void *);
 
 void xfatal(const char *, ...);
 void xerror(const char *, ...);
-void set_log_topic(u_int32_t);
-void xlog(u_int32_t ,const char *, ...);
+void set_log_topic(uint32_t);
+void xlog(uint32_t ,const char *, ...);
 
 /* Portability functions */
 

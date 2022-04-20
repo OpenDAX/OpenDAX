@@ -1,11 +1,12 @@
---This is the configuration file for the OpenDAX Lua interpreter module
+--This is the configuration file for the OpenDAX MQTT module
 --It is basically a Lua script itself
 
-dofile(configdir .. "/common.conf")
+--dofile(configdir .. "/common.conf")
 
 verbosity = 10 --needs to change to the new way
 
-broker_ip = "192.168.1.157"
+broker_ip = "127.0.0.1"
+-- broker_ip = "192.168.1.157"
 -- broker_ip = "10.100.3.81"
 -- broker_port = 1883
 -- broker_timeout = 10

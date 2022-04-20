@@ -148,6 +148,7 @@ _convert_lua_number(tag_type datatype, dax_type_union *dest, lua_Number x) {
             dest->dax_byte = (dax_byte)x;
             return;
         case DAX_SINT:
+        case DAX_CHAR:
             dest->dax_sint = (dax_sint)x;
             return;
         case DAX_UINT:

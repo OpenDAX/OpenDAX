@@ -52,7 +52,7 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1);
+        dax_tag_add(ds, &tag, "Dummy", DAX_INT, 1, 0);
         x = 5;
         dax_write_tag(ds, tag, &x);
         result = dax_event_add(ds, &tag, EVENT_WRITE, NULL, &id, test_callback, NULL, NULL);
@@ -77,7 +77,7 @@ do_test(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(do_test, argc, argv, 0)) {
         exit(-1);
     } else {
         exit(0);

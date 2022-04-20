@@ -19,6 +19,7 @@
 /*
  *  Test function code 5 for the modbus server module
  */
+/* TODO: Convert this to use the functions in modbus_common.c */
 
 #include <common.h>
 #include <opendax.h>
@@ -31,17 +32,17 @@
 #include "../modtest_common.h"
 
 struct mod_frame {
-    u_int16_t tid;
-    u_int8_t  uid;
-    u_int8_t  fc;
-    u_int16_t  addr;
-    u_int8_t *buff;
-    u_int16_t size; /* Size of buffer */
+    uint16_t tid;
+    uint8_t  uid;
+    uint8_t  fc;
+    uint16_t  addr;
+    uint8_t *buff;
+    uint16_t size; /* Size of buffer */
 };
 
 int
 _send_frame(int sock, struct mod_frame frame) {
-    u_int8_t buff[2048];
+    uint8_t buff[2048];
     int result;
 
     buff[0] = frame.tid>>8;
@@ -62,15 +63,15 @@ _send_frame(int sock, struct mod_frame frame) {
 
 int
 _recv_frame(int sock, struct mod_frame *frame) {
-    u_int8_t buff[2048];
+    uint8_t buff[2048];
     int result;
 
     result = recv(sock, buff, 1024, 0);
-    frame->tid = (u_int16_t)buff[0]<<8 | buff[1];
-    frame->size = ((u_int16_t)buff[4]<<8 | buff[5])-4;
+    frame->tid = (uint16_t)buff[0]<<8 | buff[1];
+    frame->size = ((uint16_t)buff[4]<<8 | buff[5])-4;
     frame->uid = buff[6];
     frame->fc = buff[7];
-    frame->addr = (u_int16_t)buff[8]<<8 | buff[9];
+    frame->addr = (uint16_t)buff[8]<<8 | buff[9];
     memcpy(frame->buff, &buff[10], frame->size);
     return result;
 }
@@ -81,7 +82,7 @@ main(int argc, char *argv[])
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
-    u_int8_t buff[1024], rbuff[8], bit;
+    uint8_t buff[1024], rbuff[8], bit;
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
@@ -89,9 +90,9 @@ main(int argc, char *argv[])
     pid_t server_pid, mod_pid;
     struct mod_frame sframe, rframe;
 
-    /* Run the tag server adn teh modbus module */
+    /* Run the tag server andn the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server.conf");
+    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_server.conf");
     /* Connect to the tag server */
     ds = dax_init("test");
     if(ds == NULL) {
@@ -157,10 +158,6 @@ main(int argc, char *argv[])
         memset(buff, '\xFF', h.size);
         result = dax_write_tag(ds, h, buff);
         if(result) fprintf(stderr, "Unable to write tag\n");
-        for(i=0; i<h.size; i++) {
-            printf("[0x%X]",buff[i]);
-        }
-        printf("\n");
         /* Set the next bit */
         buff[0] = 0;
         buff[1] = 0;

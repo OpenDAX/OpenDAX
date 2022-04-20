@@ -46,7 +46,7 @@ int main(int argc,char *argv[]) {
     struct sigaction sa;
     int flags, result = 0, scan = 0, n;
     char *str, *tagname, *event_tag, *event_type;
-    Handle h_full, h_part;
+    tag_handle h_full, h_part;
     dax_dint data[5];
     
     /* Set up the signal handlers for controlled exit*/
@@ -55,7 +55,7 @@ int main(int argc,char *argv[]) {
     sigaction (SIGQUIT, &sa, NULL);
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
-    dax_log(ds, "Just seeing if I can print");
+
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("skel"); /* Replace 'skel' with your module name */
     if(ds == NULL) {
@@ -79,7 +79,7 @@ int main(int argc,char *argv[]) {
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "event_type","event_type", 'y', flags, "poll");
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE);
+    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
     /* Get the results of the configuration */
     tagname = strdup(dax_get_attr(ds, "tagname"));
@@ -107,7 +107,7 @@ int main(int argc,char *argv[]) {
     /* The only thing that skel does right now is manipulate this single
      * five element array of DINT's.  This line creates the tag. h_full is
      * a handle that we can use to read and write the entire array. */
-    result = dax_tag_add(ds, &h_full, tagname, DAX_DINT, 5);
+    result = dax_tag_add(ds, &h_full, tagname, DAX_DINT, 5, 0);
     if(result) {
         dax_fatal(ds, "Unable to create tag - %s", tagname);
     }
@@ -129,7 +129,7 @@ int main(int argc,char *argv[]) {
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
     dax_log(ds, "Skeleton Module Starting");
     while(1) {
-        /* Check to see if the quit flag is set.  If it is then bail */
+    	/* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);

@@ -38,8 +38,8 @@
  * reslen: the length of the response for comparison
  */
 int
-_check_response(int sock, u_int8_t *outbuff, int outlen, u_int8_t *resbuff, int reslen) {
-    u_int8_t buff[1024];
+_check_response(int sock, uint8_t *outbuff, int outlen, uint8_t *resbuff, int reslen) {
+    uint8_t buff[1024];
     int sresult, rresult;
     int n, csize;
 
@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/modbus", "conf/mb_server.conf");
+    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_server.conf");
     /* Connect to the tag server */
 
     /* Open a socket to do the modbus stuff */

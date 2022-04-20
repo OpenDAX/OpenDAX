@@ -42,6 +42,22 @@ init_tag_cache(dax_state *ds)
     return 0;
 }
 
+static void
+_free_node(dax_state *ds, tag_cnode *this) {
+    if(this->next != ds->cache_head) {
+        _free_node(ds, this->next);
+    }
+    free(this);
+}
+
+void
+free_tag_cache(dax_state *ds) {
+	if(ds->cache_head != NULL) {
+        _free_node(ds, ds->cache_head);
+        ds->cache_head = NULL;
+	}
+}
+
 
 /* This function assigns the data to *tag and bubbles
    this up one node in the list */
@@ -55,12 +71,13 @@ _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
     tag->idx = this->idx;
     tag->type = this->type;
     tag->count = this->count;
+    tag->attr = this->attr;
 
-    /* Bubble up:
-     'after' is set to the node that we swap with
-     'before' is set to the node that will be before
-     us after the swap.  The special case is when our
-     node will become the first one, then we move the head. */
+  /* Bubble up:
+    'after' is set to the node that we swap with
+    'before' is set to the node that will be before
+    us after the swap.  The special case is when our
+    node will become the first one, then we move the head. */
     if(this != ds->cache_head) { /* Do nothing if we are already at the top */
         /* If there are only two then we do it the easy way */
         if(ds->cache_count == 2) {
@@ -77,7 +94,6 @@ _cache_hit(dax_state *ds, tag_cnode *this, dax_tag *tag)
             this->prev = before;
         }
     }
-    //--print_cache();
 }
 
 /* Used to check if a tag with the given index is in the
@@ -133,7 +149,6 @@ check_cache_name(dax_state *ds, char *name, dax_tag *tag)
             return ERR_NOTFOUND;
         }
     }
-
     _cache_hit(ds, this, tag);
 
     return 0;
@@ -170,19 +185,20 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
             return ERR_ALLOC;
         }
     } else {
-        //--printf("Just putting {%d}  last\n", tag->handle);
+        //--printf("Just putting {%s}  last\n", tag->name);
         new = ds->cache_head->prev;
     }
     strcpy(new->name, tag->name);
     new->idx = tag->idx;
     new->type = tag->type;
     new->count = tag->count;
+    new->attr = tag->attr;
     //--print_cache();
 
     return 0;
 }
 
-/* This function deletes the tag in the cache given by 'tagname'
+/* This function deletes the tag in the cache given by 'idx'
  * It returns 0 on success and ERR_NOTFOUND if the tag is not in the cache */
 int
 cache_tag_del(dax_state *ds, tag_index idx) {
@@ -239,6 +255,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     datatype *dtype = NULL;
     cdt_member *this = NULL;
 
+    type &= ~DAX_QUEUE; /* Delete the Queue bit from the type */
     newdata = (char *)data + offset;
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
@@ -265,6 +282,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
             case DAX_BOOL:
             case DAX_BYTE:
             case DAX_SINT:
+            case DAX_CHAR:
                 /* Since there are no conversions for byte level tags we do nothing */
                 break;
             case DAX_WORD:
@@ -333,7 +351,7 @@ int
 dax_read_tag(dax_state *ds, tag_handle handle, void *data)
 {
     int result, n, i;
-    u_int8_t *newdata;
+    uint8_t *newdata;
 
     result = dax_read(ds, handle.index, handle.byte, data, handle.size);
     if(result) return result;
@@ -348,17 +366,17 @@ dax_read_tag(dax_state *ds, tag_handle handle, void *data)
         if(newdata == NULL) return ERR_ALLOC;
         bzero(newdata, handle.size);
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (i % 8)) & ((u_int8_t *)data)[i / 8] ) {
-                ((u_int8_t *)newdata)[n / 8] |= (1 << (n % 8));
+            if( (0x01 << (i % 8)) & ((uint8_t *)data)[i / 8] ) {
+                ((uint8_t *)newdata)[n / 8] |= (1 << (n % 8));
             }
             i++;
         }
         memcpy(data, newdata, handle.size);
         free(newdata);
     } else {
-        libdax_lock(ds->lock);
+        pthread_mutex_lock(&ds->lock);
         result = _read_format(ds, handle.type, handle.count, data, 0);
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         return result;
     }
     return 0;
@@ -376,8 +394,8 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     datatype *dtype = NULL;
     cdt_member *this = NULL;
 
+    type &= ~DAX_QUEUE; /* Delete the Queue bit from the type */
     newdata = (char *)data + offset;
-
     if(IS_CUSTOM(type)) {
         /* iterate through the list */
         dtype = get_cdt_pointer(ds, type, NULL);
@@ -403,6 +421,7 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
             case DAX_BOOL:
             case DAX_BYTE:
             case DAX_SINT:
+            case DAX_CHAR:
                 break;
             case DAX_WORD:
             case DAX_UINT:
@@ -464,7 +483,7 @@ int
 dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 {
     int i, n, result = 0, size;
-    u_int8_t *mask, *newdata;
+    uint8_t *mask, *newdata;
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         size = handle.size;
@@ -485,8 +504,8 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
-                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
+            if( (0x01 << (n % 8)) & ((uint8_t *)data)[n / 8] ) {
+                ((uint8_t *)newdata)[i / 8] |= (1 << (i % 8));
             }
             mask[i / 8] |= (1 << (i % 8));
             i++;
@@ -495,14 +514,14 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
         free(newdata);
         free(mask);
     } else {
-        libdax_lock(ds->lock);
+        pthread_mutex_lock(&ds->lock);
         result =  _write_format(ds, handle.type, handle.count, data, 0);
         if(result) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         /* Unlock here because dax_write() has it's own locking */
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         result = dax_write(ds, handle.index, handle.byte, data, handle.size);
     }
     return result;
@@ -515,7 +534,7 @@ int
 dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 {
     int i, n, result = 0, size;
-    u_int8_t *newmask = NULL, *newdata;
+    uint8_t *newmask = NULL, *newdata;
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         size = handle.size;
@@ -536,8 +555,8 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
-                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
+            if( (0x01 << (n % 8)) & ((uint8_t *)data)[n / 8] ) {
+                ((uint8_t *)newdata)[i / 8] |= (1 << (i % 8));
             }
             newmask[i / 8] |= (1 << (i % 8));
             i++;
@@ -546,15 +565,50 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
         free(newmask);
         free(newdata);
     } else {
-        libdax_lock(ds->lock);
+        pthread_mutex_lock(&ds->lock);
         result =  _write_format(ds, handle.type, handle.count, data, 0);
         if(result) {
-            libdax_unlock(ds->lock);
+            pthread_mutex_unlock(&ds->lock);
             return result;
         }
         /* Unlock here because dax_mask() has it's own locking */
-        libdax_unlock(ds->lock);
+        pthread_mutex_unlock(&ds->lock);
         result = dax_mask(ds, handle.index, handle.byte, data, mask, handle.size);
     }
     return result;
 }
+
+
+
+/* These two functions walk through the given data using the handles in the group id
+ * to send each element of the group the the formatting routines so that they can be
+ * reformatted if need be to match the server.
+ */
+int
+group_read_format(dax_state *ds, tag_group_id *id, uint8_t *buff) {
+    int n, offset = 0, result;
+    tag_handle h;
+
+    for(n=0;n<id->count;n++) {
+        h = id->handles[n];
+        result = _read_format(ds, h.type, h.count, &buff[offset], 0);
+        if(result) return result;
+        offset += h.size;
+    }
+    return 0;
+}
+
+int
+group_write_format(dax_state *ds, tag_group_id *id, uint8_t *buff) {
+    int n, offset = 0, result;
+    tag_handle h;
+
+    for(n=0;n<id->count;n++) {
+        h = id->handles[n];
+        result = _write_format(ds, h.type, h.count, &buff[offset], 0);
+        if(result) return result;
+        offset += h.size;
+    }
+    return 0;
+}
+

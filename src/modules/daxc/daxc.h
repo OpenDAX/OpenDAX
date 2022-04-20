@@ -26,6 +26,11 @@
 #define MAX_EVENTS 64
 #define LINE_BUFF_SIZE 256
 
+#define DAX_FMT_HEX  0x01
+#define DAX_FMT_BIN  0x02
+#define DAX_FMT_DEC  0x03
+#define DAX_FMT_CHR  0x04
+
 /* TAG commands */
 int tag_add(char **tokens);
 int tag_del(char **tokens);

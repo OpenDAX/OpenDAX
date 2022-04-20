@@ -137,7 +137,7 @@ buff_read(int fd)
 {
     dax_buffnode *node;
     size_t result;
-    u_int32_t size;
+    uint32_t size;
 
     node = find_buff_slot(fd);
 
@@ -163,7 +163,7 @@ buff_read(int fd)
     /* Check the size and let the caller know how it turns out. */
     /* First four bytes of a message should always be the size of
        the message and it should be in network byte order */
-    size = ntohl(*(u_int32_t *)node->buffer);
+    size = ntohl(*(uint32_t *)node->buffer);
     if(node->index < (size - 1)) {
         return ERR_MSG_BAD;
     } else if(node->index >= (size - 1)) {

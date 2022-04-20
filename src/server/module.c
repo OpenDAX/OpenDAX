@@ -21,6 +21,7 @@
 #include "options.h"
 #include "func.h"
 #include "tagbase.h"
+#include "groups.h"
 
 #include <time.h>
 #include <sys/socket.h>
@@ -32,6 +33,7 @@
 
 static dax_module *_current_mod = NULL;
 static int _module_count = 0;
+static int _mod_uuid = 0;
 
 /* The module list is implemented as a circular double linked list.
  * There is no ordering of the list. The current pointer will stay
@@ -77,29 +79,12 @@ _get_host(int fd, in_addr_t *host)
             }
             return 0;
         } else {
-            xerror("Unable to identify socket type in module_register()\n");
+            xerror("Unable to identify socket type in module registration");
         }
     }
     return ERR_NOTFOUND;
 }
 
-
-/* TODO: Need to look for the PID of the module too. */
-//static dax_module *
-//_get_module_hostpid(in_addr_t host, pid_t pid)
-//{
-//    dax_module *last;
-//
-//    if(_current_mod == NULL) return NULL;
-//    last = _current_mod;
-//    do {
-//        if(_current_mod->host == host) {
-//            return _current_mod;
-//        }
-//        _current_mod = _current_mod->next;
-//    } while(_current_mod != last);
-//    return NULL;
-//}
 
 /* Return a pointer to the module with a matching file descriptor (fd)
  * returns NULL if not found */
@@ -126,11 +111,13 @@ module_add(char *name, unsigned int flags)
 
     new = xmalloc(sizeof(dax_module));
     if(new) {
-        printf("New module '%s' created at %p  \n", name, new);
+        xlog(LOG_MAJOR, "New module '%s' created at %p", name, new);
         new->flags = flags;
 
         new->fd = 0;
         new->event_count = 0;
+        new->tag_groups = NULL;
+        new->groups_size = 0;
 
         /* name the module */
         new->name = strdup(name);
@@ -183,7 +170,8 @@ module_set_running(int fd)
 
     mod = _get_module_fd(fd);
     if(mod == NULL) return ERR_NOTFOUND;
-    mod->flags &= MSTATE_RUNNING;
+    mod->state |= MSTATE_RUNNING;
+    tag_write(mod->tagindex, sizeof(dax_time), &mod->state, sizeof(dax_uint));
     return 0;
 }
 
@@ -191,10 +179,14 @@ module_set_running(int fd)
  * Also modules that are not started by the core need a way to announce
  * themselves. name can be NULL for modules that were started from DAX */
 dax_module *
-module_register(char *name, u_int32_t timeout, int fd)
+module_register(char *name, uint32_t timeout, int fd)
 {
     dax_module *mod, *test;
+    char tagname[DAX_TAGNAME_SIZE + 1];
+    int result, x;
+    dax_time starttime;
 
+    bzero(tagname, DAX_TAGNAME_SIZE + 1);
     /* If a module with the given file descriptor already exists
      * then we need to unregister that module.  It must have failed
      * or the OS would not give us the file descriptor again. */
@@ -210,6 +202,25 @@ module_register(char *name, u_int32_t timeout, int fd)
         _get_host(fd, &(mod->host));
         mod->state |= MSTATE_STARTED;
         mod->state |= MSTATE_REGISTERED;
+        strcpy(tagname, "_m");
+        strncat(tagname, name, DAX_TAGNAME_SIZE - 2);
+        if(_mod_uuid < 1000) {
+            x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -3);
+            sprintf(&tagname[x], "%03d", _mod_uuid++);
+        } else {
+            x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -5);
+            sprintf(&tagname[x], "%05d", _mod_uuid++);
+        }
+        result = tag_add(tagname, cdt_get_type("_module"), 1, TAG_ATTR_READONLY);
+        if(result < 0) {
+            xerror("Unable to add module tag- %s", tagname);
+        } else {
+            mod->tagindex = result;
+        }
+        tag_write(INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
+        starttime = xtime();
+        tag_write(result, 0, &starttime, sizeof(dax_time));
+        tag_write(result, sizeof(dax_time), &mod->state, sizeof(dax_uint));
     } else {
         xerror("Major problem registering module - %s:%d", name, fd);
         return NULL;
@@ -226,8 +237,11 @@ module_unregister(int fd)
     dax_module *mod;
 
     mod = _get_module_fd(fd);
-    if(mod) {
+    if(mod != NULL) {
+        xlog(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
         events_cleanup(mod);
+        groups_cleanup(mod);
+        tag_del(mod->tagindex);
         module_del(mod);
     } else {
         xerror("module_unregister() - Module File Descriptor %d Not Found", fd);

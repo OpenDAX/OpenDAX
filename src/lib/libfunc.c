@@ -33,7 +33,7 @@ static void (*_dax_error)(const char *output) = NULL;
 static void (*_dax_log)(const char *output) = NULL;
 
 void
-dax_set_debug_topic(dax_state *ds, u_int32_t topic)
+dax_set_debug_topic(dax_state *ds, uint32_t topic)
 {
     ds->logflags = topic;
     dax_debug(ds, LOG_MAJOR, "Log Topics Set to %d", ds->logflags);
@@ -170,11 +170,11 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
     long int sec;
     struct tm *tm;
     char tstr[16];
-    
+
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
         case DAX_BOOL:
-            if((0x01 << (index % 8)) & ((u_int8_t *)val)[index / 8]) {
+            if((0x01 << (index % 8)) & ((uint8_t *)val)[index / 8]) {
                 snprintf(buff, size, "1");
             } else {
                 snprintf(buff, size, "0");
@@ -185,6 +185,9 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
             break;
         case DAX_SINT:
             snprintf(buff, size, "%hhd", ((dax_sint *)val)[index]);
+            break;
+        case DAX_CHAR:
+            snprintf(buff, size, "%c", ((dax_char *)val)[index]);
             break;
         case DAX_WORD:
         case DAX_UINT:
@@ -256,12 +259,12 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
         case DAX_BOOL:
             temp = strtol(instr, NULL, 0);
             if(temp == 0) {
-                ((u_int8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
+                ((uint8_t *)buff)[index / 8] &= ~(0x01 << (index % 8));
             } else {
-                ((u_int8_t *)buff)[index / 8] |= (0x01 << (index % 8));
+                ((uint8_t *)buff)[index / 8] |= (0x01 << (index % 8));
             }
             if(mask) {
-                ((u_int8_t *)mask)[index / 8] |= (0x01 << (index % 8));
+                ((uint8_t *)mask)[index / 8] |= (0x01 << (index % 8));
             }
             break;
         case DAX_BYTE:
@@ -278,6 +281,12 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
                 ((dax_byte *)buff)[index] = temp;
             if(mask) ((dax_byte *)mask)[index] = 0xFF;
             break;
+        case DAX_CHAR:
+            if(instr[1] == 0) { /* One character */
+                ((dax_char *)buff)[index] = instr[0];
+                if(mask) ((dax_sint *)mask)[index] = 0xFF;
+                break;
+            } /* Else we fall through and treat it exactly like a SINT */
         case DAX_SINT:
             temp =  strtol(instr, NULL, 0);
             if(temp < DAX_SINT_MIN) {
@@ -352,7 +361,7 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_REAL:
             ((dax_real *)buff)[index] = strtof(instr, NULL);
-            if(mask) ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            if(mask) ((uint32_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_LWORD:
         case DAX_ULINT:
@@ -405,69 +414,9 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_LREAL:
             ((dax_lreal *)buff)[index] = strtod(instr, NULL);
-            if(mask) ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            if(mask) ((uint64_t *)mask)[index] = DAX_64_ONES;
             break;
     }
     return retval;
 }
 
-
-#ifdef USE_PTHREAD_LOCK
-
-int
-libdax_lock(dax_lock *lock) {
-    int result;
-    result = pthread_mutex_lock(lock);
-    if(result) return ERR_GENERIC;
-    return 0;
-}
-
-int
-libdax_unlock(dax_lock *lock) {
-    int result;
-    result = pthread_mutex_unlock(lock);
-    if(result) return ERR_GENERIC;
-    return 0;
-}
-
-int
-libdax_init_lock(dax_lock *lock) {
-    int result;
-    result = pthread_mutex_init(lock, NULL);
-    if(result) return ERR_GENERIC;
-    return 0;
-}
-
-int
-libdax_destroy_lock(dax_lock *lock) {
-    int result;
-    result = pthread_mutex_destroy(lock);
-    if(result) return ERR_GENERIC;
-    return 0;
-}
-
-/* If no locking mechanisms are #defined then we just set the functions
- * to return nothing and hope that the optimizer will eliminate them */
-#else
-
-int
-libdax_lock(dax_lock *lock) {
-    return 0;
-}
-
-int
-libdax_unlock(dax_lock *lock) {
-    return 0;
-}
-
-int
-libdax_init_lock(dax_lock *lock) {
-    return 0;
-}
-
-int
-libdax_destroy_lock(dax_lock *lock) {
-    return 0;
-}
-
-#endif

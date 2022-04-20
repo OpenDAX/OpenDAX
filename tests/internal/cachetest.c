@@ -23,7 +23,7 @@
  */
 
 #include <libcommon.h>
-#include "../../src/lib/libdax.h"
+#include "libdax.h"
 
 
 static void
@@ -72,7 +72,7 @@ check_cache_hit(dax_state *ds, dax_tag tag)
         printf("The tag we got back was not the correct one\n");
         exit(-1);
     }
-    
+    return 0;
 }
 
 static int
@@ -91,6 +91,7 @@ check_cache_miss(dax_state *ds, dax_tag tag)
         printf("Tag with name %s was found in the cache\n", tag.name);
         exit(-1);
     }
+    return 0;
 }
 
 int
@@ -118,7 +119,7 @@ main(int argc, char *argv[])
         cache_tag_add(ds, &tags[n]);
         print_cache(ds);
     }
-    
+
     /* Delete one that we know we don't have */
     cache_tag_del(ds, 15);
     /* Make sure they are all still in there */
@@ -161,5 +162,23 @@ main(int argc, char *argv[])
     for(n=0;n<8;n++) {
         check_cache_miss(ds, tags[n]);
     }
+    printf("Free cache\n");
+    printf("Check that adding extra tags work\n");
+    for(n=0;n<9;n++) {
+        cache_tag_add(ds, &tags[n]);
+    }
+    print_cache(ds);
+    for(n=0;n<9;n++)for(n=0;n<8;n++) {
+        if(n != 7) {
+            check_cache_hit(ds, tags[n]);
+        }
+    }
+    print_cache(ds);
+    check_cache_miss(ds, tags[7]);
+
+    free_tag_cache(ds);
+    print_cache(ds);
+    dax_free_config(ds);
+    dax_free(ds);
     return 0;
 }

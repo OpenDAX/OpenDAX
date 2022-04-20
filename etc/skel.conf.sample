@@ -1,0 +1,11 @@
+--This is the configuration file for the OpenDAX skeleton module
+
+--This function will be run just after the connection to the server is made
+function init_hook()
+    tag_add("dummy", "DINT", 1)
+    tag_write("dummy", 1234)
+end
+
+tagname = "skeleton"
+
+

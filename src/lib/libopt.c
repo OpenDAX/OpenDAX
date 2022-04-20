@@ -19,7 +19,8 @@
  * This file contains libdax configuration functions
  */
 
-#include <libdax.h>
+#include "libdax.h"
+#include "lua/libdaxlua.h"
 #include <libcommon.h>
 #include <getopt.h>
 #include <ctype.h>
@@ -53,8 +54,6 @@ dax_init_config(dax_state *ds, char *name)
     result += dax_add_attribute(ds, "confdir", "confdir", 'K', flags, ETC_DIR);
     //result += dax_add_attribute(ds, "", "", '', flags, "");
 
-    ds->modulename = strdup(name);
-
     if(result) {
         return ERR_GENERIC;
     } else {
@@ -70,6 +69,14 @@ int
 dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name)
 {
     lua_pushcfunction(ds->L, (int (*)(lua_State *))f);
+    lua_setglobal(ds->L, name);
+    return 0;
+}
+
+int
+dax_clear_luafunction(dax_state *ds, char *name)
+{
+    lua_pushnil(ds->L);
     lua_setglobal(ds->L, name);
     return 0;
 }
@@ -169,7 +176,7 @@ dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int f
         return result;
     }
     if(name == NULL) return ERR_ARG;
-        
+
     newattr = malloc(sizeof(optattr));
     if(newattr == NULL) {
         return ERR_ALLOC;
@@ -405,6 +412,7 @@ _mod_config_file(dax_state *ds) {
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
         dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
+        free(cfile);
         return ERR_GENERIC;
     } else {
         _get_lua_globals(ds);
@@ -558,4 +566,23 @@ int
 opt_get_msgtimeout(dax_state *ds)
 {
     return ds->msgtimeout;
+}
+
+int
+opt_lua_init_func(dax_state *ds) {
+    int result;
+
+    daxlua_set_state(ds->L, ds);
+    daxlua_register_function(ds->L, "tag_add");
+    daxlua_register_function(ds->L, "tag_write");
+    daxlua_register_function(ds->L, "tag_read");
+    daxlua_register_function(ds->L, "tag_get");
+    daxlua_register_function(ds->L, "cdt_create");
+    result = lua_getglobal(ds->L, "init_hook");
+    if(result == LUA_TFUNCTION) {
+        if(lua_pcall(ds->L, 0, 0, 0)) {
+            dax_error(ds, "error running init_function: %s", lua_tostring(ds->L, -1));
+        }
+    }
+    lua_pop(ds->L, 1);
 }

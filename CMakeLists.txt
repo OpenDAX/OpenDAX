@@ -18,7 +18,7 @@ include(CheckIncludeFile)
 
 # This allows us to use VERSION in the project command
 cmake_policy(SET CMP0048 NEW)
-project(OpenDAX VERSION 0.7)
+project(OpenDAX VERSION 0.8)
 cmake_minimum_required(VERSION 3.10.2)
 
 set(BUILD_SHARED_LIBS ON)
@@ -27,12 +27,20 @@ enable_testing()
 
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
-option(BUILD_WIO "Build Wireless I/O Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
+option(BUILD_JOYSTICK "Build Joystick Module" ON)
 option(INTERNAL_TESTS "Build and Run Internal System Tests" ON)
 option(MODULE_TESTS "Build and Run Module Tests" ON)
 
 set(CMAKE_BUILD_TYPE Debug)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  add_compile_options(-Wall -O0)
+  message("Building Debug Symbols and Verbose Warnings")
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(OS_LINUX 1)
+endif()
 
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(strings.h HAVE_STRINGS_H)
@@ -69,13 +77,11 @@ endif()
 add_subdirectory(src)
 
 # Install the sample configurations
-file(GLOB files "etc/*.conf.sample")
-foreach(file ${files})
-  install(FILES ${file} DESTINATION etc/opendax)
-endforeach()
+#file(GLOB files "etc/*.conf.sample")
+#foreach(file ${files})
+#  install(FILES ${file} DESTINATION etc/opendax)
+#endforeach()
 
 add_subdirectory(tests)
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  message("Building Debug Symbols and Verbose Warnings")
-endif()
+

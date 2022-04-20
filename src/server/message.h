@@ -35,7 +35,6 @@ void msg_add_fd(int);
 void msg_del_fd(int);
 int msg_dispatcher(int, unsigned char *);
 
-
 /* buffer.c functions */
 int buff_initialize(void);
 int buff_read(int fd);

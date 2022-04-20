@@ -16,10 +16,20 @@
 
 include_directories(.)
 
-add_library(dax libcdt.c libconv.c libdata.c
-            libevent.c libfunc.c libinit.c libmsg.c libopt.c)
+add_library(dax libcdt.c
+                libconv.c
+                libdata.c
+                libevent.c
+                libfunc.c
+                libinit.c
+                libmsg.c
+                libopt.c
+                lua/libdaxlua.c
+                )
 
 target_link_libraries(dax ${LUA_LIBRARIES})
+target_link_libraries(dax pthread)
+
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     target_compile_options(dax PRIVATE -Wall)
 endif()

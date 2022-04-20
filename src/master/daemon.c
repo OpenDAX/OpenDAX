@@ -21,8 +21,8 @@
  * memory allocation.
  */
 
- #include "daemon.h"
- #include "logger.h"
+#include "daemon.h"
+#include "logger.h"
 #include <common.h>
 #include <syslog.h>
 #include <signal.h>

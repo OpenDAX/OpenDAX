@@ -37,6 +37,7 @@ main(int argc, char *argv[])
     dax_time t, x;
     
     initialize_tagbase();
+    printf("Tagbase Initialized\n");
     assert(tag_get_name("_time", &tag) == 0);
     assert(tag_read(tag.idx, 0, &t, sizeof(dax_time)) == 0);
     x = time(NULL);

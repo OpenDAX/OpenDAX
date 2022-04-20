@@ -21,7 +21,7 @@
  * the Lua programming language.
  */
 
-#include <libdaxlua.h>
+#include "libdaxlua.h"
 
 static dax_state *ds;
 
@@ -46,6 +46,7 @@ _read_to_stack(lua_State *L, tag_type type, void *buff)
             lua_pushnumber(L, (double)*((dax_byte *)buff));
             break;
         case DAX_SINT:
+        case DAX_CHAR:
             lua_pushnumber(L, (double)*((dax_sint *)buff));
             break;
         case DAX_WORD:
@@ -92,7 +93,7 @@ _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
             lua_createtable(L, tag.count, 0);
             for(n = 0; n < tag.count ; n++) {
                 bit = n + tag.bit;
-                if(((u_int8_t *)data)[bit/8] & (1 << (bit % 8))) { /* If *buff bit is set */
+                if(((uint8_t *)data)[bit/8] & (1 << (bit % 8))) { /* If *buff bit is set */
                     lua_pushboolean(L, 1);
                 } else {  /* If the bit in the buffer is not set */
                     lua_pushboolean(L, 0);
@@ -100,7 +101,7 @@ _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
                 lua_rawseti(L, -2, n + 1);
             }
         } else {
-            if(((u_int8_t *)data)[tag.bit/8] & (1 << (tag.bit % 8))) { /* If *buff bit is set */
+            if(((uint8_t *)data)[tag.bit/8] & (1 << (tag.bit % 8))) { /* If *buff bit is set */
                 lua_pushboolean(L, 1);
             } else {  /* If the bit in the buffer is not set */
                 lua_pushboolean(L, 0);
@@ -212,6 +213,7 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             ((dax_byte *)mask)[index] = 0xFF;
             break;
         case DAX_SINT:
+        case DAX_CHAR:
             x = lua_tointeger(L, -1) % 256;
             ((dax_sint *)data)[index] = x;
             ((dax_sint *)mask)[index] = 0xFF;
@@ -241,7 +243,7 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             break;
         case DAX_REAL:
             ((dax_real *)data)[index] = (dax_real)lua_tonumber(L, -1);
-            ((u_int32_t *)mask)[index] = 0xFFFFFFFF;
+            ((uint32_t *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_LWORD:
         case DAX_ULINT:
@@ -256,7 +258,7 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             break;
         case DAX_LREAL:
             ((dax_lreal *)data)[index] = lua_tonumber(L, -1);
-            ((u_int64_t *)mask)[index] = DAX_64_ONES;
+            ((uint64_t *)mask)[index] = DAX_64_ONES;
             break;
     }
 }
@@ -285,11 +287,11 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
                     /* Handle the boolean */
                     bit = n + tag.bit;
                     if(lua_toboolean(L, -1)) {
-                        ((u_int8_t *)data)[bit/8] |= (1 << (bit % 8));
+                        ((uint8_t *)data)[bit/8] |= (1 << (bit % 8));
                     } else {  /* If the bit in the buffer is not set */
-                        ((u_int8_t *)data)[bit/8] &= ~(1 << (bit % 8));
+                        ((uint8_t *)data)[bit/8] &= ~(1 << (bit % 8));
                     }
-                    ((u_int8_t *)mask)[bit/8] |= (1 << (bit % 8));
+                    ((uint8_t *)mask)[bit/8] |= (1 << (bit % 8));
                 } else {
                     /* Handle the non-boolean */
                     _write_from_stack(L, tag.type, data, mask, n);
@@ -301,18 +303,18 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
         if(tag.type == DAX_BOOL) {
             bit = tag.bit;
 //            printf("tag.bit = %d \n", tag.bit);
-//            printf("Before Data[%d] = 0x%X\n", bit/8, ((u_int8_t *)data)[bit/8]);
-//            printf("Before Mask[%d] = 0x%X\n", bit/8, ((u_int8_t *)mask)[bit/8]);
+//            printf("Before Data[%d] = 0x%X\n", bit/8, ((uint8_t *)data)[bit/8]);
+//            printf("Before Mask[%d] = 0x%X\n", bit/8, ((uint8_t *)mask)[bit/8]);
             if(lua_toboolean(L, -1)) {
 //                printf("set to TRUE\n");
-                ((u_int8_t *)data)[bit/8] |= (1 << (bit % 8));
+                ((uint8_t *)data)[bit/8] |= (1 << (bit % 8));
             } else {  /* If the bit in the buffer is not set */
 //                printf("set to FALSE\n");
-                ((u_int8_t *)data)[bit/8] &= ~(1 << (bit % 8));
+                ((uint8_t *)data)[bit/8] &= ~(1 << (bit % 8));
             }
-            ((u_int8_t *)mask)[bit/8] |= (1 << (bit % 8));
-//            printf("After Data[%d] = 0x%X\n", bit/8, ((u_int8_t *)data)[bit/8]);
-//            printf("After Mask[%d] = 0x%X\n", bit/8, ((u_int8_t *)mask)[bit/8]);
+            ((uint8_t *)mask)[bit/8] |= (1 << (bit % 8));
+//            printf("After Data[%d] = 0x%X\n", bit/8, ((uint8_t *)data)[bit/8]);
+//            printf("After Mask[%d] = 0x%X\n", bit/8, ((uint8_t *)mask)[bit/8]);
 
         } else {
             _write_from_stack(L, tag.type, data, mask, 0);
@@ -464,6 +466,9 @@ _dax_init(lua_State *L)
 {
     char *modulename;
     modulename = (char *)lua_tostring(L, 1);
+    if(modulename == NULL) {
+        luaL_error(L, "Module name not given");
+    }
     /* TODO: Transfer the Lua 'arg' table to these variables */
     int argc = 1;
     char *argv[] = {modulename};
@@ -602,7 +607,7 @@ _tag_add(lua_State *L)
         }
     }
 
-    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count);
+    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count, 0);
     if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
     return 0;
 }
@@ -841,6 +846,7 @@ _convert_lua_number(tag_type datatype, void **data, lua_Number x) {
             *data = &u1.dax_byte;
             return;
         case DAX_SINT:
+        case DAX_CHAR:
             u1.dax_sint = (dax_sint)x;
             *data = &u1.dax_sint;
             return;

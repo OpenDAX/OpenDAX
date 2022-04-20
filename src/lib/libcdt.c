@@ -111,6 +111,7 @@ dax_get_typesize(dax_state *ds, tag_type type)
     unsigned int pos = 0; /* Bit position within the data area */
     cdt_member *this;
 
+    type &= ~DAX_QUEUE; /* Delete the Queue bit from the type */
     if( dax_type_to_string(ds, type) == NULL )
         return ERR_ARG;
 
@@ -240,7 +241,7 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
  * Creates an empty Custom Datatype with 'name' if
  * 'error' is non NULL then results are put there.
  * Returns NULL on error and a pointer to the new
- * datatype if successfull.
+ * datatype if successful.
  */
 dax_cdt *
 dax_cdt_new(char *name, int *error)
@@ -350,6 +351,7 @@ dax_string_to_type(dax_state *ds, char *type)
     if(!strcasecmp(type, "BOOL"))  return DAX_BOOL;
     if(!strcasecmp(type, "BYTE"))  return DAX_BYTE;
     if(!strcasecmp(type, "SINT"))  return DAX_SINT;
+    if(!strcasecmp(type, "CHAR"))  return DAX_CHAR;
     if(!strcasecmp(type, "WORD"))  return DAX_WORD;
     if(!strcasecmp(type, "INT"))   return DAX_INT;
     if(!strcasecmp(type, "UINT"))  return DAX_UINT;
@@ -418,6 +420,8 @@ dax_type_to_string(dax_state *ds, tag_type type)
                 return "BYTE";
             case DAX_SINT:
                 return "SINT";
+            case DAX_CHAR:
+                return "CHAR";
             case DAX_WORD:
                 return "WORD";
             case DAX_INT:
@@ -735,7 +739,6 @@ dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int count)
     if(h == NULL || ds == NULL || str == NULL) {
         return ERR_ARG;
     }
-
     bzero(h, sizeof(tag_handle)); /* Initialize h */
     result = _dax_tag_handle(ds, h, str, strlen(str) + 1, count);
     if(result) {

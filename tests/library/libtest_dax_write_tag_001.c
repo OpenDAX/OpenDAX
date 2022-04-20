@@ -54,7 +54,7 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     } else {
-        dax_tag_add(ds, &tag, "Dummy", DAX_BOOL, 128);
+        dax_tag_add(ds, &tag, "Dummy", DAX_BOOL, 128, 0);
         /* Set the whole tag to 1s */
         memset(buff, '\xFF', tag.size);
         dax_write_tag(ds, tag, buff);
@@ -117,7 +117,7 @@ do_test(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    if(run_test(do_test, argc, argv)) {
+    if(run_test(do_test, argc, argv, 0)) {
         exit(-1);
     } else {
         exit(0);

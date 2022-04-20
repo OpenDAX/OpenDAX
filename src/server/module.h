@@ -27,7 +27,7 @@
 //      modules any more.
 #define MSTATE_STARTED      0x01 /* Module has been started */
 #define MSTATE_WAITING      0x02 /* Waiting for restart */
-#define MSTATE_CHILD        0x04 /* Module was started by this program */
+#define MSTATE_CHILD        0x04 /* Module was started by this program  <Deprecated>*/
 #define MSTATE_REGISTERED   0x08 /* Is the module registered */
 #define MSTATE_RUNNING      0x10 /* Module is running */
 
@@ -42,8 +42,8 @@ void initialize_module(void);
 
 /* Module runtime functions */
 int module_set_running(int fd);
-dax_module *module_register(char *name, u_int32_t timeout, int fd);
-dax_module *event_register(u_int32_t mid , int fd);
+dax_module *module_register(char *name, uint32_t timeout, int fd);
+dax_module *event_register(uint32_t mid , int fd);
 void module_unregister(pid_t pid);
 dax_module *module_find_fd(int fd);
 

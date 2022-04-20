@@ -29,7 +29,7 @@
 #include <stdarg.h>
 #include <signal.h>
 
-static u_int32_t _logflags = 0;
+static uint32_t _logflags = 0;
 
 /* Wrapper functions - Mostly system calls that need special handling */
 
@@ -65,7 +65,7 @@ xwrite(int fd, const void *buff, size_t nbyte)
 
 /* Memory management functions.  These are just to override the
  * standard memory management functions in case I decide to do
- * something createive with them later. */
+ * something creative with them later. */
 
 void *
 xmalloc(size_t num)
@@ -137,14 +137,14 @@ xerror(const char *format, ...)
 }
 
 void
-set_log_topic(u_int32_t topic)
+set_log_topic(uint32_t topic)
 {
     _logflags = topic;
     xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
 }
 
-/* logs the string if any of the bist in flags matches _logflags */
-void xlog(u_int32_t flags, const char *format, ...) {
+/* logs the string if any of the bits in flags matches _logflags */
+void xlog(uint32_t flags, const char *format, ...) {
     va_list val;
     if(flags & _logflags) {
         va_start(val, format);

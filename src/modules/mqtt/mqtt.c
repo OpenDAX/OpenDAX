@@ -45,7 +45,7 @@ void delivered(void *context, MQTTClient_deliveryToken dt)
 void
 _write_formatted_string(subscriber_t *sub, char *payload)
 {
-    u_int8_t v[8];
+    uint8_t v[8];
     
     dax_string_to_val(payload, sub->h[0].type, v, NULL, 0);
     dax_write_tag(ds, sub->h[0], v);
@@ -202,7 +202,6 @@ setup_publishers() {
 }
 
 
-
 void
 client_loop(void) {
     int result;
@@ -263,7 +262,7 @@ main(int argc,char *argv[]) {
     struct sigaction sa;
     int flags, result = 0, scan = 0, n;
     char *str, *tagname, *event_tag, *event_type;
-    Handle h_full, h_part;
+    tag_handle h_full, h_part;
     dax_dint data[5];
 
     /* Set up the signal handlers for controlled exit*/

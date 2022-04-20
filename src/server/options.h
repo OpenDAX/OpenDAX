@@ -24,16 +24,6 @@
 #include <common.h>
 #include "daxtypes.h"
 
-/* If set to zero the program will run in the foreground
- * by default.  Otherwise it will go to the background */
-#ifndef DEFAULT_DAEMONIZE
-#  define DEFAULT_DAEMONIZE 0
-#endif
-
-#ifndef DEFAULT_PID
-#  define DEFAULT_PID "/var/run/tagserver.pid"
-#endif
-
 #ifndef DEFAULT_PORT
 # define DEFAULT_PORT 7777
 #endif
@@ -47,11 +37,9 @@
 int opt_configure(int argc, const char *argv[]);
 
 /* These functions return the configuration parameters */
-int opt_daemonize(void);    /* Whether or not to go to the background */
-char *opt_statustag(void);
-char *opt_pidfile(void);
-int opt_maxstartup(void);
 char *opt_socketname(void);
+struct in_addr opt_serverip(void);
+unsigned int opt_serverport(void);
 /* Minimum number of communication buffers to allocate */
 int opt_min_buffers(void);
 int opt_start_timeout(void);
