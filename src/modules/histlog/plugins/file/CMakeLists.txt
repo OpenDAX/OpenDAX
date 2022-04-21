@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#  Copyright (c) 2022 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,25 +14,15 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_subdirectory(daxc)
+include_directories(.)
 
-if(BUILD_MODBUS)
-  add_subdirectory(modbus)
+add_library(dhl_file dhl_file.c)
+
+#target_link_libraries(dax ${LUA_LIBRARIES})
+#target_link_libraries(dax pthread)
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_options(dhl_file PRIVATE -Wall)
 endif()
+install(TARGETS dhl_file DESTINATION lib)
 
-if(BUILD_DAXLUA)
-  add_subdirectory(daxlua)
-endif()
-
-if(BUILD_MQTT)
-  add_subdirectory(mqtt)
-endif()
-
-# For now the joystick module only works in Linux
-if(BUILD_JOYSTICK AND OS_LINUX)
-  add_subdirectory(joystick)
-endif()
-
-add_subdirectory(histlog)
-
-add_subdirectory(skel)

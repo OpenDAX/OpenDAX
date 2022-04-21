@@ -15,31 +15,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- *  Main header file for the OpenDAX Historical Logging module
+ *  Main header file for the OpenDAX Historical Logging MySQL plugin
  */
 
-#ifndef __HISTLOG_H_
-#define __HISTLOG_H_
-
 #include <common.h>
-
-typedef void tag_object;
-
-#define ABS_CHANGE 0x01
-#define PCT_CHANGE 0x02
-#define ON_WRITE   0x04
-
-int histlog_configure(int argc,char *argv[]);
-
-/* Plugin functions */
-int plugin_load(char *file);
-
-/* These functions should be implemented in the plugin library */
-extern int (*set_config)(const char *attr, char *value);
-extern char * (*get_config)(const char *attr);
-extern tag_object *(*add_tag)(const char *tagname, uint32_t type, const char *attributes);
-extern int (*free_tag)(tag_object *tag);
-extern int (*write_data)(uint32_t index, void *value, double timestamp);
-
-
-#endif

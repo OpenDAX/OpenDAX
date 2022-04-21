@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,3 +19,41 @@
  */
 
 #include <dhl_file.h>
+
+int
+init(const char *file) {
+    fprintf(stderr, "Initializing the thing with the thing %s\n", file);
+    return 0;
+}
+
+int
+set_config(const char *attr, char *value) {
+    fprintf(stderr, "Set attribute %s = %s\n", attr, value);
+    return 0;
+}
+char *
+get_config(const char *attr) {
+    fprintf(stderr, "Get attribute %s\n", attr);
+    return "OK";
+}
+
+
+tag_object *
+add_tag(const char *tagname, uint32_t type, const char *attributes) {
+
+    fprintf(stderr, "Adding ye olde tag %s\n", tagname);
+    return NULL;
+}
+
+int
+free_tag(tag_object *tag) {
+    free(tag->name);
+    free(tag);
+    return 0;
+}
+
+int
+write_data(uint32_t index, void *value, double timestamp) {
+    fprintf(stderr, "Writing data for tag at index %d\n", index);
+    return 0;
+}

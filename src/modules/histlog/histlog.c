@@ -18,8 +18,10 @@
  *  Main source code file for the OpenDAX Historical Logging module
  */
 
+#include <signal.h>
+#include <opendax.h>
 
-#include <histlog.h>
+#include "histlog.h"
 
 void quit_signal(int sig);
 static void getout(int exitstatus);
@@ -30,8 +32,6 @@ static int _quitsignal;
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
     struct sigaction sa;
-    int flags, result = 0;
-    char *storage;
 
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
@@ -41,33 +41,23 @@ int main(int argc,char *argv[]) {
     sigaction (SIGTERM, &sa, NULL);
 
     /* Create and Initialize the OpenDAX library state object */
-    ds = dax_init("histlog"); /* Replace 'skel' with your module name */
+    ds = dax_init("histlog");
     if(ds == NULL) {
-        /* dax_fatal() logs an errlr and causes a quit
+        /* dax_fatal() logs an error and causes a quit
          * signal to be sent to the module */
         dax_fatal(ds, "Unable to Allocate DaxState Object\n");
     }
 
-    /* Create and initialize the configuration subsystem in the library */
-    dax_init_config(ds, "histlog");
-    /* These flags will be passed to the dax_add_attribute() function.  They
-     * basically mean that the following attributes can be set from either the
-     * command line or the skel.conf module configuration file and that an
-     * argument is required */
-    flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute(ds, "storage","storage", 's', flags, "file");
-    result += dax_add_attribute(ds, "event_tag","event_tag", 'e', flags, "skel_event");
-    /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE);
-
-    /* Get the results of the configuration */
-    storage = strdup(dax_get_attr(ds, "storage"));
-
-    /* Free the configuration data */
-    dax_free_config (ds);
+    histlog_configure(argc, argv);
 
     /* Set the logging flags to show all the messages */
     dax_set_debug_topic(ds, LOG_ALL);
+
+    plugin_load("plugins/file/libdhl_file.so");
+    add_tag("NameOfTheTag", 1, NULL);
+    write_data(42, NULL, 0.0);
+    set_config("filename", "NameOfFile.csv");
+    get_config("TestAttr");
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {

@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,3 +19,10 @@
  */
 
 #include <common.h>
+#include <opendax.h>
+
+typedef struct tag_object {
+    char *name;
+    tag_type type;
+    int handle;
+} tag_object;
