@@ -18,15 +18,15 @@
  * Source file for mb_cmd handling functions
  */
 
-#include <modbus.h>
-#include <mblib.h>
+#include "modbus.h"
+
 
 /* Sets the command values to some defaults */
 static void
 initcmd(struct mb_cmd *c)
 {
     c->enable = 1;
-    c->mode = MB_CONTINUOUS;
+    c->mode = 0;
     c->node = 0;
     c->function = 0;
     c->m_register = 0;
@@ -44,11 +44,7 @@ initcmd(struct mb_cmd *c)
     c->lasterror = 0;
     c->lastcrc = 0;
     c->firstrun = 0;
-    c->userdata = NULL;
-    c->pre_send = NULL;
-    c->post_send = NULL;
-    c->send_fail = NULL;
-    c->userdata_free = NULL;
+    bzero(&c->data_h, sizeof(tag_handle));
     c->next = NULL;
 };
 
@@ -85,35 +81,20 @@ mb_new_cmd(mb_port *port)
 
 void
 mb_destroy_cmd(mb_cmd *cmd) {
-
-/* This frees the userdata if it is set.  If there is
- * a userdata_free callback assigned it will call that
- * otherwise it just calls free */
-    if(cmd->userdata != NULL) {
-        if(cmd->userdata_free != NULL) {
-            cmd->userdata_free(cmd, cmd->userdata);
-        } else {
-            free(cmd->userdata);
-        }
+    if(cmd->data != NULL) {
+        free(cmd->data);
     }
     free(cmd);
 }
 
 
-void
-mb_disable_cmd(mb_cmd *cmd) {
-    cmd->enable = 0;
-}
-
-void
-mb_enable_cmd(mb_cmd *cmd) {
-    cmd->enable = cmd->mode;
-}
-
+/* This function checks the arguments and sets up the command passed in cmd.  It also calculates
+ * the size of the data in bytes that this command will need so the oepndax tag can be referenced
+ * properly. */
 int
-mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_int16_t length)
+mb_set_command(mb_cmd *cmd, uint8_t node, uint8_t function, uint16_t reg, uint16_t length)
 {
-    u_int8_t *newdata;
+    uint8_t *newdata;
     int newsize = 0;
 
     if(node < 1 || node > 247) {
@@ -145,7 +126,6 @@ mb_set_command(mb_cmd *cmd, u_int8_t node, u_int8_t function, u_int16_t reg, u_i
         }
     }
     cmd->length = length;
-    /* This will even reallocate the *data area if this command is called again */
     switch(function) {
         case 1:
         case 2:
@@ -195,27 +175,6 @@ mb_set_mode(mb_cmd *cmd, unsigned char mode)
         cmd->mode = MB_CONTINUOUS;
 }
 
-void
-mb_set_cmd_userdata(mb_cmd *cmd, void *data, void (*userdata_free)(struct mb_cmd *, void *))
-{
-    cmd->userdata = data;
-    if(userdata_free) {
-        cmd->userdata_free = userdata_free;
-    }
-}
-
-u_int8_t *
-mb_get_cmd_data(mb_cmd *cmd)
-{
-    return cmd->data;
-}
-
-int
-mb_get_cmd_datasize(mb_cmd *cmd)
-{
-    return cmd->datasize;
-}
-
 
 /* Returns true (1) if the function code for cmd will read from the node */
 int
@@ -248,50 +207,3 @@ mb_is_write_cmd(mb_cmd *cmd)
     }
 
 }
-
-
-/* This sets the callback function that will be called just prior to sending a command.
- * The prototype must be...
- * void funcname(mb_cmd *cmd, void *userdata, u_int8_t data, int datasize);
- * The cmd is the command that is about to be sent, userdata is the pointer to the
- * userdata that was assigned by 'mb_set_userdata()', data is the internal command data
- * that would represent the data to be sent/received by the command and datasize is the
- * number of bytes that data occupies. */
-void
-mb_pre_send_callback(mb_cmd *cmd, void (*pre_send)(struct mb_cmd *, void *, u_int8_t *, int))
-{
-    cmd->pre_send = pre_send;
-}
-
-/* This sets the callback function that will be called just after sending the command.
- * The prototype and description are the same as mb_pre_send_callback(). */
-void
-mb_post_send_callback(mb_cmd *cmd, void (*post_send)(struct mb_cmd *, void *, u_int8_t *, int))
-{
-    cmd->post_send = post_send;
-}
-
-/* This sets the callback function that will be called if the given command fails.
- * The prototype is the same as the pre/post_send callbacks without the data
- * and datasize parameters */
-void
-mb_send_fail_callback(mb_cmd *cmd, void (*send_fail)(struct mb_cmd *, void *))
-{
-    cmd->send_fail = send_fail;
-}
-
-
-/* Set's a user defined deallocation callback for the userdata that is stored in the command.
- * If this function is never called for a command then the system function 'free()' will
- * be used to deallocate the data when the command is destroyed by the system.  Otherwise
- * the library will call this function to have the client program deallocate the memory */
-void
-mb_userdata_free_callback(mb_cmd *cmd, void (*userdata_free)(struct mb_cmd *, void *))
-{
-    cmd->userdata_free = userdata_free;
-}
-
-
-/*********************/
-/* Utility Functions */
-/*********************/

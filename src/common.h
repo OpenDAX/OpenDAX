@@ -32,7 +32,6 @@
 #include <errno.h>
 #include <assert.h>
 #include <assert.h>
-#include <sys/types.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/select.h>
@@ -61,9 +60,12 @@
 
 /* These are conditionally compiled debug statements. */
 #ifdef DEBUG
+# define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+# define DF(...) printf("%s:%d %s() - ", __FILENAME__, __LINE__, __func__); printf(__VA_ARGS__); printf("\n");
 # define DAX_DEBUG(x) dax_debug(5, x);
 # define DAX_DEBUG2(x, y) dax_debug(5, x, y);
 #else
+# define DF(...)
 # define DAX_DEBUG(x)
 # define DAX_DEBUG2(x, y)
 #endif

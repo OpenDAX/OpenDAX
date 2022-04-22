@@ -18,13 +18,7 @@
  * Source file for modbus library utility functions
  */
 
-#include <stdarg.h>
-
-#define _XOPEN_SOURCE
-#include <unistd.h>
-#undef _XOPEN_SOURCE
-#include <mblib.h>
-
+#include <modbus.h>
 
 /* CRC table straight from the modbus spec */
 static unsigned char aCRCHi[] = {
@@ -73,12 +67,13 @@ static char aCRCLo[] = {
 
 /* Modbus CRC16 checksum calculation. Taken straight from the modbus specification,
  * but I fixed the typos and changed the name to protect the guilty */ 
-u_int16_t
+uint16_t
 crc16(unsigned char *msg, unsigned short length)
 {
     unsigned char CRCHi = 0xFF;
     unsigned char CRCLo = 0xFF;
     unsigned int index;
+
     while(length--) {
         index = CRCHi ^ *msg++;
         CRCHi = CRCLo ^ aCRCHi[index];
@@ -91,9 +86,9 @@ crc16(unsigned char *msg, unsigned short length)
  * length should be the length of the modbus data buffer INCLUDING the
  * two byte checksum.  Returns 1 if checksum matches */
 int
-crc16check(u_int8_t *buff, int length)
+crc16check(uint8_t *buff, int length)
 {
-    u_int16_t crcLocal, crcRemote;
+    uint16_t crcLocal, crcRemote;
     if(length < 2) return 0; /* Otherwise a bad pointer will go to crc16 */
     crcLocal = crc16(buff, length-2);
     COPYWORD(&crcRemote, &buff[length-2]);
@@ -101,47 +96,3 @@ crc16check(u_int8_t *buff, int length)
     else return 0;
 };
 
-#ifdef __MB_THREAD_SAFE
-int
-__mb_mutex_init(_mb_mutex_t *mutex)
-{
-	return pthread_mutex_init(mutex, NULL);
-}
-
-int
-__mb_mutex_lock(mb_port *port, _mb_mutex_t *mutex)
-{
-	if(port->flags & MB_FLAGS_THREAD_SAFE) {
-		return pthread_mutex_lock(mutex);
-	} else {
-		return 0;
-	}			
-}
-
-int
-__mb_mutex_unlock(mb_port *port, _mb_mutex_t *mutex)
-{
-	if(port->flags & MB_FLAGS_THREAD_SAFE) {
-		return pthread_mutex_unlock(mutex);
-	} else {
-		return 0;
-	}
-}
-
-#endif /* __MB_THREAD_SAFE */
-
-#ifdef DEBUG
-/* This function is only included when DEBUG is defined.  It 
- * turns into DEBUGMSGx() in the code.  Redefine to something
- * other than fprintf() ifneeded */
-void
-debug(char *format, ...)
-{
-    va_list val;
-    va_start(val, format);
-    vfprintf(stderr, format, val);
-    fprintf(stderr, "\n");
-    va_end(val);
-}
-
-#endif

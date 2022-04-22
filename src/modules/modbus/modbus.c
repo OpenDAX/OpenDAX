@@ -19,10 +19,14 @@
  */
 
 
-#include <mblib.h>
-#include <modbus.h>
+#include <sys/select.h>
+#include <pthread.h>
+#include "modbus.h"
+
+extern dax_state *ds;
 
 int master_loop(mb_port *);
+int client_loop(mb_port *);
 
 /* Calculates the difference between the two times */
 unsigned long long
@@ -38,73 +42,113 @@ timediff(struct timeval oldtime,struct timeval newtime)
 int
 mb_run_port(struct mb_port *m_port)
 {
-    /* If the port is not already open */
-    if(!m_port->fd) {
-        mb_open_port(m_port);
-    }
-    /* If the port is still not open then we inhibit the port and
-     * let the _loop() functions deal with it */
-    if(m_port->fd == 0) {
-        m_port->inhibit = 1;
-    }
-    printf("mb_run_port() - Port type = %d\n", m_port->type);
+    int result;
 
-    if(m_port->type == MB_MASTER) {
-        printf("mb_run_port() - Calling master_loop() for %s\n", m_port->name);
-        return master_loop(m_port);
-    } else if(m_port->type == MB_SLAVE) {
-        if(m_port->protocol == MB_TCP) {
-            printf("mb_run_port() - Start the TCP Server Loop\n");
-            return server_loop(m_port);
-        } else {
-            printf("mb_run_port() - Should run slave here\n");
-            return MB_ERR_PROTOCOL;
+    while(1) {
+        /* If the port is not already open */
+        if(!m_port->fd) {
+            result = mb_open_port(m_port);
         }
-        /* TODO: start slave thread */
-    } else {
-        return MB_ERR_PORTTYPE;
+        if(result) {
+            dax_error(ds, "Failed to open port %s", m_port->name);
+        } else {
+            /* If the port is still not open then we inhibit the port and
+             * let the _loop() functions deal with it */
+            if(m_port->fd == 0 && m_port->devtype != MB_NETWORK) {
+                m_port->inhibit = 1;
+            }
+
+            if(m_port->type == MB_MASTER) {
+                if(m_port->protocol == MB_TCP) {
+                    dax_debug(ds, LOG_MAJOR, "Starting client loop for %s", m_port->name);
+                    return client_loop(m_port);
+                } else {
+                    dax_debug(ds, LOG_MAJOR, "Starting master loop for %s", m_port->name);
+                    return master_loop(m_port);
+                }
+            } else if(m_port->type == MB_SLAVE) {
+                if(m_port->protocol == MB_TCP) {
+                    dax_debug(ds, LOG_MAJOR, "Start Server Loop for port %s\n", m_port->name);
+                    result = server_loop(m_port);
+                    if(result) dax_error(ds, "Server loop exited with error, %d port %s\n", result, m_port->name);
+                } else {
+                    dax_debug(ds, LOG_MAJOR, "Start Slave Loop for port %s\n", m_port->name);
+                    result = slave_loop(m_port);
+                    if(result) dax_error(ds, "Slave loop exited with error, %d port %s\n", result, m_port->name);
+                }
+            } else {
+                return MB_ERR_PORTTYPE;
+            }
+        }
+        usleep(2e6);
     }
     return 0;
 }
 
+
+/* This is the primary event loop for a Modbus TCP client.  It calls the functions
+   to send the request and receive the responses.  It also takes care of the
+   retries and the counters. */
 int
-mb_scan_port(mb_port *mp)
+client_loop(mb_port *mp)
 {
-    int cmds_sent = 0;
-    int result;
-    mb_cmd *mc;
+    long time_spent;
+    struct mb_cmd *mc;
+    struct timeval start, end;
 
-    mc = mp->commands;
-    while(mc != NULL && mp->inhibit == 0) {
-        /* Only if the command is enabled and the interval counter is over */
-        if(mc->enable && (++mc->icount >= mc->interval)) {
-            mc->icount = 0;
-            if(mp->maxattempts) {
-                mp->attempt++;
-                DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
-            }
-            result = mb_send_command(mp, mc);
-            if( result > 0 ) {
-                mp->attempt = 0; /* Good response, reset counter */
-                cmds_sent++;
+    mp->running = 1; /* Tells the world that we are going */
+    mp->attempt = 0;
+    mp->dienow = 0;
+
+    while(1) {
+        gettimeofday(&start, NULL);
+        if(mp->enable) { /* If enable=0 then pause for the scanrate and try again. */
+            mc = mp->commands;
+
+            while(mc != NULL) {
+                /* Only if the command is enabled and the interval counter is over */
+                if(mc->enable && (mc->mode & MB_CONTINUOUS) && (++mc->icount >= mc->interval)) {
+                    mc->icount = 0;
+                    if(mp->maxattempts) {
+                        mp->attempt++;
+                    }
+                    if( mb_send_command(mp, mc) > 0 ) {
+                        mp->attempt = 0; /* Good response, reset counter */
+                    }
+//                    if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
+//                        mp->inhibit_temp = 0;
+//                        mp->inhibit = 1;
+//                    }
+                }
                 if(mp->delay > 0) usleep(mp->delay * 1000);
-            } else if( result == 0 ) mp->maxattempts--; /* Conditional command that was not sent */
-
-            if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
-                mp->inhibit_temp = 0;
-                mp->inhibit = 1;
-            }
-
+                mc = mc->next; /* get next command from the linked list */
+            } /* End of while for sending commands */
         }
-        mc = mc->next; /* get next command from the linked list */
-    } /* End of while for sending commands */
-    return cmds_sent;
+        /* This calculates the length of time that it took to send the messages on this port
+           and then subtracts that time from the port's scanrate and calls usleep to hold
+           for the right amount of time.  */
+        gettimeofday(&end, NULL);
+        time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
+        /* If it takes longer than the scanrate then just go again instead of sleeping */
+        if(time_spent < mp->scanrate) {
+            if(!mp->persist) {
+                mb_close_port(mp);
+            }
+            mp->scanning = 0; /* We're going to assume this is atomic for now */
+            usleep((mp->scanrate - time_spent) * 1000);
+            mp->scanning = 1;
+        }
+    }
+    /* Close the port */
+    mb_close_port(mp);
+    mp->dienow = 0;
+    mp->running = 0;
+    return MB_ERR_PORTFAIL;
 }
 
 
-
 /* This is the primary event loop for a Modbus master.  It calls the functions
-   to send the request and recieve the responses.  It also takes care of the
+   to send the request and receive the responses.  It also takes care of the
    retries and the counters. */
 int
 master_loop(mb_port *mp)
@@ -119,21 +163,20 @@ master_loop(mb_port *mp)
     mp->attempt = 0;
     mp->dienow = 0;
 
-    /* If enable goes negative we bail at the next scan */
     while(1) {
         gettimeofday(&start, NULL);
         if(mp->enable && !mp->inhibit) { /* If enable=0 then pause for the scanrate and try again. */
             mc = mp->commands;
             while(mc != NULL && !bail) {
                 /* Only if the command is enabled and the interval counter is over */
-                if(mc->enable && (++mc->icount >= mc->interval)) {
+                if(mc->enable && (mc->mode & MB_CONTINUOUS) && (++mc->icount >= mc->interval)) {
                     mc->icount = 0;
                     if(mp->maxattempts) {
                         mp->attempt++;
-                        //DEBUGMSG2("Incrementing attempt - %d", mp->attempt);
                     }
-                    if( mb_send_command(mp, mc) > 0 )
+                    if( mb_send_command(mp, mc) > 0 ) {
                         mp->attempt = 0; /* Good response, reset counter */
+                    }
                     if((mp->maxattempts && mp->attempt >= mp->maxattempts) || mp->dienow) {
                         bail = 1;
                         mp->inhibit_temp = 0;
@@ -161,8 +204,12 @@ master_loop(mb_port *mp)
         gettimeofday(&end, NULL);
         time_spent = (end.tv_sec-start.tv_sec)*1000 + (end.tv_usec/1000 - start.tv_usec/1000);
         /* If it takes longer than the scanrate then just go again instead of sleeping */
-        if(time_spent < mp->scanrate)
+        if(time_spent < mp->scanrate) {
+            if(!mp->persist) {
+                mb_close_port(mp);
+            }
             usleep((mp->scanrate - time_spent) * 1000);
+        }
     }
     /* Close the port */
     mb_close_port(mp);
@@ -175,8 +222,8 @@ master_loop(mb_port *mp)
 static int
 sendRTUrequest(mb_port *mp, mb_cmd *cmd)
 {
-    u_int8_t buff[MB_FRAME_LEN], length;
-    u_int16_t crc, temp;
+    uint8_t buff[MB_FRAME_LEN], length;
+    uint16_t crc, temp;
 
     /* build the request message */
     buff[0]=cmd->node;
@@ -225,7 +272,7 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
                 if(cmd->length > 16) {
                     crc = crc16(cmd->data, cmd->datasize);
                 } else if(cmd->length > 8) {
-                    crc = *(u_int16_t *)cmd->data;
+                    crc = *(uint16_t *)cmd->data;
                 } else {
                     crc = *cmd->data;
                 }
@@ -292,7 +339,7 @@ sendRTUrequest(mb_port *mp, mb_cmd *cmd)
  * Returns the length of the message on success
  */
 static int
-getRTUresponse(u_int8_t *buff, mb_port *mp)
+getRTUresponse(uint8_t *buff, mb_port *mp)
 {
     unsigned int buffptr = 0;
     struct timeval oldtime, thistime;
@@ -301,7 +348,7 @@ getRTUresponse(u_int8_t *buff, mb_port *mp)
     gettimeofday(&oldtime, NULL);
 
     while(1) {
-        usleep(mp->frame * 1000);
+        usleep(mp->frame);
         result = read(mp->fd, &buff[buffptr], MB_FRAME_LEN);
         if(result > 0) { /* Get some data */
             buffptr += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
@@ -336,22 +383,24 @@ sendASCIIrequest(mb_port *mp, mb_cmd *cmd)
 }
 
 static int
-getASCIIresponse(u_int8_t *buff, mb_port *mp)
+getASCIIresponse(uint8_t *buff, mb_port *mp)
 {
     return 0;
 }
+
+static uint16_t _req_tid;
 
 /* This function formulates and sends the Modbus TCP client request */
 static int
 sendTCPrequest(mb_port *mp, mb_cmd *cmd)
 {
-    u_int8_t buff[MB_FRAME_LEN];
-    u_int16_t crc, temp, length;
+    uint8_t buff[MB_FRAME_LEN];
+    uint16_t crc, temp, length;
 
     /* build the request message */
     /* MBAP Header minus the length.  We'll set it later */
-    buff[0] = 0x77;  /* Transaction ID */
-    buff[1] = 0x70;  /* Transaction ID */
+    buff[0] = _req_tid>>8;  /* Transaction ID */
+    buff[1] = _req_tid++;   /* Transaction ID */
     buff[2] = 0x00;  /* Protocol ID */
     buff[3] = 0x00;  /* Protocol ID */
     /* Modbus RTU PDU */
@@ -401,7 +450,7 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
                 if(cmd->length > 16) {
                     crc = crc16(cmd->data, cmd->datasize);
                 } else if(cmd->length > 8) {
-                    crc = *(u_int16_t *)cmd->data;
+                    crc = *(uint16_t *)cmd->data;
                 } else {
                     crc = *cmd->data;
                 }
@@ -461,43 +510,35 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
  * Returns the length of the message on success
  */
 static int
-getTCPresponse(u_int8_t *buff, mb_port *mp)
+getTCPresponse(uint8_t *buff, mb_port *mp)
 {
-    unsigned int buffindex = 0;
-    u_int8_t tempbuff[MB_FRAME_LEN];
-    struct timeval oldtime, thistime;
+    uint8_t tempbuff[MB_FRAME_LEN];
+    struct timeval timeout;
     int result;
+    fd_set readfs, errfs;
 
-    gettimeofday(&oldtime, NULL);
 
-    while(1) {
-        result = read(mp->fd, &tempbuff[buffindex], MB_FRAME_LEN);
-        if(result > 0) { /* Get some data */
-            buffindex += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'
-        } else { /* Message is finished, good or bad */
-            if(buffindex > 0) { /* Is there any data in buffer? */
-                /* We have to convert the TCP message to it's RTU equivalent,
-                 * because that is what the calling function is expecting. */
-                buffindex -= 6;
-                memcpy(buff, &tempbuff[6], buffindex);
-
-                if(mp->in_callback) {
-                    mp->in_callback(mp, buff, buffindex);
-                }
-                return buffindex;
-
-            } else { /* No data in the buffer */
-                gettimeofday(&thistime,NULL);
-                if(timediff(oldtime, thistime) > mp->timeout) {
-                    return 0;
-                }
-            }
-        }
-        // TODO: Probably change this to the timeout value or something
-        usleep(mp->frame * 1000);
-
+    timeout.tv_usec = (mp->timeout % 1000) * 1000;
+    timeout.tv_sec = mp->timeout / 1000;
+    FD_ZERO(&readfs);
+    FD_SET(mp->fd, &readfs);
+    FD_ZERO(&errfs);
+    FD_SET(mp->fd, &errfs);
+    result = select(mp->fd+1, &readfs, NULL, &errfs, &timeout);
+    if(FD_ISSET(mp->fd, &readfs)) {
+        /* TODO Can we really assume that we'll get the whole thing in one read() */
+        result = read(mp->fd, tempbuff, MB_BUFF_SIZE);
     }
-    return 0; /* Should never get here */
+    if(result > 0) { /* Is there any data in buffer? */
+        if(mp->in_callback) {
+            mp->in_callback(mp, tempbuff, result);
+        }
+        /* We have to convert the TCP message to it's RTU equivalent,
+         * because that is what the calling function is expecting. */
+        result -= 6;
+        memcpy(buff, &tempbuff[6], result);
+    }
+    return result;
 }
 
 
@@ -514,7 +555,7 @@ getTCPresponse(u_int8_t *buff, mb_port *mp)
  */
 /* TODO: There is all kinds of buffer overflow potential here.  It should all be checked */
 static int
-handleresponse(u_int8_t *buff, mb_cmd *cmd)
+handleresponse(uint8_t *buff, mb_cmd *cmd)
 {
     int n;
 
@@ -535,13 +576,11 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
         case 4:
             /* TODO: There may be times when we get more data than cmd->length but how to deal with that? */
             for(n = 0; n < (buff[2] / 2); n++) {
-                COPYWORD(&((u_int16_t *)cmd->data)[n], &buff[(n * 2) + 3]);
+                COPYWORD(&((uint16_t *)cmd->data)[n], &buff[(n * 2) + 3]);
             }
             break;
         case 5:
         case 6:
-            //COPYWORD(cmd->data, &buff[2]);
-            break;
         case 15:
         case 16:
             break;
@@ -549,6 +588,57 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
             break;
     }
     return 0;
+}
+
+/* This function is called before a write command request is sent.  It's purpose
+ * is to read the data from the tagserver and put it in the command buffer.  First
+ * it checks to see if we have already retrieved our handle from the
+ * tag server.  If not then we attempt to retrieve it.  Then we make sure that
+ * the sizes of the tag and the command buffer are the same and adjust if necessary.
+ * If the handles has been retrieved then we simply read the data from the
+ * tagserver and put it in the command data buffer so that it can be sent. */
+static int
+_get_write_data(mb_cmd *mc) {
+    int result;
+
+    if(mc->data_h.index == 0) {
+        result = dax_tag_handle(ds, &mc->data_h, mc->data_tag, mc->tagcount);
+        if(result) return result;
+        /* We need to check if the tag size and the data buffer size in the modbus command
+         * are the same.  If not then if the tag is smaller it's no big deal but if the command
+         * data size is smaller then we'll truncate the size in the tag handle. */
+        if(mc->data_h.size != mc->datasize) {
+            dax_error(ds, "Tag size and Modbus request size are different.  Data will be truncated");
+            if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
+        }
+    }
+    /* If we get here we assume that we now have a valid tag handle */
+    return dax_read_tag(ds, mc->data_h, mc->data);
+}
+
+/* This function is called after a command response has been received.  It's purpose
+ * is to put the data into the tagserver.  It first checks to see if we have already
+ * retrieved our handle from the tag server.  If not then we attempt to retrieve it.
+ * Then we make sure that the sizes of the tag and the command buffer are the same
+ * and adjust if necessary. If the handles has been retrieved then we simply write
+ * the data from the command data buffer to the tagserver. */
+static int
+_send_read_data(mb_cmd *mc) {
+    int result;
+
+    if(mc->data_h.index == 0) {
+        result = dax_tag_handle(ds, &mc->data_h, mc->data_tag, mc->tagcount);
+        if(result) return result;
+        /* We need to check if the tag size and the data buffer size in the modbus command
+         * are the same.  If not then if the tag is smaller it's no big deal but if the command
+         * data size is smaller then we'll truncate the size in the tag handle. */
+        if(mc->data_h.size != mc->datasize) {
+            dax_error(ds, "Tag size and Modbus request size are different.  Data will be truncated");
+            if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
+        }
+    }
+    /* If we get here we assume that we now have a valid tag handle */
+    return dax_write_tag(ds, mc->data_h, mc->data);
 }
 
 
@@ -563,11 +653,13 @@ handleresponse(u_int8_t *buff, mb_cmd *cmd)
 int
 mb_send_command(mb_port *mp, mb_cmd *mc)
 {
-    u_int8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
+    uint8_t buff[MB_FRAME_LEN]; /* Modbus Frame buffer */
     int try = 1;
     int result, msglen;
     static int (*sendrequest)(struct mb_port *, struct mb_cmd *) = NULL;
-    static int (*getresponse)(u_int8_t *,struct mb_port *) = NULL;
+    static int (*getresponse)(uint8_t *,struct mb_port *) = NULL;
+
+    if(!mc->enable) return 0; /* If we are not enabled we don't send */
   /* This sets up the function pointers so we don't have to constantly check
    *  which protocol we are using for communication.  From this point on the
    *  code is generic for RTU or ASCII */
@@ -583,11 +675,20 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
     } else {
         return -1;
     }
-
-    if(mc->pre_send != NULL) {
-        mc->pre_send(mc, mc->userdata, mc->data, mc->datasize);
-        /* This is in case the pre_send() callback disables the command */
-        if(mc->enable == 0) return 0;
+    pthread_mutex_lock(&mp->send_lock);
+    if(mp->protocol == MB_TCP) {
+        /* We get our fd from the pool for TCP connections and put it in the
+         * port fd.  This just keeps it consistent with the serial port functions
+         * so that we don't have to pass the fd to the send/get functions */
+        mp->fd = mb_get_connection(mp, mc->ip_address, mc->port);
+        if(mp->fd < 0) {
+            pthread_mutex_unlock(&mp->send_lock);
+            return MB_ERR_OPEN;
+        }
+    }
+    /* Retrieve the data from the tag server */
+    if(mb_is_write_cmd(mc)) {
+        result = _get_write_data(mc);
     }
     do { /* retry loop */
         result = sendrequest(mp, mc);
@@ -595,54 +696,48 @@ mb_send_command(mb_port *mp, mb_cmd *mc)
             msglen = getresponse(buff, mp);
         } else if(result == 0) {
             /* Should be 0 when a conditional command simply doesn't run */
+            if(!mp->scanning && !mp->persist) close(mp->fd);
+            pthread_mutex_unlock(&mp->send_lock);
             return result;
         } else {
+            if(!mp->scanning && !mp->persist) close(mp->fd);
+            pthread_mutex_unlock(&mp->send_lock);
             return -1;
         }
 
         if(msglen > 0) {
             result = handleresponse(buff, mc); /* Returns 0 on success + on failure */
             if(result > 0) {
-                if(mc->send_fail != NULL) {
-                    mc->send_fail(mc, mc->userdata);
-                }
                 mc->exceptions++;
                 mc->lasterror = result | ME_EXCEPTION;
-                DEBUGMSG2("Exception Received - %d", result);
             } else { /* Everything is good */
-                if(mc->post_send != NULL) {
-                    mc->post_send(mc, mc->userdata, mc->data, mc->datasize);
-                }
                 mc->lasterror = 0;
+                /* Send the data to the tag server */
+                if(mb_is_read_cmd(mc)) {
+                    result = _send_read_data(mc);
+                }
             }
+            if(!mp->scanning && !mp->persist) close(mp->fd);
+            pthread_mutex_unlock(&mp->send_lock);
             return msglen; /* We got some kind of message so no sense in retrying */
         } else if(msglen == 0) {
-            if(mc->send_fail != NULL) {
-                mc->send_fail(mc, mc->userdata);
-            }
-            DEBUGMSG("Timeout");
             mc->timeouts++;
             mc->lasterror = ME_TIMEOUT;
         } else {
             /* Checksum failed in response */
-            if(mc->send_fail != NULL) {
-                mc->send_fail(mc, mc->userdata);
-            }
-            DEBUGMSG("Checksum");
             mc->crcerrors++;
             mc->lasterror = ME_CHECKSUM;
         }
     } while(try++ <= mp->retries);
     /* After all the retries get out with error */
     /* TODO: Should set error code?? */
-    if(mc->send_fail != NULL) {
-        mc->send_fail(mc, mc->userdata);
-    }
+    if(!mp->scanning && !mp->persist) close(mp->fd);
+    pthread_mutex_unlock(&mp->send_lock);
     return 0 - mc->lasterror;
 }
 
 static int
-_create_exception(unsigned char *buff, u_int16_t exception)
+_create_exception(unsigned char *buff, uint16_t exception)
 {
     buff[1] |= ME_EXCEPTION;
     buff[2] = exception;
@@ -655,19 +750,18 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 {
     int n, bit, word, buffbit, buffbyte;
     unsigned int regsize;
-    u_int16_t index, count, *reg;
+    uint16_t index, count;
+    uint16_t reg[150];
 
-    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
+    COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+    COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of disc/coils requested */
     if(port->slave_read) { /* Call the callback function if it has been set */
-        port->slave_read(port, mbreg, index, count, port->userdata);
+        port->slave_read(port, mbreg, index, count, reg);
     }
     if(mbreg == MB_REG_COIL) {
-        reg = port->coilreg;
-        regsize = port->coilsize;
+        regsize = port->coil_size;
     } else {
-        reg = port->discreg;
-        regsize = port->discsize;
+        regsize = port->disc_size;
     }
 
     if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
@@ -678,8 +772,8 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
     }
     buff[2] = (count - 1)/8+1;
 
-    bit = index % 16;
-    word = index / 16;
+    bit = 0;
+    word = 0;
     buffbit = 0;
     buffbyte = 3;
     for(n = 0; n < count; n++) {
@@ -706,19 +800,18 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 {
     int n;
     unsigned int regsize;
-    u_int16_t index, count, *reg;
+    uint16_t index, count;
+    uint16_t reg[150]; /* This is where we will store the data */
 
-    COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-    COPYWORD(&count, (u_int16_t *)&buff[4]); /* Number of words/coils */
+    COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+    COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of words/coils */
     if(port->slave_read) { /* Call the callback function if it has been set */
-        port->slave_read(port, mbreg, index, count, port->userdata);
+        port->slave_read(port, mbreg, index, count, reg);
     }
     if(mbreg == MB_REG_HOLDING) {
-        reg = port->holdreg;
-        regsize = port->holdsize;
+        regsize = port->hold_size;
     } else {
-        reg = port->inputreg;
-        regsize = port->inputsize;
+        regsize = port->input_size;
     }
 
     if((count * 2) > (size - 3)) { /* Make sure we have enough room */
@@ -729,7 +822,7 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
     }
     buff[2] = count * 2;
     for(n = 0; n < count; n++) {
-        COPYWORD(&buff[3+(n*2)], &reg[index+n]);
+        COPYWORD(&buff[3+(n*2)], &reg[n]);
     }
     return (count * 2) + 3;
 }
@@ -739,23 +832,23 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
  * function code exception.
  */
 int
-_check_function_code_exception(mb_port *port, u_int8_t function) {
+_check_function_code_exception(mb_port *port, uint8_t function) {
     switch(function) {
         case 1:
         case 5:
         case 15:/* Read Coils */
-            if(port->coilsize) return 0;
+            if(port->coil_size) return 0;
             break;
         case 2: /* Read Discrete Inputs */
-            if(port->discsize) return 0;
+            if(port->disc_size) return 0;
             break;
         case 3: /* Read Holding Registers */
         case 6:
         case 16:
-            if(port->holdsize) return 0;
+            if(port->hold_size) return 0;
             break;
         case 4: /* Read Input Registers */
-            if(port->inputsize) return 0;
+            if(port->input_size) return 0;
             break;
         case 8:
             if(port->protocol != MB_TCP) return 0;
@@ -774,9 +867,11 @@ _check_function_code_exception(mb_port *port, u_int8_t function) {
 int
 create_response(mb_port *port, unsigned char *buff, int size)
 {
-    u_int8_t node, function;
-    u_int16_t index, value, count;
+    uint8_t node, function;
+    uint16_t index, value, count;
+    uint16_t data[128]; /* should be the largest Modbus data size */
     int word, bit, n;
+
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
 
@@ -798,65 +893,65 @@ create_response(mb_port *port, unsigned char *buff, int size)
         case 4: /* Read Input Registers */
             return _read_words_response(port, buff, size, MB_REG_INPUT);
         case 5: /* Write Single Coil */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&value, (u_int16_t *)&buff[4]); /* Value */
-            if(index >= port->coilsize) {
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
+            if(index >= port->coil_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             if(value) {
-                port->coilreg[index / 16] |= (0x01 << (index % 16));
+                data[0] = 0x01;
             } else {
-                port->coilreg[index / 16] &= ~(0x01 << (index % 16));
+                data[0] = 0x00;
             }
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_COIL, index, 1, port->userdata);
+                port->slave_write(port, MB_REG_COIL, index, 1, data);
             }
             return 6;
         case 6: /* Write Single Register */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&value, (u_int16_t *)&buff[4]); /* Value */
-            if(index >= port->holdsize) {
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
+            if(index >= port->hold_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
-            port->holdreg[index] = value;
+            data[0] = value;
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_HOLDING, index, 1, port->userdata);
+                port->slave_write(port, MB_REG_HOLDING, index, 1, data);
             }
             return 6;
         case 8:
             return size / 2;
         case 15: /* Write Multiple Coils */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&count, (u_int16_t *)&buff[4]); /* Value */
-            if((index + count) > port->coilsize) {
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
+            if((index + count) > port->coil_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
-            word = index / 16;
-            bit = index % 16;
+            word = 0;
+            bit = 0;
             for(n = 0; n < count; n++) {
                 if(buff[7 + n/8] & (0x01 << (n%8))) {
-                    port->coilreg[word] |= (0x01 << bit);
+                    data[word] |= (0x01 << bit);
                 } else {
-                    port->coilreg[word] &= ~(0x01 << bit);
+                    data[word] &= ~(0x01 << bit);
                 }
                 bit++;
                 if(bit == 16) { bit = 0; word++; }
             }
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_COIL, index, count, port->userdata);
+                port->slave_write(port, MB_REG_COIL, index, count, data);
             }
             return 6;
         case 16: /* Write Multiple Registers */
-            COPYWORD(&index, (u_int16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&count, (u_int16_t *)&buff[4]); /* Value */
-            if((index + count) > port->holdsize) {
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
+            if((index + count) > port->hold_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             for(n = 0; n < count; n++) {
-                COPYWORD(&port->holdreg[index + n], &buff[7 + (n*2)]);
+                COPYWORD(&data[n], &buff[7 + (n*2)]);
             }
             if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_HOLDING, index, count, port->userdata);
+                port->slave_write(port, MB_REG_HOLDING, index, count, data);
             }
             return 6;
         default:

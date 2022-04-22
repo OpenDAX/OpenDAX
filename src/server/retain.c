@@ -63,17 +63,17 @@
 extern _dax_tag_db *_db;
 
 static int _fd;
-static u_int16_t _version;
-//static u_int32_t _last_type_pointer;
-static u_int32_t _last_tag_pointer;
-//static u_int32_t _next_offset;
+static uint16_t _version;
+//static uint32_t _last_type_pointer;
+static uint32_t _last_tag_pointer;
+//static uint32_t _next_offset;
 
 /* read through the file and create the tags in the database */
 static int
 _create_tags(void) {
     char buff[256];
-    u_int8_t name_size, flags;
-    u_int32_t tag_pointer, tag_size, tag_type, tag_count;
+    uint8_t name_size, flags;
+    uint32_t tag_pointer, tag_size, tag_type, tag_count;
     tag_index tag_index;
 
     lseek(_fd, 12, SEEK_SET); /* Location of the first tag record pointer */
@@ -165,7 +165,7 @@ ret_init(char *filename) {
 static int
 _write_tag_def(int index, size_t offset) {
     unsigned char name_size, flags;
-    u_int32_t data_size, tmp;
+    uint32_t data_size, tmp;
 
     name_size = strlen(_db[index].name);
     flags = 0x00;
@@ -188,7 +188,7 @@ _write_tag_def(int index, size_t offset) {
 
 int
 ret_add_tag(int index) {
-    u_int32_t offset;
+    uint32_t offset;
 
     xlog(LOG_MINOR, "Adding Retained Tag at index %d", index);
     /* TODO: Implement retaining custom data type tags */
@@ -212,8 +212,8 @@ ret_add_tag(int index) {
 
 int
 ret_del_tag(int index) {
-    u_int32_t offset;
-    u_int8_t flags = RET_FLAG_DELETED;
+    uint32_t offset;
+    uint8_t flags = RET_FLAG_DELETED;
     offset = _db[index].ret_file_pointer - strlen(_db[index].name - 9);
     lseek(_fd, offset, SEEK_SET);
     write(_fd, &flags, 1);
@@ -223,7 +223,7 @@ ret_del_tag(int index) {
 
 int
 ret_tag_write(int index) {
-    u_int32_t offset, data_size;
+    uint32_t offset, data_size;
 
     data_size = tag_get_size(index);
     offset = _db[index].ret_file_pointer;

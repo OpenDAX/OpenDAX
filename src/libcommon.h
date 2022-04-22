@@ -24,7 +24,6 @@
 #define __LIBCOMMON_H
 
 #include <opendax.h>
-#include <sys/types.h>
 
 /* Message functions */
 #define MSG_MOD_REG     0x0001 /* Register the module with the server */
@@ -100,10 +99,10 @@
 #endif
 
 /* This defines the size of the message minus the actual data */
-#define MSG_HDR_SIZE (sizeof(u_int32_t) + sizeof(u_int32_t))
+#define MSG_HDR_SIZE (sizeof(uint32_t) + sizeof(uint32_t))
 #define MSG_DATA_SIZE (DAX_MSGMAX - MSG_HDR_SIZE)
 #define MSG_TAG_DATA_SIZE (MSG_DATA_SIZE - sizeof(tag_idx_t))
-#define MSG_TAG_GROUP_DATA_SIZE (MSG_DATA_SIZE - sizeof(u_int32_t))
+#define MSG_TAG_GROUP_DATA_SIZE (MSG_DATA_SIZE - sizeof(uint32_t))
 
 /* This is the initial size of the group array that will be allocated
  * for each module the first time a group is added to that module */
@@ -118,8 +117,8 @@
 struct dax_message {
     /* Message Header Stuff.  Changes here should be reflected in the
      * MSG_HDR_SIZE definition above */
-    u_int32_t size;     /* size of the data sent */
-    u_int32_t msg_type;  /* Which function to call */
+    uint32_t size;     /* size of the data sent */
+    uint32_t msg_type;  /* Which function to call */
     /* Main data payload */
     char data[MSG_DATA_SIZE];
     /* The following stuff isn't in the socket message */

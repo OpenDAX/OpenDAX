@@ -29,7 +29,6 @@
 extern "C" {
 #endif
 
-#include <sys/types.h>
 #include <float.h>
 #include <lua.h>
 
@@ -146,6 +145,7 @@ extern "C" {
 #define EVENT_GREATER  0x07 /* Greater Than */
 #define EVENT_LESS     0x08 /* Less Than */
 #define EVENT_DEADBAND 0x09 /* Changed by X amount since last event */
+#define EVENT_DELETED  0x0A /* Tag gets deleted */
 
 /* Event Options */
 #define EVENT_OPT_SEND_DATA  0x01 /* Send the affected data with the event */
@@ -204,20 +204,20 @@ extern "C" {
 #define DAX_LREAL_MAX   DBL_MAX
 
 /* typedefs to the basic DAX_? data types */
-typedef u_int8_t   dax_byte;
+typedef uint8_t   dax_byte;
 typedef int8_t     dax_sint;
 typedef char       dax_char;
-typedef u_int16_t  dax_word;
+typedef uint16_t  dax_word;
 typedef int16_t    dax_int;
-typedef u_int16_t  dax_uint;
-typedef u_int32_t  dax_dword;
+typedef uint16_t  dax_uint;
+typedef uint32_t  dax_dword;
 typedef int32_t    dax_dint;
-typedef u_int32_t  dax_udint;
+typedef uint32_t  dax_udint;
 typedef int64_t    dax_time;
 typedef float      dax_real;
-typedef u_int64_t  dax_lword;
+typedef uint64_t  dax_lword;
 typedef int64_t    dax_lint;
-typedef u_int64_t  dax_ulint;
+typedef uint64_t  dax_ulint;
 typedef double     dax_lreal;
 
 typedef dax_dint tag_index;
@@ -229,10 +229,10 @@ typedef dax_udint tag_type;
  */
 struct tag_handle {
     tag_index index;     /*!< The Database Index of the Tag */
-    u_int32_t byte;      /*!< The byte offset where the data block starts */
+    uint32_t byte;      /*!< The byte offset where the data block starts */
     unsigned char bit;   /*!< The bit offset */
-    u_int32_t count;     /*!< The number of items represented by the handle */
-    u_int32_t size;      /*!< The total size of the data block in bytes */
+    uint32_t count;     /*!< The number of items represented by the handle */
+    uint32_t size;      /*!< The total size of the data block in bytes */
     tag_type type;       /*!< The data type of the block */
 };
 
@@ -288,6 +288,7 @@ typedef union dax_type_union {
 dax_state *dax_init(char *name);
 int dax_init_config(dax_state *ds, char *name);
 int dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name);
+int dax_clear_luafunction(dax_state *ds, char *name);
 lua_State *dax_get_luastate(dax_state *ds);
 int dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int flags, char *defvalue);
 int dax_configure(dax_state *ds, int argc, char **argv, int flags);
@@ -297,7 +298,7 @@ int dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name
 int dax_free_config(dax_state *ds);
 int dax_free(dax_state *ds);
 
-void dax_set_debug_topic(dax_state *ds, u_int32_t);
+void dax_set_debug_topic(dax_state *ds, uint32_t);
 
 
 /* These functions accept a function pointer to functions that would
@@ -325,10 +326,10 @@ int dax_connect(dax_state *ds);      /* Connect to the server */
 int dax_disconnect(dax_state *ds);   /* Disconnect from the server */
 
 int dax_mod_get(dax_state *ds, char *modname);  /* Not implemented yet */
-int dax_mod_set(dax_state *ds, u_int8_t cmd, void *param);  /* Set module parameters in the server */
+int dax_mod_set(dax_state *ds, uint8_t cmd, void *param);  /* Set module parameters in the server */
 
 /* Adds a tag to the opendax server database. */
-int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, u_int32_t attr);
+int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, uint32_t attr);
 
 /* Delete the tag give by index */
 int dax_tag_del(dax_state *ds, tag_index index);
@@ -359,11 +360,11 @@ int dax_get_typesize(dax_state *ds, tag_type type);
  * 'size' bytes.
  */
 /* simple untyped tag reading function */
-int dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size);
+int dax_read(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size);
 /* simple untyped tag writing function */
-int dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size);
+int dax_write(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size);
 /* simple untyped masked tag write */
-int dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data,
+int dax_mask(dax_state *ds, tag_index idx, uint32_t offset, void *data,
              void *mask, size_t size);
 
 /* These are the bread and butter tag handling functions.  The functions
@@ -389,7 +390,7 @@ int dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mas
 int dax_tag_set_override(dax_state *ds, tag_handle handle);
 int dax_tag_clr_override(dax_state *ds, tag_handle handle);
 
-int dax_atomic_op(dax_state *ds, tag_handle handle, void *data, u_int16_t operation);
+int dax_atomic_op(dax_state *ds, tag_handle handle, void *data, uint16_t operation);
 
 /* Event handling functions */
 int dax_event_add(dax_state *ds, tag_handle *handle, int event_type, void *data,
@@ -397,10 +398,10 @@ int dax_event_add(dax_state *ds, tag_handle *handle, int event_type, void *data,
                   void (*free_callback)(void *udata));
 int dax_event_del(dax_state *ds, dax_id id);
 int dax_event_get(dax_state *ds, dax_id id);
-int dax_event_options(dax_state *ds, dax_id id, u_int32_t options);
+int dax_event_options(dax_state *ds, dax_id id, uint32_t options);
 int dax_event_wait(dax_state *ds, int timeout, dax_id *id);
 int dax_event_poll(dax_state *ds, dax_id *id);
-int dax_event_get_fd(dax_state *ds);
+//int dax_event_get_fd(dax_state *ds);
 int dax_event_get_data(dax_state *ds, void* buff, int len);
 
 /* Event Utility Functions */
@@ -439,7 +440,7 @@ int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt
 int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 
 /* Tag data group functions */
-tag_group_id *dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t options);
+tag_group_id *dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t options);
 int dax_group_read(dax_state *ds, tag_group_id *id, void *buff, size_t size);
 int dax_group_write(dax_state *ds, tag_group_id *id, void *buff);
 int dax_group_del(dax_state *ds, tag_group_id *id);

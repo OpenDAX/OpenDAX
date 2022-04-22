@@ -179,7 +179,7 @@ module_set_running(int fd)
  * Also modules that are not started by the core need a way to announce
  * themselves. name can be NULL for modules that were started from DAX */
 dax_module *
-module_register(char *name, u_int32_t timeout, int fd)
+module_register(char *name, uint32_t timeout, int fd)
 {
     dax_module *mod, *test;
     char tagname[DAX_TAGNAME_SIZE + 1];

@@ -14,10 +14,10 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-include_directories(.)
 
-add_library(modbus_library modbus.c mbcmds.c mbports.c mbutil.c mbserver.c)
-set_target_properties(modbus_library PROPERTIES OUTPUT_NAME modbus)
+# For now the joystick module only works in Linux
+if(BUILD_JOYSTICK AND OS_LINUX)
+  add_subdirectory(joystick)
+endif()
 
-install(TARGETS modbus_library DESTINATION lib)
-install(FILES modbus.h DESTINATION include)
+add_subdirectory(skel)

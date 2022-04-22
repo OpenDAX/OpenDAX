@@ -67,6 +67,12 @@ target_link_libraries(library_event_data dax)
 add_test(library_event_data library_event_data)
 set_tests_properties(library_event_data PROPERTIES TIMEOUT 10)
 
+# Deleted event test
+add_executable(library_event_deleted libtest_event_deleted.c libtest_common.c)
+target_link_libraries(library_event_deleted dax)
+add_test(library_event_deleted library_event_deleted)
+set_tests_properties(library_event_deleted PROPERTIES TIMEOUT 10)
+
 # Event queue tests
 add_executable(library_event_queue_simple libtest_event_queue_simple.c libtest_common.c)
 target_link_libraries(library_event_queue_simple dax)

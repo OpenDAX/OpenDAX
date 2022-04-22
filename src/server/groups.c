@@ -36,7 +36,7 @@ _init_group(tag_group *grp) {
 
 int
 _group_add(dax_module *mod) {
-    u_int32_t n, newsize;
+    uint32_t n, newsize;
     tag_group *new;
 
     /* If this is the first group to be added to the module we need to allocate
@@ -78,7 +78,7 @@ _group_add(dax_module *mod) {
  * Returns the index of the new group.
  */
 int
-group_add(dax_module *mod, u_int8_t *handles, u_int8_t count) {
+group_add(dax_module *mod, uint8_t *handles, uint8_t count) {
     int index, datasize, offset;
 
     if(count > TAG_GROUP_MAX_MEMBERS) return ERR_ARG;
@@ -127,7 +127,7 @@ group_del(dax_module *mod, int index) {
 /* loop through the array of members and populate buff with
  * the data.*/
 int
-group_read(dax_module *mod, u_int32_t index, u_int8_t *buff, int size) {
+group_read(dax_module *mod, uint32_t index, uint8_t *buff, int size) {
     int n, offset=0, result;
     tag_group *group;
 
@@ -145,7 +145,7 @@ group_read(dax_module *mod, u_int32_t index, u_int8_t *buff, int size) {
 /* loop through the array of members and populate buff with
  * the data.*/
 int
-group_write(dax_module *mod, u_int32_t index, u_int8_t *buff) {
+group_write(dax_module *mod, uint32_t index, uint8_t *buff) {
     int n, offset=0, result;
     tag_group *group;
 
@@ -164,7 +164,7 @@ group_write(dax_module *mod, u_int32_t index, u_int8_t *buff) {
  * This is called when we are removing the module */
 int
 groups_cleanup(dax_module *mod) {
-    u_int32_t n;
+    uint32_t n;
 
     for(n=0;n<mod->groups_size;n++) {
         group_del(mod, n);

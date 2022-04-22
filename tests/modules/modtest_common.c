@@ -28,14 +28,12 @@
 
 pid_t
 run_server(void) {
-    int status = 0;
-    int result;
     pid_t pid;
 
     pid = fork();
 
     if(pid == 0) { // Child
-        execl("../../../src/server/tagserver", "../../../src/server/tagserver", NULL);
+        execl("../../../src/server/tagserver", "../../../src/server/tagserver", "-v", NULL);
         printf("Failed to launch tagserver\n");
         exit(-1);
     } else if(pid < 0) {
@@ -48,14 +46,12 @@ run_server(void) {
 
 pid_t
 run_module(const char *modpath, const char *modconf) {
-    int status = 0;
-    int result;
     pid_t pid;
 
     pid = fork();
 
     if(pid == 0) { // Child
-        execl(modpath, modpath, "-C", modconf, NULL);
+        execl(modpath, modpath, "-T", "ALL", "-C", modconf, NULL);
         printf("Failed to launch module\n");
         exit(-1);
     } else if(pid < 0) {
@@ -66,11 +62,10 @@ run_module(const char *modpath, const char *modconf) {
     return pid;
 }
 
+
 /* Runs the module and redirects the standard i/o streams and return those in the given pointers */
 pid_t
 run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, const char *modconf) {
-    int status = 0;
-    int result;
     pid_t pid;
 
     int infd[2];

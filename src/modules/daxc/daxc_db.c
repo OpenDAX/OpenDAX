@@ -148,7 +148,7 @@ db_read_bit(void)
     /* Read the data */
     if(count == 1) {
         /* TODO: Error check here */
-    //    ((u_int8_t *)buff)[0] = dax_tag_read_bit(handle);
+    //    ((uint8_t *)buff)[0] = dax_tag_read_bit(handle);
     } else {
     //    dax_tag_read_bits(handle, buff, count);
     }
@@ -160,7 +160,7 @@ db_read_bit(void)
             if(n > 0) printf("\n");
             printf("0x%lX - ", handle + n);
         }
-        if( ((u_int8_t *)buff)[n / 8] & (1 << (n % 8)) ) {
+        if( ((uint8_t *)buff)[n / 8] & (1 << (n % 8)) ) {
             printf("1 ");
         } else {
             printf("0 ");
@@ -200,11 +200,11 @@ db_read(void)
             printf("0x%lX - ", handle + n*8);
         }
         if(format == FMT_DEC) {
-            printf("%4d",((u_int8_t *)buff)[n]);
+            printf("%4d",((uint8_t *)buff)[n]);
         } else if(format == FMT_CHAR) {
-            printf(" '%1c'",((u_int8_t *)buff)[n]);
+            printf(" '%1c'",((uint8_t *)buff)[n]);
         } else { /* HEX */
-            printf("  0x%02X",((u_int8_t *)buff)[n]);
+            printf("  0x%02X",((uint8_t *)buff)[n]);
         }
     }
     printf("\n");

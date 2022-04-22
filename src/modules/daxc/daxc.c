@@ -96,7 +96,7 @@ int main(int argc,char *argv[]) {
     }
 
 /* At this point we are in interactive mode.  We first read the
- * readline history file and then start an infininte loop where
+ * readline history file and then start an infinite loop where
  * We call the readline function repeatedly and then send the
  * input to runcmd */
     quiet_mode = 0; /* We turn quiet mode off for interactive mode */

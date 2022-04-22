@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2021 Phil Birkelbach
+ *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,17 +17,23 @@
  */
 
 /*
- *  Test function code 1 for the modbus server module
+ *  Test basic functions for rtu slave
+ *  TODO This test is a placeholder since slave functionality has not been implemented yet.
  */
-/* TODO: Convert this to use the functions in modbus_common.c */
 
-#define _XOPEN_SOURCE
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>
-#include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "../modtest_common.h"
+#include "modbus_common.h"
 
 struct mod_frame {
     uint16_t tid;
@@ -87,7 +93,7 @@ _test_request(int sock, uint16_t addr, uint16_t count, uint8_t *cmp_buff) {
     buff[1] = count % 256;
     sframe.tid = tid++;
     sframe.uid = 1;
-    sframe.fc = 2;
+    sframe.fc = 1;
     sframe.addr = addr;
     sframe.size = 2;
     sframe.buff = buff;
@@ -112,12 +118,15 @@ main(int argc, char *argv[])
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;
-    int result;
-    pid_t server_pid, mod_pid;
+    int result, fd;
+    pid_t server_pid, mod_pid, socat_pid;
+    struct termios options;
+
 
     /* Run the tag server and the modbus module */
     server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_server.conf");
+    socat_pid = run_socat();
+    mod_pid = run_module("../../../src/modules/modbus/daxmodbus", "conf/mb_RTUslave.conf");
     /* Connect to the tag server */
     ds = dax_init("test");
     if(ds == NULL) {
@@ -127,9 +136,47 @@ main(int argc, char *argv[])
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
     if(result) return result;
-    result =  dax_tag_handle(ds, &h, "mb_dreg", 0);
+    result =  dax_tag_handle(ds, &h, "mb_creg", 0);
     if(result) return result;
 
+    fd = open("/tmp/serial2", O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if(fd == -1)  {
+        fprintf(stderr, "DANGIT\n");
+        return(-1);
+    } else  {
+        fcntl(fd, F_SETFL, 0);
+        tcgetattr(fd, &options);
+        /* Set the baudrate */
+        cfsetispeed(&options, 9600);
+        cfsetospeed(&options, 9600);
+        options.c_cflag |= (CLOCAL | CREAD);
+        /* Set the parity */
+        options.c_cflag &= ~PARENB;
+        /* Set stop bits */
+        options.c_cflag &= ~CSTOPB;
+        /* Set databits */
+        options.c_cflag &= ~CSIZE;
+        options.c_cflag |= CS8;
+        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+        options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
+        options.c_oflag &= ~OPOST;
+        options.c_cc[VMIN] = 0;
+        options.c_cc[VTIME] = 0;
+        /* TODO: Should check for errors here */
+        tcsetattr(fd, TCSANOW, &options);
+    }
+
+    buff[0] = 0x01;
+    buff[1] = 0x03;
+    buff[2] = 0x00;
+    buff[3] =-0x00;
+    buff[4] = 0x00;
+    buff[5] = 0x04;
+    buff[6] = 0x44;
+    buff[7] = 0x09;
+    write(fd, buff, 8);
+
+#ifdef ASDFASFE
     /* Open a socket to do the modbus stuff */
     s = socket(PF_INET, SOCK_STREAM, 0);
     serverAddr.sin_family = AF_INET;
@@ -170,14 +217,18 @@ main(int argc, char *argv[])
     }
     dax_write_tag(ds, h, buff);
     exit_status += _test_request(s, 0, h.count, buff);
+#endif
 
     close(s);
     dax_disconnect(ds);
 
     kill(mod_pid, SIGINT);
-    kill(server_pid, SIGINT);
     if( waitpid(mod_pid, &status, 0) != mod_pid )
         fprintf(stderr, "Error killing modbus module\n");
+    kill(socat_pid, SIGINT);
+    kill(server_pid, SIGINT);
+    if( waitpid(socat_pid, &status, 0) != socat_pid )
+        fprintf(stderr, "Error killing socat\n");
     if( waitpid(server_pid, &status, 0) != server_pid )
         fprintf(stderr, "Error killing tag server\n");
 

@@ -88,8 +88,6 @@ int msg_add_override(dax_message *msg);
 int msg_del_override(dax_message *msg);
 int msg_get_override(dax_message *msg);
 int msg_set_override(dax_message *msg);
-int msg_clr_override(dax_message *msg);
-
 
 
 /* Generic message sending function.  If response is MSG_ERROR then it is assumed that
@@ -101,14 +99,14 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
     int result;
     char buff[DAX_MSGMAX];
 
-    ((u_int32_t *)buff)[0] = htonl(size);
+    ((uint32_t *)buff)[0] = htonl(size);
     if(response == RESPONSE) {
-        ((u_int32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
+        ((uint32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
     } else if(response == ERROR) {
         xlog(LOG_MSGERR, "Returning Error %d to Module", *(int *)payload);
-        ((u_int32_t *)buff)[1] = htonl(command | MSG_ERROR);
+        ((uint32_t *)buff)[1] = htonl(command | MSG_ERROR);
     } else {
-        ((u_int32_t *)buff)[1] = htonl(command);
+        ((uint32_t *)buff)[1] = htonl(command);
     }
     /* Bounds check so we don't seg fault */
     if(size > (DAX_MSGMAX - MSG_HDR_SIZE)) {
@@ -351,10 +349,10 @@ msg_dispatcher(int fd, unsigned char *buff)
 
     /* The first four bytes are the size and the size is always
      * sent in network order */
-    message.size = ntohl(*(u_int32_t *)buff) - MSG_HDR_SIZE;
+    message.size = ntohl(*(uint32_t *)buff) - MSG_HDR_SIZE;
     /* The next four bytes are the DAX command also sent in network
      * byte order. */
-    message.msg_type = ntohl(*(u_int32_t *)&buff[4]);
+    message.msg_type = ntohl(*(uint32_t *)&buff[4]);
     //--printf("We've received message : command = %d, size = %d\n", message.command, message.size);
 
     if(CHECK_COMMAND(message.msg_type)) return ERR_MSG_BAD;
@@ -383,7 +381,7 @@ msg_dispatcher(int fd, unsigned char *buff)
 int
 msg_mod_register(dax_message *msg)
 {
-    u_int32_t parint;
+    uint32_t parint;
     int flags, result;
     char buff[DAX_MSGMAX];
     dax_module *mod;
@@ -391,8 +389,8 @@ msg_mod_register(dax_message *msg)
     if(msg->size > 0) {
         /* The first parameter is the timeout if the first registration and
          * the module id if it's the async socket registration. */
-        parint = ntohl(*((u_int32_t *)&msg->data[0]));
-        flags = ntohl(*((u_int32_t *)&msg->data[4]));
+        parint = ntohl(*((uint32_t *)&msg->data[0]));
+        flags = ntohl(*((uint32_t *)&msg->data[4]));
 
         /* Is this the initial registration of the synchronous socket */
         if(flags & CONNECT_SYNC) {
@@ -404,11 +402,11 @@ msg_mod_register(dax_message *msg)
                 _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
                 return result;
             } else {
-            	*((u_int32_t *)&buff[0]) = msg->fd;   /* The fd of the module is the unique ID sent back */
+            	*((uint32_t *)&buff[0]) = msg->fd;   /* The fd of the module is the unique ID sent back */
                 /* This puts the test data into the buffer for sending. */
-                *((u_int16_t *)&buff[4]) = REG_TEST_INT;    /* 16 bit test data */
-                *((u_int32_t *)&buff[6]) = REG_TEST_DINT;   /* 32 bit integer test data */
-                *((u_int64_t *)&buff[10]) = REG_TEST_LINT;   /* 64 bit integer test data */
+                *((uint16_t *)&buff[4]) = REG_TEST_INT;    /* 16 bit test data */
+                *((uint32_t *)&buff[6]) = REG_TEST_DINT;   /* 32 bit integer test data */
+                *((uint64_t *)&buff[10]) = REG_TEST_LINT;   /* 64 bit integer test data */
                 *((float *)&buff[18])    = REG_TEST_REAL;   /* 32 bit float test data */
                 *((double *)&buff[22])   = REG_TEST_LREAL;  /* 64 bit float test data */
                 //Do we really need to send the name back??
@@ -435,13 +433,13 @@ int
 msg_tag_add(dax_message *msg)
 {
     tag_index idx;
-    u_int32_t type;
-    u_int32_t count;
-    u_int32_t attr;
+    uint32_t type;
+    uint32_t count;
+    uint32_t attr;
 
-    type = *((u_int32_t *)&msg->data[0]);
-    count = *((u_int32_t *)&msg->data[4]);
-    attr = *((u_int32_t *)&msg->data[8]);
+    type = *((uint32_t *)&msg->data[0]);
+    count = *((uint32_t *)&msg->data[4]);
+    attr = *((uint32_t *)&msg->data[8]);
 
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[12], msg->fd, type, count);
     
@@ -507,10 +505,10 @@ msg_tag_get(dax_message *msg)
     buff = alloca(size);
     if(buff == NULL) result = ERR_ALLOC;
     if(!result) {
-        *((u_int32_t *)&buff[0]) = tag.idx;
-        *((u_int32_t *)&buff[4]) = tag.type;
-        *((u_int32_t *)&buff[8]) = tag.count;
-        *((u_int32_t *)&buff[12]) = tag.attr;
+        *((uint32_t *)&buff[0]) = tag.idx;
+        *((uint32_t *)&buff[4]) = tag.type;
+        *((uint32_t *)&buff[8]) = tag.count;
+        *((uint32_t *)&buff[12]) = tag.attr;
         strcpy(&buff[16], tag.name);
         _message_send(msg->fd, MSG_TAG_GET, buff, size, RESPONSE);
         xlog(LOG_MSG | LOG_VERBOSE, "Returning tag - '%s':0x%X to module %d",tag.name, tag.idx, msg->fd);
@@ -537,12 +535,12 @@ msg_tag_read(dax_message *msg)
     char data[MSG_DATA_SIZE];
     tag_index index;
     int result;
-    u_int32_t offset;
+    uint32_t offset;
     int size;
 
     index = *((tag_index *)&msg->data[0]);
-    offset = *((u_int32_t *)&msg->data[4]);
-    size = *((u_int32_t *)&msg->data[8]);
+    offset = *((uint32_t *)&msg->data[4]);
+    size = *((uint32_t *)&msg->data[8]);
 
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, index, offset, size);
 
@@ -561,13 +559,13 @@ msg_tag_write(dax_message *msg)
 {
     tag_index idx;
     int result;
-    u_int32_t offset;
+    uint32_t offset;
     void *data;
     size_t size;
 
-    size = msg->size - sizeof(tag_index) - sizeof(u_int32_t);
+    size = msg->size - sizeof(tag_index) - sizeof(uint32_t);
     idx = *((tag_index *)&msg->data[0]);
-    offset = *((u_int32_t *)&msg->data[4]);
+    offset = *((uint32_t *)&msg->data[4]);
     data = &msg->data[8];
 
     xlog(LOG_MSG | LOG_VERBOSE, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
@@ -594,9 +592,9 @@ msg_tag_mask_write(dax_message *msg)
     void *data, *mask;
     size_t size;
 
-    size = (msg->size - sizeof(tag_index) - sizeof(u_int32_t)) / 2;
+    size = (msg->size - sizeof(tag_index) - sizeof(uint32_t)) / 2;
     idx = *((tag_index *)&msg->data[0]);
-    offset = *((u_int32_t *)&msg->data[4]);
+    offset = *((uint32_t *)&msg->data[4]);
     data = &msg->data[8];
     mask = &msg->data[8 + size];
 
@@ -627,7 +625,7 @@ int
 msg_mod_set(dax_message *msg)
 {
     int result;
-    u_int8_t cmd;
+    uint8_t cmd;
 
     xlog(LOG_MSG | LOG_VERBOSE, "Set Module Parameter Message from %d", msg->fd);
 
@@ -692,12 +690,12 @@ int
 msg_evnt_del(dax_message *msg)
 {
     tag_index idx;
-    u_int32_t id;
+    uint32_t id;
     int result;
     dax_module *module;
 
-    idx = *((u_int32_t *)&msg->data[0]);
-    id = *((u_int32_t *)&msg->data[4]);
+    idx = *((uint32_t *)&msg->data[0]);
+    id = *((uint32_t *)&msg->data[4]);
     module = module_find_fd(msg->fd);
 
     xlog(LOG_MSG | LOG_VERBOSE, "Event Delete Message from %d", msg->fd);
@@ -722,13 +720,13 @@ int
 msg_evnt_opt(dax_message *msg)
 {
     tag_index idx;
-    u_int32_t id, options;
+    uint32_t id, options;
     int result;
     dax_module *module;
 
-    idx = *((u_int32_t *)&msg->data[0]);
-    id = *((u_int32_t *)&msg->data[4]);
-    options = *((u_int32_t *)&msg->data[8]);
+    idx = *((uint32_t *)&msg->data[0]);
+    id = *((uint32_t *)&msg->data[4]);
+    options = *((uint32_t *)&msg->data[8]);
     module = module_find_fd(msg->fd);
 
     xlog(LOG_MSG | LOG_VERBOSE, "Event Set Option Message from %d", msg->fd);
@@ -858,12 +856,12 @@ int
 msg_group_add(dax_message *msg) {
     dax_module *mod;
     int id;
-    u_int8_t count; //, options;
+    uint8_t count; //, options;
 
     mod = module_find_fd(msg->fd);
     count = msg->data[0];
     //options = msg->data[1]; /* Might use this in the future to indicate maskable groups */
-    id = group_add(mod, (u_int8_t *)&msg->data[2], count);
+    id = group_add(mod, (uint8_t *)&msg->data[2], count);
 
     if(id < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), ERROR);
@@ -877,7 +875,7 @@ int
 msg_group_del(dax_message *msg) {
     int result;
     dax_module *mod;
-    u_int32_t index;
+    uint32_t index;
 
     mod = module_find_fd(msg->fd);
     memcpy(&index, &msg->data[0], 4);
@@ -895,8 +893,8 @@ int
 msg_group_read(dax_message *msg) {
     dax_module *mod;
     int result;
-    u_int32_t index;
-    u_int8_t buff[MSG_TAG_GROUP_DATA_SIZE];
+    uint32_t index;
+    uint8_t buff[MSG_TAG_GROUP_DATA_SIZE];
 
     mod = module_find_fd(msg->fd);
     memcpy(&index, &msg->data[0], 4);
@@ -915,12 +913,12 @@ int
 msg_group_write(dax_message *msg) {
     dax_module *mod;
     int result;
-    u_int32_t index;
+    uint32_t index;
 
     mod = module_find_fd(msg->fd);
     memcpy(&index, &msg->data[0], 4);
 
-    result = group_write(mod, index, (u_int8_t *)&msg->data[4]);
+    result = group_write(mod, index, (uint8_t *)&msg->data[4]);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_WRITE, &result, sizeof(int), ERROR);
     } else {
@@ -948,7 +946,7 @@ int
 msg_atomic_op(dax_message *msg) {
     int result;
     tag_handle h;
-    u_int16_t operation;
+    uint16_t operation;
 
     h.index = *(dax_dint *)msg->data;          /* Index */
     h.byte = *(dax_dint *)&msg->data[4];       /* Byte offset */
@@ -975,7 +973,7 @@ msg_add_override(dax_message *msg) {
     dax_dint index, byte;
 
     index = *((tag_index *)&msg->data[0]);
-    byte = *((u_int32_t *)&msg->data[4]);
+    byte = *((uint32_t *)&msg->data[4]);
     size = (msg->size - 12) / 2;
     xlog(LOG_MSG | LOG_VERBOSE, "Add Override Message from module %d, index %d, offset %d, size %d", msg->fd, index, byte, size);
 
@@ -995,7 +993,7 @@ msg_del_override(dax_message *msg) {
     dax_dint index, byte;
 
     index = *((tag_index *)&msg->data[0]);
-    byte = *((u_int32_t *)&msg->data[4]);
+    byte = *((uint32_t *)&msg->data[4]);
     size = (msg->size - 12);
     result = override_del(index, byte, &msg->data[12], size);
     if(result < 0) { /* Send Error */
@@ -1011,11 +1009,11 @@ int
 msg_get_override(dax_message *msg) {
     int result, size;
     dax_dint index, byte;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t buff[MSG_DATA_SIZE];
 
     index = *((tag_index *)&msg->data[0]);
-    byte = *((u_int32_t *)&msg->data[4]);
-    size = *((u_int32_t *)&msg->data[8]);
+    byte = *((uint32_t *)&msg->data[4]);
+    size = *((uint32_t *)&msg->data[8]);
     xlog(LOG_MSG | LOG_VERBOSE, "Get Override Message from module %d, index %d, byte %d, size %d", msg->fd, index, byte, size);
 
     result = override_get(index, byte, size, buff, &buff[size]);
@@ -1034,10 +1032,10 @@ int
 msg_set_override(dax_message *msg) {
     int result;
     dax_dint index;
-    u_int8_t flag;
+    uint8_t flag;
 
     index = *((tag_index *)&msg->data[0]);
-    flag = *((u_int32_t *)&msg->data[4]);
+    flag = *((uint32_t *)&msg->data[4]);
     xlog(LOG_MSG | LOG_VERBOSE, "Set Override Message from module %d, index %d", msg->fd, index);
 
     result = override_set(index, flag);

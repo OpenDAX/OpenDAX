@@ -19,7 +19,8 @@
  * This file contains libdax configuration functions
  */
 
-#include <libdax.h>
+#include "libdax.h"
+#include "lua/libdaxlua.h"
 #include <libcommon.h>
 #include <getopt.h>
 #include <ctype.h>
@@ -68,6 +69,14 @@ int
 dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name)
 {
     lua_pushcfunction(ds->L, (int (*)(lua_State *))f);
+    lua_setglobal(ds->L, name);
+    return 0;
+}
+
+int
+dax_clear_luafunction(dax_state *ds, char *name)
+{
+    lua_pushnil(ds->L);
     lua_setglobal(ds->L, name);
     return 0;
 }
@@ -557,4 +566,23 @@ int
 opt_get_msgtimeout(dax_state *ds)
 {
     return ds->msgtimeout;
+}
+
+int
+opt_lua_init_func(dax_state *ds) {
+    int result;
+
+    daxlua_set_state(ds->L, ds);
+    daxlua_register_function(ds->L, "tag_add");
+    daxlua_register_function(ds->L, "tag_write");
+    daxlua_register_function(ds->L, "tag_read");
+    daxlua_register_function(ds->L, "tag_get");
+    daxlua_register_function(ds->L, "cdt_create");
+    result = lua_getglobal(ds->L, "init_hook");
+    if(result == LUA_TFUNCTION) {
+        if(lua_pcall(ds->L, 0, 0, 0)) {
+            dax_error(ds, "error running init_function: %s", lua_tostring(ds->L, -1));
+        }
+    }
+    lua_pop(ds->L, 1);
 }

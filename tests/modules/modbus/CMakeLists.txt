@@ -134,3 +134,9 @@ add_executable(module_modbus_server_large_inputs modtest_server_large_inputs.c .
 target_link_libraries(module_modbus_server_large_inputs dax)
 add_test(module_modbus_server_large_inputs module_modbus_server_large_inputs)
 set_tests_properties(module_modbus_server_large_inputs PROPERTIES TIMEOUT 10)
+
+# Test basic function of RTU Slave
+add_executable(module_modbus_rtu_slave_basic modtest_rtu_slave_basic.c ../modtest_common.c modbus_common.c)
+target_link_libraries(module_modbus_rtu_slave_basic dax)
+add_test(module_modbus_rtu_slave_basic module_modbus_rtu_slave_basic)
+set_tests_properties(module_modbus_rtu_slave_basic PROPERTIES TIMEOUT 10)

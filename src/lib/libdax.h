@@ -82,10 +82,10 @@ struct datatype{
 typedef struct datatype datatype;
 
 struct tag_group_id {
-    u_int32_t index;     /* Unique identifier that the server uses */
+    uint32_t index;     /* Unique identifier that the server uses */
     int count;           /* Number of tag handles in the group */
     int size;            /* Total size of the group's data in bytes */
-    u_int8_t options;    /* Not implemented yet */
+    uint8_t options;    /* Not implemented yet */
     tag_handle *handles; /* Array of tag handles that describes the group */
 };
 
@@ -93,8 +93,8 @@ typedef struct tag_group_id tag_group_id;
 
 /* Right now the event_db is stored within the dax_state as an array. */
 typedef struct event_db {
-    u_int32_t idx;  /* Tag index of the event */
-    u_int32_t id;   /* Individual id of the event */
+    uint32_t idx;  /* Tag index of the event */
+    uint32_t id;   /* Individual id of the event */
     void *udata;    /* The user data to be sent with callback() */
     void (*callback)(dax_state *ds, void *udata);  /* Callback function */
     void (*free_callback)(void *udata); /* Callback to free userdata */
@@ -197,6 +197,7 @@ int cache_tag_add(dax_state *, dax_tag *);
 int cache_tag_del(dax_state *, tag_index);
 
 int opt_get_msgtimeout(dax_state *);
+int opt_lua_init_func(dax_state *);
 
 datatype *get_cdt_pointer(dax_state *, tag_type, int *);
 int add_cdt_to_cache(dax_state *, tag_type type, char *typedesc);
@@ -209,7 +210,7 @@ int add_event(dax_state *ds, dax_id id, void *udata, void (*callback)(dax_state 
 int del_event(dax_state *ds, dax_id id);
 int exec_event(dax_state *ds, dax_id id);
 
-int group_read_format(dax_state *ds, tag_group_id *id, u_int8_t *buff);
-int group_write_format(dax_state *ds, tag_group_id *id, u_int8_t *buff);
+int group_read_format(dax_state *ds, tag_group_id *id, uint8_t *buff);
+int group_write_format(dax_state *ds, tag_group_id *id, uint8_t *buff);
 
 #endif /* !__LIBDAX_H */

@@ -31,7 +31,7 @@
 static void
 _test_simple(void) {
     dax_module mod;
-    u_int32_t index, n, offset;
+    uint32_t index, n, offset;
     tag_handle h;
 
     /* Initialize the module */
@@ -49,7 +49,7 @@ _test_simple(void) {
 static void
 _test_group_array_growth(void) {
     dax_module mod;
-    u_int32_t index, n;
+    uint32_t index, n;
     tag_handle h;
 
     /* Initialize the module */
@@ -78,7 +78,7 @@ _test_group_array_growth(void) {
 static void
 _test_group_size(void) {
     dax_module mod;
-    u_int32_t index, n, offset;
+    uint32_t index, n, offset;
     tag_handle h;
     int result, count;
 

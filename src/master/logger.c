@@ -25,7 +25,7 @@
 #include <syslog.h>
 #include <signal.h>
 
-static u_int32_t _logflags = LOG_ALL;
+static uint32_t _logflags = LOG_ALL;
 
 static void (*write_log)(int priority, const char *format, va_list val) = {NULL};
 
@@ -62,7 +62,7 @@ logger_init(int type, char *progname)
 
 /* logs the string if any of the bits in flags matches _logflags */
 void
-xlog(u_int32_t flags, const char *format, ...)
+xlog(uint32_t flags, const char *format, ...)
 {
     va_list val;
     va_start(val, format);
@@ -102,7 +102,7 @@ xerror(const char *format, ...)
 }
 
 void
-set_log_topic(u_int32_t topic)
+set_log_topic(uint32_t topic)
 {
     _logflags = topic;
     xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);

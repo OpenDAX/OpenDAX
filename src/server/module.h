@@ -42,8 +42,8 @@ void initialize_module(void);
 
 /* Module runtime functions */
 int module_set_running(int fd);
-dax_module *module_register(char *name, u_int32_t timeout, int fd);
-dax_module *event_register(u_int32_t mid , int fd);
+dax_module *module_register(char *name, uint32_t timeout, int fd);
+dax_module *event_register(uint32_t mid , int fd);
 void module_unregister(pid_t pid);
 dax_module *module_find_fd(int fd);
 

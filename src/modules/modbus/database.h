@@ -24,9 +24,8 @@
 #include <common.h>
 #include <opendax.h>
 #include <modopt.h>
-#include <lib/modbus.h>
+#include <modbus.h>
 
-void setup_command(struct mb_cmd *c, void *userdata, u_int8_t *data, int datasize);
-int init_database(void);
+void setup_command(struct mb_cmd *c, void *userdata, uint8_t *data, int datasize);
 
 #endif

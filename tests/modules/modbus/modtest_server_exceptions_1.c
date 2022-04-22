@@ -37,8 +37,8 @@
  * reslen: the length of the response for comparison
  */
 int
-_check_response(int sock, u_int8_t *outbuff, int outlen, u_int8_t *resbuff, int reslen) {
-    u_int8_t buff[1024];
+_check_response(int sock, char *outbuff, int outlen, char *resbuff, int reslen) {
+    uint8_t buff[1024];
     int sresult, rresult;
     int n, csize;
 
@@ -50,7 +50,7 @@ _check_response(int sock, u_int8_t *outbuff, int outlen, u_int8_t *resbuff, int 
         return 1;
     }
     for(n=0;n<reslen;n++) {
-        if(resbuff[n] != buff[n]) {
+        if(((uint8_t *)resbuff)[n] != buff[n]) {
             return 1;
         }
     }

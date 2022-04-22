@@ -138,7 +138,7 @@ _atomic_dec(tag_handle h, void *data) {
 
 
 int
-atomic_op(tag_handle h, void *data, u_int16_t op) {
+atomic_op(tag_handle h, void *data, uint16_t op) {
 
     /* We don't do these on custom data types */
     if(IS_CUSTOM(h.type)) {

@@ -185,7 +185,7 @@ cache_tag_add(dax_state *ds, dax_tag *tag)
             return ERR_ALLOC;
         }
     } else {
-        //--printf("Just putting {%d}  last\n", tag->handle);
+        //--printf("Just putting {%s}  last\n", tag->name);
         new = ds->cache_head->prev;
     }
     strcpy(new->name, tag->name);
@@ -351,7 +351,7 @@ int
 dax_read_tag(dax_state *ds, tag_handle handle, void *data)
 {
     int result, n, i;
-    u_int8_t *newdata;
+    uint8_t *newdata;
 
     result = dax_read(ds, handle.index, handle.byte, data, handle.size);
     if(result) return result;
@@ -366,8 +366,8 @@ dax_read_tag(dax_state *ds, tag_handle handle, void *data)
         if(newdata == NULL) return ERR_ALLOC;
         bzero(newdata, handle.size);
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (i % 8)) & ((u_int8_t *)data)[i / 8] ) {
-                ((u_int8_t *)newdata)[n / 8] |= (1 << (n % 8));
+            if( (0x01 << (i % 8)) & ((uint8_t *)data)[i / 8] ) {
+                ((uint8_t *)newdata)[n / 8] |= (1 << (n % 8));
             }
             i++;
         }
@@ -483,7 +483,7 @@ int
 dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 {
     int i, n, result = 0, size;
-    u_int8_t *mask, *newdata;
+    uint8_t *mask, *newdata;
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         size = handle.size;
@@ -504,8 +504,8 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
-                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
+            if( (0x01 << (n % 8)) & ((uint8_t *)data)[n / 8] ) {
+                ((uint8_t *)newdata)[i / 8] |= (1 << (i % 8));
             }
             mask[i / 8] |= (1 << (i % 8));
             i++;
@@ -534,7 +534,7 @@ int
 dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 {
     int i, n, result = 0, size;
-    u_int8_t *newmask = NULL, *newdata;
+    uint8_t *newmask = NULL, *newdata;
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         size = handle.size;
@@ -555,8 +555,8 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
 
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
-                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
+            if( (0x01 << (n % 8)) & ((uint8_t *)data)[n / 8] ) {
+                ((uint8_t *)newdata)[i / 8] |= (1 << (i % 8));
             }
             newmask[i / 8] |= (1 << (i % 8));
             i++;
@@ -585,7 +585,7 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
  * reformatted if need be to match the server.
  */
 int
-group_read_format(dax_state *ds, tag_group_id *id, u_int8_t *buff) {
+group_read_format(dax_state *ds, tag_group_id *id, uint8_t *buff) {
     int n, offset = 0, result;
     tag_handle h;
 
@@ -599,7 +599,7 @@ group_read_format(dax_state *ds, tag_group_id *id, u_int8_t *buff) {
 }
 
 int
-group_write_format(dax_state *ds, tag_group_id *id, u_int8_t *buff) {
+group_write_format(dax_state *ds, tag_group_id *id, uint8_t *buff) {
     int n, offset = 0, result;
     tag_handle h;
 

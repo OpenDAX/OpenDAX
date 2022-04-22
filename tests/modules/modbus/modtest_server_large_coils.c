@@ -35,7 +35,7 @@ main(int argc, char *argv[])
     int s, exit_status = 0;
     dax_state *ds;
     tag_handle h;
-    u_int8_t buff[1024], rbuff[1024];
+    uint8_t buff[1024], rbuff[1024];
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int status, n, i;

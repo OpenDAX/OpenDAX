@@ -43,8 +43,8 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
     	return ERR_DISCONNECTED;
     }
     /* We always send the size and command in network order */
-    ((u_int32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
-    ((u_int32_t *)buff)[1] = htonl(command);
+    ((uint32_t *)buff)[0] = htonl(size + MSG_HDR_SIZE);
+    ((uint32_t *)buff)[1] = htonl(command);
     memcpy(&buff[MSG_HDR_SIZE], payload, size);
 
     /* TODO: We need to set some kind of timeout here.  This could block
@@ -81,8 +81,8 @@ _message_get(int fd, dax_message *msg) {
         }
     }
     /* At this point we should have the size and the message type */
-    msg->size = ntohl(*(u_int32_t *)buff);
-    msg->msg_type = ntohl(*((u_int32_t *)&buff[4]));
+    msg->size = ntohl(*(uint32_t *)buff);
+    msg->msg_type = ntohl(*((uint32_t *)&buff[4]));
     /* Now we get the rest of the message */
     index = 0;
     while( index < msg->size) {
@@ -121,7 +121,11 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
     while(ds->last_msg == NULL) {
         clock_gettime(CLOCK_REALTIME, &timeout);
         timeout.tv_sec += ds->msgtimeout/1000;
-        timeout.tv_nsec += ds->msgtimeout%1000 *1000000;
+        timeout.tv_nsec += ds->msgtimeout%1000 *1e6;
+        if(timeout.tv_nsec>1e9) {
+            timeout.tv_sec++;
+            timeout.tv_nsec-=1e9;
+        }
         result = pthread_cond_timedwait(&ds->msg_cond, &ds->msg_lock, &timeout);
         if(result == ETIMEDOUT) {
             printf(" - _message_recv() Timeout\n");
@@ -243,8 +247,8 @@ _mod_register(dax_state *ds, char *name)
 
     /* For registration we send the data in network order no matter what */
     /* TODO: The timeout is not actually implemented */
-    *((u_int32_t *)&buff[0]) = htonl(1000);       /* Timeout  */
-    *((u_int32_t *)&buff[4]) = htonl(CONNECT_SYNC);  /* registration flags */
+    *((uint32_t *)&buff[0]) = htonl(1000);       /* Timeout  */
+    *((uint32_t *)&buff[4]) = htonl(CONNECT_SYNC);  /* registration flags */
     strcpy(&buff[CON_HDR_SIZE], name);                /* The rest is the name */
 
     dax_debug(ds, LOG_COMM, "Sending registration for name - %s", ds->modulename);
@@ -258,14 +262,14 @@ _mod_register(dax_state *ds, char *name)
     }
 
     /* Store the unique ID that the server has sent us. */
-    ds->id =  *((u_int32_t *)&msg.data[0]);
+    ds->id =  *((uint32_t *)&msg.data[0]);
     /* Here we check to see if the data that we got in the registration message is in the same
        format as we use here on the client module. This should be offloaded to a separate
        function that can determine what needs to be done to the incoming and outgoing data to
        get it to match with the server */
-    if( (*((u_int16_t *)&msg.data[4]) != REG_TEST_INT) ||
-        (*((u_int32_t *)&msg.data[6]) != REG_TEST_DINT) ||
-        (*((u_int64_t *)&msg.data[10]) != REG_TEST_LINT)) {
+    if( (*((uint16_t *)&msg.data[4]) != REG_TEST_INT) ||
+        (*((uint32_t *)&msg.data[6]) != REG_TEST_DINT) ||
+        (*((uint64_t *)&msg.data[10]) != REG_TEST_LINT)) {
         /* TODO: right now this is just to show error.  We need to determine if we can
            get the right data from the server by some means. */
         ds->reformat = REF_INT_SWAP;
@@ -377,7 +381,7 @@ _connection_thread(void *arg)
         result = ds->sfd;
         pthread_barrier_wait(&ds->connect_barrier);
     }
-return NULL;
+    return NULL;
 }
 
 
@@ -399,6 +403,10 @@ dax_connect(dax_state *ds)
     pthread_create(&ds->connection_thread, NULL, _connection_thread, ds);
     pthread_detach(ds->connection_thread);
     pthread_barrier_wait(&ds->connect_barrier);
+
+    if(ds->error_code == 0) {
+        opt_lua_init_func(ds);
+    }
 
     return ds->error_code;
 }
@@ -443,7 +451,7 @@ dax_mod_get(dax_state *ds, char *modname)
  * This is a generic function for setting module parameters.
  */
 int
-dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
+dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
 {
     int result;
     size_t size;
@@ -487,7 +495,7 @@ dax_mod_set(dax_state *ds, u_int8_t cmd, void *param)
  * @returns Zero on success and an error code otherwise
  */
 int
-dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, u_int32_t attr)
+dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, uint32_t attr)
 {
     int result;
     size_t size;
@@ -502,9 +510,9 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
         /* Add the 8 bytes for type and count to one byte for NULL */
         size += 13;
         /* TODO Need to do some more error checking here */
-        *((u_int32_t *)&buff[0]) = mtos_udint(type);
-        *((u_int32_t *)&buff[4]) = mtos_udint(count);
-        *((u_int32_t *)&buff[8]) = mtos_udint(attr);
+        *((uint32_t *)&buff[0]) = mtos_udint(type);
+        *((uint32_t *)&buff[4]) = mtos_udint(count);
+        *((uint32_t *)&buff[8]) = mtos_udint(attr);
 
 
         strcpy(&buff[12], name);
@@ -562,7 +570,7 @@ dax_tag_del(dax_state* ds, tag_index index)
     int result;
     size_t size;
     char buff[sizeof(tag_index)];
-    *((u_int32_t *)&buff[0]) = mtos_udint(index);
+    *((uint32_t *)&buff[0]) = mtos_udint(index);
     
     pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_DEL, buff, sizeof(buff));
@@ -624,11 +632,11 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
             return result;
         }
         tag->idx = stom_dint( *((int *)&buff[0]) );
-        tag->type = stom_udint(*((u_int32_t *)&buff[4]));
-        tag->count = stom_udint(*((u_int32_t *)&buff[8]));
-        tag->attr = stom_udint(*((u_int32_t *)&buff[12]));
+        tag->type = stom_udint(*((uint32_t *)&buff[4]));
+        tag->count = stom_udint(*((uint32_t *)&buff[8]));
+        tag->attr = stom_udint(*((uint32_t *)&buff[12]));
         buff[size - 1] = '\0'; /* Just to make sure */
-        strcpy(tag->name, &buff[14]);
+        strcpy(tag->name, &buff[16]);
         cache_tag_add(ds, tag);
         free(buff);
     }
@@ -700,10 +708,10 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
  * @returns Zero upon success or an error code otherwise
  */
 int
-dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size)
+dax_read(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size)
 {
     int result = 0;
-    u_int8_t buff[14];
+    uint8_t buff[14];
 
     /* If we try to read more data that can be held in a single message we return an error */
     if(size > MSG_DATA_SIZE) {
@@ -711,8 +719,8 @@ dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size
     }
 
     *((tag_index *)&buff[0]) = mtos_dint(idx);
-    *((u_int32_t *)&buff[4]) = mtos_dint(offset);
-    *((u_int32_t *)&buff[8]) = mtos_dint(size);
+    *((uint32_t *)&buff[4]) = mtos_dint(offset);
+    *((uint32_t *)&buff[8]) = mtos_dint(size);
     
     pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_READ, (void *)buff, sizeof(buff));
@@ -748,7 +756,7 @@ dax_read(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size
  * @returns Zero upon success or an error code otherwise
  */
 int
-dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t size)
+dax_write(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size)
 {
     size_t sendsize;
     int result;
@@ -757,7 +765,7 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle and
        an int, because we'll send the handle and the offset.*/
-    sendsize = size + sizeof(tag_index) + sizeof(u_int32_t);
+    sendsize = size + sizeof(tag_index) + sizeof(uint32_t);
     /* It is assumed that the flags that we want to set are the first 4 bytes are in *data */
     /* If we try to read more data that can be held in a single message we return an error */
     if(sendsize > MSG_DATA_SIZE) {
@@ -766,7 +774,7 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
 
     /* Write the data to the message buffer */
     *((tag_index *)&buff[0]) = mtos_dint(idx);
-    *((u_int32_t *)&buff[4]) = mtos_dint(offset); 
+    *((uint32_t *)&buff[4]) = mtos_dint(offset); 
     
     memcpy(&buff[8], data, size);
 
@@ -806,15 +814,15 @@ dax_write(dax_state *ds, tag_index idx, u_int32_t offset, void *data, size_t siz
  * @returns Zero upon success or an error code otherwise
 */
 int
-dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask, size_t size)
+dax_mask(dax_state *ds, tag_index idx, uint32_t offset, void *data, void *mask, size_t size)
 {
     size_t sendsize;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t buff[MSG_DATA_SIZE];
     int result;
 
     /* This calculates the amount of data that we can send with a single message
        It subtracts a handle_t from the data size for use as the tag handle.*/
-    sendsize = size*2 + sizeof(tag_index) + sizeof(u_int32_t);
+    sendsize = size*2 + sizeof(tag_index) + sizeof(uint32_t);
     /* It is assumed that the flags that we want to set are the first 4 bytes are in *data */
     /* If we try to read more data that can be held in a single message we return an error */
     if(sendsize > MSG_DATA_SIZE) {
@@ -822,7 +830,7 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
     }
     /* Write the data to the message buffer */
     *((tag_index *)&buff[0]) = mtos_dint(idx);
-    *((u_int32_t *)&buff[4]) = mtos_dint(offset);
+    *((uint32_t *)&buff[4]) = mtos_dint(offset);
     memcpy(&buff[8], data, size);
     memcpy(&buff[8 + size], mask, size);
 
@@ -855,12 +863,12 @@ dax_mask(dax_state *ds, tag_index idx, u_int32_t offset, void *data, void *mask,
 int
 dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
     int i, n, result = 0, size, sendsize;
-    u_int8_t *mask, *newdata = NULL;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t *mask, *newdata = NULL;
+    uint8_t buff[MSG_DATA_SIZE];
 
     size = handle.size;
     *((tag_index *)&buff[0]) = mtos_dint(handle.index);
-    *((u_int32_t *)&buff[4]) = mtos_dint(handle.byte);
+    *((uint32_t *)&buff[4]) = mtos_dint(handle.byte);
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         /* This takes care of the case where we have an even 8 bits but
@@ -880,8 +888,8 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
 
         i = handle.bit % 8;
         for(n = 0; n < handle.count; n++) {
-            if( (0x01 << (n % 8)) & ((u_int8_t *)data)[n / 8] ) {
-                ((u_int8_t *)newdata)[i / 8] |= (1 << (i % 8));
+            if( (0x01 << (n % 8)) & ((uint8_t *)data)[n / 8] ) {
+                ((uint8_t *)newdata)[i / 8] |= (1 << (i % 8));
             }
             mask[i / 8] |= (1 << (i % 8));
             i++;
@@ -923,12 +931,12 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
 int
 dax_tag_del_override(dax_state *ds, tag_handle handle) {
     int i, n, result = 0, size, sendsize;
-    u_int8_t *mask = NULL;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t *mask = NULL;
+    uint8_t buff[MSG_DATA_SIZE];
 
     size = handle.size;
     *((tag_index *)&buff[0]) = mtos_dint(handle.index);
-    *((u_int32_t *)&buff[4]) = mtos_dint(handle.byte);
+    *((uint32_t *)&buff[4]) = mtos_dint(handle.byte);
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         /* This takes care of the case where we have an even 8 bits but
@@ -991,11 +999,11 @@ int
 dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mask) {
     int result = 0, sendsize;
     size_t size;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t buff[MSG_DATA_SIZE];
 
     *((tag_index *)&buff[0]) = mtos_dint(handle.index);
-    *((u_int32_t *)&buff[4]) = mtos_dint(handle.byte);
-    *((u_int32_t *)&buff[8]) = mtos_dint(handle.size);
+    *((uint32_t *)&buff[4]) = mtos_dint(handle.byte);
+    *((uint32_t *)&buff[8]) = mtos_dint(handle.size);
 
     sendsize = 12;
     pthread_mutex_lock(&ds->lock);
@@ -1019,10 +1027,10 @@ dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mask) {
 int
 dax_tag_set_override(dax_state *ds, tag_handle handle) {
     int result = 0, sendsize;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t buff[MSG_DATA_SIZE];
 
     *((tag_index *)&buff[0]) = mtos_dint(handle.index);
-    *((u_int32_t *)&buff[4]) = 0xFF;
+    *((uint32_t *)&buff[4]) = 0xFF;
 
     sendsize = 5;
     pthread_mutex_lock(&ds->lock);
@@ -1044,10 +1052,10 @@ dax_tag_set_override(dax_state *ds, tag_handle handle) {
 int
 dax_tag_clr_override(dax_state *ds, tag_handle handle) {
     int result = 0, sendsize;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t buff[MSG_DATA_SIZE];
 
     *((tag_index *)&buff[0]) = mtos_dint(handle.index);
-    *((u_int32_t *)&buff[4]) = 0x00;
+    *((uint32_t *)&buff[4]) = 0x00;
 
     sendsize = 5;
 
@@ -1087,10 +1095,10 @@ dax_tag_clr_override(dax_state *ds, tag_handle handle) {
  * @returns Zero on success or an error code otherwise.
  */
 int
-dax_atomic_op(dax_state *ds, tag_handle h, void *data, u_int16_t operation) {
+dax_atomic_op(dax_state *ds, tag_handle h, void *data, uint16_t operation) {
     size_t sendsize;
     int result;
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t buff[MSG_DATA_SIZE];
 
     /* This calculates the amount of data that we can send with a single message */
     sendsize = h.size + 21;
@@ -1280,7 +1288,7 @@ dax_event_get(dax_state *ds, dax_id id)
  * @returns Zero on success or an error code otherwise
  */
 int
-dax_event_options(dax_state *ds, dax_id id, u_int32_t options)
+dax_event_options(dax_state *ds, dax_id id, uint32_t options)
 {
     int test;
     size_t size;
@@ -1428,7 +1436,7 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
         size++; /* Add one for the sub command */
     } else {
         buff[0] = CDT_GET_TYPE;  /* Put the subcommand in the first byte */
-        *((u_int32_t *)&buff[1]) = mtos_udint(cdt_type); /* type in the next four */
+        *((uint32_t *)&buff[1]) = mtos_udint(cdt_type); /* type in the next four */
         size = 5;
     }
 
@@ -1535,14 +1543,14 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
  *                the dax_gropu_del() function to free everything.
  */
 tag_group_id *
-dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t options) {
+dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t options) {
     int offset, n;
     tag_group_id *id = NULL;
     size_t size, group_size;
     dax_dint temp;
     dax_udint u_temp;
 
-    u_int8_t buff[MSG_DATA_SIZE];
+    uint8_t buff[MSG_DATA_SIZE];
     *result = 0;
     /* Sanity check the sizes.  These checks are redundant because
      * the server also does them but this will keep from sending the message */
@@ -1600,7 +1608,7 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
             return NULL;
         }
         memcpy(id->handles, h, sizeof(tag_handle)*count);
-        id->index = *(u_int32_t *)buff;
+        id->index = *(uint32_t *)buff;
         id->count = count;
         id->options = options;
         id->size = group_size;
@@ -1622,7 +1630,7 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, u_int8_t opt
 int
 dax_group_read(dax_state *ds, tag_group_id *id, void *data, size_t size) {
     int result;
-    u_int32_t u_temp;
+    uint32_t u_temp;
 
     if(size < id->size) return ERR_ARG;
     u_temp = mtos_udint(id->index);
@@ -1658,7 +1666,7 @@ dax_group_read(dax_state *ds, tag_group_id *id, void *data, size_t size) {
 int
 dax_group_write(dax_state *ds, tag_group_id *id, void *data) {
     int result;
-    u_int32_t u_temp;
+    uint32_t u_temp;
     char buff[MSG_DATA_SIZE];
 
     u_temp = mtos_udint(id->index);
@@ -1682,7 +1690,7 @@ dax_group_write(dax_state *ds, tag_group_id *id, void *data) {
 int
 dax_group_del(dax_state *ds, tag_group_id *id) {
     int result;
-     u_int32_t u_temp;
+     uint32_t u_temp;
      char buff[4];
 
      u_temp = mtos_udint(id->index);

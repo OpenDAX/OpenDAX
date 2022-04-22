@@ -310,7 +310,7 @@ _queue_add(int idx, tag_type type, unsigned int count) {
     q->qsize = START_QUEUE_SIZE;
     vf.rf = read_queue;
     vf.wf = write_queue;
-    vf.userdata = (u_int8_t *)q;
+    vf.userdata = (uint8_t *)q;
     _db[idx].data = malloc(sizeof(virt_functions));
     if(_db[idx].data == NULL) {
         free(q);
@@ -355,7 +355,7 @@ initialize_tagbase(void)
 {
     tag_type type;
     char *str;
-    u_int64_t starttime;
+    uint64_t starttime;
 
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!_db) {
@@ -404,13 +404,13 @@ initialize_tagbase(void)
     virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
     virtual_tag_add("_my_tagname", DAX_CHAR, DAX_TAGNAME_SIZE +1, get_module_tag_name, NULL);
     starttime = xtime();
-    tag_write(INDEX_STARTED,0,&starttime,sizeof(u_int64_t));
+    tag_write(INDEX_STARTED,0,&starttime,sizeof(uint64_t));
     set_dbsize(_dbsize);
 
 }
 
 static void
-_set_attribute(tag_index idx, u_int32_t attr) {
+_set_attribute(tag_index idx, uint32_t attr) {
     /* We only let the Tag Retention attribute to be set at this point */
     if(attr & TAG_ATTR_RETAIN) {
         /* TODO: add tag retention */;
@@ -425,7 +425,7 @@ _set_attribute(tag_index idx, u_int32_t attr) {
  * count is greater than 1 an array is created.  It returns the index
  * of the newly created tag or an error. */
 tag_index
-tag_add(char *name, tag_type type, unsigned int count, u_int32_t attr)
+tag_add(char *name, tag_type type, unsigned int count, uint32_t attr)
 {
     int n;
     void *newdata;
@@ -557,6 +557,7 @@ tag_del(tag_index idx)
         return ERR_DELETED;
     }
     xlog(LOG_VERBOSE | LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
+    event_del_check(idx); /* Check to see if we have a deleted event for this tag */
     if(IS_CUSTOM(_db[idx].type)) {
         _cdt_dec_refcount(_db[idx].type);
     }
@@ -657,7 +658,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
 {
     virt_functions *vf;
     int n;
-    u_int8_t x, y;
+    uint8_t x, y;
 
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagnextindex) {
@@ -684,7 +685,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
             for(n=0; n<size; n++) {
                  x = _db[idx].odata[n+offset] & _db[idx].omask[n+offset];
                  y = _db[idx].data[n+offset] & ~_db[idx].omask[n+offset];
-                 ((u_int8_t *)data)[n] = x | y;
+                 ((uint8_t *)data)[n] = x | y;
             }
         } else {
             /* Copy the data into the right place. */
@@ -737,7 +738,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
 int
 tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
 {
-    u_int8_t *db, *newdata, *newmask;
+    uint8_t *db, *newdata, *newmask;
     int n;
 
     /* We don't allow masked writes to virtual tags.  This would be
@@ -756,8 +757,8 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     }
     /* Just to make it easier */
     db = &_db[idx].data[offset];
-    newdata = (u_int8_t *)data;
-    newmask = (u_int8_t *)mask;
+    newdata = (uint8_t *)data;
+    newmask = (uint8_t *)mask;
     for(n = 0; n < size; n++) {
         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
     }
@@ -1155,8 +1156,8 @@ override_del(tag_index idx, int offset, void *mask, int size) {
         return ERR_GENERIC;
     }
     for(n=0;n<size;n++) {
-        _db[idx].omask[n+offset] &= ~((u_int8_t *)mask)[n];
-        _db[idx].odata[n+offset] &= ~((u_int8_t *)mask)[n];
+        _db[idx].omask[n+offset] &= ~((uint8_t *)mask)[n];
+        _db[idx].odata[n+offset] &= ~((uint8_t *)mask)[n];
     }
     _db[idx].attr &= ~TAG_ATTR_OVERRIDE;
     tag_size = _db[idx].count * type_size(_db[idx].type);
@@ -1190,7 +1191,7 @@ override_get(tag_index idx, int offset, int size, void *data, void *mask) {
 }
 
 int
-override_set(tag_index idx, u_int8_t flag) {
+override_set(tag_index idx, uint8_t flag) {
     if(idx < 0 || idx >= _tagnextindex) {
         return ERR_ARG;
     }
