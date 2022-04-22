@@ -418,7 +418,7 @@ _get_tag_from_lua(lua_State *L, tag_handle h, void* data, void *mask){
                 udata.data = (char *)data + offset;
                 udata.mask = (char *)mask + offset;
                 if( ! lua_istable(L, -1) ) {
-                    lua_pushfstring(L, "Table needed to set - %s", tag.name);
+                    lua_pushfstring(L, "Table needed to set Tag");
                     return -1;
                 }
                 lua_rawgeti(L, -1, n+1);
@@ -586,6 +586,7 @@ _tag_add(lua_State *L)
 {
     int result, count;
     tag_type type;
+    tag_handle *h;
 
     if(ds == NULL) {
         luaL_error(L, "OpenDAX is not initialized");
@@ -606,10 +607,12 @@ _tag_add(lua_State *L)
             luaL_error(L, "Can't get type '%s'", (char *)lua_tostring(L, 2));
         }
     }
-
-    result = dax_tag_add(ds, NULL, (char *)lua_tostring(L,1), type, count, 0);
+    h = (tag_handle *)lua_newuserdata(L, sizeof(tag_handle));
+    luaL_getmetatable(L, "OpenDAX.handle");
+    lua_setmetatable(L, -2);
+    result = dax_tag_add(ds, h, (char *)lua_tostring(L,1), type, count, 0);
     if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
-    return 0;
+    return 1;
 }
 
 /* Wrapper for the two tag retrieving functions */
@@ -636,6 +639,37 @@ _tag_get(lua_State *L)
     return 3;
 }
 
+/* Wrapper for the two tag retrieving functions */
+static int
+_tag_handle(lua_State *L)
+{
+    char *name;
+    int count;
+    int result;
+    tag_handle *h;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpeOnDAX is not initialized");
+    }
+    if(lua_gettop(L) == 1) { /* Count is missing */
+        count = 1;
+    } else {
+        count = lua_tointeger(L, 2);
+    }
+    name = (char *)lua_tostring(L, 1);
+
+    h = (tag_handle *)lua_newuserdata(L, sizeof(tag_handle));
+    luaL_getmetatable(L, "OpenDAX.handle");
+    lua_setmetatable(L, -2);
+
+    result = dax_tag_handle(ds, h, name, count);
+    if(result) {
+        luaL_error(L, "dax_tag_handle() returned %d", result);
+    }
+
+    return 1;
+}
+
 
 /* These are the main data transfer functions.  These are wrappers for
  * the dax_read/write/mask function. */
@@ -644,6 +678,7 @@ _tag_read(lua_State *L) {
     char *name;
     int count, result;
     tag_handle h;
+    tag_handle *hp;
     void *data;
 
     if(ds == NULL) {
@@ -655,20 +690,25 @@ _tag_read(lua_State *L) {
     if(lua_gettop(L) == 1) { /* Assume that it's only the name and we just one one */
         count = 1;
     }
-    name = (char *)lua_tostring(L, 1);
     count = lua_tointeger(L, 2);
+    if(lua_isuserdata(L, 1)) {
+        hp = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
 
-    result = dax_tag_handle(ds, &h, name, count);
-    if(result) {
-        luaL_error(L, "dax_tag_handle() returned %d", result);
+        result = dax_tag_handle(ds, &h, name, count);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp=&h;
     }
 
-    data = malloc(h.size);
+    data = malloc(hp->size);
     if(data == NULL) {
         luaL_error(L, "tag_read() unable to allocate data area");
     }
 
-    result = dax_read_tag(ds, h, data);
+    result = dax_read_tag(ds, *hp, data);
 
     if(result) {
         free(data);
@@ -676,7 +716,7 @@ _tag_read(lua_State *L) {
     }
     /* This function figures all the tag data out and pushes the right
      * thing onto the top of the Lua stack */
-    _send_tag_to_lua(L, h, data);
+    _send_tag_to_lua(L, *hp, data);
 
     free(data);
     return 1;
@@ -688,6 +728,7 @@ _tag_write(lua_State *L) {
     char q = 0;
     int result, n;
     tag_handle h;
+    tag_handle *hp;
     void *data, *mask;
 
     if(ds == NULL) {
@@ -696,32 +737,37 @@ _tag_write(lua_State *L) {
     if(lua_gettop(L) != 2) {
         luaL_error(L, "Wrong number of arguments passed to tag_write()");
     }
-    name = (char *)lua_tostring(L, 1);
-    //printf("Getting Handle for %s\n", name);
-    result = dax_tag_handle(ds, &h, name, 0);
-//    printf("h.index = %d\n", h.index);
-//    printf("h.byte = %d\n", h.byte);
-//    printf("h.bit = %d\n", h.bit);
-//    printf("h.size = %d\n", h.size);
-//    printf("h.count = %d\n", h.count);
-//    printf("h.type = %s\n", dax_type_to_string(h.type));
-    if(result) {
-        luaL_error(L, "dax_tag_handle() returned %d", result);
+    if(lua_isuserdata(L, 1)) {
+        hp = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
+        //printf("Getting Handle for %s\n", name);
+        result = dax_tag_handle(ds, &h, name, 0);
+    //    printf("h.index = %d\n", h.index);
+    //    printf("h.byte = %d\n", h.byte);
+    //    printf("h.bit = %d\n", h.bit);
+    //    printf("h.size = %d\n", h.size);
+    //    printf("h.count = %d\n", h.count);
+    //    printf("h.type = %s\n", dax_type_to_string(h.type));
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp = &h;
     }
 
-    data = malloc(h.size);
+    data = malloc(hp->size);
     if(data == NULL) {
         luaL_error(L, "tag_write() unable to allocate data area");
     }
 
-    mask = malloc(h.size);
+    mask = malloc(hp->size);
     if(mask == NULL) {
         free(data);
         luaL_error(L, "tag_write() unable to allocate mask memory");
     }
-    bzero(mask, h.size);
+    bzero(mask, hp->size);
 
-    result = _get_tag_from_lua(L, h, data, mask);
+    result = _get_tag_from_lua(L, *hp, data, mask);
     if(result) {
         free(data);
         free(mask);
@@ -732,17 +778,17 @@ _tag_write(lua_State *L) {
      * to write the data to the server */
     /* TODO: Might want to scan through and find the beginning and end of
      * any changed data and send less through the socket.  */
-    for(n = 0; n < h.size && q == 0; n++) {
+    for(n = 0; n < hp->size && q == 0; n++) {
         if( ((unsigned char *)mask)[n] != 0xFF) {
             q = 1;
         }
     }
     if(q) {
         //printf("call dax_mask_tag()\n");
-        result = dax_mask_tag(ds, h, data, mask);
+        result = dax_mask_tag(ds, *hp, data, mask);
     } else {
         //printf("call dax_write_tag()\n");
-        result = dax_write_tag(ds, h, data);
+        result = dax_write_tag(ds, *hp, data);
     }
 
     if(result) {
@@ -759,7 +805,6 @@ _tag_write(lua_State *L) {
 
 static int
 _tag_del(lua_State *L) {
-    char *name;
     int result;
     dax_tag tag;
 
@@ -1070,6 +1115,7 @@ static const struct luaL_Reg daxlib[] = {
     {"cdt_create", _cdt_create},
     {"tag_add", _tag_add},
     {"tag_get", _tag_get},
+    {"tag_handle", _tag_handle},
     {"tag_read", _tag_read},
     {"tag_write", _tag_write},
     {"tag_del", _tag_del},
@@ -1099,6 +1145,7 @@ static const struct luaL_Reg daxlib[] = {
 int
 luaopen_dax (lua_State *L)
 {
+    luaL_newmetatable(L, "OpenDAX.handle");
 #ifdef LUA_5_1
     char *modulename = (char *)lua_tostring(L, 1);
     luaL_register(L, modulename, daxlib);
