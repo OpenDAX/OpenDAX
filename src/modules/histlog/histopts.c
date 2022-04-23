@@ -19,14 +19,18 @@
  *  module.
  */
 
+#include <string.h>
 #include <opendax.h>
 #include "histlog.h"
 
 extern dax_state *ds;
 
+tag_config *tag_list = NULL;
+
 static int
 _add_tag(lua_State *L) {
     int arg_count;
+    tag_config *tag;
     const char *tagname;
     uint32_t trigger;
     double trigger_value;
@@ -43,11 +47,22 @@ _add_tag(lua_State *L) {
     if(arg_count >= 4) {
         attributes = lua_tolstring(L, 4, NULL);
     }
+    tag = malloc(sizeof(tag_config));
+    if(tag == NULL) {
+        luaL_error(L, "Unable to allocate tag configuration object");
+        return 0;
+    }
+    tag->name = strdup(tagname);
+    tag->status = 0;
+    tag->trigger = trigger;
+    tag->trigger_value = trigger_value;
+    tag->attributes = attributes;
+    tag->lastvalue = NULL;
+    tag->lasttimestamp = 0.0;
+    tag->next = tag_list;
+    /* Cheese it onto the list backwards*/
+    tag_list = tag;
 
-    DF("Tagname = %s", tagname);
-    DF("Trigger = 0x%X", trigger);
-    DF("Value = %f", trigger_value);
-    DF("Attributes = %s", attributes);
     return 0;
 }
 
@@ -67,17 +82,18 @@ histlog_configure(int argc,char *argv[]) {
 
     /* Add globals to the Lua Configuration State. */
     /* Recording Triggers */
-    lua_pushinteger(L, ABS_CHANGE);  lua_setglobal(L, "ABS_CHANGE");
-    lua_pushinteger(L, PCT_CHANGE);  lua_setglobal(L, "PCT_CHANGE");
+    lua_pushinteger(L, ON_CHANGE);  lua_setglobal(L, "CHANGE");
     lua_pushinteger(L, ON_WRITE);  lua_setglobal(L, "WRITE");
 
     dax_set_luafunction(ds, (void *)_add_tag, "add_tag");
 
-    /* Add the functions that will be called */
     /* Execute the configuration */
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
-
-    /* Free the configuration data */
-    dax_free_config(ds);
+    /* We need to clear all of the functions that we add in case the plugin
+     * want to re-run the configuration */
+    dax_clear_luafunction(ds, "add_tag");
+    /* We don't free the configuration because the plugin might want to use
+     * parts of the Lua configuration file for specific configuration or
+     * custom functions */
     return 0;
 }

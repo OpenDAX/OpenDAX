@@ -28,21 +28,25 @@ static void *plugin;
 
 extern dax_state *ds;
 
-static int (*_init)(char *file);
+static int (*_init)(dax_state *ds);
 int (*set_config)(const char *attr, char *value);
 char * (*get_config)(const char *attr);
 tag_object *(*add_tag)(const char *tagname, uint32_t type, const char *attributes);
 int (*free_tag)(tag_object *tag);
-int (*write_data)(uint32_t index, void *value, double timestamp);
+int (*write_data)(tag_object *tag, void *value, double timestamp);
 
 /* Loads the dynamic library that represents the plugin, sets all of the
  * function pointers to the correct symbols in the library and runs init() */
 int
 plugin_load(char *file) {
+    if(file == NULL) {
+        dax_error(ds, "Plugin not given");
+        return ERR_GENERIC;
+    }
     plugin = dlopen(file, RTLD_LAZY);
     if(!plugin) {
-        dax_error(ds, "plugin loading error: %s\n", dlerror());
-        return ERR_GENERIC;
+        dax_error(ds, "plugin loading error: %s", dlerror());
+        return ERR_NOTFOUND;
     }
     /* TODO: Check these for errors and deal appropriately */
     *(void **)(&_init) = dlsym(plugin, "init");
@@ -51,7 +55,7 @@ plugin_load(char *file) {
     *(void **)(&add_tag) = dlsym(plugin, "add_tag");
     *(void **)(&free_tag) = dlsym(plugin, "free_tag");
     *(void **)(&write_data) = dlsym(plugin, "write_data");
-    return _init(file);
+    return _init(ds);
 }
 
 

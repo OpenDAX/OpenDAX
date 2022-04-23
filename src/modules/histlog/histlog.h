@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2007 Phil Birkelbach
+ *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,16 +22,34 @@
 #define __HISTLOG_H_
 
 #include <common.h>
+#include <opendax.h>
 
 typedef void tag_object;
 
-#define ABS_CHANGE 0x01
-#define PCT_CHANGE 0x02
-#define ON_WRITE   0x04
+/* Linked list structure for the tags that we will be writing to the logger */
+typedef struct tag_config {
+    char *name;
+    uint8_t status;   /* 0 if we still need to be configured 1 otherwise */
+    tag_handle h;
+    uint32_t trigger;  /* What triggers a write to the logger plugin */
+    tag_object *tag;   /* plugin specific tag object */
+    const char *attributes; /* string that represents plugin specific attributes */
+    double trigger_value; /* value that the on change trigger uses for calculations */
+    void *lastvalue; /* last value of the tag that we got from the tag server */
+    double lasttimestamp; /* The timestamp of the last value we got from the tag server */
+    struct tag_config *next;
+} tag_config;
 
+#define ON_CHANGE  0x01
+#define ON_WRITE   0x02
+
+/* histutil.c - Common utility functions */
+double hist_gettime(void);
+
+/* histopt.c - Configuration option functions */
 int histlog_configure(int argc,char *argv[]);
 
-/* Plugin functions */
+/* plugin.c - Plugin functions */
 int plugin_load(char *file);
 
 /* These functions should be implemented in the plugin library */
@@ -39,7 +57,6 @@ extern int (*set_config)(const char *attr, char *value);
 extern char * (*get_config)(const char *attr);
 extern tag_object *(*add_tag)(const char *tagname, uint32_t type, const char *attributes);
 extern int (*free_tag)(tag_object *tag);
-extern int (*write_data)(uint32_t index, void *value, double timestamp);
-
+extern int (*write_data)(tag_object *tag, void *value, double timestamp);
 
 #endif

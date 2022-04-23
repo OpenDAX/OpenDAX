@@ -1,5 +1,5 @@
-/*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2022 Phil Birkelbach
+/*  OpenDAX - An open source data acquisition and control system
+ *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,14 +15,17 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- *  Main header file for the OpenDAX Historical Logging file plugin
+ *  Utiltiy function source code file for the OpenDAX Historical Logging module
  */
 
-#include <common.h>
-#include <opendax.h>
+#include <time.h>
 
-typedef struct tag_object {
-    const char *name;
-    tag_type type;
-    int handle;
-} tag_object;
+#include "histlog.h"
+
+/* Returns the current system time as a double.  This is a Linux
+ * epoch time in seconds. */
+double hist_gettime(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (double)(ts.tv_nsec/1e9 + ts.tv_sec);
+}

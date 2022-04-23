@@ -18,11 +18,41 @@
  *  Main source code file for the OpenDAX Historical Logging file plugin
  */
 
+#include <dirent.h>
+#include <sys/stat.h>
+#include <errno.h>
+
 #include <dhl_file.h>
 
+static const char *log_directory;
+static FILE *log_file;
+
 int
-init(const char *file) {
-    fprintf(stderr, "Initializing the thing with the thing %s\n", file);
+init(dax_state *ds) {
+    int result;
+    lua_State *L;
+    char filename[256]; /* Should probably allocate this */
+
+    L = dax_get_luastate(ds);
+    lua_getglobal(L, "directory");
+    log_directory = lua_tostring(L, -1);
+    if(log_directory == NULL) {
+        log_directory = "logs";
+    }
+    DIR* dir = opendir(log_directory);
+    if (dir) {
+        /* Directory exists. */
+        closedir(dir);
+    } else if (ENOENT == errno) {
+        result = mkdir(log_directory, 0777);
+        if(result) {
+            dax_error(ds, "%s", strerror(errno));
+        }
+    } else {
+        dax_error(ds, "%s", strerror(errno));
+    }
+    snprintf(filename, 256, "%s/somereallylongdatetimething.daxlog", log_directory);
+    log_file = fopen(filename, "a");
     return 0;
 }
 
@@ -40,20 +70,29 @@ get_config(const char *attr) {
 
 tag_object *
 add_tag(const char *tagname, uint32_t type, const char *attributes) {
+    tag_object *tag;
 
-    fprintf(stderr, "Adding ye olde tag %s\n", tagname);
-    return NULL;
+    tag = malloc(sizeof(tag_object));
+    if(tag == NULL) return NULL;
+    tag->name = tagname;
+    tag->type = type;
+
+    fprintf(stderr, "Adding ye olde tag %s type = %d\n", tagname, type);
+    return tag;
 }
 
 int
 free_tag(tag_object *tag) {
-    free(tag->name);
+    free((void *)tag->name);
     free(tag);
     return 0;
 }
 
 int
-write_data(uint32_t index, void *value, double timestamp) {
-    fprintf(stderr, "Writing data for tag at index %d\n", index);
+write_data(tag_object *tag, void *value, double timestamp) {
+    char val_string[256];
+
+    dax_val_to_string(val_string, 256, tag->type, value, 0);
+    fprintf(log_file, "%s,%f,%s\n", tag->name, timestamp, val_string);
     return 0;
 }

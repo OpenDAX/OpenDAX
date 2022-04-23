@@ -36,7 +36,7 @@ void
 dax_set_debug_topic(dax_state *ds, uint32_t topic)
 {
     ds->logflags = topic;
-    dax_debug(ds, LOG_MAJOR, "Log Topics Set to %d", ds->logflags);
+    dax_debug(ds, LOG_MAJOR, "Log Topics Set to 0x%X", ds->logflags);
 }
 
 /* Function for modules to set the debug message callback */
@@ -146,6 +146,7 @@ dax_fatal(dax_state *ds, const char *format, ...)
     }
     va_end(val);
     kill(getpid(), SIGQUIT);
+    exit(-1);
 }
 
 /* The following two functions are utility functions for converting dax
@@ -171,6 +172,7 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
     struct tm *tm;
     char tstr[16];
 
+    if(val==NULL) return ERR_EMPTY;
     switch (type) {
      /* Each number has to be cast to the right datatype then dereferenced */
         case DAX_BOOL:

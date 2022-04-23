@@ -1,12 +1,14 @@
 -- Example configuration file for the OpenDAX historical logging module
 
-plugin = "plugins/libdhl_file.so"
+plugin = "plugins/file/libdhl_file.so"
+
+directory = "logs"
 
 -- The add_tag() function adds a tag to be logged
 
 attrib = "fit=LINEAR"
 
-add_tag("TagName1", ABS_CHANGE, 0.5, attrib)
-add_tag("TagName2", PCT_CHANGE, 0.03, attrib)
-add_tag("TagName3", WRITE, 0, attrib)
+add_tag("tag1", CHANGE, 0.5, attrib)
+add_tag("tag2", CHANGE, 0.03, attrib)
+add_tag("tag3", WRITE, 0, attrib)
 

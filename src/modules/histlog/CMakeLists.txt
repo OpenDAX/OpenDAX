@@ -14,7 +14,10 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_executable(histlog_module histlog.c plugin.c histopts.c)
+add_executable(histlog_module histlog.c
+                              plugin.c
+                              histopts.c
+                              histutil.c)
 set_target_properties(histlog_module PROPERTIES OUTPUT_NAME histlog)
 target_link_libraries(histlog_module dax)
 target_link_libraries(histlog_module pthread)
