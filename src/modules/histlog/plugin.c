@@ -34,6 +34,7 @@ char * (*get_config)(const char *attr);
 tag_object *(*add_tag)(const char *tagname, uint32_t type, const char *attributes);
 int (*free_tag)(tag_object *tag);
 int (*write_data)(tag_object *tag, void *value, double timestamp);
+int (*flush_data)(void);
 
 /* Loads the dynamic library that represents the plugin, sets all of the
  * function pointers to the correct symbols in the library and runs init() */
@@ -55,6 +56,7 @@ plugin_load(char *file) {
     *(void **)(&add_tag) = dlsym(plugin, "add_tag");
     *(void **)(&free_tag) = dlsym(plugin, "free_tag");
     *(void **)(&write_data) = dlsym(plugin, "write_data");
+    *(void **)(&flush_data) = dlsym(plugin, "flush_data");
     return _init(ds);
 }
 

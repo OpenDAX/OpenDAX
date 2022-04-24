@@ -96,3 +96,10 @@ write_data(tag_object *tag, void *value, double timestamp) {
     fprintf(log_file, "%s,%f,%s\n", tag->name, timestamp, val_string);
     return 0;
 }
+
+int
+flush_data(void) {
+    fflush(log_file);
+    // TODO: Should also create new files and delete old files based on configuration here
+    return 0;
+}

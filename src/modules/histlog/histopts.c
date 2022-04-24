@@ -57,6 +57,7 @@ _add_tag(lua_State *L) {
     tag->trigger = trigger;
     tag->trigger_value = trigger_value;
     tag->attributes = attributes;
+    tag->cmpvalue = NULL;
     tag->lastvalue = NULL;
     tag->lasttimestamp = 0.0;
     tag->next = tag_list;

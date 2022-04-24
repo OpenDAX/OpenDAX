@@ -24,6 +24,10 @@
 #include <common.h>
 #include <opendax.h>
 
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+#define ABS(a)     (((a) < 0) ? -(a) : (a))
+
 typedef void tag_object;
 
 /* Linked list structure for the tags that we will be writing to the logger */
@@ -35,6 +39,7 @@ typedef struct tag_config {
     tag_object *tag;   /* plugin specific tag object */
     const char *attributes; /* string that represents plugin specific attributes */
     double trigger_value; /* value that the on change trigger uses for calculations */
+    void *cmpvalue;  /* This is the last value that was written (used for compare) */
     void *lastvalue; /* last value of the tag that we got from the tag server */
     double lasttimestamp; /* The timestamp of the last value we got from the tag server */
     struct tag_config *next;
@@ -58,5 +63,6 @@ extern char * (*get_config)(const char *attr);
 extern tag_object *(*add_tag)(const char *tagname, uint32_t type, const char *attributes);
 extern int (*free_tag)(tag_object *tag);
 extern int (*write_data)(tag_object *tag, void *value, double timestamp);
+extern int (*flush_data)(void);
 
 #endif

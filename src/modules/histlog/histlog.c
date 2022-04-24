@@ -19,6 +19,7 @@
  */
 
 #include <signal.h>
+#include <time.h>
 #include <opendax.h>
 
 #include "histlog.h"
@@ -29,6 +30,49 @@ static void getout(int exitstatus);
 dax_state *ds;
 static int _quitsignal;
 extern tag_config *tag_list;
+
+static int
+_test_difference(void *data1, void *data2, tag_type datatype, double threshold) {
+    switch(datatype) {
+        case DAX_BYTE:
+            if(ABS(*(dax_byte *)data1 - *(dax_byte *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_SINT:
+        case DAX_CHAR:
+            if(ABS(*(dax_sint *)data1 - *(dax_sint *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_UINT:
+        case DAX_WORD:
+            if(ABS(*(dax_dint *)data1 - *(dax_dint *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_INT:
+            if(ABS(*(dax_int *)data1 - *(dax_int *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_UDINT:
+        case DAX_DWORD:
+        case DAX_TIME:
+            if(ABS(*(dax_udint *)data1 - *(dax_udint *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_DINT:
+            if(ABS(*(dax_dint *)data1 - *(dax_dint *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_ULINT:
+        case DAX_LWORD:
+            if(ABS(*(dax_ulint *)data1 - *(dax_ulint *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_LINT:
+            if(ABS(*(dax_lint *)data1 - *(dax_lint *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_REAL:
+            if(ABS(*(dax_real *)data1 - *(dax_real *)data2) >= threshold) return 1;
+            else return 0;
+        case DAX_LREAL:
+            if(ABS(*(dax_lreal *)data1 - *(dax_lreal *)data2) >= threshold) return 1;
+            else return 0;
+    }
+    return 0;
+}
+
 
 static
 void _event_callback(dax_state *ds, void *udata) {
@@ -45,12 +89,40 @@ void _event_callback(dax_state *ds, void *udata) {
             return;
         }
     }
-    for(int i = 0; i<8;i++) printf("[%X]", buff[i]);
-    printf("\n");
+    /* This is where we decide how to store the tag.  If the trigger is WRITE then
+     * we simply store every value we get.  If the trigger is CHANGE then we do a calculation
+     * to see if it's changed enough according to the threshold that is stored.  If it has not
+     * changed enough to pass our threshold we store the value in the tag_config structure so
+     * that we always have the last value before the one we store.  If we have changed enough then
+     * we store that last value that we kept with it's timestamp and then store the current one
+     * with a right now timestamp.  Then we set the last timestamp to zero so that we can use it
+     * as an indicator not to do this again in case the very next update has also changed enough
+     * to trigger the write. */
     if(tag->trigger == ON_WRITE) {
         write_data(tag->tag, buff, hist_gettime());
     } else if(tag->trigger == ON_CHANGE) {
-        DF("change event %s", tag->name);
+        if(_test_difference(tag->cmpvalue, buff, tag->h.type, tag->trigger_value)) {
+            /* We have changed enough */
+            /* If lasttimestamp is not zero then that means that we have had some writes
+             * that hadn't changed enough. */
+            if(tag->lasttimestamp != 0) {
+                write_data(tag->tag, tag->lastvalue, tag->lasttimestamp);
+                /* This keeps us from duplicating data if we have enough change on
+                 * the next event.*/
+                tag->lasttimestamp = 0.0;
+            }
+            /* write the current data */
+            write_data(tag->tag, buff, hist_gettime());
+            /* store it for next time */
+            memcpy(tag->cmpvalue, buff, tag->h.size);
+        } else {
+            /* Not quite enough change */
+            /* We keep this value in case the next one we get has changed enough. Storing
+             * this value in the database along with the next one will make the curve fit
+             * more accurate */
+            memcpy(tag->lastvalue, buff, tag->h.size);
+            tag->lasttimestamp = hist_gettime();
+        }
     } else {
         DF("Bad Log Trigger");
     }
@@ -67,6 +139,7 @@ _add_tags(void) {
     tag_config *this;
     int failures = 0;
     dax_id id;
+    uint8_t buff[8];
 
     this = tag_list;
     while(this != NULL) {
@@ -74,26 +147,41 @@ _add_tags(void) {
             result = dax_tag_handle(ds, &this->h, this->name, 1);
             if(result == ERR_NOTFOUND) {
                 failures++;
-            } else if(result == 0) {
+            } else if(result == 0) { /* We found the tag so we can add it to the system */
+                this->status = 1; /* No matter what we don't mess with this tag again */
                 if(IS_CUSTOM(this->h.type)) {
                     dax_error(ds, "Tag custom datatypes are not supported - %s", this->name);
-                    this->status = 1; /* No sense in trying this again */
+                } else {
+                    this->tag = add_tag(this->name, this->h.type, this->attributes);
+                    /* Read the current tag data and write it to the plugin */
+                    result = dax_read_tag(ds, this->h, buff);
+                    if(result == 0) write_data(this->tag, buff, hist_gettime());
+                    else dax_error(ds, "Unable to read tag %s", this->name);
+                    if(this->trigger == ON_CHANGE) {
+                        /* Allocate the memory that we use to figure out and stored changed data */
+                        this->lastvalue = malloc(this->h.size);
+                        if(this->lastvalue != NULL) bzero(this->lastvalue, this->h.size);
+                        else dax_fatal(ds, "Unable to allocate memory for %s", this->name);
+                        /* Since cmpvalue is the value that we use to do the change comparison
+                         * we are going to allocate it and write it here */
+                        this->cmpvalue = malloc(this->h.size);
+                        if(this->cmpvalue != NULL) memcpy(this->cmpvalue, buff, this->h.size);
+                        else dax_fatal(ds, "Unable to allocate memory for %s", this->name);
+                    }
+
+                    result = dax_event_add(ds, &this->h, EVENT_WRITE, NULL, &id, _event_callback, this, _event_free);
+                    if(result) {
+                        dax_error(ds, "Unable to add event for tag %s", this->name);
+                    }
+                    result = dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
+                    if(result) {
+                        dax_error(ds, "Unable to set event to send data");
+                    }
                 }
-                this->tag = add_tag(this->name, this->h.type, this->attributes);
-                result = dax_event_add(ds, &this->h, EVENT_WRITE, NULL, &id, _event_callback, this, _event_free);
-                if(result) {
-                    dax_error(ds, "Unable to add event for tag %s", this->name);
-                }
-                result = dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
-                if(result) {
-                    dax_error(ds, "Unable to set event to send data");
-                }
-                this->status = 1;
             } else {
                 DF("Error %d", result);
             }
         }
-        //printf("tagname = %s\n", this->name);
         this = this->next;
     }
     return failures;
@@ -103,8 +191,10 @@ int
 main(int argc,char *argv[]) {
     struct sigaction sa;
     int result;
-    uint32_t loopcount = 0, interval = 5;
+    uint32_t loopcount = 0, interval = 1;
     int tag_failures = -1;
+    struct timespec ts;
+    time_t lasttime=0;
 
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
@@ -133,32 +223,36 @@ main(int argc,char *argv[]) {
     set_config("filename", "NameOfFile.csv");
     get_config("TestAttr");
 
-
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
     }
 
-
     /* Let's say we're running */
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+    lasttime = 0;
+
     while(1) {
+        clock_gettime(CLOCK_REALTIME, &ts);
+        if(ts.tv_sec > lasttime + 10) { /* Every 10 seconds */
+            if(tag_failures && loopcount % interval == 0) {
+                tag_failures = _add_tags();
+                interval += 1; /* Add 10 seconds to interval */
+                if(interval > 12) interval=120; /* 2 minutes max */
+            }
+            flush_data();
+            lasttime = ts.tv_sec;
+            loopcount++;
+        }
         /* The first time through and as long as we have some unfound tags
          * we'll keep looping through the list to add them to the system. */
-        if(tag_failures && loopcount % interval == 0) {
-            tag_failures = _add_tags();
-            interval *= 2; /* Double the time that we do this again */
-            if(interval > 120) interval=120; /* 2 minutes max */
-        }
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
             dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
         dax_event_wait(ds, 1000, NULL);
-        loopcount++;
     }
-
  /* This is just to make the compiler happy */
     return(0);
 }
@@ -172,6 +266,8 @@ quit_signal(int sig) {
 /* We call this function to exit the program */
 static void
 getout(int exitstatus) {
+    // TODO: Write NULLs to the database */
+    flush_data();
     dax_disconnect(ds);
     exit(exitstatus);
 }

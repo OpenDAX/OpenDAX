@@ -8,7 +8,6 @@ directory = "logs"
 
 attrib = "fit=LINEAR"
 
-add_tag("tag1", CHANGE, 0.5, attrib)
-add_tag("tag2", CHANGE, 0.03, attrib)
-add_tag("tag3", WRITE, 0, attrib)
+add_tag("tag1", CHANGE, 10.0, attrib)
+add_tag("tag2", WRITE, 0.03, attrib)
 
