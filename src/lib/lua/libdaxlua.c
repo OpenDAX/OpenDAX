@@ -284,7 +284,7 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
 {
     int n, bit;
     size_t len;
-    char *s;
+    const char *s;
 
     if(tag.count > 1) { /* The tag is an array */
         if(lua_isstring(L, -1)) {
@@ -477,13 +477,35 @@ static int
 _dax_init(lua_State *L)
 {
     char *modulename;
+    int n, len;
+    int argc;
+    char **argv;
+    char *key;
+    char *value;
+
     modulename = (char *)lua_tostring(L, 1);
     if(modulename == NULL) {
         luaL_error(L, "Module name not given");
     }
-    /* TODO: Transfer the Lua 'arg' table to these variables */
-    int argc = 1;
-    char *argv[] = {modulename};
+    /* Get the global Lua table 'arg' and assign all of the values in that
+     * table to argv */
+    lua_getglobal(L, "arg");
+    lua_len(L, -1);
+    len = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    argv = malloc(sizeof(char *) * (len+1));
+    argc = len+1;
+    if(argv == NULL) {
+        luaL_error(L, "Failed to allocate memory for command line arguments");
+    }
+    argv[0] = strdup(modulename);
+    for(n=1;n<=len;n++) {
+        lua_rawgeti(L, -1, n);
+        argv[n]=strdup(lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1); /* pop the 'arg' table */
 
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init(modulename);
@@ -493,14 +515,34 @@ _dax_init(lua_State *L)
 
     /* Create and initialize the configuration subsystem in the library */
     dax_init_config(ds, modulename);
-    /* We don't really do any custom configuration at this point */
+
+    /* If we have been given a second argument which is a table to configuration
+     * attributes that we want to set */
+    if(lua_gettop(L) > 1) {
+        if(! lua_istable(L, 2)) {
+            luaL_error(L, "Second argument should be a table");
+        }
+        lua_pushnil(L);  /* first key */
+        while (lua_next(L, 2) != 0) {
+            /* copy the key so that we don't mess it up */
+            lua_pushvalue(L, -2);
+            key = (char *)lua_tostring(L, -1);
+            value = (char *)lua_tostring(L, -2);
+            dax_set_attr(ds, key, value);
+            /* removes 'value' and our key copy; keeps original 'key' for next iteration */
+            lua_pop(L, 2);
+        }
+    }
 
     /* Execute the configuration */
     dax_configure(ds, argc, argv, CFG_CMDLINE);
 
     /* Free the configuration data */
     dax_free_config (ds);
-
+    for(n=0;n<=len;n++) {
+        free(argv[n]);
+    }
+    free(argv);
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         luaL_error(L, "Unable to find OpenDAX Server");
@@ -579,11 +621,6 @@ _cdt_create(lua_State *L)
     return 1;
 }
 
-
-// static void
-// _print_cdt_callback(cdt_iter iter, void *udata) {
-//
-// }
 
 
 /* Adds a tag to the dax tagbase.  Three arguments...
@@ -753,14 +790,7 @@ _tag_write(lua_State *L) {
         hp = luaL_checkudata(L, 1, "OpenDAX.handle");
     } else {
         name = (char *)lua_tostring(L, 1);
-        //printf("Getting Handle for %s\n", name);
         result = dax_tag_handle(ds, &h, name, 0);
-    //    printf("h.index = %d\n", h.index);
-    //    printf("h.byte = %d\n", h.byte);
-    //    printf("h.bit = %d\n", h.bit);
-    //    printf("h.size = %d\n", h.size);
-    //    printf("h.count = %d\n", h.count);
-    //    printf("h.type = %s\n", dax_type_to_string(h.type));
         if(result) {
             luaL_error(L, "dax_tag_handle() returned %d", result);
         }
@@ -796,10 +826,8 @@ _tag_write(lua_State *L) {
         }
     }
     if(q) {
-        //printf("call dax_mask_tag()\n");
         result = dax_mask_tag(ds, *hp, data, mask);
     } else {
-        //printf("call dax_write_tag()\n");
         result = dax_write_tag(ds, *hp, data);
     }
 
@@ -1129,7 +1157,9 @@ static const struct luaL_Reg daxlib[] = {
     {"tag_get", _tag_get},
     {"tag_handle", _tag_handle},
     {"tag_read", _tag_read},
+    {"read", _tag_read},
     {"tag_write", _tag_write},
+    {"write", _tag_write},
     {"tag_del", _tag_del},
     {"event_add", _event_add},
     {"event_del", _event_del},
@@ -1145,6 +1175,9 @@ static const struct luaL_Reg daxlib[] = {
  *   map_add
  *   map_get
  *   map_del
+ *   atomic operations
+ *   overrides
+ *   groups
  */
 
 /* This registers all of the functions that are defined in the above array
