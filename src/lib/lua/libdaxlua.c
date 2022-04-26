@@ -80,6 +80,15 @@ _read_to_stack(lua_State *L, tag_type type, void *buff)
     }
 }
 
+static void
+_push_string(lua_State *L, cdt_iter tag, void *data) {
+    char s[tag.count+1];
+
+    memcpy(s, data, tag.count);
+    s[tag.count] = '\0';
+    lua_pushstring(L, s);
+}
+
 
 static void
 _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
@@ -110,10 +119,14 @@ _push_base_datatype(lua_State *L, cdt_iter tag, void *data)
     } else { /* Not a boolean */
         /* Push the data up to the lua interpreter stack */
         if(tag.count > 1) { /* We need to return a table */
-            lua_createtable(L, tag.count, 0);
-            for(n = 0; n < tag.count ; n++) {
-                _read_to_stack(L, tag.type, data + (TYPESIZE(tag.type) / 8) * n);
-                lua_rawseti(L, -2, n + 1); /* Lua likes 1 indexed arrays */
+            if(tag.type == DAX_CHAR) { /* Treat a CHAR array as a string */
+                _push_string(L, tag, data);
+            } else {
+                lua_createtable(L, tag.count, 0);
+                for(n = 0; n < tag.count ; n++) {
+                    _read_to_stack(L, tag.type, data + (TYPESIZE(tag.type) / 8) * n);
+                    lua_rawseti(L, -2, n + 1); /* Lua likes 1 indexed arrays */
+                }
             }
         } else { /* It's a single value */
             _read_to_stack(L, tag.type, data);
@@ -270,52 +283,51 @@ int
 _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
 {
     int n, bit;
+    size_t len;
+    char *s;
 
-    //printf("_pop_base_datatype() called with *data = %p\n", data);
     if(tag.count > 1) { /* The tag is an array */
-        /* Check that the second parameter is a table */
-        if( ! lua_istable(L, -1) ) {
-            lua_pushfstring(L, "Table needed to set - %s", tag.name);
-            return -1;
-        }
-        /* We're just searching for indexes in the table.  Anything
-         * other than numerical indexes in the table don't count */
-        for(n = 0; n < tag.count; n++) {
-            lua_rawgeti(L, -1, n + 1);
-            if(! lua_isnil(L, -1)) {
-                if(tag.type == DAX_BOOL) {
-                    /* Handle the boolean */
-                    bit = n + tag.bit;
-                    if(lua_toboolean(L, -1)) {
-                        ((uint8_t *)data)[bit/8] |= (1 << (bit % 8));
-                    } else {  /* If the bit in the buffer is not set */
-                        ((uint8_t *)data)[bit/8] &= ~(1 << (bit % 8));
-                    }
-                    ((uint8_t *)mask)[bit/8] |= (1 << (bit % 8));
-                } else {
-                    /* Handle the non-boolean */
-                    _write_from_stack(L, tag.type, data, mask, n);
-                }
+        if(lua_isstring(L, -1)) {
+            s = lua_tolstring(L, -1, &len);
+            memcpy(data, s, tag.count<len ? tag.count : len);
+            memset(mask, 0xFF, tag.count); /* Change it all */
+        } else {
+            /* Check that the second parameter is a table */
+            if( ! lua_istable(L, -1) ) {
+                lua_pushfstring(L, "Table needed to set - %s", tag.name);
+                return -1;
             }
-            lua_pop(L, 1);
+            /* We're just searching for indexes in the table.  Anything
+             * other than numerical indexes in the table don't count */
+            for(n = 0; n < tag.count; n++) {
+                lua_rawgeti(L, -1, n + 1);
+                if(! lua_isnil(L, -1)) {
+                    if(tag.type == DAX_BOOL) {
+                        /* Handle the boolean */
+                        bit = n + tag.bit;
+                        if(lua_toboolean(L, -1)) {
+                            ((uint8_t *)data)[bit/8] |= (1 << (bit % 8));
+                        } else {  /* If the bit in the buffer is not set */
+                            ((uint8_t *)data)[bit/8] &= ~(1 << (bit % 8));
+                        }
+                        ((uint8_t *)mask)[bit/8] |= (1 << (bit % 8));
+                    } else {
+                        /* Handle the non-boolean */
+                        _write_from_stack(L, tag.type, data, mask, n);
+                    }
+                }
+                lua_pop(L, 1);
+            }
         }
     } else { /* Retrieved tag is a single point */
         if(tag.type == DAX_BOOL) {
             bit = tag.bit;
-//            printf("tag.bit = %d \n", tag.bit);
-//            printf("Before Data[%d] = 0x%X\n", bit/8, ((uint8_t *)data)[bit/8]);
-//            printf("Before Mask[%d] = 0x%X\n", bit/8, ((uint8_t *)mask)[bit/8]);
             if(lua_toboolean(L, -1)) {
-//                printf("set to TRUE\n");
                 ((uint8_t *)data)[bit/8] |= (1 << (bit % 8));
             } else {  /* If the bit in the buffer is not set */
-//                printf("set to FALSE\n");
                 ((uint8_t *)data)[bit/8] &= ~(1 << (bit % 8));
             }
             ((uint8_t *)mask)[bit/8] |= (1 << (bit % 8));
-//            printf("After Data[%d] = 0x%X\n", bit/8, ((uint8_t *)data)[bit/8]);
-//            printf("After Mask[%d] = 0x%X\n", bit/8, ((uint8_t *)mask)[bit/8]);
-
         } else {
             _write_from_stack(L, tag.type, data, mask, 0);
         }
@@ -435,7 +447,7 @@ _get_tag_from_lua(lua_State *L, tag_handle h, void* data, void *mask){
                     return udata.error;
                 }
             }
-        } else {
+        } else { /* Only one CDT */
             udata.data = data;
             udata.mask = mask;
             if(! lua_isnil(L, -1)) {
@@ -449,7 +461,7 @@ _get_tag_from_lua(lua_State *L, tag_handle h, void* data, void *mask){
                 return udata.error;
             }
         }
-    } else {
+    } else { /* Base data type */
         tag.count = h.count;
         tag.type = h.type;
         tag.byte = 0;
