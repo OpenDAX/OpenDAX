@@ -43,36 +43,36 @@ _read_to_stack(lua_State *L, tag_type type, void *buff)
         /* Each number has to be cast to the right datatype then dereferenced
            and then cast to double for pushing into the Lua stack */
         case DAX_BYTE:
-            lua_pushnumber(L, (double)*((dax_byte *)buff));
+            lua_pushinteger(L, (lua_Integer)*((dax_byte *)buff));
             break;
         case DAX_SINT:
         case DAX_CHAR:
-            lua_pushnumber(L, (double)*((dax_sint *)buff));
+            lua_pushinteger(L, (lua_Integer)*((dax_sint *)buff));
             break;
         case DAX_WORD:
         case DAX_UINT:
-            lua_pushnumber(L, (double)*((dax_uint *)buff));
+            lua_pushinteger(L, (lua_Integer)*((dax_uint *)buff));
             break;
         case DAX_INT:
-            lua_pushnumber(L, (double)*((dax_int *)buff));
+            lua_pushinteger(L, (lua_Integer)*((dax_int *)buff));
             break;
         case DAX_DWORD:
         case DAX_UDINT:
-            lua_pushnumber(L, (double)*((dax_udint *)buff));
+            lua_pushinteger(L, (lua_Integer)*((dax_udint *)buff));
             break;
         case DAX_DINT:
-            lua_pushnumber(L, (double)*((dax_dint *)buff));
+            lua_pushinteger(L, (lua_Integer)*((dax_dint *)buff));
             break;
         case DAX_REAL:
-            lua_pushnumber(L, (double)*((dax_real *)buff));
+            lua_pushnumber(L, (lua_Integer)*((dax_real *)buff));
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            lua_pushnumber(L, (double)*((dax_ulint *)buff));
+            lua_pushnumber(L, (lua_Integer)*((dax_ulint *)buff));
             break;
         case DAX_TIME:
         case DAX_LINT:
-            lua_pushnumber(L, (double)*((dax_lint *)buff));
+            lua_pushinteger(L, (lua_Integer)*((dax_lint *)buff));
             break;
         case DAX_LREAL:
             lua_pushnumber(L, *((dax_lreal *)buff));
@@ -1146,12 +1146,8 @@ int
 luaopen_dax (lua_State *L)
 {
     luaL_newmetatable(L, "OpenDAX.handle");
-#ifdef LUA_5_1
-    char *modulename = (char *)lua_tostring(L, 1);
-    luaL_register(L, modulename, daxlib);
-#else
+
     luaL_newlib(L, daxlib);
-#endif
 
     return 1;
 }
