@@ -24,21 +24,55 @@
 
 #include <dhl_file.h>
 
-static const char *log_directory;
-static FILE *log_file;
+static dax_state *ds;
+static tag_handle rotate_handle;
 
-int
-init(dax_state *ds) {
-    int result;
-    lua_State *L;
+static const char *log_directory;
+static char *rotate_tag;
+static FILE *log_file;
+static int rotate_flag;
+
+static double (*_gettime)(void);
+
+static void
+_rotate_callback(dax_state *_ds, void *udata) {
+    rotate_flag = 1;
+}
+
+static void
+_open_file(void) {
     char filename[256]; /* Should probably allocate this */
 
+    snprintf(filename, 256, "%s/dax_%f.log", log_directory, _gettime());
+    log_file = fopen(filename, "a");
+}
+
+int
+init(dax_state *_ds) {
+    int result;
+    lua_State *L;
+    const char *s;
+
+    ds = _ds;
     L = dax_get_luastate(ds);
     lua_getglobal(L, "directory");
-    log_directory = lua_tostring(L, -1);
-    if(log_directory == NULL) {
+    s = lua_tostring(L, -1);
+    if(s == NULL) {
         log_directory = "logs";
+    } else {
+        log_directory = strdup(s);
     }
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "rotate_tag");
+    s = lua_tostring(L, -1);
+    if(s == NULL) {
+        rotate_tag = "hist_rotate";
+    } else {
+        rotate_tag = strdup(s);
+    }
+    lua_pop(L, 1);
+
     DIR* dir = opendir(log_directory);
     if (dir) {
         /* Directory exists. */
@@ -51,20 +85,8 @@ init(dax_state *ds) {
     } else {
         dax_error(ds, "%s", strerror(errno));
     }
-    snprintf(filename, 256, "%s/somereallylongdatetimething.daxlog", log_directory);
-    log_file = fopen(filename, "a");
+    _open_file();
     return 0;
-}
-
-int
-set_config(const char *attr, char *value) {
-    fprintf(stderr, "Set attribute %s = %s\n", attr, value);
-    return 0;
-}
-char *
-get_config(const char *attr) {
-    fprintf(stderr, "Get attribute %s\n", attr);
-    return "OK";
 }
 
 
@@ -81,6 +103,7 @@ add_tag(const char *tagname, uint32_t type, const char *attributes) {
     return tag;
 }
 
+
 int
 free_tag(tag_object *tag) {
     free((void *)tag->name);
@@ -88,18 +111,54 @@ free_tag(tag_object *tag) {
     return 0;
 }
 
+
 int
 write_data(tag_object *tag, void *value, double timestamp) {
     char val_string[256];
 
-    dax_val_to_string(val_string, 256, tag->type, value, 0);
-    fprintf(log_file, "%s,%f,%s\n", tag->name, timestamp, val_string);
+    if(value == NULL) {
+        fprintf(log_file, "%s,%f,NULL\n", tag->name, timestamp);
+    } else {
+        dax_val_to_string(val_string, 256, tag->type, value, 0);
+        fprintf(log_file, "%s,%f,%s\n", tag->name, timestamp, val_string);
+    }
     return 0;
+}
+
+static void
+_add_tags(void) {
+    int result;
+
+    result = dax_tag_add(ds, &rotate_handle, rotate_tag, DAX_BOOL, 1, 0);
+    if(result) {
+        dax_error(ds, "Unable to add file rotation tag %s", rotate_tag);
+    } else {
+        result=  dax_event_add(ds, &rotate_handle, EVENT_SET, NULL, NULL, _rotate_callback, NULL, NULL);
+    }
 }
 
 int
 flush_data(void) {
+    static int firstrun = 1;
+
+    if(firstrun) {
+        _add_tags();
+        firstrun = 0;
+    }
+    if(rotate_flag) {
+        dax_sint val = 0;
+        DF("rotate");
+        fclose(log_file);
+        _open_file();
+        dax_write_tag(ds, rotate_handle, &val); /* reset the command */
+        rotate_flag = 0;
+    }
     fflush(log_file);
     // TODO: Should also create new files and delete old files based on configuration here
     return 0;
+}
+
+void
+set_timefunc(double (*f)(void)) {
+    _gettime=f;
 }

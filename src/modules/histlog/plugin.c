@@ -29,12 +29,11 @@ static void *plugin;
 extern dax_state *ds;
 
 static int (*_init)(dax_state *ds);
-int (*set_config)(const char *attr, char *value);
-char * (*get_config)(const char *attr);
 tag_object *(*add_tag)(const char *tagname, uint32_t type, const char *attributes);
 int (*free_tag)(tag_object *tag);
 int (*write_data)(tag_object *tag, void *value, double timestamp);
 int (*flush_data)(void);
+void (*set_timefunc)(double (*f)(void));
 
 /* Loads the dynamic library that represents the plugin, sets all of the
  * function pointers to the correct symbols in the library and runs init() */
@@ -51,12 +50,12 @@ plugin_load(char *file) {
     }
     /* TODO: Check these for errors and deal appropriately */
     *(void **)(&_init) = dlsym(plugin, "init");
-    *(void **)(&set_config) = dlsym(plugin, "set_config");
-    *(void **)(&get_config) = dlsym(plugin, "get_config");
     *(void **)(&add_tag) = dlsym(plugin, "add_tag");
     *(void **)(&free_tag) = dlsym(plugin, "free_tag");
     *(void **)(&write_data) = dlsym(plugin, "write_data");
     *(void **)(&flush_data) = dlsym(plugin, "flush_data");
+    *(void **)(&set_timefunc) = dlsym(plugin, "set_timefunc");
+    set_timefunc(hist_gettime);
     return _init(ds);
 }
 

@@ -31,35 +31,28 @@ static int
 _add_tag(lua_State *L) {
     int arg_count;
     tag_config *tag;
-    const char *tagname;
-    uint32_t trigger;
-    double trigger_value;
-    const char *attributes;
 
     arg_count = lua_gettop(L);
-    if(arg_count < 3) {
-        luaL_error(L, "add_tag() - Must have at least three arguments");
+    if(arg_count < 5) {
+        luaL_error(L, "add_tag() - Must have at least five arguments");
         return 0;
     }
-    tagname = lua_tolstring(L, 1, NULL);
-    trigger = lua_tointeger(L, 2);
-    trigger_value = lua_tonumber(L, 3);
-    if(arg_count >= 4) {
-        attributes = lua_tolstring(L, 4, NULL);
-    }
+
     tag = malloc(sizeof(tag_config));
     if(tag == NULL) {
         luaL_error(L, "Unable to allocate tag configuration object");
         return 0;
     }
-    tag->name = strdup(tagname);
+    tag->name = strdup(lua_tolstring(L, 1, NULL));
     tag->status = 0;
-    tag->trigger = trigger;
-    tag->trigger_value = trigger_value;
-    tag->attributes = attributes;
+    tag->trigger = lua_tointeger(L, 2);
+    tag->trigger_value = lua_tonumber(L, 3);
+    tag->timeout = lua_tonumber(L, 4);
+    tag->attributes = strdup(lua_tolstring(L, 5, NULL));
     tag->cmpvalue = NULL;
     tag->lastvalue = NULL;
     tag->lasttimestamp = 0.0;
+    tag->lastgood = 1;
     tag->next = tag_list;
     /* Cheese it onto the list backwards*/
     tag_list = tag;
@@ -79,12 +72,13 @@ histlog_configure(int argc,char *argv[]) {
 
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "plugin","plugin", 'p', flags, NULL);
+    result += dax_add_attribute(ds, "flush_interval","flush", 'f', flags, NULL);
     L = dax_get_luastate(ds);
 
     /* Add globals to the Lua Configuration State. */
     /* Recording Triggers */
     lua_pushinteger(L, ON_CHANGE);  lua_setglobal(L, "CHANGE");
-    lua_pushinteger(L, ON_WRITE);  lua_setglobal(L, "WRITE");
+    lua_pushinteger(L, ON_WRITE);   lua_setglobal(L, "WRITE");
 
     dax_set_luafunction(ds, (void *)_add_tag, "add_tag");
 
