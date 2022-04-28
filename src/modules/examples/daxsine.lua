@@ -76,6 +76,6 @@ while true do
     for k, tag in pairs(tags) do
         calc(tag[6], tag[2], tag[3], tag[4], tag[5])
     end
-    dax.sleep(10)
+    dax.sleep(100)
     x = x + 1
 end

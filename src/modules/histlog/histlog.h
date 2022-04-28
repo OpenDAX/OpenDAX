@@ -37,11 +37,13 @@ typedef struct tag_config {
     tag_handle h;
     uint32_t trigger;  /* What triggers a write to the logger plugin */
     tag_object *tag;   /* plugin specific tag object */
+    double timeout;    /* length of time that we expect to see tag updates from server */
     const char *attributes; /* string that represents plugin specific attributes */
     double trigger_value; /* value that the on change trigger uses for calculations */
     void *cmpvalue;  /* This is the last value that was written (used for compare) */
     void *lastvalue; /* last value of the tag that we got from the tag server */
-    double lasttimestamp; /* The timestamp of the last value we got from the tag server */
+    double lasttimestamp; /* The timestamp of the .lastvalue */
+    int lastgood;         /* A flag to tell us that we wrote the last value to the database */
     struct tag_config *next;
 } tag_config;
 
@@ -58,8 +60,6 @@ int histlog_configure(int argc,char *argv[]);
 int plugin_load(char *file);
 
 /* These functions should be implemented in the plugin library */
-extern int (*set_config)(const char *attr, char *value);
-extern char * (*get_config)(const char *attr);
 extern tag_object *(*add_tag)(const char *tagname, uint32_t type, const char *attributes);
 extern int (*free_tag)(tag_object *tag);
 extern int (*write_data)(tag_object *tag, void *value, double timestamp);

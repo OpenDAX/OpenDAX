@@ -22,7 +22,6 @@
 #include "../modtest_common.h"
 
 int main() {
-    int result;
     int status;
     pid_t mpid, spid;
     int fin, fout, ferr;

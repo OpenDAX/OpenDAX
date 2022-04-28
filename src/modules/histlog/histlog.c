@@ -29,6 +29,7 @@ static void getout(int exitstatus);
 
 dax_state *ds;
 static int _quitsignal;
+static unsigned int _flush_interval;
 extern tag_config *tag_list;
 
 static int
@@ -79,6 +80,7 @@ void _event_callback(dax_state *ds, void *udata) {
     tag_config *tag = (tag_config *)udata;
     uint8_t buff[8];
     int result;
+    double now = hist_gettime();
 
     result = dax_event_get_data(ds, buff, 8);
     if(result<0) {
@@ -88,6 +90,20 @@ void _event_callback(dax_state *ds, void *udata) {
             dax_error(ds, "Unable to read tag: %s", tag->name);
             return;
         }
+    }
+    /* Check if we are old */
+    if(tag->timeout > 0.0 && (now - tag->lasttimestamp) > tag->timeout) {
+        /* Write a NULL 'timeout' seconds in the past */
+        write_data(tag->tag, NULL, now-tag->timeout);
+        /* Write the current value */
+        write_data(tag->tag, buff, now);
+        if(tag->trigger == ON_CHANGE) {
+            memcpy(tag->lastvalue, buff, tag->h.size);
+            memcpy(tag->cmpvalue, buff, tag->h.size);
+            tag->lastgood = 1;
+        }
+        tag->lasttimestamp = now;
+        return;
     }
     /* This is where we decide how to store the tag.  If the trigger is WRITE then
      * we simply store every value we get.  If the trigger is CHANGE then we do a calculation
@@ -103,16 +119,16 @@ void _event_callback(dax_state *ds, void *udata) {
     } else if(tag->trigger == ON_CHANGE) {
         if(_test_difference(tag->cmpvalue, buff, tag->h.type, tag->trigger_value)) {
             /* We have changed enough */
-            /* If lasttimestamp is not zero then that means that we have had some writes
+            /* If lastgood is false then that means that we have had some writes
              * that hadn't changed enough. */
-            if(tag->lasttimestamp != 0) {
+            if(! tag->lastgood) {
                 write_data(tag->tag, tag->lastvalue, tag->lasttimestamp);
                 /* This keeps us from duplicating data if we have enough change on
                  * the next event.*/
-                tag->lasttimestamp = 0.0;
+                tag->lastgood = 1;
             }
             /* write the current data */
-            write_data(tag->tag, buff, hist_gettime());
+            write_data(tag->tag, buff, now);
             /* store it for next time */
             memcpy(tag->cmpvalue, buff, tag->h.size);
         } else {
@@ -121,11 +137,14 @@ void _event_callback(dax_state *ds, void *udata) {
              * this value in the database along with the next one will make the curve fit
              * more accurate */
             memcpy(tag->lastvalue, buff, tag->h.size);
-            tag->lasttimestamp = hist_gettime();
+            /* This tells the above code that we'll have to write the last value on the next
+             * change */
+            tag->lastgood = 0;
         }
     } else {
         DF("Bad Log Trigger");
     }
+    tag->lasttimestamp = now;
 }
 
 static
@@ -153,6 +172,8 @@ _add_tags(void) {
                     dax_error(ds, "Tag custom datatypes are not supported - %s", this->name);
                 } else {
                     this->tag = add_tag(this->name, this->h.type, this->attributes);
+                    /* Write a NULL to signify that we were down */
+                    write_data(this->tag, NULL, hist_gettime());
                     /* Read the current tag data and write it to the plugin */
                     result = dax_read_tag(ds, this->h, buff);
                     if(result == 0) write_data(this->tag, buff, hist_gettime());
@@ -220,9 +241,8 @@ main(int argc,char *argv[]) {
     if(result) {
         dax_fatal(ds, "Unable to load a plugin");
     }
-    set_config("filename", "NameOfFile.csv");
-    get_config("TestAttr");
-
+    _flush_interval = (unsigned int)strtol(dax_get_attr(ds, "flush_interval"), NULL, 0);
+    DF("flush interval set to %d", _flush_interval);
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");
@@ -234,11 +254,11 @@ main(int argc,char *argv[]) {
 
     while(1) {
         clock_gettime(CLOCK_REALTIME, &ts);
-        if(ts.tv_sec > lasttime + 10) { /* Every 10 seconds */
+        if(ts.tv_sec > lasttime + _flush_interval) {
             if(tag_failures && loopcount % interval == 0) {
                 tag_failures = _add_tags();
-                interval += 1; /* Add 10 seconds to interval */
-                if(interval > 12) interval=120; /* 2 minutes max */
+                interval += 1;
+                if(interval > 12) interval=12;
             }
             flush_data();
             lasttime = ts.tv_sec;
@@ -266,7 +286,16 @@ quit_signal(int sig) {
 /* We call this function to exit the program */
 static void
 getout(int exitstatus) {
-    // TODO: Write NULLs to the database */
+    tag_config *this;
+    double time_now;
+
+    /* Write NULLs to the database */
+    time_now = hist_gettime();
+    this = tag_list;
+    while(this != NULL) {
+        write_data(this->tag, NULL, time_now);
+        this = this->next;
+    }
     flush_data();
     dax_disconnect(ds);
     exit(exitstatus);

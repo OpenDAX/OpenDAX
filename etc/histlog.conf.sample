@@ -1,13 +1,48 @@
 -- Example configuration file for the OpenDAX historical logging module
 
+
+-- Text File Plugin
+-------------------
 plugin = "plugins/file/libdhl_file.so"
+directory = "datalogs"
+rotate_tag = "hr"
 
-directory = "logs"
+-- SQLite Plugin
+----------------
+-- plugin = "plugins/sqlite/libdhl_sqlite.so"
+-- filename = "DBName"
 
--- The add_tag() function adds a tag to be logged
+-- Global Parameters
+flush_interval = 10  -- interval in seconds between plugin maintenance/flush calls
 
+
+-- tag attribute list
 attrib = "fit=LINEAR"
 
-add_tag("tag1", CHANGE, 10.0, attrib)
-add_tag("tag2", WRITE, 0.03, attrib)
+--[[
+   The add_tag() function adds a tag to be logged
+
+ * The first argument is the tagname within the tag server.  This should
+   resolve to a single base type tag.
+
+ * The second argument is the trigger type.  WRITE means that it will
+   be stored in the database each time it has been written to the tag server.
+   CHANGE means that the tag will be written if it has changed by an
+   absolute value given
+
+ * The third argument is the value of the CHANGE trigger comparison.  It is
+   ignored for WRITE triggers
+
+ * The fourth argument is the timeout of this tag.  If a gap of time greater
+   than this is found between tag server write events, a NULL will be written
+   to the database to indicate a potential gap in the data. 0.0 bypasses
+   this feature
+
+ * The fifth argument is a string that will be passed to the plugin.  It should
+   be a "key=value" type string with attributes separated by ','s
+]]--
+add_tag("tag1", CHANGE, 10.0, 0.0, attrib)
+add_tag("tag2", WRITE, 0.03, 1.0, attrib)
+add_tag("tag3", CHANGE, 1, 1.0, attrib)
+add_tag("tag4", CHANGE, 1, 1.0, attrib)
 
