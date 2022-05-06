@@ -32,4 +32,4 @@
 pid_t run_server(void);
 pid_t run_module(const char *modpath, const char *modconf);
 pid_t run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, const char *modconf);
-int expect(int fd, char *str, int timeout);
+char *expect(int fd, char *str, int timeout);
