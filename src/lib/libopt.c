@@ -230,7 +230,6 @@ dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, ch
 /* This function sets the value and calls the callback function. */
 static int
 _set_attr(optattr *attr, char *value) {
-    //--printf("_set_attr() called to set %s to %s\n", attr->name, value);
     /* Set the value and call the callback function if there is one */
     if( !(attr->flags & CFG_NO_VALUE) ) {
         if(attr->flags & (CFG_ARG_OPTIONAL | CFG_ARG_REQUIRED)) {
@@ -239,7 +238,6 @@ _set_attr(optattr *attr, char *value) {
             attr->value = "Yes";
         }
     }
-    //--printf("%s was set to %s\n", attr->name, attr->value);
     if(attr->callback) {
         attr->callback(attr->name, value);
     }
@@ -585,4 +583,5 @@ opt_lua_init_func(dax_state *ds) {
         }
     }
     lua_pop(ds->L, 1);
+    return 0;
 }

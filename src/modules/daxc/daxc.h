@@ -22,6 +22,11 @@
 #include <opendax.h>
 #include <signal.h>
 
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+#define ABS(a)     (((a) < 0) ? -(a) : (a))
+
+
 /* This is the maximum number of events that we can store. */
 #define MAX_EVENTS 64
 #define LINE_BUFF_SIZE 256

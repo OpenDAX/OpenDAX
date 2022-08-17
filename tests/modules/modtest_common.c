@@ -22,9 +22,20 @@
 
 #include <string.h>
 #include <poll.h>
+#include <time.h>
 #include "modtest_common.h"
 
-#define BUFF_LEN 512
+#define BUFF_LEN 1024
+
+static char _before[BUFF_LEN];
+
+double
+_gettime(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (double)(ts.tv_nsec/1e9 + ts.tv_sec);
+}
+
 
 pid_t
 run_server(void) {
@@ -106,22 +117,52 @@ run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, 
 }
 
 
-int
+char *
 expect(int fd, char *str, int timeout) {
     struct pollfd fds;
-    int result;
+    int result, nexttime;
+    char *check;
     char buffer[BUFF_LEN];
+    double start = _gettime();
+    double diff;
+    int index = 0;
 
     bzero(buffer, BUFF_LEN);
     fds.fd = fd;
     fds.events = POLLIN;
-
-    result = poll(&fds, 1, timeout);
-    if(result == 1) {
-        result = read(fd, buffer, BUFF_LEN);
-        return strncmp(buffer, str, strlen(str));
-    } else {
-        return -1;
+    nexttime = timeout;
+    while(1) {
+        result = poll(&fds, 1, nexttime);
+        if(result == 1) {
+            result = read(fd, &buffer[index], 1);
+            check = strstr(buffer, str);
+            if(check == NULL) {
+                diff = (_gettime() - start) * 1000;
+                if(diff > timeout) {
+                    return NULL;
+                } else {
+                    nexttime = timeout - diff;
+                    index += result;
+                    assert(index < BUFF_LEN);
+                }
+            } else {
+                bzero(_before, BUFF_LEN);
+                int len = index - strlen(str)+1;
+                if(len > 0) {
+                    strncpy(_before, buffer, len);
+                }
+                return check;
+            }
+        } else {
+            return NULL;
+        }
     }
-    return -1;
+    return NULL;
 }
+
+char *
+before(void) {
+    return _before;
+}
+
+
