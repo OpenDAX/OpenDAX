@@ -180,11 +180,13 @@ _server_listen(mb_port *port)
     addr.sin_addr.s_addr = inet_addr(port->ipaddress);
 
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
-    	fprintf(stderr, "Failed to bind\n");
+        fprintf(stderr, "Failed to bind %s:%d\n", port->ipaddress, port->bindport);
+        close(fd);
         return -1;
     }
     if(listen(fd, 5) < 0) {
-    	fprintf(stderr, "Failed to listen\n");
+        fprintf(stderr, "Failed to listen%s:%d\n", port->ipaddress, port->bindport);
+        close(fd);
         return -1;
     }
     /* We store this fd so that we know what socket we are listening on */
