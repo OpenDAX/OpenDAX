@@ -26,6 +26,12 @@
 int fin, fout, ferr;
 dax_state *ds;
 
+char *_badnames[] =  {"_Tag", "1Tag", "-Tag", "Tag-name", "Tag&name", "Tag+name", "tag/name",
+                    "tag*name", "TAG?NAME", "TagNameIsWayTooLong12345678912345", NULL};
+
+char *_goodnames[] = {"Tag1", "tAg_name", "t1Ag_name", "TagNameIsBarelyLongEnoughToFit12", NULL};
+
+
 static int
 _add_tag(char *name, char *type, unsigned int count) {
     char s[256];
@@ -60,8 +66,31 @@ _check_tag(char *name, tag_type type, unsigned int count) {
     return 1;
 }
 
+
 static int
 _run_test(void) {
+    /* This tests that tags with bad names return an error */
+    int n=0;
+    while(_badnames[n] != NULL) {
+        _add_tag(_badnames[n], "int", 1);
+        if(expect(ferr, "ERROR:", 100) == NULL) {
+            DF("Didn't get error - %s", _badnames[n]);
+            return 1;
+        }
+        n++;
+    }
+
+    /* This tests that tags with good names do not return an error */
+    n=0;
+    while(_goodnames[n] != NULL) {
+        _add_tag(_goodnames[n], "int", 1);
+        if(expect(ferr, "ERROR:", 100) != NULL) {
+            DF("Should not have gotten error - %s", _goodnames[n]);
+            return 1;
+        }
+        n++;
+    }
+
     if(_add_tag("dummy_bool", "bool", 0)) return 1;
     if(_check_tag("dummy_bool", DAX_BOOL, 1)) return 1;
 
@@ -106,7 +135,8 @@ _server_connect(int argc, char *argv[]) {
     return result;
 }
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[]) {
     int result;
     int status;
     pid_t mpid, spid;

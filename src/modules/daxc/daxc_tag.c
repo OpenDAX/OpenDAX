@@ -109,6 +109,14 @@ tag_add(char **tokens)
     result = dax_tag_add(ds, &handle, tokens[0], type, count, attr);
     if(result == 0) {
         if(!quiet_mode) printf("Tag Added at index %d\n", handle.index);
+    } else if(result == ERR_TAG_BAD) {
+        fprintf(stderr, "ERROR: Bad Tagname\n");
+    } else if(result == ERR_TAG_DUPL) {
+        fprintf(stderr, "ERROR: Duplicate Tagname\n");
+    } else if(result == ERR_2BIG) {
+        fprintf(stderr, "ERROR: Tagname is too long\n");
+    } else if(result == ERR_ILLEGAL) {
+        fprintf(stderr, "ERROR: Illegal Tagname\n");
     } else {
         /* TODO: Print descriptive error message here */
         printf("OPPS Can't add tag???, error = %d\n", result);

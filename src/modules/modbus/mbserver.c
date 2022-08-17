@@ -177,7 +177,7 @@ _server_listen(mb_port *port)
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port->bindport);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_addr.s_addr = inet_addr(port->ipaddress);
 
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
     	fprintf(stderr, "Failed to bind\n");
@@ -238,7 +238,7 @@ _receive(mb_port *port)
                 } else {
                     result = _mb_read(port, n);
                     if(result == MB_ERR_NO_SOCKET) { /* This is the end of file */
-                        dax_debug(ds, LOG_MAJOR, "Accepted socket on fd %d", n);
+                        dax_debug(ds, LOG_MAJOR, "Disconnected socket on fd %d", n);
                         _del_connection(port, n);
                     } else if(result < 0) {
                         return result; /* Pass the error up */

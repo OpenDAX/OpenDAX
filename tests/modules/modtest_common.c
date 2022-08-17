@@ -25,7 +25,9 @@
 #include <time.h>
 #include "modtest_common.h"
 
-#define BUFF_LEN 512
+#define BUFF_LEN 1024
+
+static char _before[BUFF_LEN];
 
 double
 _gettime(void) {
@@ -130,11 +132,9 @@ expect(int fd, char *str, int timeout) {
     fds.events = POLLIN;
     nexttime = timeout;
     while(1) {
-        DF("Poll");
         result = poll(&fds, 1, nexttime);
         if(result == 1) {
-            result = read(fd, &buffer[index], BUFF_LEN);
-            DF("read returned - %s", buffer);
+            result = read(fd, &buffer[index], 1);
             check = strstr(buffer, str);
             if(check == NULL) {
                 diff = (_gettime() - start) * 1000;
@@ -143,8 +143,14 @@ expect(int fd, char *str, int timeout) {
                 } else {
                     nexttime = timeout - diff;
                     index += result;
+                    assert(index < BUFF_LEN);
                 }
             } else {
+                bzero(_before, BUFF_LEN);
+                int len = index - strlen(str)+1;
+                if(len > 0) {
+                    strncpy(_before, buffer, len);
+                }
                 return check;
             }
         } else {
@@ -153,4 +159,10 @@ expect(int fd, char *str, int timeout) {
     }
     return NULL;
 }
+
+char *
+before(void) {
+    return _before;
+}
+
 
