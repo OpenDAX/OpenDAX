@@ -109,6 +109,14 @@ tag_add(char **tokens)
     result = dax_tag_add(ds, &handle, tokens[0], type, count, attr);
     if(result == 0) {
         if(!quiet_mode) printf("Tag Added at index %d\n", handle.index);
+    } else if(result == ERR_TAG_BAD) {
+        fprintf(stderr, "ERROR: Bad Tagname\n");
+    } else if(result == ERR_TAG_DUPL) {
+        fprintf(stderr, "ERROR: Duplicate Tagname\n");
+    } else if(result == ERR_2BIG) {
+        fprintf(stderr, "ERROR: Tagname is too long\n");
+    } else if(result == ERR_ILLEGAL) {
+        fprintf(stderr, "ERROR: Illegal Tagname\n");
     } else {
         /* TODO: Print descriptive error message here */
         printf("OPPS Can't add tag???, error = %d\n", result);
@@ -307,47 +315,84 @@ tag_write(char **tokens, int tcount) {
     char *name;
     uint8_t use_mask = 0;
     void *buff, *mask;
+    int count;
 
+    if(tcount < 2) {
+        fprintf(stderr, "ERROR: Not enough arguments\n");
+        return ERR_ARG;
+    }
     if(tokens[0]) {
         name = tokens[0];
     } else {
         fprintf(stderr, "ERROR: No Tagname Given\n");
         return ERR_NOTFOUND;
     }
-    result = dax_tag_handle(ds, &handle, name, tcount-1);
-    if(result) {
-        /* TODO: More descriptive error messages here based on result */
-        fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
-        return ERR_ARG;
-    }
-
-    buff = malloc(handle.size);
-    mask = malloc(handle.size);
-    if(buff == NULL || mask == NULL) {
-        if(buff) free(buff);
-        if(mask) free(mask);
-        fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
-        return ERR_ALLOC;
-    }
-    bzero(buff, handle.size);
-    bzero(mask, handle.size);
-
-    points = tcount - 1;
-    if(handle.count < points) {
-        points = handle.count;
-    }
-    if(handle.type == DAX_BOOL) use_mask = 1;
-    for(n = 0; n < points; n++) {
-        if(strncmp(tokens[n+1], "~", 1)) {
-            dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
-        } else {
-            use_mask = 1; /* If we skipped any then we need to use the masked write */
+    if(strstr(tokens[1], "\"")) { /* We are assuming this is a string */
+        count = strlen(tokens[1]);
+        if(tokens[1][0] == '\"') { /* remove the leading " */
+            count--;
+            tokens[1]++;
         }
-    }
-    if(use_mask) {
-        result = dax_mask_tag(ds, handle, buff, mask);
-    } else {
+        if(tokens[1][count-1] =='\"') { /* remove the trailing " */
+            tokens[1][count-1] = '\0';
+            count--;
+        }
+        if(count <= 0) {
+            fprintf(stderr, "ERROR: Zero length string argument\n");
+            return ERR_ARG;
+        }
+        result = dax_tag_handle(ds, &handle, name, 0);
+        if(result) {
+            /* TODO: More descriptive error messages here based on result */
+            fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+            return ERR_ARG;
+        }
+        if(TYPESIZE(handle.type) != 8) {
+            fprintf(stderr, "ERROR: Strings can only be written to 8 bit data types\n");
+            return ERR_ARG;
+        }
+        buff = malloc(handle.size);
+        bzero(buff, handle.size);
+        memcpy(buff, (void *)tokens[1], MIN(count, handle.size));
         result = dax_write_tag(ds, handle, buff);
+    } else {
+        result = dax_tag_handle(ds, &handle, name, tcount-1);
+        if(result) {
+            /* TODO: More descriptive error messages here based on result */
+            fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+            return ERR_ARG;
+        }
+
+        buff = malloc(handle.size);
+        mask = malloc(handle.size);
+        if(buff == NULL || mask == NULL) {
+            if(buff) free(buff);
+            if(mask) free(mask);
+            fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
+            return ERR_ALLOC;
+        }
+        bzero(buff, handle.size);
+        bzero(mask, handle.size);
+
+        points = tcount - 1;
+        if(handle.count < points) {
+            points = handle.count;
+        }
+        if(handle.type == DAX_BOOL) use_mask = 1;
+        for(n = 0; n < points; n++) {
+            if(strncmp(tokens[n+1], "~", 1)) {
+                dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+            } else {
+                use_mask = 1; /* If we skipped any then we need to use the masked write */
+            }
+        }
+        if(use_mask) {
+            result = dax_mask_tag(ds, handle, buff, mask);
+        } else {
+            result = dax_write_tag(ds, handle, buff);
+        }
+        free(buff);
+        free(mask);
     }
 
     if(result) {
@@ -357,8 +402,6 @@ tag_write(char **tokens, int tcount) {
             fprintf(stderr, "ERROR: Unable to Write to tag %s code = %d\n", name, result);
         }
     }
-    free(buff);
-    free(mask);
     return 0;
 }
 

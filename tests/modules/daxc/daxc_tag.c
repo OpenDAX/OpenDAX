@@ -29,7 +29,7 @@ int main() {
 
     spid = run_server();
     mpid = run_module2("../../../src/modules/daxc/daxc", &fin, &fout, &ferr, NULL);
-    assert(expect(fout, "dax>", 100)==0);
+    assert(expect(fout, "dax>", 100)!=NULL);
     write(fin, "exit\n", 5);
     if( waitpid(mpid, &status, 0) != mpid ) {
         fprintf(stderr, "Error exiting daxc module\n");

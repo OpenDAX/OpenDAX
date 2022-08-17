@@ -53,9 +53,12 @@ include_directories(${LUA_INCLUDE_DIR})
 if(NOT LUA_LIBRARIES)
   message(FATAL_ERROR "Lua library not found!!")
 endif()
+
 message("Lua Version ${LUA_VERSION_STRING} found")
-if(${LUA_VERSION_MAJOR} EQUAL 5 AND ${LUA_VERSION_MINOR} EQUAL 1)
-  set(LUA_5_1 TRUE)
+# concatenate Lua major/minor versions together so we can do a comparison
+set(LUA_VERSION_TEST "${LUA_VERSION_MAJOR}${LUA_VERSION_MINOR}")
+if(${LUA_VERSION_TEST} LESS 53)
+  message(FATAL_ERROR "Lua Version 5.3 or later required")
 endif()
 
 # This is for the config.h file
