@@ -108,10 +108,6 @@ int main(int argc,char *argv[]) {
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
 
-
-    /* TODO: These have got to move to the configuration */
-    dax_set_debug_topic(ds, 0);
-
  /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");

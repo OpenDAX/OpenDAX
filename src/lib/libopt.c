@@ -26,7 +26,12 @@
 #include <ctype.h>
 
 
-/* Initialize the module configuration */
+/*!
+ * Initialize the module configuration
+ * 
+ * @param ds Pointer to DAX State object
+ * @param name Name of the module.
+ */
 int
 dax_init_config(dax_state *ds, char *name)
 {
@@ -221,6 +226,14 @@ dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, ch
         }
     }
     return ERR_NOTFOUND;
+}
+
+/* This assigns a callback function that if set, will be called for each logging topic
+ * that is assigned during the configuration */
+int
+dax_log_topic_callback(dax_state *ds, void (*topic_callback)(char *topic)) {
+    ds->topic_callback = topic_callback;
+    return 0;
 }
 
 /* TODO: Add callback for before and after the module conf script is called */
@@ -442,20 +455,49 @@ _set_defaults(dax_state *ds)
     return 0;
 }
 
-/* Just for testing */
+/* This parses the string in the 'debugtopic' attibute and sets
+ * the appropriate log flags and calls the modules callback function
+ * if it exists */
+static void
+_parse_debug_topic(dax_state *ds) {
+    char *temp, *s;
+
+    temp = strdup(dax_get_attr(ds, "debugtopic"));
+
+    s = strtok(temp, ",");
+    while(s != NULL) {
+        if(strcmp(s,"VERBOSE") == 0) ds->logflags |= LOG_VERBOSE;
+        if(strcmp(s,"ALL") == 0) ds->logflags |= LOG_ALL;
+        if(strcmp(s,"ERROR") == 0) ds->logflags |= LOG_ERROR;
+        if(strcmp(s,"MAJOR") == 0) ds->logflags |= LOG_MAJOR;
+        if(strcmp(s,"MINOR") == 0) ds->logflags |= LOG_MINOR;
+        if(strcmp(s,"COMM") == 0) ds->logflags |= LOG_COMM;
+        if(strcmp(s,"MSG") == 0) ds->logflags |= LOG_MSG;
+        if(strcmp(s,"MSGERR") == 0) ds->logflags |= LOG_MSGERR;
+        if(strcmp(s,"CONFIG") == 0) ds->logflags |= LOG_CONFIG;
+        if(strcmp(s,"MODULE") == 0) ds->logflags |= LOG_MODULE;
+        
+        if(ds->topic_callback != NULL) { /* If there is a callback function assigned */
+            ds->topic_callback(s);       /* Call it */
+        }
+        s = strtok(NULL, ",");
+    }
+    free(temp);
+}
+
+/* Prints the configuration attributes */
 static inline void
 _print_config(dax_state *ds)
 {
     optattr *this;
         
     this = ds->attr_head;
-
-    /* This loop checks that none of the symbols have already been used. */
+    printf("Configuration for %s\n", ds->modulename);
     while(this != NULL) {
         if(this->value != NULL) {
-            printf("%s = %s\n", this->name, this->value);
+            printf("  %s = %s\n", this->name, this->value);
         } else {
-            printf("%s = NULL\n", this->name);
+            printf("  %s = NULL\n", this->name);
         }
         this = this->next;
     }
@@ -505,7 +547,10 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
         _mod_config_file(ds);
 
     _set_defaults(ds);
-    //--_print_config(ds);
+    _parse_debug_topic(ds);
+    if(ds->logflags & LOG_VERBOSE && ds->logflags & LOG_CONFIG) {
+        _print_config(ds);
+    }
     return _verify_config(ds);
 }
 

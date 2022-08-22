@@ -136,8 +136,7 @@ main(int argc,char *argv[])
     }
 
     dax_log(ds, "Starting bad module");
-    dax_set_debug_topic(ds, 0xFFFF); /* This should get them all out there */
-
+    
     dax_init_config(ds, "badmodule");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagprefix","tagprefix", 't', flags, "bad");

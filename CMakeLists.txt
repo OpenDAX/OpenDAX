@@ -34,7 +34,6 @@ option(MODULE_TESTS "Build and Run Module Tests" ON)
 
 set(CMAKE_BUILD_TYPE Debug)
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-  add_compile_options(-Wall -O0)
   message("Building Debug Symbols and Verbose Warnings")
 endif()
 

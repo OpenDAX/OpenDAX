@@ -71,11 +71,11 @@ _get_new_script(void)
  * the trigger */
 static int
 _set_trigger(lua_State *L, script_t *s) {
-    char *tagname, *string;
+    char *string;
 
     lua_getfield(L, -1, "tag");
     s->event_tagname = strdup((char *)lua_tostring(L, -1));
-    if(tagname == NULL) {
+    if(s->event_tagname == NULL) {
         luaL_error(L, "'tagname' is required for an event trigger");
         s->trigger = 0;
     }

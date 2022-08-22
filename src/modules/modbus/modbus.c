@@ -68,13 +68,13 @@ mb_run_port(struct mb_port *m_port)
                 }
             } else if(m_port->type == MB_SLAVE) {
                 if(m_port->protocol == MB_TCP) {
-                    dax_debug(ds, LOG_MAJOR, "Start Server Loop for port %s\n", m_port->name);
+                    dax_debug(ds, LOG_MAJOR, "Start Server Loop for port %s", m_port->name);
                     result = server_loop(m_port);
-                    if(result) dax_error(ds, "Server loop exited with error, %d port %s\n", result, m_port->name);
+                    if(result) dax_error(ds, "Server loop exited with error, %d port %s", result, m_port->name);
                 } else {
-                    dax_debug(ds, LOG_MAJOR, "Start Slave Loop for port %s\n", m_port->name);
+                    dax_debug(ds, LOG_MAJOR, "Start Slave Loop for port %s", m_port->name);
                     result = slave_loop(m_port);
-                    if(result) dax_error(ds, "Slave loop exited with error, %d port %s\n", result, m_port->name);
+                    if(result) dax_error(ds, "Slave loop exited with error, %d port %s", result, m_port->name);
                 }
             } else {
                 return MB_ERR_PORTTYPE;

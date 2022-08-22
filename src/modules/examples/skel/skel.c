@@ -96,9 +96,6 @@ int main(int argc,char *argv[]) {
     /* Free the configuration data */
     dax_free_config (ds);
 
-    /* Set the logging flags to show all the messages */
-    dax_set_debug_topic(ds, LOG_ALL);
-
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");

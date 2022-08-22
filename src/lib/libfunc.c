@@ -36,7 +36,7 @@ void
 dax_set_debug_topic(dax_state *ds, uint32_t topic)
 {
     ds->logflags = topic;
-    dax_debug(ds, LOG_MAJOR, "Log Topics Set to %d", ds->logflags);
+    dax_debug(ds, LOG_MAJOR, "Debug Topics Set to %d", ds->logflags);
 }
 
 /* Function for modules to set the debug message callback */
@@ -332,7 +332,7 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_DWORD:
         case DAX_UDINT:
-        ltemp =  strtol(instr, NULL, 0);
+            ltemp =  strtol(instr, NULL, 0);
             if(ltemp < DAX_UDINT_MIN) {
                 ((dax_udint *)buff)[index] = DAX_UDINT_MIN;
                 retval = ERR_UNDERFLOW;

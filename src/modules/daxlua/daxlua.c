@@ -349,9 +349,6 @@ main(int argc, char *argv[])
     }
     daxlua_init();
 
-    /* For now */
-    dax_set_debug_topic(ds, 0xFFFFFFFF);
-
     /* Reads the configuration */
     if(configure(argc,argv)) {
         dax_fatal(ds, "Unable to configure");

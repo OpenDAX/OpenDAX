@@ -133,6 +133,7 @@ struct dax_state {
     int emsg_queue_count;    /* number of entries in the event message queue */
     //int emsg_queue_read;     /* index to the next event to read in the queue */
     dax_message *last_msg;   /* The last message received on the socket */
+    void (*topic_callback)(char *topic);
     void (*dax_debug)(const char *output);
     void (*dax_error)(const char *output);
     void (*dax_log)(const char *output);

@@ -80,9 +80,6 @@ int main(int argc,char *argv[]) {
     }
     configure(argc, argv);
 
-    /* Set the logging flags to show all the messages */
-    dax_set_debug_topic(ds, LOG_ALL);
-
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_fatal(ds, "Unable to find OpenDAX");

@@ -72,7 +72,7 @@ main(int argc,char *argv[])
     }
 
     dax_log(ds, "Starting module test");
-    dax_set_debug_topic(ds, 0xFFFF); /* This should get them all out there */
+    dax_set_debug_topic(ds, -1); /* This should get them all out there */
 
     dax_init_config(ds, "daxtest");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;

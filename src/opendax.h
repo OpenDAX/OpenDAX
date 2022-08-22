@@ -73,12 +73,18 @@ extern "C" {
 #define LOG_ERROR   0x00000001  /* Log errors that are returned from functions */
 #define LOG_MAJOR   0x00000002  /* Major Program Milestones */
 #define LOG_MINOR   0x00000004  /* Minor Program Milestones */
-#define LOG_FUNC    0x00000008  /* Function Entries */
-#define LOG_COMM    0x00000010  /* Communications Milestones */
-#define LOG_MSG     0x00000020  /* Messages */
-#define LOG_MSGERR  0x00000040  /* Errors returned to Modules */
-#define LOG_CONFIG  0x00000080  /* Configurations */
-#define LOG_MODULE  0x00000100  /* Module Milestones */
+#define LOG_COMM    0x00000008  /* Communications Milestones */
+#define LOG_MSG     0x00000010  /* Messages */
+#define LOG_MSGERR  0x00000020  /* Errors returned to Modules */
+#define LOG_CONFIG  0x00000040  /* Configurations */
+#define LOG_MODULE  0x00000080  /* Module Milestones */
+#define LOG_USER1   0x01000000  /* Module specific log topic */
+#define LOG_USER2   0x02000000  /* Module specific log topic */
+#define LOG_USER3   0x04000000  /* Module specific log topic */
+#define LOG_USER4   0x08000000  /* Module specific log topic */
+#define LOG_USER5   0x10000000  /* Module specific log topic */
+#define LOG_USER6   0x20000000  /* Module specific log topic */
+#define LOG_USER7   0x40000000  /* Module specific log topic */
 #define LOG_VERBOSE 0x80000000  /* Used to increase the verbosity of the other topics */
 #define LOG_ALL     0xFFFFFFFF  /* Log everything */
 
@@ -295,6 +301,7 @@ int dax_configure(dax_state *ds, int argc, char **argv, int flags);
 char *dax_get_attr(dax_state *ds, char *name);
 int dax_set_attr(dax_state *ds, char *name, char *value);
 int dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, char *value));
+int dax_log_topic_callback(dax_state *ds, void (*topic_callback)(char *topic));
 int dax_free_config(dax_state *ds);
 int dax_free(dax_state *ds);
 

@@ -154,7 +154,7 @@ _mb_read(mb_port *port, int fd)
                 write(cc->fd, cc->buff, result + 6);
                 cc->buffindex = 0;
             } else if(result < 0) {
-                fprintf(stderr, "Error Code Returned %d\n", result);
+                dax_error(ds, "Error Code Returned %d\n", result);
                 return result;
             }
         }
@@ -180,12 +180,12 @@ _server_listen(mb_port *port)
     addr.sin_addr.s_addr = inet_addr(port->ipaddress);
 
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
-        fprintf(stderr, "Failed to bind %s:%d\n", port->ipaddress, port->bindport);
+        dax_error(ds, "Failed to bind %s:%d\n", port->ipaddress, port->bindport);
         close(fd);
         return -1;
     }
     if(listen(fd, 5) < 0) {
-        fprintf(stderr, "Failed to listen%s:%d\n", port->ipaddress, port->bindport);
+        dax_error(ds, "Failed to listen%s:%d\n", port->ipaddress, port->bindport);
         close(fd);
         return -1;
     }

@@ -420,7 +420,7 @@ tag_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask){
                 udata.data = (char *)data + offset;
                 udata.mask = (char *)mask + offset;
                 if( ! lua_istable(L, -1) ) {
-                    lua_pushfstring(L, "Table needed to set - %s", tag.name);
+                    lua_pushfstring(L, "Table needed to set tag");
                     return -1;
                 }
                 lua_rawgeti(L, -1, n+1);

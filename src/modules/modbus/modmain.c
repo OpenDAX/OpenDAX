@@ -464,7 +464,6 @@ main (int argc, const char * argv[]) {
         return ERR_ALLOC;
     }
 
-    dax_set_debug_topic(ds, -1);
     dax_debug(ds, LOG_MAJOR, "Modbus Starting");
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
@@ -560,7 +559,7 @@ static void
 getout(int exitcode)
 {
     int n;
-    dax_debug(ds, 1, "Modbus Module Exiting");
+    dax_debug(ds, LOG_MAJOR, "Modbus Module Exiting");
     dax_disconnect(ds);
 
     for(n = 0; n < config.portcount; n++) {
@@ -577,7 +576,7 @@ void
 outdata(mb_port *mp, uint8_t *buff, unsigned int len)
 {
    int n;
-   printf("%s:", mp->name);
+   printf("%s:->", mp->name);
    for(n = 0; n < len; n++) {
        printf("(%X)", buff[n]);
    }
@@ -589,7 +588,7 @@ indata(mb_port *mp, uint8_t *buff, unsigned int len)
 {
    int n;
 
-   printf("%s:", mp->name);
+   printf("%s:<-", mp->name);
    for(n = 0; n < len; n++) {
        printf("[%X]",buff[n]);
    }
