@@ -71,7 +71,7 @@ main(int argc,char *argv[])
         return ERR_ALLOC;
     }
 
-    dax_log(ds, "Starting module test");
+    dax_log(ds, LOG_MINOR, "Starting module test");
     dax_set_debug_topic(ds, -1); /* This should get them all out there */
 
     dax_init_config(ds, "daxtest");
@@ -81,8 +81,10 @@ main(int argc,char *argv[])
 
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
-    if(dax_connect(ds))
-        dax_fatal(ds, "Unable to register with the server");
+    if(dax_connect(ds)) {
+        dax_log(ds, LOG_FATAL, "Unable to register with the server");
+        exit(-1);
+    }
 
     script = dax_get_attr(ds, "testscript");
 
@@ -96,7 +98,7 @@ main(int argc,char *argv[])
 
     /* load and run the configuration file */
     if(luaL_loadfile(L, script)  || lua_pcall(L, 0, 0, 0)) {
-        dax_error(ds, "Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_log(ds, LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return ERR_GENERIC;
     }
 

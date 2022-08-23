@@ -680,7 +680,7 @@ event_del(int index, int id, dax_module *module)
     if(this == NULL) return ERR_NOTFOUND;
     if(this->id == id) {
         if(this->notify != module) {
-            xlog(LOG_ERROR | LOG_VERBOSE, "Module cannot delete another module's event");
+            xlog(LOG_ERROR, "Module cannot delete another module's event");
             return ERR_AUTH;
         }
         _db[index].events = this->next;
@@ -691,7 +691,7 @@ event_del(int index, int id, dax_module *module)
     while(this != NULL) {
         if(this->id == id) {
             if(this->notify != module) {
-                xlog(LOG_ERROR | LOG_VERBOSE, "Module cannot delete another module's event");
+                xlog(LOG_ERROR, "Module cannot delete another module's event");
                 return ERR_AUTH;
             }
             last->next = this->next;
@@ -731,7 +731,7 @@ event_opt(int index, int id, uint32_t options, dax_module *module) {
     result = _find_event(&event, index, id);
     if(result) xerror("event_opt() - event not found\n");
     if(event->notify != module) {
-    	xlog(LOG_ERROR | LOG_VERBOSE, "Module cannot modify another module's event");
+    	xlog(LOG_ERROR, "Module cannot modify another module's event");
         return ERR_AUTH;
     }
 

@@ -250,7 +250,7 @@ process_start(dax_process *proc)
             proc->pid = child_pid;
             proc->exit_status = 0;
 
-            xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
+            xlog(LOG_MAJOR, "Starting Process - %s - %d",proc->path,child_pid);
             gettimeofday(&proc->starttime, NULL);
             proc->state = PSTATE_STARTED;
             return child_pid;
@@ -454,7 +454,7 @@ process_scan(void)
                             this->name, this->pid);
                     kill(this->pid, SIGQUIT);
                 }
-                xlog(LOG_VERBOSE | LOG_MODULE, "%s: PID = %d, CPU = %f%%, Memory = %ld kb", this->name, this->pid, this->pcpu, this->rss);
+                xlog(LOG_MODULE, "%s: PID = %d, CPU = %f%%, Memory = %ld kb", this->name, this->pid, this->pcpu, this->rss);
             }
         }
         this = this->next;

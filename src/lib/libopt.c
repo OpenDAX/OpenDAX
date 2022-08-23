@@ -422,7 +422,7 @@ _mod_config_file(dax_state *ds) {
 
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
-        dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
+        dax_log(ds, LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         free(cfile);
         return ERR_GENERIC;
     } else {
@@ -466,7 +466,6 @@ _parse_debug_topic(dax_state *ds) {
 
     s = strtok(temp, ",");
     while(s != NULL) {
-        if(strcmp(s,"VERBOSE") == 0) ds->logflags |= LOG_VERBOSE;
         if(strcmp(s,"ALL") == 0) ds->logflags |= LOG_ALL;
         if(strcmp(s,"ERROR") == 0) ds->logflags |= LOG_ERROR;
         if(strcmp(s,"MAJOR") == 0) ds->logflags |= LOG_MAJOR;
@@ -548,7 +547,7 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
 
     _set_defaults(ds);
     _parse_debug_topic(ds);
-    if(ds->logflags & LOG_VERBOSE && ds->logflags & LOG_CONFIG) {
+    if(ds->logflags & LOG_CONFIG) {
         _print_config(ds);
     }
     return _verify_config(ds);
@@ -624,7 +623,7 @@ opt_lua_init_func(dax_state *ds) {
     result = lua_getglobal(ds->L, "init_hook");
     if(result == LUA_TFUNCTION) {
         if(lua_pcall(ds->L, 0, 0, 0)) {
-            dax_error(ds, "error running init_function: %s", lua_tostring(ds->L, -1));
+            dax_log(ds, LOG_ERROR, "error running init_function: %s", lua_tostring(ds->L, -1));
         }
     }
     lua_pop(ds->L, 1);

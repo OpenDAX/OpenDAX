@@ -319,7 +319,7 @@ _queue_add(int idx, tag_type type, unsigned int count) {
     }
     memcpy(_db[idx].data, &vf, sizeof(virt_functions));
     _db[idx].attr |= TAG_ATTR_VIRTUAL;
-    xlog(LOG_VERBOSE, "Add Queue for tag at index %d", idx);
+    xlog(LOG_MINOR, "Add Queue for tag at index %d", idx);
     return 0;
 }
 
@@ -437,7 +437,7 @@ tag_add(char *name, tag_type type, unsigned int count, uint32_t attr)
         return ERR_ARG;
     }
 
-    xlog(LOG_VERBOSE | LOG_MSG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
+    xlog(LOG_MSG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
     if(_tagnextindex >= _dbsize) {
         if(_database_grow()) {
             xerror("Failure to increase database size");
@@ -556,7 +556,7 @@ tag_del(tag_index idx)
         xlog(LOG_ERROR, "tag_del() trying to delete already deleted tag %d", idx);
         return ERR_DELETED;
     }
-    xlog(LOG_VERBOSE | LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
+    xlog(LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
     event_del_check(idx); /* Check to see if we have a deleted event for this tag */
     if(IS_CUSTOM(_db[idx].type)) {
         _cdt_dec_refcount(_db[idx].type);

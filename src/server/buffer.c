@@ -154,7 +154,7 @@ buff_read(int fd)
         xerror("Unable to read data from socket %d", fd);
         return ERR_MSG_RECV;
     } if(result == 0) { /* EOF means the other guy is closed */
-        xlog(LOG_COMM | LOG_VERBOSE, "Received EOF on socket %d", fd);
+        xlog(LOG_COMM, "Received EOF on socket %d", fd);
         return ERR_NO_SOCKET;
     }
 

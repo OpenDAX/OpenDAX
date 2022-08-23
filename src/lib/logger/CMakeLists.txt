@@ -16,24 +16,13 @@
 
 include_directories(.)
 
-add_library(dax libcdt.c
-                libconv.c
-                libdata.c
-                libevent.c
-                libfunc.c
-                libinit.c
-                libmsg.c
-                libopt.c
-                lua/libdaxlua.c
+add_library(daxlog daxlog.c
                 )
 
-target_link_libraries(dax ${LUA_LIBRARIES})
-target_link_libraries(dax pthread)
+target_link_libraries(daxlog ${LUA_LIBRARIES})
+target_link_libraries(daxlog pthread)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-    target_compile_options(dax PRIVATE -Wall)
+    target_compile_options(daxlog PRIVATE -Wall)
 endif()
-install(TARGETS dax DESTINATION lib)
-
-add_subdirectory(lua)
-add_subdirectory(logger)
+install(TARGETS daxlog DESTINATION lib)

@@ -50,7 +50,7 @@ mb_run_port(struct mb_port *m_port)
             result = mb_open_port(m_port);
         }
         if(result) {
-            dax_error(ds, "Failed to open port %s", m_port->name);
+            dax_log(ds, LOG_ERROR, "Failed to open port %s", m_port->name);
         } else {
             /* If the port is still not open then we inhibit the port and
              * let the _loop() functions deal with it */
@@ -60,21 +60,21 @@ mb_run_port(struct mb_port *m_port)
 
             if(m_port->type == MB_MASTER) {
                 if(m_port->protocol == MB_TCP) {
-                    dax_debug(ds, LOG_MAJOR, "Starting client loop for %s", m_port->name);
+                    dax_log(ds, LOG_MAJOR, "Starting client loop for %s", m_port->name);
                     return client_loop(m_port);
                 } else {
-                    dax_debug(ds, LOG_MAJOR, "Starting master loop for %s", m_port->name);
+                    dax_log(ds, LOG_MAJOR, "Starting master loop for %s", m_port->name);
                     return master_loop(m_port);
                 }
             } else if(m_port->type == MB_SLAVE) {
                 if(m_port->protocol == MB_TCP) {
-                    dax_debug(ds, LOG_MAJOR, "Start Server Loop for port %s", m_port->name);
+                    dax_log(ds, LOG_MAJOR, "Start Server Loop for port %s", m_port->name);
                     result = server_loop(m_port);
-                    if(result) dax_error(ds, "Server loop exited with error, %d port %s", result, m_port->name);
+                    if(result) dax_log(ds, LOG_ERROR, "Server loop exited with error, %d port %s", result, m_port->name);
                 } else {
-                    dax_debug(ds, LOG_MAJOR, "Start Slave Loop for port %s", m_port->name);
+                    dax_log(ds, LOG_MAJOR, "Start Slave Loop for port %s", m_port->name);
                     result = slave_loop(m_port);
-                    if(result) dax_error(ds, "Slave loop exited with error, %d port %s", result, m_port->name);
+                    if(result) dax_log(ds, LOG_ERROR, "Slave loop exited with error, %d port %s", result, m_port->name);
                 }
             } else {
                 return MB_ERR_PORTTYPE;
@@ -608,7 +608,7 @@ _get_write_data(mb_cmd *mc) {
          * are the same.  If not then if the tag is smaller it's no big deal but if the command
          * data size is smaller then we'll truncate the size in the tag handle. */
         if(mc->data_h.size != mc->datasize) {
-            dax_error(ds, "Tag size and Modbus request size are different.  Data will be truncated");
+            dax_log(ds, LOG_ERROR, "Tag size and Modbus request size are different.  Data will be truncated");
             if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
         }
     }
@@ -633,7 +633,7 @@ _send_read_data(mb_cmd *mc) {
          * are the same.  If not then if the tag is smaller it's no big deal but if the command
          * data size is smaller then we'll truncate the size in the tag handle. */
         if(mc->data_h.size != mc->datasize) {
-            dax_error(ds, "Tag size and Modbus request size are different.  Data will be truncated");
+            dax_log(ds, LOG_ERROR, "Tag size and Modbus request size are different.  Data will be truncated");
             if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
         }
     }

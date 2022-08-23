@@ -22,7 +22,7 @@
 #include "daxlua.h"
 #include <getopt.h>
 #include <math.h>
-
+#include <signal.h>
 
 /* TODO: Allow user to set whether an error in a script is fatal */
 
@@ -44,7 +44,8 @@ _get_new_script(void)
     if(scriptcount == 0) {
         scripts = malloc(sizeof(script_t) * NUM_SCRIPTS);
         if(scripts == NULL) {
-            dax_fatal(ds, "Cannot allocate memory for the scripts");
+            dax_log(ds, LOG_FATAL, "Cannot allocate memory for the scripts");
+            kill(getpid(), SIGQUIT);
         }
         scripts_size = NUM_SCRIPTS;
     } else if(scriptcount == scripts_size) {
@@ -52,7 +53,7 @@ _get_new_script(void)
         if(ns != NULL) {
             scripts = ns;
         } else {
-            dax_error(ds, "Failure to allocate additional scripts");
+            dax_log(ds, LOG_ERROR, "Failure to allocate additional scripts");
             return -1;
         }
     }
@@ -180,7 +181,7 @@ configure(int argc, char *argv[])
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "initscript", "initscript", 'i', flags, "init.lua");
     if(result) {
-        dax_fatal(ds, "Problem with the configuration");
+        dax_log(ds, LOG_FATAL, "Problem with the configuration");
     }
 
     dax_set_luafunction(ds, (void *)_add_script, "add_script");

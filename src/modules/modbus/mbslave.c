@@ -54,7 +54,7 @@ _mb_read(mb_port *port, int fd)
         } else if(state == 1) { /* reading frame */
             result = read(fd, &buff[buffindex], MB_BUFF_SIZE-buffindex);
             if(result < 0) {
-                dax_error(ds, "Error reading Serial port on fd = %d", fd);
+                dax_log(ds, LOG_ERROR, "Error reading Serial port on fd = %d", fd);
                 return MB_ERR_RECV_FAIL;
             } else if(result > 0) {
                 buffindex += result;
@@ -92,7 +92,7 @@ _mb_read(mb_port *port, int fd)
                 write(fd, buff, result+2);
                 buffindex = 0;
             } else if(result < 0) {
-                dax_error(ds, "Error reading serial port data %d\n", result);
+                dax_log(ds, LOG_ERROR, "Error reading serial port data %d\n", result);
                 return result;
             }
         }
@@ -108,7 +108,7 @@ slave_loop(mb_port *port) {
    while(1) {
         result = _mb_read(port, port->fd);
         if(result) {
-            dax_error(ds, "Exiting slave loop because of error %d\n",  result);
+            dax_log(ds, LOG_ERROR, "Exiting slave loop because of error %d\n",  result);
             return result;
         }
     }

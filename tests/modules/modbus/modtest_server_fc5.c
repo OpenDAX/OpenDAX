@@ -96,7 +96,8 @@ main(int argc, char *argv[])
     /* Connect to the tag server */
     ds = dax_init("test");
     if(ds == NULL) {
-        dax_fatal(ds, "Unable to Allocate DaxState Object\n");
+        dax_log(ds, LOG_FATAL, "Unable to Allocate DaxState Object\n");
+        kill(getpid(), SIGQUIT);
     }
     dax_init_config(ds, "test");
     dax_configure(ds, argc, argv, CFG_CMDLINE);

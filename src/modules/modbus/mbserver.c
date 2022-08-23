@@ -154,7 +154,7 @@ _mb_read(mb_port *port, int fd)
                 write(cc->fd, cc->buff, result + 6);
                 cc->buffindex = 0;
             } else if(result < 0) {
-                dax_error(ds, "Error Code Returned %d\n", result);
+                dax_log(ds, LOG_ERROR, "Error Code Returned %d\n", result);
                 return result;
             }
         }
@@ -180,12 +180,12 @@ _server_listen(mb_port *port)
     addr.sin_addr.s_addr = inet_addr(port->ipaddress);
 
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
-        dax_error(ds, "Failed to bind %s:%d\n", port->ipaddress, port->bindport);
+        dax_log(ds, LOG_ERROR, "Failed to bind %s:%d\n", port->ipaddress, port->bindport);
         close(fd);
         return -1;
     }
     if(listen(fd, 5) < 0) {
-        dax_error(ds, "Failed to listen%s:%d\n", port->ipaddress, port->bindport);
+        dax_log(ds, LOG_ERROR, "Failed to listen%s:%d\n", port->ipaddress, port->bindport);
         close(fd);
         return -1;
     }
@@ -232,15 +232,15 @@ _receive(mb_port *port)
                     fd = accept(n, (struct sockaddr *)&addr, &len);
                     if(fd < 0) {
                         /* TODO: Need to handle these communication errors */
-                        dax_error(ds, "Error Accepting socket: %s", strerror(errno));
+                        dax_log(ds, LOG_ERROR, "Error Accepting socket: %s", strerror(errno));
                     } else {
-                        dax_debug(ds, LOG_MAJOR, "Accepted socket on fd %d", n);
+                        dax_log(ds, LOG_MAJOR, "Accepted socket on fd %d", n);
                         _add_connection(port, fd);
                     }
                 } else {
                     result = _mb_read(port, n);
                     if(result == MB_ERR_NO_SOCKET) { /* This is the end of file */
-                        dax_debug(ds, LOG_MAJOR, "Disconnected socket on fd %d", n);
+                        dax_log(ds, LOG_MAJOR, "Disconnected socket on fd %d", n);
                         _del_connection(port, n);
                     } else if(result < 0) {
                         return result; /* Pass the error up */
@@ -260,16 +260,16 @@ server_loop(mb_port *port)
 
     result = _server_listen(port);
     if(result) {
-        dax_error(ds, "Failed to listen on port - %s", strerror(errno));
+        dax_log(ds, LOG_ERROR, "Failed to listen on port - %s", strerror(errno));
         return result;
     } else {
-        dax_debug(ds, LOG_MAJOR, "Listening on file descriptor %d", port->fd);
+        dax_log(ds, LOG_MAJOR, "Listening on file descriptor %d", port->fd);
     }
     while(1) {
         result = _receive(port);
         if(result) {
             if(result == MB_ERR_OVERFLOW) {
-                dax_error(ds, "Buffer Overflow Attempt");
+                dax_log(ds, LOG_ERROR, "Buffer Overflow Attempt");
             } else {
                 return result;
             }
