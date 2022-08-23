@@ -58,7 +58,7 @@ _get_host(int fd, in_addr_t *host)
     sock_len = sizeof(addr);
     result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
     if(result < 0) {
-        xerror("_get_host %s", strerror(errno));
+        dax_log(LOG_ERROR, "_get_host %s", strerror(errno));
     } else {
         if(addr.ss_family == AF_LOCAL) {
             *host = 0;
@@ -70,7 +70,7 @@ _get_host(int fd, in_addr_t *host)
             /* Now see if it is the same as ours */
             result = getsockname(fd, (struct sockaddr *)&addr, &sock_len);
             if(result < 0) {
-                xerror("_get_host %s", strerror(errno));
+                dax_log(LOG_ERROR, "_get_host %s", strerror(errno));
             } else {
                 addr_in = (struct sockaddr_in *)&addr;
                 if(addr_in->sin_addr.s_addr == *host) {
@@ -79,7 +79,7 @@ _get_host(int fd, in_addr_t *host)
             }
             return 0;
         } else {
-            xerror("Unable to identify socket type in module registration");
+            dax_log(LOG_ERROR, "Unable to identify socket type in module registration");
         }
     }
     return ERR_NOTFOUND;
@@ -111,7 +111,7 @@ module_add(char *name, unsigned int flags)
 
     new = xmalloc(sizeof(dax_module));
     if(new) {
-        xlog(LOG_MAJOR, "New module '%s' created at %p", name, new);
+        dax_log(LOG_MAJOR, "New module '%s' created at %p", name, new);
         new->flags = flags;
 
         new->fd = 0;
@@ -213,7 +213,7 @@ module_register(char *name, uint32_t timeout, int fd)
         }
         result = tag_add(tagname, cdt_get_type("_module"), 1, TAG_ATTR_READONLY);
         if(result < 0) {
-            xerror("Unable to add module tag- %s", tagname);
+            dax_log(LOG_ERROR, "Unable to add module tag- %s", tagname);
         } else {
             mod->tagindex = result;
         }
@@ -222,10 +222,10 @@ module_register(char *name, uint32_t timeout, int fd)
         tag_write(result, 0, &starttime, sizeof(dax_time));
         tag_write(result, sizeof(dax_time), &mod->state, sizeof(dax_uint));
     } else {
-        xerror("Major problem registering module - %s:%d", name, fd);
+        dax_log(LOG_ERROR, "Major problem registering module - %s:%d", name, fd);
         return NULL;
     }
-    xlog(LOG_MAJOR,"Added module '%s' at file descriptor %d", name, fd);
+    dax_log(LOG_MAJOR,"Added module '%s' at file descriptor %d", name, fd);
 
     return mod;
 }
@@ -238,13 +238,13 @@ module_unregister(int fd)
 
     mod = _get_module_fd(fd);
     if(mod != NULL) {
-        xlog(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
+        dax_log(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
         events_cleanup(mod);
         groups_cleanup(mod);
         tag_del(mod->tagindex);
         module_del(mod);
     } else {
-        xerror("module_unregister() - Module File Descriptor %d Not Found", fd);
+        dax_log(LOG_ERROR, "module_unregister() - Module File Descriptor %d Not Found", fd);
     }
 }
 

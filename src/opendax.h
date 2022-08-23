@@ -304,27 +304,15 @@ int dax_configure(dax_state *ds, int argc, char **argv, int flags);
 char *dax_get_attr(dax_state *ds, char *name);
 int dax_set_attr(dax_state *ds, char *name, char *value);
 int dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, char *value));
-int dax_log_topic_callback(dax_state *ds, void (*topic_callback)(char *topic));
 int dax_free_config(dax_state *ds);
 int dax_free(dax_state *ds);
 
-void dax_set_debug_topic(dax_state *ds, uint32_t);
-
-
-/* These functions accept a function pointer to functions that would
- * print debug and error messages.  The functions should be declared as...
- * void functionname(const char *); These are required because the library
- * uses some functions for error messaging and this allows the module to deal
- * with these messages how it sees fit.  These would normally not be used and
- * when these callbacks are not set the default messaging is used. */
-void dax_set_log(dax_state *ds, void (*log)(const char *msg));
-
-/* These are the functions that a module should actually call to log
- * a message or log and exit. These are the functions that are basically
- * overridden by the above _set functions.  The reason for the complexity
- * is that these functions are also used internally by the library and
- * this keeps everything consistent. */
-void dax_log(dax_state *ds, int topic, const char *format, ...);
+/* Logging library functions */
+uint32_t dax_parse_log_topics(char *topic_string);
+void dax_set_log_mask(uint32_t mask);
+uint32_t dax_get_log_mask(void);
+int dax_log_topic_callback(void (*topic_callback)(char *topic));
+void dax_log(int topic, const char *format, ...);
 
 /* Create and destroy connections to the server */
 int dax_connect(dax_state *ds);      /* Connect to the server */

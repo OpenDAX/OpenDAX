@@ -21,7 +21,6 @@
 #define _GNU_SOURCE
 #include <common.h>
 #include "modopt.h"
-//#include <database.h>
 #include <opendax.h>
 
 #include <string.h>
@@ -65,28 +64,28 @@ _get_serial_config(lua_State *L, mb_port *p)
     lua_getfield(L, -1, "device");
     device = (char *)lua_tostring(L, -1);
     if(device == NULL) {
-        dax_log(ds, 1, "No device given for serial port %s, Using /dev/serial", p->name);
+        dax_log(LOG_WARN, "No device given for serial port %s, Using /dev/serial", p->name);
         device = strdup("/dev/serial");
     }
 
     lua_getfield(L, -2, "baudrate");
     baudrate = (int)lua_tonumber(L, -1);
     if(baudrate == 0) {
-        dax_log(ds, 1, "Unknown Baudrate, Using 9600");
+        dax_log(LOG_WARN, "Unknown Baudrate, Using 9600");
         baudrate = 9600;
     }
 
     lua_getfield(L, -3, "databits");
     databits = (short)lua_tonumber(L, -1);
     if(databits < 7 || databits > 8) {
-        dax_log(ds, 1, "Unknown databits - %d, Using 8", databits);
+        dax_log(LOG_WARN, "Unknown databits - %d, Using 8", databits);
         databits = 8;
     }
 
     lua_getfield(L, -4, "stopbits");
     stopbits = (unsigned int)lua_tonumber(L, -1);
     if(stopbits != 1 && stopbits != 2) {
-        dax_log(ds, 1, "Unknown stopbits - %d, Using 1", stopbits);
+        dax_log(LOG_WARN, "Unknown stopbits - %d, Using 1", stopbits);
         stopbits = 1;
     }
 
@@ -94,7 +93,7 @@ _get_serial_config(lua_State *L, mb_port *p)
     if(lua_isnumber(L, -1)) {
         parity = (unsigned char)lua_tonumber(L, -1);
         if(parity != MB_ODD && parity != MB_EVEN && parity != MB_NONE) {
-            dax_log(ds, 1, "Unknown Parity %d, using NONE", parity);
+            dax_log(LOG_WARN, "Unknown Parity %d, using NONE", parity);
         }
     } else {
         string = (char *)lua_tostring(L, -1);
@@ -103,11 +102,11 @@ _get_serial_config(lua_State *L, mb_port *p)
             else if(strcasecmp(string, "EVEN") == 0) parity = MB_EVEN;
             else if(strcasecmp(string, "ODD") == 0) parity = MB_ODD;
             else {
-                dax_log(ds, 1, "Unknown Parity %s, using NONE", string);
+                dax_log(LOG_WARN, "Unknown Parity %s, using NONE", string);
                 parity = MB_NONE;
             }
         } else {
-            dax_log(ds, 1, "Parity not given, using NONE");
+            dax_log(LOG_WARN, "Parity not given, using NONE");
             parity = MB_NONE;
         }
     }
@@ -140,11 +139,11 @@ _get_network_config(lua_State *L, mb_port *p)
         if(strcasecmp(string, "TCP") == 0) socket = TCP_SOCK;
         else if(strcasecmp(string, "UDP") == 0) socket = UDP_SOCK;
         else {
-            dax_log(ds, 1, "Unknown Socket Type %s, using TCP", string);
+            dax_log(LOG_WARN, "Unknown Socket Type %s, using TCP", string);
             socket = TCP_SOCK;
         }
     } else {
-        dax_log(ds, 1, "Socket Type not given, using TCP");
+        dax_log(LOG_WARN, "Socket Type not given, using TCP");
         socket = TCP_SOCK;
     }
     lua_pop(L, 1);
@@ -161,7 +160,7 @@ _get_slave_config(lua_State *L, mb_port *p)
 {
     unsigned int size;
     int result = 0;
-    dax_log(ds, LOG_ERROR, "Slave functionality is not yet implemented");
+    dax_log(LOG_ERROR, "Slave functionality is not yet implemented");
     char *reg_name;
 
     lua_getfield(L, -1, "holdreg");
@@ -235,7 +234,7 @@ _add_port(lua_State *L)
         config.ports = malloc(sizeof(mb_port *) * DEFAULT_PORTS);
         config.portsize = DEFAULT_PORTS;
         if(config.ports == NULL) {
-            dax_log(ds, LOG_FATAL, "Unable to allocate port array");
+            dax_log(LOG_FATAL, "Unable to allocate port array");
             kill(getpid(), SIGQUIT);
         }
     }
@@ -247,12 +246,12 @@ _add_port(lua_State *L)
             config.ports = newports;
             config.portsize *= 2;
         } else {
-            dax_log(ds, LOG_FATAL, "Unable to reallocate port array");
+            dax_log(LOG_FATAL, "Unable to reallocate port array");
             kill(getpid(), SIGQUIT);
         }
     }
     
-    dax_log(ds, LOG_MINOR, "Adding a port at index = %d", config.portcount);
+    dax_log(LOG_MINOR, "Adding a port at index = %d", config.portcount);
     
     lua_getfield(L, -1, "name");
     name = (char *)lua_tostring(L, -1);
@@ -262,7 +261,7 @@ _add_port(lua_State *L)
     /* Assign the pointer to p to make things simpler */
     p = config.ports[config.portcount];
     if(p == NULL) {
-        dax_log(ds, LOG_FATAL, "Unable to allocate port[%d]", config.portcount);
+        dax_log(LOG_FATAL, "Unable to allocate port[%d]", config.portcount);
         kill(getpid(), SIGQUIT);
     }
     config.portcount++;
@@ -286,12 +285,12 @@ _add_port(lua_State *L)
             protocol = MB_TCP;
             devtype = NETWORK_PORT;
         } else {
-            dax_log(ds, 1, "Unknown Protocol %s, assuming RTU", string);
+            dax_log(LOG_WARN, "Unknown Protocol %s, assuming RTU", string);
             protocol = MB_RTU;
             devtype = SERIAL_PORT;
         }
     } else {
-        dax_log(ds, 1, "Protocol not given, assuming RTU");
+        dax_log(LOG_WARN, "Protocol not given, assuming RTU");
         protocol = MB_RTU;
         devtype = SERIAL_PORT;
     }
@@ -314,7 +313,7 @@ _add_port(lua_State *L)
     else if(strcasecmp(string, "CLIENT") == 0) type = MB_MASTER;
     else if(strcasecmp(string, "SERVER") == 0) type = MB_SLAVE;
     else {
-        dax_log(ds, 1, "Unknown Port Type %s, assuming MASTER", string);
+        dax_log(LOG_WARN, "Unknown Port Type %s, assuming MASTER", string);
         type = MB_MASTER;
     }
     lua_pop(L, 1);
@@ -403,10 +402,10 @@ _add_command(lua_State *L)
     }
     port = config.ports[p];
     if(port->type != MB_MASTER) {
-        dax_log(ds, 1, "Adding commands only makes sense for a Master or Client port");
+        dax_log(LOG_WARN, "Adding commands only makes sense for a Master or Client port");
         return 0;
     }
-    dax_log(ds, LOG_CONFIG, "Adding a command to port %d", p);
+    dax_log(LOG_CONFIG, "Adding a command to port %d", p);
     
     /* Allocate the new command and add it to the port */
     c = mb_new_cmd(config.ports[p]);
@@ -427,7 +426,7 @@ _add_command(lua_State *L)
     length = (uint16_t)lua_tonumber(L, -1);
 
     if(mb_set_command(c, node, function, reg, length)) {
-        dax_log(ds, LOG_ERROR, "Unable to set command");
+        dax_log(LOG_ERROR, "Unable to set command");
     }
     lua_pop(L, 4);
 
@@ -446,19 +445,19 @@ _add_command(lua_State *L)
             if(mb_is_write_cmd(c)) {
                 c->mode |= MB_ONCHANGE;
             } else {
-                dax_log(ds, LOG_ERROR, "ON CHANGE command trigger only makes sense for write commands");
+                dax_log(LOG_ERROR, "ON CHANGE command trigger only makes sense for write commands");
             }
         }
         if(strcasestr(string, "WRITE") != NULL) {
             if(mb_is_write_cmd(c)) {
                 c->mode |= MB_ONWRITE;
             } else {
-                dax_log(ds, LOG_ERROR, "ON WRITE command trigger only makes sense for write commands");
+                dax_log(LOG_ERROR, "ON WRITE command trigger only makes sense for write commands");
             }
         }
     }
     if(c->mode == 0) {
-        dax_log(ds, 1, "Command Mode not given, assuming CONTINUOUS");
+        dax_log(LOG_WARN, "Command Mode not given, assuming CONTINUOUS");
         c->mode = MB_CONTINUOUS;
     }
     lua_pop(L, 1);
@@ -480,7 +479,7 @@ _add_command(lua_State *L)
         }
         /* inet_aton will return 0 if the address is malformed */
         if(string == NULL || !result) {
-            dax_log(ds, LOG_CONFIG, "Using Default IP address of '127.0.0.1'\n");
+            dax_log(LOG_CONFIG, "Using Default IP address of '127.0.0.1'\n");
             inet_aton("127.0.0.1", &c->ip_address);
         }
         lua_pop(L, 1);
@@ -498,13 +497,13 @@ _add_command(lua_State *L)
     if(string != NULL) {
         c->data_tag = strdup(string);
     } else {
-        dax_log(ds, LOG_ERROR, "No Tagname Given for Command on Port %d", p);
+        dax_log(LOG_ERROR, "No Tagname Given for Command on Port %d", p);
     }
     lua_pop(L,1);
     lua_getfield(L, -1, "tagcount");
     c->tagcount = lua_tointeger(L, -1);
     if(c->tagcount == 0) {
-        dax_log(ds, LOG_ERROR, "No tag count given.  Using 1 as default");
+        dax_log(LOG_ERROR, "No tag count given.  Using 1 as default");
         c->tagcount = 1;
     }
     lua_pop(L,1);
@@ -515,7 +514,7 @@ _add_command(lua_State *L)
         if(string != NULL) {
             c->trigger_tag = strdup(string);
         } else {
-            dax_log(ds, LOG_ERROR, "No Tagname Given for Trigger on Port %d", p);
+            dax_log(LOG_ERROR, "No Tagname Given for Trigger on Port %d", p);
             c->mode &= ~MB_TRIGGER;
         }
         lua_pop(L,1);

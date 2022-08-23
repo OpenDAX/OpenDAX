@@ -95,7 +95,7 @@ parsecommandline(int argc, const char *argv[])
             break;
         case 'I':
             if(! inet_aton(optarg, &_serverip)) {
-                xerror("Unknown IP address %s", optarg);
+                dax_log(LOG_ERROR, "Unknown IP address %s", optarg);
             }
             break;
         case 'P':
@@ -127,7 +127,7 @@ readconfigfile(void)
     lua_State *L;
 //    char *string;
 
-    xlog(2, "Reading Configuration file %s", _configfile);
+    dax_log(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
@@ -140,7 +140,7 @@ readconfigfile(void)
 
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
-        xerror("Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_log(LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return 1;
     }
 
@@ -149,13 +149,6 @@ readconfigfile(void)
         _min_buffers = (int)lua_tonumber(L, -1);
     }
     lua_pop(L, 1);
-
-    /* TODO: This needs to be changed to handle the new topic handlers */
-    if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        //_verbosity = (int)lua_tonumber(L, 4);
-        set_log_topic(_verbosity);
-        //set_log_topic(0xFFFFFFFF);
-    }
 
     /* Clean up and get out */
     lua_close(L);
@@ -174,10 +167,9 @@ opt_configure(int argc, const char *argv[])
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
-        xerror("Unable to read configuration running with defaults");
+        dax_log(LOG_ERROR, "Unable to read configuration running with defaults");
     }
     setdefaults();
-    set_log_topic(_verbosity);
     return 0;
 }
 

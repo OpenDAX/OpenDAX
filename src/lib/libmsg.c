@@ -52,7 +52,7 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
     result = write(ds->sfd, buff, size + MSG_HDR_SIZE);
     if(result < 0) {
     /* TODO: Should we handle the case when this returns due to a signal */
-        dax_log(ds, LOG_ERROR, "_message_send: %s", strerror(errno));
+        dax_log(LOG_ERROR, "_message_send: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
     return 0;
@@ -154,7 +154,7 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
         free(ds->last_msg);
         ds->last_msg = NULL;
         pthread_mutex_unlock(&ds->msg_lock);
-        dax_log(ds, LOG_ERROR, "Received a response of a different type than expected\n");
+        dax_log(LOG_ERROR, "Received a response of a different type than expected\n");
         return ERR_GENERIC;
     }
     return 0;
@@ -183,7 +183,7 @@ _get_connection(dax_state *ds)
     if( ! strcasecmp("local",  server)) {
         /* create a UNIX domain stream socket */
         if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-            dax_log(ds, LOG_ERROR, "Unable to create local socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to create local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         }
         /* fill socket address structure with our address */
@@ -193,15 +193,15 @@ _get_connection(dax_state *ds)
 
         len = offsetof(struct sockaddr_un, sun_path) + strlen(addr_un.sun_path);
         if (connect(fd, (struct sockaddr *)&addr_un, len) < 0) {
-            dax_log(ds, LOG_ERROR, "Unable to connect to local socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to connect to local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
-            dax_log(ds, LOG_COMM, "Connected to Local Server fd = %d", fd);
+            dax_log(LOG_COMM, "Connected to Local Server fd = %d", fd);
         }
     } else { /* We are supposed to connect over the network */
         /* create an IPv4 TCP socket */
         if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            dax_log(ds, LOG_ERROR, "Unable to create remote socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to create remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         }
         memset(&addr_in, 0, sizeof(addr_in));
@@ -210,10 +210,10 @@ _get_connection(dax_state *ds)
         inet_pton(AF_INET, dax_get_attr(ds, "serverip"), &addr_in.sin_addr);
 
         if (connect(fd, (struct sockaddr *)&addr_in, sizeof(addr_in)) < 0) {
-            dax_log(ds, LOG_ERROR, "Unable to connect to remote socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to connect to remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
-            dax_log(ds, LOG_COMM, "Connected to Network Server fd = %d", fd);
+            dax_log(LOG_COMM, "Connected to Network Server fd = %d", fd);
         }
     }
     tv.tv_sec = opt_get_msgtimeout(ds) / 1000;
@@ -221,7 +221,7 @@ _get_connection(dax_state *ds)
 
     len = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     if(len) {
-        dax_log(ds, LOG_ERROR, "Problem setting socket timeout - s", strerror(errno));
+        dax_log(LOG_ERROR, "Problem setting socket timeout - s", strerror(errno));
     }
     return fd;
 
@@ -251,7 +251,7 @@ _mod_register(dax_state *ds, char *name)
     *((uint32_t *)&buff[4]) = htonl(CONNECT_SYNC);  /* registration flags */
     strcpy(&buff[CON_HDR_SIZE], name);                /* The rest is the name */
 
-    dax_log(ds, LOG_COMM, "Sending registration for name - %s", ds->modulename);
+    dax_log(LOG_COMM, "Sending registration for name - %s", ds->modulename);
     if((result = _message_send(ds, MSG_MOD_REG, buff, CON_HDR_SIZE + len)))
         return result;
     len = DAX_MSGMAX;
@@ -306,11 +306,11 @@ _read_next_message(dax_state *ds)
     result = _message_get(ds->sfd, msg);
     if(result) {
         if(result == ERR_DISCONNECTED) {
-            dax_log(ds, LOG_ERROR, "Server disconnected abruptly\n");
+            dax_log(LOG_ERROR, "Server disconnected abruptly\n");
         } else if(result == ERR_TIMEOUT) {
             ; /* Do nothing for timeout */
         } else {
-            dax_log(ds, LOG_ERROR, "_message_get() returned error %d\n", result);
+            dax_log(LOG_ERROR, "_message_get() returned error %d\n", result);
         }
         free(msg);
         return result;
@@ -320,7 +320,7 @@ _read_next_message(dax_state *ds)
         if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
                 events_lost++;
-                dax_log(ds, LOG_ERROR, "Event received from the server is lost.  Total = %u\n", events_lost);
+                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u\n", events_lost);
             }
             free(ds->emsg_queue[0]); /* Free the top one */
             for(n = 0;n<ds->emsg_queue_size-1;n++) {
@@ -467,14 +467,14 @@ dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
         /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
     result = _message_send(ds, MSG_MOD_SET, buff, size);
     if(result) {
-        dax_log(ds, LOG_ERROR, "Can't send MSG_MOD_SET message");
+        dax_log(LOG_ERROR, "Can't send MSG_MOD_SET message");
         pthread_mutex_unlock(&ds->lock);
         return result;
     }
     size = 0;
     result = _message_recv(ds, MSG_MOD_SET, buff, &size, 1);
     if(result) {
-        dax_log(ds, LOG_ERROR, "Problem receiving message MSG_MOD_SET : result = %d", result);
+        dax_log(LOG_ERROR, "Problem receiving message MSG_MOD_SET : result = %d", result);
         pthread_mutex_unlock(&ds->lock);
         return result;
     }
@@ -618,7 +618,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
         result = _message_send(ds, MSG_TAG_GET, buff, size + 2);
         if(result) {
-            dax_log(ds, LOG_ERROR, "Can't send MSG_TAG_GET message");
+            dax_log(LOG_ERROR, "Can't send MSG_TAG_GET message");
             free(buff);
             pthread_mutex_unlock(&ds->lock);
             return result;
@@ -667,7 +667,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         *((tag_index *)&buff[1]) = idx;
         result = _message_send(ds, MSG_TAG_GET, buff, sizeof(tag_index) + 1);
         if(result) {
-            dax_log(ds, LOG_ERROR, "Can't send MSG_TAG_GET message");
+            dax_log(LOG_ERROR, "Can't send MSG_TAG_GET message");
             pthread_mutex_unlock(&ds->lock);
             return result;
         }

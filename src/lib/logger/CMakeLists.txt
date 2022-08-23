@@ -16,8 +16,7 @@
 
 include_directories(.)
 
-add_library(daxlog daxlog.c
-                )
+add_library(daxlog daxlog.c)
 
 target_link_libraries(daxlog ${LUA_LIBRARIES})
 target_link_libraries(daxlog pthread)

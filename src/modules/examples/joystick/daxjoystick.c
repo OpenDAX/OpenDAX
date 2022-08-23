@@ -76,14 +76,14 @@ int main(int argc,char *argv[]) {
     if(ds == NULL) {
         /* dax_fatal() logs an error and causes a quit
          * signal to be sent to the module */
-        dax_log(ds, LOG_FATAL, "Unable to Allocate DaxState Object\n");
+        dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
         kill(getpid(), SIGQUIT);
     }
     configure(argc, argv);
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_log(ds, LOG_FATAL, "Unable to find OpenDAX");
+        dax_log(LOG_FATAL, "Unable to find OpenDAX");
     }
     /* TODO: instead of creating the tags here, we might add some create_tag() routines and simply
      * get handles for the strings in the array.  If the tag doesn't exist then create a single tag
@@ -95,7 +95,7 @@ int main(int argc,char *argv[]) {
         if(axis_list[n].tagname != NULL) {
             result = dax_tag_add(ds, &axis_list[n].handle, axis_list[n].tagname, DAX_REAL, 1, 0);
             if(result) {
-                dax_log(ds, LOG_ERROR, "Unable to add tag '%s'", axis_list[n].tagname);
+                dax_log(LOG_ERROR, "Unable to add tag '%s'", axis_list[n].tagname);
             }
         }
     }
@@ -104,18 +104,18 @@ int main(int argc,char *argv[]) {
         if(button_list[n].tagname != NULL) {
             result = dax_tag_add(ds, &button_list[n].handle, button_list[n].tagname, DAX_BOOL, 1, 0);
             if(result) {
-                dax_log(ds, LOG_ERROR, "Unable to add tag '%s'", button_list[n].tagname);
+                dax_log(LOG_ERROR, "Unable to add tag '%s'", button_list[n].tagname);
             }
         }
     }
 
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
-    dax_log(ds, LOG_MINOR,"Joystick Module Starting");
+    dax_log(LOG_MINOR,"Joystick Module Starting");
 
     while(1) { /* device file open loop */
         fd = _open_device();
         if(fd > 0) {
-            dax_log(ds, LOG_MINOR,"Connected to joystick at fd = %d", fd);
+            dax_log(LOG_MINOR,"Connected to joystick at fd = %d", fd);
             while(read_event(fd, &event) == 0) {
                 switch (event.type)
                 {
@@ -139,7 +139,7 @@ int main(int argc,char *argv[]) {
         }
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
-            dax_log(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
         sleep(1);

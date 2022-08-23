@@ -22,10 +22,6 @@
 #include <libcommon.h>
 #include <ctype.h>
 
-/* The main datatype array for the module's cdt cache */
-//static datatype *_datatypes;
-//static unsigned int _datatype_size;
-
 /* This defines the starting size of the datatype array.
  * It is also the amount that the datatype array will
  * grow when necessary */
@@ -224,7 +220,7 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
     /* At this point we should have the spot for the datatype */
     str = strtok_r(typedesc, ":", &last);
     if(str == NULL) {
-        dax_log(ds, LOG_ERROR, "add_cdt_to_cache(): Something is seriously wrong with the string");
+        dax_log(LOG_ERROR, "add_cdt_to_cache(): Something is seriously wrong with the string");
         return ERR_ARG;
     }
     result = _insert_type(ds, index, str);
@@ -513,7 +509,6 @@ _parse_bit_index(dax_state *ds, tag_type type, tag_handle *h, char *digit, int i
     h->bit = strtol(digit, &endptr, 10);
     /* This indicates that there is extra text past the number */
     if(endptr[0] != '\0') {
-        //dax_log(ds, LOG_ERROR, "Tag %s, has no member %s", tagname, nextname);
         return ERR_ARG;
     }
     size = dax_get_typesize(ds, type);
@@ -666,11 +661,11 @@ _dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int strlen, int count)
             return _parse_bit_index(ds, tag.type, h, membername, index, count);
         }
         else if(!IS_CUSTOM(tag.type)) {
-            dax_log(ds, LOG_ERROR, "Tag %s, has no member %s", tagname, membername);
+            dax_log(LOG_ERROR, "Tag %s, has no member %s", tagname, membername);
             return ERR_ARG;
         }
         if(tag.count > 1 && index == ERR_NOTFOUND) {
-            dax_log(ds, LOG_ERROR, "Ambiguous reference in tag %s", tagname);
+            dax_log(LOG_ERROR, "Ambiguous reference in tag %s", tagname);
             return ERR_ARBITRARY;
         }
         result = _parse_next_member(ds, tag.type, h, membername, count);

@@ -45,7 +45,7 @@ int main(int argc,char *argv[]) {
     if(ds == NULL) {
         /* dax_fatal() logs an errlr and causes a quit
          * signal to be sent to the module */
-        dax_log(ds, LOG_FATAL, "Unable to Allocate DaxState Object\n");
+        dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
     }
 
     /* Create and initialize the configuration subsystem in the library */
@@ -71,7 +71,7 @@ int main(int argc,char *argv[]) {
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_log(ds, LOG_FATAL, "Unable to find OpenDAX");
+        dax_log(LOG_FATAL, "Unable to find OpenDAX");
     }
     /* Let's say we're running */
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);

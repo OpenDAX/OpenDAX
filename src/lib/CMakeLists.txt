@@ -25,8 +25,9 @@ add_library(dax libcdt.c
                 libmsg.c
                 libopt.c
                 lua/libdaxlua.c
-                )
+)
 
+target_link_libraries(dax daxlog)
 target_link_libraries(dax ${LUA_LIBRARIES})
 target_link_libraries(dax pthread)
 

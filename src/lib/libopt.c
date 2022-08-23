@@ -49,7 +49,7 @@ dax_init_config(dax_state *ds, char *name)
     result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
     result += dax_add_attribute(ds, "server", "server", 'S', flags, "LOCAL");
-    result += dax_add_attribute(ds, "debugtopic", "topic", 'T', flags, "MAJOR");
+    result += dax_add_attribute(ds, "logtopics", "topics", 'T', flags, "FATAL,ERROR,MAJOR");
     result += dax_add_attribute(ds, "name", "name", 'N', flags, name);
     result += dax_add_attribute(ds, "cachesize", "cachesize", 'Z', flags, "8");
     result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'O', flags, DEFAULT_TIMEOUT);
@@ -228,13 +228,7 @@ dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, ch
     return ERR_NOTFOUND;
 }
 
-/* This assigns a callback function that if set, will be called for each logging topic
- * that is assigned during the configuration */
-int
-dax_log_topic_callback(dax_state *ds, void (*topic_callback)(char *topic)) {
-    ds->topic_callback = topic_callback;
-    return 0;
-}
+
 
 /* TODO: Add callback for before and after the module conf script is called */
 /* TODO: Add a callback for each entry and exit point in the configuration.  I
@@ -422,7 +416,7 @@ _mod_config_file(dax_state *ds) {
 
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
-        dax_log(ds, LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
+        dax_log(LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         free(cfile);
         return ERR_GENERIC;
     } else {
@@ -453,35 +447,6 @@ _set_defaults(dax_state *ds)
         this = this->next;
     }
     return 0;
-}
-
-/* This parses the string in the 'debugtopic' attibute and sets
- * the appropriate log flags and calls the modules callback function
- * if it exists */
-static void
-_parse_debug_topic(dax_state *ds) {
-    char *temp, *s;
-
-    temp = strdup(dax_get_attr(ds, "debugtopic"));
-
-    s = strtok(temp, ",");
-    while(s != NULL) {
-        if(strcmp(s,"ALL") == 0) ds->logflags |= LOG_ALL;
-        if(strcmp(s,"ERROR") == 0) ds->logflags |= LOG_ERROR;
-        if(strcmp(s,"MAJOR") == 0) ds->logflags |= LOG_MAJOR;
-        if(strcmp(s,"MINOR") == 0) ds->logflags |= LOG_MINOR;
-        if(strcmp(s,"COMM") == 0) ds->logflags |= LOG_COMM;
-        if(strcmp(s,"MSG") == 0) ds->logflags |= LOG_MSG;
-        if(strcmp(s,"MSGERR") == 0) ds->logflags |= LOG_MSGERR;
-        if(strcmp(s,"CONFIG") == 0) ds->logflags |= LOG_CONFIG;
-        if(strcmp(s,"MODULE") == 0) ds->logflags |= LOG_MODULE;
-        
-        if(ds->topic_callback != NULL) { /* If there is a callback function assigned */
-            ds->topic_callback(s);       /* Call it */
-        }
-        s = strtok(NULL, ",");
-    }
-    free(temp);
 }
 
 /* Prints the configuration attributes */
@@ -546,8 +511,8 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
         _mod_config_file(ds);
 
     _set_defaults(ds);
-    _parse_debug_topic(ds);
-    if(ds->logflags & LOG_CONFIG) {
+    dax_parse_log_topics(dax_get_attr(ds, "logtopics"));
+    if(dax_get_log_mask() & LOG_CONFIG) {
         _print_config(ds);
     }
     return _verify_config(ds);
@@ -623,7 +588,7 @@ opt_lua_init_func(dax_state *ds) {
     result = lua_getglobal(ds->L, "init_hook");
     if(result == LUA_TFUNCTION) {
         if(lua_pcall(ds->L, 0, 0, 0)) {
-            dax_log(ds, LOG_ERROR, "error running init_function: %s", lua_tostring(ds->L, -1));
+            dax_log(LOG_ERROR, "error running init_function: %s", lua_tostring(ds->L, -1));
         }
     }
     lua_pop(ds->L, 1);

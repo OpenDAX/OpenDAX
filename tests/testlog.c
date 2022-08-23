@@ -1,50 +1,37 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2022 Phil Birkelbach
+ *  Copyright (c) 2020 Phil Birkelbach
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *  This library is distributed in the hope that it will be useful,
+ *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * This is main source file for the message logging library
+ *  Test logging file
  */
 
-#include <common.h>
-#include <config.h>
-#include <stdarg.h>
-#include <opendax.h>
+/* Since the logging facility is fairly complex and we don't really need all of
+   that functionality for testing we have duplicated those functions here that
+   are needed by most of the system.  These simplify the logging system and 
+   simply log everythign to stdout. */
 
+#include <stdio.h>
+#include <stdarg.h>
+#include <common.h>
+#include <opendax.h>
 
 #define LOG_STRING_SIZE 256
 
-static uint32_t _log_mask = LOG_FATAL | LOG_ERROR;
+static uint32_t _log_mask = LOG_ALL;
 static void (*_topic_callback)(char *topic);
-
-/* Lua interface function for adding a port.  It takes a single
-   table as an argument and returns the Port's index */
-static int
-_add_service(lua_State *L)
-{   
-    const char *type;
-
-    if(!lua_istable(L, -1)) {
-        luaL_error(L, "add_port() received an argument that is not a table");
-    }
-    
-    lua_getfield(L, -1, "type");
-    type = lua_tostring(L, -1);
-    
-    lua_pop(L, 1);
- }
 
 int
 dax_init_logger(char *name) {
@@ -104,9 +91,6 @@ dax_log_topic_callback(void (*topic_callback)(char *topic)) {
     return 0;
 }
 
-/* Function for sending log messages.  _log_mask is a bit mask
-   that is used to decide whether this message should actually get
-   logged */
 void
 dax_log(int mask, const char *format, ...)
 {

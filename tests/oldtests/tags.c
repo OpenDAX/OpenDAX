@@ -79,7 +79,7 @@ add_random_tags(int tagcount, char *name)
         data_type = get_random_type();
         result = dax_tag_add(ds, NULL, tagname, data_type, count, 0);
         if(result < 0) {
-            dax_log(ds, LOG_MINOR, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(ds, data_type), count );
+            dax_log(LOG_MINOR, "Failed to add Tag %s %s[%d]", tagname, dax_type_to_string(ds, data_type), count );
             return result;
 //        } else {
 //            dax_debug(LOG_MINOR, "%s added at index 0x%08X", tagname, result);

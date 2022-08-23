@@ -55,22 +55,23 @@ main(int argc, const char *argv[])
     opt_configure(argc, argv);
 
     result = msg_setup();    /* This creates and sets up the message sockets */
-    if(result) xerror("msg_setup() returned %d", result);
+    if(result) dax_log(LOG_ERROR, "msg_setup() returned %d", result);
     initialize_tagbase(); /* initialize the tag name database */
     /* TODO: Add retention filename from configuration */
     ret_init(NULL);
     /* Start the message handling thread */
     if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
-        xfatal("Unable to create message thread");
+        dax_log(LOG_FATAL, "Unable to create message thread");
+        kill(getpid(), SIGQUIT);
     }
 
-    xlog(LOG_MAJOR, "OpenDAX Tag Server Started");
+    dax_log(LOG_MAJOR, "OpenDAX Tag Server Started");
 
     while(1) { /* Main loop */
         sleep(10); /* A signal should interrupt this */
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
-            xlog(LOG_MAJOR, "Quitting due to signal %d", quitflag);
+            dax_log(LOG_MAJOR, "Quitting due to signal %d", quitflag);
             msg_destroy(); /* Clean up messaging code */
             ret_close();   /* Clean up tag retention system */
             exit(0);
@@ -87,7 +88,7 @@ messagethread(void)
     while(1) {
         result = msg_receive();
         if(result) {
-            xerror("Message received with error: %d\n", result);
+            dax_log(LOG_ERROR, "Message received with error: %d\n", result);
             sleep(1);
         }
     }
@@ -108,5 +109,5 @@ void
 catch_signal(int sig)
 {
     /* TODO: Shouldn't really have printfs in signal handlers */
-    xlog(LOG_MINOR, "Received signal %d", sig);
+    dax_log(LOG_MINOR, "Received signal %d", sig);
 }

@@ -101,7 +101,7 @@ _slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *da
 
     result = dax_write_tag(ds, h, data);
     if(result) {
-        dax_log(ds, LOG_ERROR, "Unable to write tag data to server\n");
+        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
     }
 }
 
@@ -150,7 +150,7 @@ _slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *dat
     }
     result = dax_read_tag(ds, h, data);
     if(result) {
-        dax_log(ds, LOG_ERROR, "Unable to write tag data to server\n");
+        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
     }
 }
 
@@ -205,7 +205,7 @@ _async_command_callback(dax_state *_ds, void *ud) {
 
     result = dax_read_tag(_ds, port->command_h, buff);
     if(result) {
-        dax_log(_ds, LOG_ERROR, "Unable to read commadn tag for port %s", port->name);
+        dax_log(LOG_ERROR, "Unable to read commadn tag for port %s", port->name);
     } else {
         port->cmd->ip_address.s_addr = (buff[6]<<24) + (buff[5]<<16) + (buff[4]<<8) + buff[3];
         port->cmd->port = *(dax_uint *)&buff[7];
@@ -254,19 +254,19 @@ _add_async_command_tag(mb_port *port) {
     snprintf(ctag, 256, "%s_cmd", port->name);
     result = dax_tag_add(ds, &port->command_h, ctag, type, 1, 0x00);
     if(result) {
-        dax_log(ds, LOG_ERROR, "Unable to add tag %s", ctag);
+        dax_log(LOG_ERROR, "Unable to add tag %s", ctag);
     } else {
         port->command_h.size -= MOD_DATA_REG_COUNT*2; /* shrink handle to not include the data */
         port->cmd = mb_new_cmd(NULL); /* Allocate a command for the port */
         if(port->cmd == NULL) {
-            dax_log(ds, LOG_ERROR, "Unable to allocate command to send");
+            dax_log(LOG_ERROR, "Unable to allocate command to send");
         } else { /* Put a handle to the data area in our new command so mb_send_command() will work */
             snprintf(ctag, 256, "%s_cmd.data", port->name);
             dax_tag_handle(ds, &port->cmd->data_h, ctag, MOD_DATA_REG_COUNT);
             /* Allocate the data area to hold the whole data part of the command */
             port->cmd->data = malloc(port->cmd->data_h.size);
             if(port->cmd->data == NULL) {
-                dax_log(ds, LOG_ERROR, "Unable to allocate data for command");
+                dax_log(LOG_ERROR, "Unable to allocate data for command");
                 mb_destroy_cmd(port->cmd);
             } else { /* Create a set event for the .send member */
                 snprintf(ctag, 256, "%s_cmd.send", port->name);
@@ -294,22 +294,22 @@ _setup_port(mb_port *port)
         size = port->hold_size;
         if(size) {
             result = dax_tag_add(ds, &port->hold_tag, port->hold_name, DAX_UINT, size, 0);
-            if(result) dax_log(ds, LOG_ERROR, "Failed to add holding register tag for port %s", port->name);
+            if(result) dax_log(LOG_ERROR, "Failed to add holding register tag for port %s", port->name);
         }
         size = port->input_size;
         if(size) {
             result = dax_tag_add(ds, &port->input_tag, port->input_name, DAX_UINT, size, 0);
-            if(result) dax_log(ds, LOG_ERROR, "Failed to add input register tag for port %s", port->name);
+            if(result) dax_log(LOG_ERROR, "Failed to add input register tag for port %s", port->name);
         }
         size = port->coil_size;
         if(size) {
             result = dax_tag_add(ds, &port->coil_tag, port->coil_name, DAX_BOOL, size, 0);
-            if(result) dax_log(ds, LOG_ERROR, "Failed to add coil register tag for port %s", port->name);
+            if(result) dax_log(LOG_ERROR, "Failed to add coil register tag for port %s", port->name);
         }
         size = port->disc_size;
         if(size) {
             result = dax_tag_add(ds, &port->disc_tag, port->disc_name, DAX_BOOL, size, 0);
-            if(result) dax_log(ds, LOG_ERROR, "Failed to add discrete input tag for port %s", port->name);
+            if(result) dax_log(LOG_ERROR, "Failed to add discrete input tag for port %s", port->name);
         }
         /* TODO: We probably don't need these to be callbacks anymore since we got rid of the library */
         mb_set_slave_write_callback(port, _slave_write_callback);
@@ -327,7 +327,7 @@ _setup_port(mb_port *port)
         if(ud == NULL) return ERR_ALLOC;
         result = dax_tag_add(ds, &ud->h, ctag, DAX_BOOL, size, 0x00);
         if(result) {
-            dax_log(ds, LOG_ERROR, "Unable to add connection enable tag for port %s", port->name);
+            dax_log(LOG_ERROR, "Unable to add connection enable tag for port %s", port->name);
         } else {
             bits = malloc(ud->h.size);
             if(bits == NULL) return ERR_ALLOC;
@@ -348,7 +348,7 @@ _setup_port(mb_port *port)
         }
         result = _add_async_command_tag(port);
         if(result) {
-            dax_log(ds, LOG_ERROR, "Unable to add Asynchronous Command Tag");
+            dax_log(LOG_ERROR, "Unable to add Asynchronous Command Tag");
         }
     }
     return 0;
@@ -372,13 +372,13 @@ _setup_master_events(mb_port *port) {
             ud->cmd = mc;
             result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
             if(result) {
-                dax_log(ds, LOG_ERROR, "Unable to find tag for command write event");
+                dax_log(LOG_ERROR, "Unable to find tag for command write event");
                 free(ud);
                 result++;
             } else {
                 result = dax_event_add(ds, &ud->h, EVENT_WRITE, NULL, NULL, _change_callback, ud, _free_ud);
                 if(result) {
-                    dax_log(ds, LOG_ERROR, "Unable to add event for command write event");
+                    dax_log(LOG_ERROR, "Unable to add event for command write event");
                     free(ud);
                     result++;
                 } else {
@@ -396,14 +396,14 @@ _setup_master_events(mb_port *port) {
             ud->cmd = mc;
             result = dax_tag_handle(ds, &ud->h, mc->data_tag, mc->tagcount);
             if(result) {
-                dax_log(ds, LOG_ERROR, "Unable to find tag for command change event");
+                dax_log(LOG_ERROR, "Unable to find tag for command change event");
                 free(ud);
                 result++;
             } else {
                 result = dax_event_add(ds, &ud->h, EVENT_CHANGE, NULL, NULL, _change_callback, ud, _free_ud);
                 DF("dax_event_add() returned %d",result);
                 if(result) {
-                    dax_log(ds, LOG_ERROR, "Unable to add event for command change event");
+                    dax_log(LOG_ERROR, "Unable to add event for command change event");
                     free(ud);
                     result++;
                 } else {
@@ -419,13 +419,13 @@ _setup_master_events(mb_port *port) {
             ud->cmd = mc;
             result = dax_tag_handle(ds, &ud->h, mc->trigger_tag, 1);
             if(result) {
-                dax_log(ds, LOG_ERROR, "Unable to find tag for command trigger event");
+                dax_log(LOG_ERROR, "Unable to find tag for command trigger event");
                 free(ud);
                 result++;
             } else {
                 result = dax_event_add(ds, &ud->h, EVENT_SET, NULL, NULL, _trigger_callback, ud, _free_ud);
                 if(result) {
-                    dax_log(ds, LOG_ERROR, "Unable to add event for command trigger event");
+                    dax_log(LOG_ERROR, "Unable to add event for command trigger event");
                     free(ud);
                     result++;
                 } else {
@@ -458,13 +458,13 @@ main (int argc, const char * argv[]) {
     sa.sa_handler = &catchpipe;
     sigaction(SIGPIPE, &sa, NULL);
 
-    ds = dax_init("daxmodbus");
+    ds = dax_init("modbus");
     if(ds == NULL) {
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
         return ERR_ALLOC;
     }
 
-    dax_log(ds, LOG_MAJOR, "Modbus Starting");
+    dax_log(LOG_MAJOR, "Modbus Starting");
     /* Read the configuration from the command line and the file.
        Bail if there is an error. */
     result = modbus_configure(argc, argv);
@@ -473,13 +473,13 @@ main (int argc, const char * argv[]) {
     }
 
     if( dax_connect(ds) ) {
-        dax_log(ds, LOG_FATAL, "Unable to connect to OpenDAX server!");
+        dax_log(LOG_FATAL, "Unable to connect to OpenDAX server!");
         kill(getpid(), SIGQUIT);
     }
 
     config.threads = malloc(sizeof(pthread_t) * config.portcount);
     if(config.threads == NULL) {
-        dax_log(ds, LOG_FATAL, "Unable to allocate memory for port threads!");
+        dax_log(LOG_FATAL, "Unable to allocate memory for port threads!");
     }
 
     pthread_attr_init(&attr);
@@ -487,14 +487,14 @@ main (int argc, const char * argv[]) {
 
     for(n = 0; n < config.portcount; n++) {
         if(_setup_port(config.ports[n])) {
-            dax_log(ds, LOG_ERROR, "Problem setting up port - %s", config.ports[n]->name);
+            dax_log(LOG_ERROR, "Problem setting up port - %s", config.ports[n]->name);
         } else {
             mb_set_msgout_callback(config.ports[n], outdata);
             mb_set_msgin_callback(config.ports[n], indata);
             if(pthread_create(&config.threads[n], &attr, (void *)&_port_thread, (void *)config.ports[n])) {
-                dax_log(ds, LOG_ERROR, "Unable to start thread for port - %s", config.ports[n]->name);
+                dax_log(LOG_ERROR, "Unable to start thread for port - %s", config.ports[n]->name);
             } else {
-                dax_log(ds, LOG_MAJOR, "Started Thread for port - %s", config.ports[n]->name);
+                dax_log(LOG_MAJOR, "Started Thread for port - %s", config.ports[n]->name);
             }
         }
     }
@@ -513,21 +513,21 @@ main (int argc, const char * argv[]) {
         dax_event_wait(ds, 1000, NULL);
         if(_caught_signal) {
             if(_caught_signal == SIGHUP) {
-                dax_log(ds, LOG_MINOR, "Should be Reconfiguring Now");
+                dax_log(LOG_MINOR, "Should be Reconfiguring Now");
                 //--reconfigure();
                 _caught_signal = 0;
             } else if(_caught_signal == SIGTERM || _caught_signal == SIGINT || 
                       _caught_signal == SIGQUIT) {
-                dax_log(ds, LOG_FATAL, "Exiting with signal %d", _caught_signal);
+                dax_log(LOG_FATAL, "Exiting with signal %d", _caught_signal);
                 getout(0);
             } else if(_caught_signal == SIGCHLD) {
-                dax_log(ds, LOG_MINOR, "Got SIGCHLD");
+                dax_log(LOG_MINOR, "Got SIGCHLD");
                 /* TODO: Figure out which thread quit and restart it */
                 _caught_signal = 0;
                /*There is probably some really cool child process handling stuff to do here
                  but I don't quite know what to do yet. */
              } else if(_caught_signal == SIGUSR1) {
-                dax_log(ds, LOG_MINOR, "Got SIGUSR1");
+                dax_log(LOG_MINOR, "Got SIGUSR1");
                 _caught_signal = 0;
             }
         }
@@ -560,7 +560,7 @@ static void
 getout(int exitcode)
 {
     int n;
-    dax_log(ds, LOG_MAJOR, "Modbus Module Exiting");
+    dax_log(LOG_MAJOR, "Modbus Module Exiting");
     dax_disconnect(ds);
 
     for(n = 0; n < config.portcount; n++) {

@@ -20,7 +20,6 @@
 
 
 #include "mstr_config.h"
-#include "logger.h"
 #include "process.h"
 #include <getopt.h>
 
@@ -118,7 +117,7 @@ _set_uid_gid(dax_process *proc)
         if(pw != NULL) {
             proc->uid = pw->pw_uid;
         } else {
-            xlog(LOG_ERROR, "Unable to find uid for user %s", proc->user);
+            dax_log(LOG_ERROR, "Unable to find uid for user %s", proc->user);
         }
     }
     /* Neither the uid or the username were set */
@@ -131,7 +130,7 @@ _set_uid_gid(dax_process *proc)
         if(gr != NULL) {
             proc->gid = gr->gr_gid;
         } else {
-            xlog(LOG_ERROR, "Unable to find gid for group %s", proc->group);
+            dax_log(LOG_ERROR, "Unable to find gid for group %s", proc->group);
         }
     }
     /* Neither the gid or the groupname were set */
@@ -157,7 +156,7 @@ _add_process(lua_State *L)
 
     lua_getfield(L, -1, "name");
     if( !(name = (char *)lua_tostring(L, -1)) ) {
-        xerror("No process name given");
+        dax_log(LOG_ERROR, "No process name given");
         return 0;
     }
     lua_pop(L, 1);
@@ -166,7 +165,7 @@ _add_process(lua_State *L)
     lua_getfield(L, -1, "path");
     path = (char *)lua_tostring(L, -1);
     if(path == NULL) {
-        xerror("No path given for process %s", name);
+        dax_log(LOG_ERROR, "No path given for process %s", name);
         return 0;
     }
     lua_pop(L, 1);
@@ -236,7 +235,7 @@ readconfigfile(void)
     lua_State *L;
     char *string;
 
-    xlog(2, "Reading Configuration file %s", _configfile);
+    dax_log(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
@@ -252,7 +251,7 @@ readconfigfile(void)
 
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
-        xerror("Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_log(LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return 1;
     }
 
@@ -292,13 +291,6 @@ readconfigfile(void)
 //    }
 //    lua_pop(L, 1);
 
-    /* TODO: This needs to be changed to handle the new topic handlers */
-    if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        //_verbosity = (int)lua_tonumber(L, 4);
-        //set_log_topic(_verbosity);
-        set_log_topic(0xFFFFFFFF);
-    }
-
     /* Clean up and get out */
     lua_close(L);
 
@@ -316,7 +308,7 @@ opt_configure(int argc, const char *argv[])
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
-        xerror("Unable to read configuration running with defaults");
+        dax_log(LOG_WARN, "Unable to read configuration running with defaults");
     }
     setdefaults();
 

@@ -31,6 +31,7 @@ add_executable(tagserver server.c
                          retain.c)
 target_link_libraries(tagserver ${LUA_LIBRARIES})
 target_link_libraries(tagserver pthread)
+target_link_libraries(tagserver daxlog)
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     target_compile_options(tagserver PRIVATE -Wall)
 endif()

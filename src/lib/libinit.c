@@ -78,12 +78,6 @@ dax_init(char *name)
     pthread_cond_init(&ds->event_cond, NULL);
     pthread_cond_init(&ds->msg_cond, NULL);
 
-    /* Logging functions */
-    ds->topic_callback = NULL;
-    ds->dax_debug = NULL;
-    ds->dax_error = NULL;
-    ds->dax_log = NULL;
-
     return ds;
 }
 
