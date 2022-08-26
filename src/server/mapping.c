@@ -67,12 +67,12 @@ map_add(tag_handle src, tag_handle dest)
 
     /* Bounds check handles */
     if(src.index < 0 || src.index >= get_tagindex()) {
-       xlog(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
+       dax_log(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
        return ERR_ARG;
     }
     
     if(dest.index < 0 || dest.index >= get_tagindex()) {
-       xlog(LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
+       dax_log(LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
        return ERR_ARG;
     }
     if(is_tag_virtual(src.index)){
@@ -82,25 +82,25 @@ map_add(tag_handle src, tag_handle dest)
         return ERR_ILLEGAL;
     }
     if(is_tag_readonly(dest.index)) {
-        xlog(LOG_ERROR, "Destination tag is read only");
+        dax_log(LOG_ERROR, "Destination tag is read only");
        return ERR_READONLY;
     }
     /* Bounds check source size */
     if( (src.byte + src.size) > tag_get_size(src.index)) {
-        xlog(LOG_ERROR, "Size of the affected source data in the new mapping is too large");
+        dax_log(LOG_ERROR, "Size of the affected source data in the new mapping is too large");
         return ERR_2BIG;
     }
     /* Bounds check destination size */
     if( (dest.byte + dest.size) > tag_get_size(dest.index)) {
-        xlog(LOG_ERROR, "Size of the affected destination data in the new mapping is too large");
+        dax_log(LOG_ERROR, "Size of the affected destination data in the new mapping is too large");
         return ERR_2BIG;
     }
 //    if( (dest.byte + src.size) > tag_get_size(dest.index)) {
-//        xlog(LOG_ERROR, "Size of the source data in the new mapping is too large");
+//        dax_log(LOG_ERROR, "Size of the source data in the new mapping is too large");
 //        return ERR_2BIG;
 //    }
     if( src.size > dest.size ) {
-        xlog(LOG_ERROR, "Size of the source data in the new mapping is too large");
+        dax_log(LOG_ERROR, "Size of the source data in the new mapping is too large");
         return ERR_2BIG;
     }
 
@@ -199,7 +199,7 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
             _mapping_hops++;
             if(_mapping_hops > MAX_MAP_HOPS) {
                 /* TODO: conditional compilation of program exit */
-                xerror("Maximum number of chained mappings has been reached for tag %s", _db[_first_tag].name);
+                dax_log(LOG_ERROR, "Maximum number of chained mappings has been reached for tag %s", _db[_first_tag].name);
                 return ERR_OVERFLOW;
             }
             if(this->mask != NULL) {
@@ -211,7 +211,7 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                 destBit = this->dest.bit;
                 new_data = (uint8_t *)malloc(this->source.size);
                 if(new_data == NULL) {
-                    xerror("Unable to allocate memory for map mask");
+                    dax_log(LOG_ERROR, "Unable to allocate memory for map mask");
                     return ERR_ALLOC;
                 }
                 bzero(new_data, this->source.size);

@@ -18,7 +18,7 @@ include(CheckIncludeFile)
 
 # This allows us to use VERSION in the project command
 cmake_policy(SET CMP0048 NEW)
-project(OpenDAX VERSION 0.8)
+project(OpenDAX VERSION 0.9)
 cmake_minimum_required(VERSION 3.10.2)
 
 set(BUILD_SHARED_LIBS ON)
@@ -34,7 +34,6 @@ option(MODULE_TESTS "Build and Run Module Tests" ON)
 
 set(CMAKE_BUILD_TYPE Debug)
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-  add_compile_options(-Wall -O0)
   message("Building Debug Symbols and Verbose Warnings")
 endif()
 
@@ -53,9 +52,12 @@ include_directories(${LUA_INCLUDE_DIR})
 if(NOT LUA_LIBRARIES)
   message(FATAL_ERROR "Lua library not found!!")
 endif()
+
 message("Lua Version ${LUA_VERSION_STRING} found")
-if(${LUA_VERSION_MAJOR} EQUAL 5 AND ${LUA_VERSION_MINOR} EQUAL 1)
-  set(LUA_5_1 TRUE)
+# concatenate Lua major/minor versions together so we can do a comparison
+set(LUA_VERSION_TEST "${LUA_VERSION_MAJOR}${LUA_VERSION_MINOR}")
+if(${LUA_VERSION_TEST} LESS 53)
+  message(FATAL_ERROR "Lua Version 5.3 or later required")
 endif()
 
 # This is for the config.h file

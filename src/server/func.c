@@ -29,8 +29,6 @@
 #include <stdarg.h>
 #include <signal.h>
 
-static uint32_t _logflags = 0;
-
 /* Wrapper functions - Mostly system calls that need special handling */
 
 /* Wrapper for write.  This will block and retry until all the bytes
@@ -96,66 +94,6 @@ xcalloc(size_t count, size_t size)
 void
 xfree(void *ptr) {
     free(ptr);
-}
-
-/* Some general error handling functions. */
-/* TODO: These should get changed to deal with logging
-   and properly exiting the program.  For now just print to
-   stderr and then send a \n" */
-void
-xfatal(const char *format, ...)
-{
-    va_list val;
-    va_start(val, format);
-#ifdef DAX_LOGGER
-    vsyslog(LOG_ERR, format, val);
-#else
-    vfprintf(stderr, format, val);
-    fprintf(stderr, "\n");
-#endif
-    va_end(val);
-    kill(getpid(), SIGQUIT);
-}
-
-/* Logs an error everytime it's called.  These should be for internal
- * program errors only.  If this function is called it really should
- * be pointing out some serious condition within the program.  For user
- * caused errors the xlog() function should be used with the ERR_LOG
- * flag bit */
-void
-xerror(const char *format, ...)
-{
-    va_list val;
-    va_start(val, format);
-#ifdef DAX_LOGGER
-    vsyslog(LOG_ERR, format, val);
-#else
-    vfprintf(stdout, format, val);
-    fprintf(stdout, "\n");
-#endif
-    va_end(val);
-}
-
-void
-set_log_topic(uint32_t topic)
-{
-    _logflags = topic;
-    xlog(LOG_MAJOR, "Log Topics Set to %d", _logflags);
-}
-
-/* logs the string if any of the bits in flags matches _logflags */
-void xlog(uint32_t flags, const char *format, ...) {
-    va_list val;
-    if(flags & _logflags) {
-        va_start(val, format);
-#ifdef DAX_LOGGER
-        vsyslog(LOG_NOTICE, format, val);
-#else
-        vfprintf(stdout, format, val);
-        fprintf(stdout, "\n");
-#endif
-        va_end(val);
-    }
 }
 
 /* allocates and copies a string.  This string would have to be

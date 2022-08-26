@@ -14,25 +14,14 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-#include_directories(.)
-add_executable(tagserver server.c
-                         options.c
-                         func.c
-                         module.c
-                         message.c
-                         tagbase.c
-                         crc.c
-                         buffer.c
-                         events.c
-                         mapping.c
-                         virtualtag.c
-                         groups.c
-                         atomic.c
-                         retain.c)
-target_link_libraries(tagserver ${LUA_LIBRARIES})
-target_link_libraries(tagserver pthread)
-target_link_libraries(tagserver daxlog)
+include_directories(.)
+
+add_library(daxlog daxlog.c)
+
+target_link_libraries(daxlog ${LUA_LIBRARIES})
+target_link_libraries(daxlog pthread)
+
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-    target_compile_options(tagserver PRIVATE -Wall)
+    target_compile_options(daxlog PRIVATE -Wall)
 endif()
-install(TARGETS tagserver DESTINATION bin)
+install(TARGETS daxlog DESTINATION lib)

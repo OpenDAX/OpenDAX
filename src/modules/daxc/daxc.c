@@ -36,6 +36,49 @@ static char *history_file = NULL;
 dax_state *ds;
 int quiet_mode;
 
+
+/* strtok clone that deals with " delimited strings and
+ * has a fixed delimiter of space */
+static char *
+_str_daxtok(char *input) {
+    static char *token = NULL;
+    char *start;
+    char lastchar;
+    int inQuote = 0;
+
+    if(input != NULL) {
+        token = input;
+        start = input;
+        lastchar = '\0';
+    } else {
+        start = token;
+        if(*token =='\0') {
+            start = NULL;
+        }
+    }
+    while(*token != '\0') {
+        if(inQuote) {
+            if(*token == '\"' && lastchar != '\\') {
+                inQuote = 0;
+            }
+            lastchar = *token;
+            token++;
+        } else {
+            if(*token == '\"') {
+                inQuote = 1;
+                lastchar = *token;
+            } else if(*token == ' ') {
+                *token = '\0';
+                token++;
+                break;
+            }
+            token++;
+        }
+    }
+    return start;
+}
+
+
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
     struct sigaction sa;
@@ -59,20 +102,16 @@ int main(int argc,char *argv[]) {
     dax_init_config(ds, "daxc");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "execute","execute", 'x', flags, NULL);
-    result += dax_add_attribute(ds, "file","file", 'f', flags, NULL);
     flags = CFG_CMDLINE;
     result += dax_add_attribute(ds, "quiet","quiet", 'q', flags, NULL);
     result += dax_add_attribute(ds, "interactive","interactive", 'i', flags, NULL);
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
 
-    /* TODO: These have got to move to the configuration */
-    dax_set_debug_topic(ds, 0);
-
  /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_fatal(ds, "Unable to find OpenDAX");
-        getout(_quitsignal);
+        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        getout(-1);
     }
     /* No setup work to do here.  We'll go straight to running */
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
@@ -87,7 +126,7 @@ int main(int argc,char *argv[]) {
         runcmd(command);
     }
 
-    filename = dax_get_attr(ds, "file");
+    filename = argv[optind];
     if(filename) {
         runfile(filename);
     }
@@ -114,7 +153,7 @@ int main(int argc,char *argv[]) {
     }
     while(1) {
         if(_quitsignal) {
-            dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
 
@@ -192,9 +231,11 @@ int
 runcmd(char *instr)
 {
     int tcount = 0, n, result = 0;
-    char *last, *temp, *tok;
+    char *temp, *tok;
     char **tokens;
 
+    if(instr[0] == '\0') return 0; /* ignore blank lines */
+    if(instr[0] == '#') return 0; /* ignore comments */
     /* Store the string to protect if from strtok_r() */
     temp = strdup(instr);
     if(temp == NULL) {
@@ -202,10 +243,10 @@ runcmd(char *instr)
         return -1;
     }
     /* First we Count the Tokens */
-    tok = strtok_r(temp, " ", &last);
+    tok = _str_daxtok(temp);
     if(tok) {
         tcount = 1;
-        while( (tok = strtok_r(NULL, " ", &last)) ) {
+        while( (tok = _str_daxtok(NULL)) ) {
             tcount++;
         }
     }
@@ -222,10 +263,10 @@ runcmd(char *instr)
 
     /* Since strtok_r() will mess up our string we need to copy it again */
     strcpy(temp, instr);
-    tokens[0] = strtok_r(temp, " ", &last);
+    tokens[0] = _str_daxtok(temp);
     /* Get all the tokens */
     for(n = 1; n < tcount; n++) {
-        tokens[n] = strtok_r(NULL, " ", &last);
+        tokens[n] = _str_daxtok(NULL);
     }
     tokens[tcount] = NULL; /* Terminate the array with a NULL */
 
@@ -270,28 +311,15 @@ runcmd(char *instr)
 
     } else if( !strncasecmp(tokens[0], "read", 1)) {
         result = tag_read(&tokens[1]);
-    } else if( !strncasecmp(tokens[0], "write", 5)) {
+    } else if( !strncasecmp(tokens[0], "write", 1)) {
         result = tag_write(&tokens[1], tcount-1);
     } else if( !strncasecmp(tokens[0], "wait", 4)) {
         result = event_wait(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "poll", 4)) {
         event_poll();
 
-    // } else if( !strcasecmp(tokens[0],"db")) {
-        // result = db_read(&tokens[1]);
-//        if(tokens[1] == NULL) fprintf(stderr, "ERROR: Missing Subcommand\n");
-//        else if( !strcasecmp(tokens[1], "read")) result = db_read();
-//    //  else if( !strcasecmp(tokens[1], "readbit")) result = db_read_bit();
-//        else if( !strcasecmp(tokens[1], "write")) result = db_write();
-//        else if( !strcasecmp(tokens[1], "format")) result = db_format();
-//        else fprintf(stderr, "ERROR: Unknown Subcommand - %s\n", tokens[0]);
-    // } else if( !strcasecmp(tokens[0],"msg")) {
-    //     printf("Haven't done 'msg' yet!\n");
-    /* TODO: Really should work on the help command */
     } else if( !strcasecmp(tokens[0], "help")) {
         get_help(&tokens[1]);
-        // printf("Hehehehe, Yea right!\n");
-        // printf(" Try READ, WRITE, LIST, ADD\n");
 
     } else if( !strcasecmp(tokens[0],"exit")) {
         getout(0);

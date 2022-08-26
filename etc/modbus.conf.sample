@@ -2,7 +2,7 @@
 
 -- Configuration file for OpenDAX Modbus module
 
-require "common.conf"
+dofile("log.conf")
 
 p = {}
 c = {}

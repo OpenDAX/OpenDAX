@@ -186,7 +186,7 @@ openIPport(mb_port *mp, struct in_addr address, uint16_t port)
     }
     result = fcntl(fd, F_SETFL, O_NONBLOCK);
     if(result) {
-        dax_error(ds, "Unable to set socket to non blocking");
+        dax_log(LOG_ERROR, "Unable to set socket to non blocking");
         return -1 ;
     }
     return fd;
@@ -209,7 +209,7 @@ mb_new_port(const char *name, unsigned int flags)
             mport->flags = flags;
         }
         if(mport->connections == NULL) {
-            dax_error(ds, "Unable to allocate initial connection pool");
+            dax_log(LOG_ERROR, "Unable to allocate initial connection pool");
             return NULL;
         }
     }
@@ -249,25 +249,25 @@ mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databi
     port->devtype = MB_SERIAL;
     port->device = strdup(device);
     if(port->device == NULL) {
-        dax_error(ds, "%s - Unable to allocate space for port", __func__);
+        dax_log(LOG_ERROR, "%s - Unable to allocate space for port", __func__);
         return MB_ERR_ALLOC;
     }
 
     port->baudrate = getbaudrate(baudrate);
     if(port->baudrate == 0) {
-        dax_error(ds, "Bad baudrate passed");
+        dax_log(LOG_ERROR, "Bad baudrate passed");
         return MB_ERR_BAUDRATE;
     }
     if(databits >= 5 && databits <= 8) {
         port->databits = databits;
     } else {
-        dax_error(ds, "Wrong number of databits passed");
+        dax_log(LOG_ERROR, "Wrong number of databits passed");
         return MB_ERR_DATABITS;
     }
     if(stopbits == 1 || stopbits == 2) {
         port->stopbits = stopbits;
     } else {
-        dax_error(ds, "Wrong number of stopbits passed");
+        dax_log(LOG_ERROR, "Wrong number of stopbits passed");
         return MB_ERR_STOPBITS;
     }
     return 0;
@@ -295,7 +295,7 @@ mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport,
     if(socket == UDP_SOCK || socket == TCP_SOCK) {
         port->socket = socket;
     } else {
-        dax_error(ds, "Bad argument for socket");
+        dax_log(LOG_ERROR, "Bad argument for socket");
         return MB_ERR_SOCKET;
     }
     return 0;
@@ -359,7 +359,7 @@ mb_close_port(mb_port *port)
             port->connections[n].port = 0;
             port->connections[n].fd = 0;
             if(result) {
-                dax_error(ds, "Error closing network file descriptor %d", port->connections[n].fd);
+                dax_log(LOG_ERROR, "Error closing network file descriptor %d", port->connections[n].fd);
             }
         }
         port->connection_count = 0;
@@ -367,7 +367,7 @@ mb_close_port(mb_port *port)
          result = close(port->fd);
          port->fd = 0;
          if(result) {
-              dax_error(ds, "Error closing file descriptor %d", port->fd);
+              dax_log(LOG_ERROR, "Error closing file descriptor %d", port->fd);
          }
     }
     return 0;

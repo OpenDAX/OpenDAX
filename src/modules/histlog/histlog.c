@@ -229,7 +229,7 @@ main(int argc,char *argv[]) {
     if(ds == NULL) {
         /* dax_fatal() logs an error and causes a quit
          * signal to be sent to the module */
-        dax_fatal(ds, "Unable to Allocate DaxState Object\n");
+        dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
     }
 
     histlog_configure(argc, argv);
@@ -245,7 +245,7 @@ main(int argc,char *argv[]) {
     DF("flush interval set to %d", _flush_interval);
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_fatal(ds, "Unable to find OpenDAX");
+        dax_log(LOG_FATAL, "Unable to find OpenDAX");
     }
 
     /* Let's say we're running */

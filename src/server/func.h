@@ -18,6 +18,7 @@
 
 #include <opendax.h>
 #include <sys/time.h>
+#include <signal.h>
 
 #ifndef __FUNC_H
 #define __FUNC_H
@@ -38,16 +39,6 @@ void *xmalloc(size_t);
 void *xrealloc(void *, size_t);
 void *xcalloc(size_t, size_t);
 void xfree(void *);
-
-/* Error handling and logging functions */
-/* If this is defined the output goes to the system log otherwise it
-   goes to STDOUT and STDERR */
-//#define DAX_LOGGER
-
-void xfatal(const char *, ...);
-void xerror(const char *, ...);
-void set_log_topic(uint32_t);
-void xlog(uint32_t ,const char *, ...);
 
 /* Portability functions */
 

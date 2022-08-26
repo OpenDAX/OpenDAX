@@ -172,7 +172,7 @@ dispatch_event(dax_state *ds, dax_message *msg, dax_id *id)
         }
     }
     ds->event_data = NULL; /* This indicates that the data is out of scope now */
-    dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
+    dax_log(LOG_ERROR, "dax_event_dispatch() received an event that does not exist in database");
     return ERR_GENERIC;
 }
 

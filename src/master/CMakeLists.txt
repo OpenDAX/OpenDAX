@@ -16,8 +16,9 @@
 
 #  CMake List file for the OpenDAX master daemon
 
-add_executable(master master.c logger.c process.c pipes.c daemon.c mstr_config.c)
+add_executable(master master.c process.c pipes.c daemon.c mstr_config.c)
 set_target_properties(master PROPERTIES OUTPUT_NAME opendax)
 target_link_libraries(master ${LUA_LIBRARIES})
+target_link_libraries(master daxlog)
 
-install(TARGETS master DESTINATION bin)
+install(TARGETS master DESTINATION bin PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID)

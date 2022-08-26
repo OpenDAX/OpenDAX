@@ -26,7 +26,12 @@
 #include <ctype.h>
 
 
-/* Initialize the module configuration */
+/*!
+ * Initialize the module configuration
+ * 
+ * @param ds Pointer to DAX State object
+ * @param name Name of the module.
+ */
 int
 dax_init_config(dax_state *ds, char *name)
 {
@@ -44,7 +49,6 @@ dax_init_config(dax_state *ds, char *name)
     result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
     result += dax_add_attribute(ds, "server", "server", 'S', flags, "LOCAL");
-    result += dax_add_attribute(ds, "debugtopic", "topic", 'T', flags, "MAJOR");
     result += dax_add_attribute(ds, "name", "name", 'N', flags, name);
     result += dax_add_attribute(ds, "cachesize", "cachesize", 'Z', flags, "8");
     result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'O', flags, DEFAULT_TIMEOUT);
@@ -52,6 +56,7 @@ dax_init_config(dax_state *ds, char *name)
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "config", "config", 'C', flags, NULL);
     result += dax_add_attribute(ds, "confdir", "confdir", 'K', flags, ETC_DIR);
+    result += dax_add_attribute(ds, "logtopics", "topics", 'T', flags, NULL);
     //result += dax_add_attribute(ds, "", "", '', flags, "");
 
     if(result) {
@@ -223,6 +228,8 @@ dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, ch
     return ERR_NOTFOUND;
 }
 
+
+
 /* TODO: Add callback for before and after the module conf script is called */
 /* TODO: Add a callback for each entry and exit point in the configuration.  I
  * should probably do this with a single callback and some flags?  */
@@ -230,7 +237,6 @@ dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, ch
 /* This function sets the value and calls the callback function. */
 static int
 _set_attr(optattr *attr, char *value) {
-    //--printf("_set_attr() called to set %s to %s\n", attr->name, value);
     /* Set the value and call the callback function if there is one */
     if( !(attr->flags & CFG_NO_VALUE) ) {
         if(attr->flags & (CFG_ARG_OPTIONAL | CFG_ARG_REQUIRED)) {
@@ -239,7 +245,6 @@ _set_attr(optattr *attr, char *value) {
             attr->value = "Yes";
         }
     }
-    //--printf("%s was set to %s\n", attr->name, attr->value);
     if(attr->callback) {
         attr->callback(attr->name, value);
     }
@@ -411,7 +416,7 @@ _mod_config_file(dax_state *ds) {
 
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
-        dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
+        dax_log(LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         free(cfile);
         return ERR_GENERIC;
     } else {
@@ -444,20 +449,19 @@ _set_defaults(dax_state *ds)
     return 0;
 }
 
-/* Just for testing */
+/* Prints the configuration attributes */
 static inline void
 _print_config(dax_state *ds)
 {
     optattr *this;
         
     this = ds->attr_head;
-
-    /* This loop checks that none of the symbols have already been used. */
+    printf("Configuration for %s\n", ds->modulename);
     while(this != NULL) {
         if(this->value != NULL) {
-            printf("%s = %s\n", this->name, this->value);
+            printf("  %s = %s\n", this->name, this->value);
         } else {
-            printf("%s = NULL\n", this->name);
+            printf("  %s = NULL\n", this->name);
         }
         this = this->next;
     }
@@ -487,11 +491,20 @@ _verify_config(dax_state *ds)
 int
 dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {
+    uint32_t logmask;
+    char *topics;
+
     if(ds->modulename == NULL) {
         return ERR_NO_INIT;
     }
-    if(flags & CFG_CMDLINE)
+    if(flags & CFG_CMDLINE) {
         _parse_commandline(ds, argc, argv);
+        topics = dax_get_attr(ds, "logtopics");
+        if( topics != NULL) {
+            logmask = dax_parse_log_topics(topics);
+            dax_log_set_default_topics(logmask);
+        }
+    }
     /* This sets the confdir parameter to ETC_DIR if it
      * has not already been set on the command line */
     if(dax_get_attr(ds, "confdir") == NULL) {
@@ -503,11 +516,14 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
         ds->modulename = strdup(dax_get_attr(ds, "name"));
         if(ds->modulename==NULL) return ERR_ALLOC;
     }
-    if(flags & CFG_MODCONF)
+    if(flags & CFG_MODCONF) {
+        dax_log_set_lua_function(ds->L);
         _mod_config_file(ds);
+    }
 
     _set_defaults(ds);
-    //--_print_config(ds);
+    //dax_parse_log_topics(dax_get_attr(ds, "logtopics"));
+    //_print_config(ds);
     return _verify_config(ds);
 }
 
@@ -581,8 +597,9 @@ opt_lua_init_func(dax_state *ds) {
     result = lua_getglobal(ds->L, "init_hook");
     if(result == LUA_TFUNCTION) {
         if(lua_pcall(ds->L, 0, 0, 0)) {
-            dax_error(ds, "error running init_function: %s", lua_tostring(ds->L, -1));
+            dax_log(LOG_ERROR, "error running init_function: %s", lua_tostring(ds->L, -1));
         }
     }
     lua_pop(ds->L, 1);
+    return 0;
 }

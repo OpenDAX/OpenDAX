@@ -1,0 +1,19 @@
+-- Configuration example for OpenDAX logging
+
+-- This file is meant to be called by other configuration files
+-- and can be used as a common way to setup the logger.
+
+s = {}
+s.type = "stdio"
+s.topics = "CONFIG,MAJOR,MINOR"
+s.file = "stdout"
+
+add_log_service(s)
+
+s.topics = "ERROR,FATAL"
+s.file = "stderr"
+
+add_log_service(s)
+
+
+

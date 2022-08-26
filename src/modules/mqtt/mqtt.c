@@ -80,7 +80,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
 void
 connlost(void *context, char *cause)
 {
-    dax_log(ds, "Connection lost - %s", cause);
+    dax_log(LOG_MINOR, "Connection lost - %s", cause);
     _connected = 0;
 }
 
@@ -92,7 +92,7 @@ static int
 subscribe(subscriber_t *sub) {
     int result;
     if(sub->tag_count == 0) {
-        dax_error(ds, "No tags given for topic %s", sub->topic);
+        dax_log(LOG_ERROR, "No tags given for topic %s", sub->topic);
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
@@ -103,7 +103,7 @@ subscribe(subscriber_t *sub) {
     for(int n=0;n<sub->tag_count;n++) {
         result = dax_tag_handle(ds, &sub->h[n], sub->tagnames[n], 1);
         if(result) {
-            dax_error(ds, "Unable to add tag %s as subscription", sub->tagnames[n]);
+            dax_log(LOG_ERROR, "Unable to add tag %s as subscription", sub->tagnames[n]);
             return 1;
         }
     }
@@ -148,7 +148,7 @@ publish(publisher_t *pub) {
     dax_type_union val;
     
     if(pub->tag_count == 0) {
-        dax_error(ds, "No tags given for topic %s", pub->topic);
+        dax_log(LOG_ERROR, "No tags given for topic %s", pub->topic);
         pub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
@@ -159,7 +159,7 @@ publish(publisher_t *pub) {
     for(int n=0;n<pub->tag_count;n++) {
         result = dax_tag_handle(ds, &pub->h[n], pub->tagnames[n], 1);
         if(result) {
-            dax_error(ds, "Unable to add tag %s to publication", pub->tagnames[n]);
+            dax_log(LOG_ERROR, "Unable to add tag %s to publication", pub->tagnames[n]);
             return 1;
         }            
     }
@@ -174,7 +174,7 @@ publish(publisher_t *pub) {
                 result = dax_event_add(ds, &pub->h[n], pub->update_mode, NULL, NULL, event_callback, pub, NULL);
             }
             if(result) {
-                dax_error(ds, "Problem adding update event for tag %s", pub->tagnames[n]);
+                dax_log(LOG_ERROR, "Problem adding update event for tag %s", pub->tagnames[n]);
                 return 1;
             }
         }
@@ -222,13 +222,13 @@ client_loop(void) {
     
     while(1) {
         if(!_connected && cycle_count >= connect_cycle) {
-            dax_debug(ds, LOG_VERBOSE, "Attempting to connect to broker at %s", conn_str);
+            dax_log(LOG_COMM, "Attempting to connect to broker at %s", conn_str);
             if ((result = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
-                dax_log(ds, "Failed to connect, return code %d", result);
+                dax_log(LOG_MINOR, "Failed to connect, return code %d", result);
                 connect_cycle*=2;
                 if(connect_cycle > 60) connect_cycle = 60; /* We'll try once a minute as a maximum for now */
             } else { /* Connection sucess */
-                dax_log(ds, "Connection successful");
+                dax_log(LOG_MINOR, "Connection successful");
                 _connected = 1;
                 connect_cycle = 1;
                 //bad_subs = setup_subscribers();
@@ -247,7 +247,7 @@ client_loop(void) {
 
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
-            dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
         dax_event_wait(ds, 1000, NULL);
@@ -275,21 +275,20 @@ main(int argc,char *argv[]) {
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("daxmqtt");
     if(ds == NULL) {
-        dax_fatal(ds, "Unable to Allocate Dax State Object\n");
+        dax_log(LOG_FATAL, "Unable to Allocate Dax State Object\n");
+        exit(-1);
     }
 
     configure(argc, argv);
     
-    /* Set the logging flags to show all the messages */
-    dax_set_debug_topic(ds, LOG_ALL);
-
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_fatal(ds, "Unable to find OpenDAX");
+        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        exit(-1);
     }
 
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
-    dax_log(ds, "MQTT Module Starting");
+    dax_log(LOG_MINOR, "MQTT Module Starting");
     client_loop();
     
  /* This is just to make the compiler happy */
