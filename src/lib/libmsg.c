@@ -412,8 +412,8 @@ dax_connect(dax_state *ds)
 }
 
 /*!
- * Unregister our client module with the server and dax_disconnect
- * the sockets of the connection
+ * Unregister our client module with the server and disconnect
+ * from the server
  * 
  * @param ds The pointer to the dax state object
  * 
@@ -449,6 +449,11 @@ dax_mod_get(dax_state *ds, char *modname)
 
 /*!
  * This is a generic function for setting module parameters.
+ * @param ds The pointer to the dax state object
+ * @param cmd The function to be called
+ * @param param The arguments to send with the command can be NULL
+ *
+ * @returns Zero on success or an error code otherwise
  */
 int
 dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
@@ -927,6 +932,14 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
     return 0;
 }
 
+/*!
+ * Removed an override on the given tag
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ * @param data Pointer to the data that we are using as the override
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_tag_del_override(dax_state *ds, tag_handle handle) {
     int i, n, result = 0, size, sendsize;
@@ -1023,6 +1036,18 @@ dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mask) {
     return result;
 }
 
+/*!
+ * Causes the override to become active.  After this command is sent to
+ * the tag server the tag server will start sending the value that was
+ * given in the dax_tag_add_override() instead of the actual value.  Other
+ * modules can still write to the tag but the read functions will still
+ * return the values in the override.
+ *
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_tag_set_override(dax_state *ds, tag_handle handle) {
     int result = 0, sendsize;
@@ -1047,7 +1072,18 @@ dax_tag_set_override(dax_state *ds, tag_handle handle) {
     return 0;
 }
 
-
+/*!
+ * Causes the override to become inactive.  After this command is sent to
+ * the tag server the tag server will again start sending the actual data
+ * of the tag instead of the override value.  Essentially the tag will
+ * behave normally.  The override still exists and can be made active again
+ * with the dax_tag_set_override()
+ *
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_tag_clr_override(dax_state *ds, tag_handle handle) {
     int result = 0, sendsize;
@@ -1081,14 +1117,11 @@ dax_tag_clr_override(dax_state *ds, tag_handle handle) {
  * This eliminates the race condition that exists with normal read/modify/write
  * operations.
  *
- * @param ds Pointer to the dax state ojbect
- * @param h  Pointer to a handle that repreents the tag or the part of the
+ * @param ds Pointer to the dax state object
+ * @param h  Pointer to a handle that represents the tag or the part of the
  *           tag that we wish to apply the operation to.
- * @param data Any data that may be required by this event.  For example if
- *             the event is a Greater Than event then this data would represent
- *             the number that the tag given by the handle would be compared against.
- *             If not needed for the particular event type being created it should
- *             be set to NULL.
+ * @param data Any data that may be required by this operation.
+ *
  * @param operation Number representing the operation that we wish to perform.
  *
  * @returns Zero on success or an error code otherwise.
@@ -1413,7 +1446,7 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
  * @param ds Pointer to the dax state object
  * @param cdt_type Identifier to the type that we are requesting
  *                 This can be set to zero of name is being used
- *                 to retrive this type
+ *                 to retrieve this type
  * @param name Name of the type that we wish to retrieve.  If type
  *             is being used to retrieve the type then NULL can be
  *             passed here.
@@ -1526,7 +1559,8 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
     return result;
 }
 
-/* Send message to the server to add a data group.  Groups
+/*!
+ * Add a data group to the tag server .  Data groups
  * are a way to aggregate tags or parts of tags into a single
  * group that can be read or written all at once.
  *
@@ -1539,7 +1573,7 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
  *                with all the information necessary to access this group.
  *                This will be used in all the functions that access the group.
  *                This function allocates memory so it will have be deleted with
- *                the dax_gropu_del() function to free everything.
+ *                the dax_group_del() function to free everything.
  */
 tag_group_id *
 dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t options) {
@@ -1616,13 +1650,14 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
     return id;
 }
 
-/* Reads a tag data group from the server.  It reads the data from the server
+/*!
+ * Reads a tag data group from the server.  It reads the data from the server
  * and writes it into the data area pointed to by 'buff'.  buff must be large
  * enough to contain the entire tag data group.
  *
  * @param ds      Pointer to the dax state object
- * @param id      Pointer to the tag group id returned by group_add()
- * @param data    Pointer to a buffer that will recieve the data
+ * @param id      Pointer to the tag group id returned by dax_group_add()
+ * @param data    Pointer to a buffer that will receive the data
  * @param size    Size of the above buffer
  * @returns       0 on success an error code otherwise
  */
@@ -1655,11 +1690,13 @@ dax_group_read(dax_state *ds, tag_group_id *id, void *data, size_t size) {
     return result;
 }
 
-/* Writes a tag data group to the server.
+/*!
+ * Writes a tag data group to the server.
  *
  * @param ds      Pointer to the dax state object
- * @param id      Pointer to the tag group id returned by group_add()
- * @param data    Pointer to a buffer that will recieve the data
+ * @param id      Pointer to the tag group id returned by dax_group_add()
+ * @param data    Pointer to the buffer that will be written
+ *
  * @returns       0 on success an error code otherwise
  */
 int
@@ -1686,6 +1723,14 @@ dax_group_write(dax_state *ds, tag_group_id *id, void *data) {
     return result;
 }
 
+/*!
+ * Deletes a tag data group from the server.
+ *
+ * @param ds      Pointer to the dax state object
+ * @param id      Pointer to the tag group id returned by dax_group_add()
+ *
+ * @returns       0 on success an error code otherwise
+ */
 int
 dax_group_del(dax_state *ds, tag_group_id *id) {
     int result;

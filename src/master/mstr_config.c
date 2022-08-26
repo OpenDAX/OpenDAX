@@ -26,18 +26,9 @@
 static char *_pidfile;
 static char *_configfile;
 static int _daemonize;
-static int _verbosity;
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
-    int length;
-
-    if(!_configfile) {
-        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
-        _configfile = (char *)malloc(sizeof(char) * length);
-        if(_configfile)
-            sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
-    }
     _daemonize = -1; /* We set it to negative so we can determine when it's been set */
     _pidfile = NULL;
 }
@@ -60,6 +51,7 @@ parsecommandline(int argc, const char *argv[])
 
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
+        {"logtopics", required_argument, 0, 'T'},
         {"deamonize", no_argument, 0, 'D'},
         {"pidfile", required_argument, 0, 'p'},
         {"logger", required_argument, 0, 'L'},
@@ -74,6 +66,9 @@ parsecommandline(int argc, const char *argv[])
         case 'C':
             _configfile = strdup(optarg);
             break;
+        case 'T':
+            dax_log_set_default_topics(strdup(optarg));
+            break;
         case 'p':
             _pidfile = strdup(optarg);
             break;
@@ -81,7 +76,7 @@ parsecommandline(int argc, const char *argv[])
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
         case 'v':
-            _verbosity++;
+            dax_log_set_default_mask(LOG_ALL);
             break;
         case 'D':
             _daemonize = 1;
@@ -233,18 +228,32 @@ static int
 readconfigfile(void)
 {
     lua_State *L;
+    int length;
     char *string;
 
     dax_log(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
+
+    /* If no configuration file was given on the command line we build the default */
+    if(_configfile == NULL) {
+        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
+        _configfile = (char *)malloc(sizeof(char) * length);
+        if(_configfile) {
+            sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
+        } else {
+            dax_log(LOG_FATAL, "Unable to allocate memory for configuration file");
+        }
+    }
+
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals. */
+    luaopen_base(L);
 
     lua_pushcfunction(L, _add_process);
     lua_setglobal(L, "add_process");
 
-    luaopen_base(L);
+    dax_log_set_lua_function(L);
 
     lua_pushstring(L, "opendax");
     lua_setglobal(L, CONFIG_GLOBALNAME);

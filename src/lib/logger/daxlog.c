@@ -208,10 +208,19 @@ dax_parse_log_topics(char *topic_string) {
 //     return 0;
 // }
 
+/* Sets the default bit mask directly */
 void
-dax_log_set_default_topics(uint32_t topics) {
-    _default_topics = topics;
+dax_log_set_default_mask(uint32_t mask) {
+    _default_topics = mask;
 }
+
+/* Takes a comma delimited string and usees that
+ * to set the log topic bit mask */
+void
+dax_log_set_default_topics(char *topics) {
+    _default_topics = dax_parse_log_topics(topics);
+}
+
 
 /* Function for sending log messages.  _log_mask is a bit mask
    that is used to decide whether this message should actually get

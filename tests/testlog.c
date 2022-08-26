@@ -109,8 +109,15 @@ dax_parse_log_topics(char *topic_string) {
 }
 
 void
-dax_log_set_default_topics(uint32_t topics) {
+dax_log_set_default_mask(uint32_t topics) {
     _default_topics = topics;
+}
+
+/* Takes a comma delimited string and usees that
+ * to set the log topic bit mask */
+void
+dax_log_set_default_topics(char *topics) {
+    _default_topics = dax_parse_log_topics(topics);
 }
 
 uint32_t
