@@ -29,6 +29,7 @@ option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
 option(BUILD_JOYSTICK "Build Joystick Module" ON)
+option(BUILD_EXAMPLES "Build Example Modules" ON)
 option(INTERNAL_TESTS "Build and Run Internal System Tests" ON)
 option(MODULE_TESTS "Build and Run Module Tests" ON)
 
