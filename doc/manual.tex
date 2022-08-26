@@ -18,73 +18,49 @@ All Rights Reserved
 \newpage
 \pagenumbering{arabic}
 \chapter{Introduction}
-OpenDAX is an open source, modular, data acquisition and control system. It is licensed under the GPL (GNU Public License) and therefore is completely free to use and modify. OpenDAX is written primarily for Free operating systems like Linux, BSD and Darwin (Mac OS X). We are making every effort to make the code as portable as possible but these are the big three that we will do development on.
+OpenDAX is an open source, modular, data acquisition and control system framework. It is licensed under the GPL (GNU Public License) and therefore is completely free to use and modify. OpenDAX is written primarily for Linux.  There should be no reason that it wouldn't compile on other *nix like operating systems but for now we are concentrating on Linux.
 
 OpenDAX could be used for anything from controlling the air conditioner in a home to controlling an entire industrial facility. Depending on what modules are installed and run it could be used as the firmware for a dedicated Programable Logic Controller (PLC) or a Home Automation system. It could loosely be compared to DCS (Distributed Control System) or a SCADA (Supervisory Control and Data Acquisition) system. Eventually the system would be able to scale up to a several hundred thousand tag system. At this moment the code is far to immature to be used for anything that required reliability but we hope to get it to that point sooner or later. Much will depend on how many developers take up the challenge to help work on the code.
 
-DAX stands for Data Acquisition and eXchange. The system works by combining a backend program (opendax) a library (libdax) and set of modules. The opendax server handles the managing of the database, the messaging and the modules.  The database is an area of memory that holds the real time data that is used throughout the system.  It could hold the temperature or pressure of a process, the status of a switch or some command data from the Human Interface to a logic module.  Messaging (in this context) is the low level communication between modules and the server or between modules.  Actually there isn't any intermodule communication\footnote{There is nothing stopping two modules from communicating to each other with their own protocol} in the system but rather all communication is between the modules and the server and the server can act as a proxy to forward those messages to another module.
+DAX stands for Data Acquisition and eXchange. The system works by combining a master program (opendax), a real time database server (tagserver) a library (libdax) and set of modules. The opendax server handles the starting, stopping and monitoring of process that make up a particular OpenDAX system.  It is actually an optional part of the system.  The user can start and stop each process manually if desired.
 
-The server is also reponsible for starting, stopping and managing the modules.  The modules are simply process that run as children to the server.\footnote{It is possible for other processes to start modules but the server will have much less control over them}  The server can automatically start these modules in the proper order and can also restart them if they crash.
+The tagbase server is the program that manages the real time data that is used throughout the system.  It could hold the temperature or pressure of a process, the status of a switch or some command data from the Human Interface to a logic module.  Each piece of information is called a 'Tag'  Each tag can be a single value or an array of values.  (Multi dimensional arrays are not supported.)  Each tag is defined as a given data type.  There are several base data types. These represent simple number types like INT or FLOAT.  It is possible to create compound
+data types that are collections of the base data types and other compound data types.
 
-The modules do all the work and communicate with the opendax server through the libdax library. There will be modules for reading and writing to I/O points, data logging, alarming, machine interface, and logic. It will even be possible to use programs that were never written to be OpenDAX modules. These programs can be started from the OpenDAX process and have their STDIN and STDOUT piped to other modules so that they can be controlled. This will keep the OpenDAX system from having to reinvent the wheel if there is an existing program to do the work. Some examples might be using 'dc' for abitrary precision math, or mpg123 as a tone generator. Any program that you can interact with from the command line should work with OpenDAX as a module. 
+The modules do all the work and communicate with the \texttt{tagbase} server through the libdax library. There could be modules for reading and writing to I/O points, data logging, alarming, machine interface, and logic. The primary interface to the tagbase server is the \texttt{daxc} module, which is a command line interface module that can
+be used to read and write tags, check status and do all other types of maintenance in the tagbase server.
+
+There is no requirement that all of the modules have to be on the same machine.  There is also no requirement that the modules be on the machine with the tag server.  Any process that is to be started by the \texttt{opendax} server will have to be on the same computer.  Modules communicate to the server by one of two mechanisms.  Either a TCP/IP connection or a \textit{local domain socket}.  The \textit{local domain socket} has the advantage of being very fast because the operating system kernel simply copies memory from one process to another.  The disadvantage is that the module that wants to use this communication mechanism must be on the same machine as the tag server. If the module is on another machine then it will have to use the TCP/IP protocol to communicate with the tag server.
+
+The system is designed so that most of the work happens in the client library and the modules.  Since the tag
+server is a bottleneck for the entire system, any work that could be offloaded to the client library and the
+modules was.
 
 \chapter{Getting Started}
 \input{install.tex}
 
-\chapter{The OpenDAX Server}
+\chapter{The OpenDAX Master Server}
+
+
+\chapter{The Tag Server}
 
 
 \chapter{Modules}
 Modules are where all the real work gets done on an OpenDAX system.  The server is the glue that holds all the modules together but the modules are where it all happens.  The OpenDAX distribution comes with a few included modules.  They are described in this chapter.  If you have received modules from other sources you'll have to consult the documentation that came with that module.
 
-\section{Types of Modules}
-There are several types of modules that can be used with OpenDAX some of the most common fall into a few categories.
-
-\begin{itemize}
-\item I/O Modules
-\item Logic Modules
-\item Interface Modules
-\item Recording Modules
-\end{itemize}
-
-\subsection*{I/O Modules}
-I/O Modules connect OpenDAX to the real world. These could include communication modules to retrieve information from Programable Logic Controller (PLC's) via Modbus or EthernetIP.  They could also be a way of reading the state of ports on the host computer itself, like the parallel port.  Just about any method of reading real time\footnote{The term 'real time' is somewhat arbitrary depending on time resolution required.  In this context we are talking about taking the measurements in the current time but these could be seconds old} information would qualify.
-
-\subsection*{Logic Modules}
-Logic Modules are just what the name suggests.  This is where the user would create the logic that manipulates the various tags in the system.  It could be a Lua scripting module or a Ladder Logic interpreter.  It could even be a module that was custom written in 'C' for a very specific purpose.  At the moment the only Logic module that is included in the OpenDAX distribution is the daxlua Lua scripting module.
-
-\subsection*{Human Interface Modules}
-The most common Human Interface Module would be one that displayed graphic screens that would indicate various values from the OpenDAX database and allow the user to control different parts of the process by changing values or clicking on icons.
-
-Human interfaces could also be textual interface where commands could be entered at the command line.
-
-\subsection*{Recording Modules}
-A Recording Module would probably be some kind of event recorder or data historian.
-
 \section{Generic Module Configuration}
 There are many options to be configured for each of the different modules.  For those, consult the section that describes the module that you are interested in.  There are a few options that are common to all modules and they are described here.
 
-There are three places that modules recieve configuration information.
+There are two places that modules receive configuration information.
 
 \begin{itemize}
-\item The main opendax.conf configuration file
 \item The module configuration file
 \item Command line arguments
 \end{itemize}
 
-These sources are listed in order of increasing priority.  For example, if the configuration option is set on the command line as an argument it will override that same option given in either of the two configuration files.  If it is set in the module configuration file and the opendax.conf file the module configuration file will have precedence.
-
-The main \emph{opendax.conf} configuration file is the same file that is used to configure the serverr.  It will most often contain configuration information that would be common to all modules that would be tedious to duplicate for every module in the system.  Information like what the server's IP address and port number are or what kind of event logging the system will do would be candidates for the \emph{opendax.conf} file.
+If a configuration attribute is present on the command line it will take precedence over that same attribute given in the configuration files.  An exception to this is the logging configuration.  Once logging services are added via the configuration file those services will determine how messages are logged and anything passed on the  command line will be ignored.
 
 The module configuration file is a file that will most likely be named after the module.  For instance the configuration file for the \emph{daxlua} module is called \emph{daxlua.conf}.  These files would contain information that is specific to each module.  The \emph{daxlua} configuration contains the location of the script files to execute as an example.
-
-The common configuration options are...
-
-\begin{itemize}
-\item daemonize
-\item socketname
-\ldots not finished yet
-\end{itemize}
 
 The OpenDAX server and most of the modules use the Lua scripting language as the configuration file format.  The configuration files are actually executed within the server or modules process as a Lua script.  Generally the configuration is given by simple key/value pairs such as \ldots
 

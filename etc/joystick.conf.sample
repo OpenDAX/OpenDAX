@@ -1,5 +1,9 @@
 --This is the configuration file for the OpenDAX joystick module
 
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/common.conf")
+
 --device of the joystick that we are going to use
 device = "/dev/input/js0"
 

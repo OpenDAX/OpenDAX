@@ -1,5 +1,7 @@
 -- Main configuration file for the OpenDAX tag server
 
--- require "common.conf"
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/common.conf")
 
 statustag = "_status"

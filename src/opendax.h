@@ -79,8 +79,10 @@ extern "C" {
 #define LOG_COMM      0x00000040  /* Communications Milestones */
 #define LOG_MSG       0x00000080  /* Messages */
 #define LOG_MSGERR    0x00000100  /* Message Errors */
-#define LOG_CONFIG    0x00000200  /* Configurations */
+#define LOG_CONFIG    0x00000200  /* Configuration file prints */
 #define LOG_PROTOCOL  0x00000400  /* Protocol Dumps */
+#define LOG_INFO      0x00000800  /* Low priority information */
+#define LOG_DEBUG     0x00001000  /* Debug messages */
 #define LOG_USER1     0x01000000  /* Module specific log topic */
 #define LOG_USER2     0x02000000  /* Module specific log topic */
 #define LOG_USER3     0x04000000  /* Module specific log topic */

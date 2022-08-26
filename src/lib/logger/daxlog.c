@@ -22,7 +22,6 @@
 #include <common.h>
 #include <config.h>
 #include <stdarg.h>
-#include <opendax.h>
 
 
 #define LOG_STRING_SIZE 256
@@ -63,11 +62,21 @@ _topic_to_string(uint32_t topic) {
             return "CONFIG";
         case LOG_PROTOCOL:
             return "PROTOCOL";
+        case LOG_INFO:
+            return "INFO";
+        case LOG_DEBUG:
+            return "DEBUG";
         default:
             return "?";
     }
 }
 
+/* Every logging service requires at least two functions.  One that is called
+ * during configuration and the other that actually does the logging. Each
+ * service also has a structure type that would be stored in the array to
+ * maintain configuration for that particular instance of the service. */
+
+/* These are for the stdio logging service.*/
 static void
 _log_stdio(uint32_t topic, void *data, char *str) {
     stdio_service *config;
@@ -82,7 +91,6 @@ _add_stdio_service(lua_State *L, service_item *service) {
     const char *file;
 
     new = malloc(sizeof(stdio_service));
-    /* TODO: Replace this with actual configuration */
     lua_getfield(L, -1, "file");
     file = lua_tostring(L, -1);
     if(strcasecmp(file, "stdout")==0) {
@@ -95,6 +103,50 @@ _add_stdio_service(lua_State *L, service_item *service) {
 
     return 0;
 }
+
+/* These are for the syslog logging service */
+static void
+_log_syslog(uint32_t topic, void *data, char *str) {
+    syslog_service *config;
+    config = (syslog_service *)data;
+
+    syslog(LOG_USER | config->priority, "%s", str);
+}
+
+static int
+_add_syslog_service(lua_State *L, service_item *service) {
+    syslog_service *new;
+    const char *priority;
+    
+    new = malloc(sizeof(syslog_service));
+    lua_getfield(L, -1, "priority");
+    priority = lua_tostring(L, -1);
+    
+    if(strcasecmp(priority, "EMERG") == 0)
+        new->priority = SYSLOG_EMERG;
+    else if(strcasecmp(priority, "ALERT") == 0)
+        new->priority = SYSLOG_ALERT;
+    else if(strcasecmp(priority, "CRIT") == 0)
+        new->priority = SYSLOG_CRIT;
+    else if(strcasecmp(priority, "ERR") == 0)
+        new->priority = SYSLOG_ERR;
+    else if(strcasecmp(priority, "WARNING") == 0)
+        new->priority = SYSLOG_WARNING;
+    else if(strcasecmp(priority, "NOTICE") == 0)
+        new->priority = SYSLOG_NOTICE;
+    else if(strcasecmp(priority, "INFO") == 0)
+        new->priority = SYSLOG_INFO;
+    else if(strcasecmp(priority, "DEBUG") == 0)
+        new->priority = SYSLOG_DEBUG;
+    else
+        luaL_error(L, "Unknown priority given");
+
+    service->log_func = _log_syslog;
+    service->data=(void *)new;
+
+    return 0;
+}
+
 
 /* Lua interface function for adding a port.  It takes a single
    table as an argument and returns the Port's index */
@@ -130,6 +182,9 @@ _add_service(lua_State *L)
     if(strcasecmp(type, "stdio")==0) {
         lua_pop(L, 1); /* Put the table back at the top of the stack */
         result = _add_stdio_service(L, &_services[_service_count]);
+    } else if(strcasecmp(type, "syslog")==0) {
+        lua_pop(L, 1); /* Put the table back at the top of the stack */
+        result = _add_syslog_service(L, &_services[_service_count]);
     } else {
         dax_log(LOG_ERROR, "Unknown log service %s", type);
         return ERR_ARG;
@@ -181,15 +236,19 @@ dax_parse_log_topics(char *topic_string) {
     s = strtok(temp, ",");
     while(s != NULL) {
         if(strcmp(s,"ALL") == 0) log_mask |= LOG_ALL;
+        if(strcmp(s,"MINOR") == 0) log_mask |= LOG_MINOR;
+        if(strcmp(s,"MAJOR") == 0) log_mask |= LOG_MAJOR;
+        if(strcmp(s,"WARN") == 0) log_mask |= LOG_WARN;
         if(strcmp(s,"ERROR") == 0) log_mask |= LOG_ERROR;
         if(strcmp(s,"FATAL") == 0) log_mask |= LOG_FATAL;
-        if(strcmp(s,"MAJOR") == 0) log_mask |= LOG_MAJOR;
-        if(strcmp(s,"MINOR") == 0) log_mask |= LOG_MINOR;
+        if(strcmp(s,"MODULE") == 0) log_mask |= LOG_MODULE;
         if(strcmp(s,"COMM") == 0) log_mask |= LOG_COMM;
         if(strcmp(s,"MSG") == 0) log_mask |= LOG_MSG;
         if(strcmp(s,"MSGERR") == 0) log_mask |= LOG_MSGERR;
         if(strcmp(s,"CONFIG") == 0) log_mask |= LOG_CONFIG;
-        if(strcmp(s,"MODULE") == 0) log_mask |= LOG_MODULE;
+        if(strcmp(s,"PROTOCOL") == 0) log_mask |= LOG_PROTOCOL;
+        if(strcmp(s,"INFO") == 0) log_mask |= LOG_INFO;
+        if(strcmp(s,"DEBUG") == 0) log_mask |= LOG_DEBUG;
         
         if(_topic_callback != NULL) { /* If there is a callback function assigned */
             _topic_callback(s);       /* Call it */

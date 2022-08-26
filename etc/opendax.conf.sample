@@ -1,5 +1,9 @@
 -- Main configuration file for the OpenDAX master daemon
 
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/common.conf")
+
 --Set to 'false' to run OpenDAX in the foreground
 daemonize = false
 
