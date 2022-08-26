@@ -661,13 +661,14 @@ setup_interpreter(lua_State *L)
     daxlua_register_function(L,"tag_get");
     daxlua_register_function(L,"tag_read");
     daxlua_register_function(L,"tag_write");
+    daxlua_register_function(L, "log");
 
     lua_pushcfunction(L, _register_tag);
     lua_setglobal(L, "register_tag");
 
     lua_pushcfunction(L, _register_static);
     lua_setglobal(L, "register_static");
-
+    daxlua_set_constants(L);
     /* register the libraries that we need*/
     luaopen_base(L);
     luaopen_table(L);

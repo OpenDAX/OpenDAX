@@ -1,6 +1,8 @@
 --This is the configuration file for the OpenDAX MQTT module
 --It is basically a Lua script itself
 
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
 --dofile(configdir .. "/common.conf")
 
 verbosity = 10 --needs to change to the new way

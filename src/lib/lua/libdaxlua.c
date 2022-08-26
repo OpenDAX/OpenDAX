@@ -1137,6 +1137,31 @@ _sleep(lua_State *L) {
     return 1;
 }
 
+/* Wrapper for the dax_log function */
+static int
+_log(lua_State *L) {
+    uint32_t log_topics;
+    int result;
+    const char *str;
+
+    if(lua_gettop(L) != 2) {
+        luaL_error(L, "Wrong number of arguments passed to log()");
+    }
+    log_topics = lua_tointegerx(L, 1, &result);
+    if(result) {
+        str = lua_tostring(L, 2);
+        if(str!= NULL) {
+            dax_log(log_topics, str);
+        } else {
+            luaL_error(L, "Problem with string passed to log()");    
+        }
+    } else {
+        luaL_error(L, "First argument to log() should be topic integer");
+    }
+    return 0;
+}
+
+
 /* This is used by C program / modules that would like to take care of all
  * the allocation, initialization and configuration of their dax_state
  * objects.  It is very critical for that C function not to lose track of
@@ -1166,6 +1191,7 @@ static const struct luaL_Reg daxlib[] = {
     {"event_wait", _event_wait},
     {"event_poll", _event_poll},
     {"sleep", _sleep},
+    {"log", _log},
     {NULL, NULL}  /* sentinel */
 };
 
@@ -1180,6 +1206,67 @@ static const struct luaL_Reg daxlib[] = {
  *   groups
  */
 
+static void
+_set_log_constants(lua_State *L) {
+    uint32_t log_ints[] = {
+        LOG_MINOR,
+        LOG_MAJOR,
+        LOG_WARN,
+        LOG_ERROR,
+        LOG_FATAL,
+        LOG_MODULE,
+        LOG_COMM,
+        LOG_MSG,
+        LOG_MSGERR,
+        LOG_CONFIG,
+        LOG_PROTOCOL,
+        LOG_INFO,
+        LOG_DEBUG,
+        LOG_USER1,
+        LOG_USER2,
+        LOG_USER3,
+        LOG_USER4,
+        LOG_USER5,
+        LOG_USER6,
+        LOG_USER7,
+        LOG_USER8,
+        LOG_ALL
+    };
+    const char *log_str[] = {
+        "LOG_MINOR",
+        "LOG_MAJOR",
+        "LOG_WARN",
+        "LOG_ERROR",
+        "LOG_FATAL",
+        "LOG_MODULE",
+        "LOG_COMM",
+        "LOG_MSG",
+        "LOG_MSGERR",
+        "LOG_CONFIG",
+        "LOG_PROTOCOL",
+        "LOG_INFO",
+        "LOG_DEBUG",
+        "LOG_USER1",
+        "LOG_USER2",
+        "LOG_USER3",
+        "LOG_USER4",
+        "LOG_USER5",
+        "LOG_USER6",
+        "LOG_USER7",
+        "LOG_USER8",
+        "LOG_ALL"
+    };
+    for(int n=0;n<20;n++) {
+        lua_pushinteger(L, log_ints[n]);
+        lua_setglobal(L, log_str[n]);
+    }
+}
+
+void
+daxlua_set_constants(lua_State *L) {
+    _set_log_constants(L);
+}
+
 /* This registers all of the functions that are defined in the above array
  * to the Lua script given by L.  It places them in a table named 'dax' and
  * leaves this table on the top of the stack.  This is the function that you
@@ -1188,9 +1275,10 @@ static const struct luaL_Reg daxlib[] = {
 /* TODO: Add a table, "tags" to "dax" that would be empty but utilize the
  * metamethods __index and __newindex to read and write the tags */
 int
-luaopen_dax (lua_State *L)
+luaopen_dax(lua_State *L)
 {
     luaL_newmetatable(L, "OpenDAX.handle");
+    _set_log_constants(L);
 
     luaL_newlib(L, daxlib);
 

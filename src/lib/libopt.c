@@ -385,6 +385,25 @@ _get_lua_globals(dax_state *ds) {
     return 0;
 }
 
+/* We use this function to override the print() function in Lua for
+ * the configuration.  This function takes the string passed to
+ * print() and passes it to the logger with LOG_CONFIG topic */
+static int
+_config_print(lua_State *L) {
+    const char *str;
+
+    if(lua_gettop(L) != 1) {
+        luaL_error(L, "String argument required for print()");
+    }
+    str = lua_tostring(L, 1);
+    if(str!= NULL) {
+        dax_log(LOG_CONFIG, str);
+    } else {
+        luaL_error(L, "Problem with string passed to print()");    
+    }
+    return 0;
+}
+
 /* This function tries to open the module specific configuration
  * file and run it. */
 static inline int
@@ -415,8 +434,10 @@ _mod_config_file(dax_state *ds) {
     lua_setglobal(ds->L, CONFIG_GLOBALNAME);
     lua_pushstring(ds->L, cdir);
     lua_setglobal(ds->L, "configdir");
-
-
+    /* Override the print function with our logging function */
+    lua_pushcfunction(ds->L, _config_print);
+    lua_setglobal(ds->L, "print");
+    
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
         dax_log(LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
@@ -526,7 +547,6 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
     }
 
     _set_defaults(ds);
-    //dax_parse_log_topics(dax_get_attr(ds, "logtopics"));
     //_print_config(ds);
     return _verify_config(ds);
 }

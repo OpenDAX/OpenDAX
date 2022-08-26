@@ -63,6 +63,10 @@ _topic_to_string(uint32_t topic) {
             return "CONFIG";
         case LOG_PROTOCOL:
             return "PROTOCOL";
+        case LOG_INFO:
+            return "INFO";
+        case LOG_DEBUG:
+            return "DEBUG";
         default:
             return "?";
     }
@@ -181,15 +185,19 @@ dax_parse_log_topics(char *topic_string) {
     s = strtok(temp, ",");
     while(s != NULL) {
         if(strcmp(s,"ALL") == 0) log_mask |= LOG_ALL;
+        if(strcmp(s,"MINOR") == 0) log_mask |= LOG_MINOR;
+        if(strcmp(s,"MAJOR") == 0) log_mask |= LOG_MAJOR;
+        if(strcmp(s,"WARN") == 0) log_mask |= LOG_WARN;
         if(strcmp(s,"ERROR") == 0) log_mask |= LOG_ERROR;
         if(strcmp(s,"FATAL") == 0) log_mask |= LOG_FATAL;
-        if(strcmp(s,"MAJOR") == 0) log_mask |= LOG_MAJOR;
-        if(strcmp(s,"MINOR") == 0) log_mask |= LOG_MINOR;
+        if(strcmp(s,"MODULE") == 0) log_mask |= LOG_MODULE;
         if(strcmp(s,"COMM") == 0) log_mask |= LOG_COMM;
         if(strcmp(s,"MSG") == 0) log_mask |= LOG_MSG;
         if(strcmp(s,"MSGERR") == 0) log_mask |= LOG_MSGERR;
         if(strcmp(s,"CONFIG") == 0) log_mask |= LOG_CONFIG;
-        if(strcmp(s,"MODULE") == 0) log_mask |= LOG_MODULE;
+        if(strcmp(s,"PROTOCOL") == 0) log_mask |= LOG_PROTOCOL;
+        if(strcmp(s,"INFO") == 0) log_mask |= LOG_INFO;
+        if(strcmp(s,"DEBUG") == 0) log_mask |= LOG_DEBUG;
         
         if(_topic_callback != NULL) { /* If there is a callback function assigned */
             _topic_callback(s);       /* Call it */

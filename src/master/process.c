@@ -116,7 +116,7 @@ dax_process *
 process_add(char *name, char *path, char *arglist, unsigned int flags)
 {
     dax_process *new, *this;
-    dax_log(LOG_CONFIG,"Adding process %s to configuration",name);
+    dax_log(LOG_DEBUG,"Adding process %s to configuration",name);
 
     new = malloc(sizeof(dax_process));
     if(new) {

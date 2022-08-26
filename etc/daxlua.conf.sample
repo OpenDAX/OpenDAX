@@ -1,7 +1,9 @@
 --This is the configuration file for the OpenDAX Lua interpreter module
 --It is basically a Lua script itself
 
-require "common.conf"
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/common.conf")
 
 -- Assign a variable to represent the directory where our scripts are
 --root="/src/opendax/modules/daxlua/"

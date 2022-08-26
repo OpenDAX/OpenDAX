@@ -405,7 +405,7 @@ _add_command(lua_State *L)
         dax_log(LOG_WARN, "Adding commands only makes sense for a Master or Client port");
         return 0;
     }
-    dax_log(LOG_CONFIG, "Adding a command to port %d", p);
+    dax_log(LOG_DEBUG, "Adding a command to port %d", p);
     
     /* Allocate the new command and add it to the port */
     c = mb_new_cmd(config.ports[p]);
@@ -479,7 +479,7 @@ _add_command(lua_State *L)
         }
         /* inet_aton will return 0 if the address is malformed */
         if(string == NULL || !result) {
-            dax_log(LOG_CONFIG, "Using Default IP address of '127.0.0.1'\n");
+            dax_log(LOG_INFO, "Using Default IP address of '127.0.0.1'\n");
             inet_aton("127.0.0.1", &c->ip_address);
         }
         lua_pop(L, 1);
