@@ -3,6 +3,8 @@
 -- This file is meant to be called by other configuration files
 -- and can be used as a common way to setup the logger.
 
+-- Example stdio service
+
 s = {}
 s.type = "stdio"
 s.topics = "CONFIG,MAJOR,MINOR"
@@ -15,5 +17,27 @@ s.file = "stderr"
 
 add_log_service(s)
 
+-- Example syslog service
+
+s.type = "syslog"
+s.topics = "ERROR,FATAL"
+s.priority = "ERR"
+
+--add_log_service(s)
+
+s.topics = "WARN"
+s.priority = "WARNING"
+
+--add_log_service(s)
+
+s.topics = "INFO"
+s.priority = "INFO"
+
+--add_log_service(s)
+
+s.topics = "DEBUG"
+s.priority = "DEBUG"
+
+--add_log_service(s)
 
 
