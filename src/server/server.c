@@ -51,6 +51,7 @@ main(int argc, const char *argv[])
     sa.sa_handler = &catch_signal;
     sigaction(SIGPIPE, &sa, NULL);
 
+    dax_init_logger("tagserver", LOG_ERROR | LOG_FATAL);
     /* Read configuration from defaults, file and command line */
     opt_configure(argc, argv);
 

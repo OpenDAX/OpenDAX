@@ -56,8 +56,11 @@ dax_init_config(dax_state *ds, char *name)
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "config", "config", 'C', flags, NULL);
     result += dax_add_attribute(ds, "confdir", "confdir", 'K', flags, ETC_DIR);
-    result += dax_add_attribute(ds, "logtopics", "topics", 'T', flags, NULL);
+    result += dax_add_attribute(ds, "logtopics", "logtopics", 'T', flags, NULL);
     //result += dax_add_attribute(ds, "", "", '', flags, "");
+
+    flags = CFG_CMDLINE | CFG_ARG_NONE;
+    result += dax_add_attribute(ds, "verbose", "verbose", 'v', flags, NULL);
 
     if(result) {
         return ERR_GENERIC;
@@ -491,7 +494,6 @@ _verify_config(dax_state *ds)
 int
 dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {
-    uint32_t logmask;
     char *topics;
 
     if(ds->modulename == NULL) {
@@ -501,8 +503,10 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
         _parse_commandline(ds, argc, argv);
         topics = dax_get_attr(ds, "logtopics");
         if( topics != NULL) {
-            logmask = dax_parse_log_topics(topics);
-            dax_log_set_default_topics(logmask);
+            dax_log_set_default_topics(topics);
+        }
+        if(dax_get_attr(ds, "verbose")) {
+            dax_log_set_default_mask(LOG_ALL);
         }
     }
     /* This sets the confdir parameter to ETC_DIR if it

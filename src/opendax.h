@@ -312,7 +312,8 @@ uint32_t dax_parse_log_topics(char *topic_string);
 int dax_log_topic_callback(void (*topic_callback)(char *topic));
 int dax_init_logger(const char *name, uint32_t topics);
 int dax_log_set_lua_function(lua_State *L);
-void dax_log_set_default_topics(uint32_t topics);
+void dax_log_set_default_mask(uint32_t mask);
+void dax_log_set_default_topics(char *topics);
 void dax_log(uint32_t topic, const char *format, ...);
 
 /* Create and destroy connections to the server */
