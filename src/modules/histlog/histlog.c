@@ -84,10 +84,10 @@ void _event_callback(dax_state *ds, void *udata) {
 
     result = dax_event_get_data(ds, buff, 8);
     if(result<0) {
-        dax_error(ds, "Unable to get event data: %d", result);
+        dax_log(LOG_ERROR, "Unable to get event data: %d", result);
         result = dax_read_tag(ds, tag->h, buff);
         if(result) {
-            dax_error(ds, "Unable to read tag: %s", tag->name);
+            dax_log(LOG_ERROR, "Unable to read tag: %s", tag->name);
             return;
         }
     }
@@ -169,7 +169,7 @@ _add_tags(void) {
             } else if(result == 0) { /* We found the tag so we can add it to the system */
                 this->status = 1; /* No matter what we don't mess with this tag again */
                 if(IS_CUSTOM(this->h.type)) {
-                    dax_error(ds, "Tag custom datatypes are not supported - %s", this->name);
+                    dax_log(LOG_ERROR, "Tag custom datatypes are not supported - %s", this->name);
                 } else {
                     this->tag = add_tag(this->name, this->h.type, this->attributes);
                     /* Write a NULL to signify that we were down */
@@ -177,26 +177,32 @@ _add_tags(void) {
                     /* Read the current tag data and write it to the plugin */
                     result = dax_read_tag(ds, this->h, buff);
                     if(result == 0) write_data(this->tag, buff, hist_gettime());
-                    else dax_error(ds, "Unable to read tag %s", this->name);
+                    else dax_log(LOG_ERROR, "Unable to read tag %s", this->name);
                     if(this->trigger == ON_CHANGE) {
                         /* Allocate the memory that we use to figure out and stored changed data */
                         this->lastvalue = malloc(this->h.size);
                         if(this->lastvalue != NULL) bzero(this->lastvalue, this->h.size);
-                        else dax_fatal(ds, "Unable to allocate memory for %s", this->name);
+                        else {
+                            dax_log(LOG_FATAL, "Unable to allocate memory for %s", this->name);
+                            kill(getpid(), SIGQUIT);
+                        }
                         /* Since cmpvalue is the value that we use to do the change comparison
                          * we are going to allocate it and write it here */
                         this->cmpvalue = malloc(this->h.size);
                         if(this->cmpvalue != NULL) memcpy(this->cmpvalue, buff, this->h.size);
-                        else dax_fatal(ds, "Unable to allocate memory for %s", this->name);
+                        else {
+                            dax_log(LOG_FATAL, "Unable to allocate memory for %s", this->name);
+                            kill(getpid(), SIGQUIT);
+                        }
                     }
 
                     result = dax_event_add(ds, &this->h, EVENT_WRITE, NULL, &id, _event_callback, this, _event_free);
                     if(result) {
-                        dax_error(ds, "Unable to add event for tag %s", this->name);
+                        dax_log(LOG_ERROR, "Unable to add event for tag %s", this->name);
                     }
                     result = dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
                     if(result) {
-                        dax_error(ds, "Unable to set event to send data");
+                        dax_log(LOG_ERROR, "Unable to set event to send data");
                     }
                 }
             } else {
@@ -234,12 +240,10 @@ main(int argc,char *argv[]) {
 
     histlog_configure(argc, argv);
 
-    /* Set the logging flags to show all the messages */
-    dax_set_debug_topic(ds, LOG_ALL);
-
     result = plugin_load(dax_get_attr(ds, "plugin"));
     if(result) {
-        dax_fatal(ds, "Unable to load a plugin");
+        dax_log(LOG_ERROR, "Unable to load a plugin");
+        kill(getpid(), SIGQUIT);
     }
     _flush_interval = (unsigned int)strtol(dax_get_attr(ds, "flush_interval"), NULL, 0);
     DF("flush interval set to %d", _flush_interval);
@@ -268,7 +272,7 @@ main(int argc,char *argv[]) {
          * we'll keep looping through the list to add them to the system. */
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
-            dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
         dax_event_wait(ds, 1000, NULL);

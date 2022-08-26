@@ -80,10 +80,10 @@ mod_init(dax_state *_ds) {
     } else if (ENOENT == errno) {
         result = mkdir(log_directory, 0777);
         if(result) {
-            dax_error(ds, "%s", strerror(errno));
+            dax_log(LOG_ERROR, "%s", strerror(errno));
         }
     } else {
-        dax_error(ds, "%s", strerror(errno));
+        dax_log(LOG_ERROR, "%s", strerror(errno));
     }
     _open_file();
     return 0;
@@ -131,7 +131,7 @@ _add_tags(void) {
 
     result = dax_tag_add(ds, &rotate_handle, rotate_tag, DAX_BOOL, 1, 0);
     if(result) {
-        dax_error(ds, "Unable to add file rotation tag %s", rotate_tag);
+        dax_log(LOG_ERROR, "Unable to add file rotation tag %s", rotate_tag);
     } else {
         result=  dax_event_add(ds, &rotate_handle, EVENT_SET, NULL, NULL, _rotate_callback, NULL, NULL);
     }
