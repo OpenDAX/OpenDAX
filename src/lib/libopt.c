@@ -507,14 +507,14 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
         ds->modulename = strdup(dax_get_attr(ds, "name"));
         if(ds->modulename==NULL) return ERR_ALLOC;
     }
-    if(flags & CFG_MODCONF)
+    if(flags & CFG_MODCONF) {
+        dax_log_set_lua_function(ds->L);
         _mod_config_file(ds);
+    }
 
     _set_defaults(ds);
-    dax_parse_log_topics(dax_get_attr(ds, "logtopics"));
-    if(dax_get_log_mask() & LOG_CONFIG) {
-        _print_config(ds);
-    }
+    //dax_parse_log_topics(dax_get_attr(ds, "logtopics"));
+    //_print_config(ds);
     return _verify_config(ds);
 }
 

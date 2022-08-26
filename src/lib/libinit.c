@@ -42,6 +42,8 @@ dax_init(char *name)
     ds = malloc(sizeof(dax_state));
     if(ds == NULL) return NULL;
 
+    dax_init_logger(name, 0);
+
     ds->attr_head = NULL;
     ds->L = NULL;
     ds->modulename = strdup(name);

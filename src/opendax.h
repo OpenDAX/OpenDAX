@@ -309,10 +309,11 @@ int dax_free(dax_state *ds);
 
 /* Logging library functions */
 uint32_t dax_parse_log_topics(char *topic_string);
-void dax_set_log_mask(uint32_t mask);
-uint32_t dax_get_log_mask(void);
 int dax_log_topic_callback(void (*topic_callback)(char *topic));
-void dax_log(int topic, const char *format, ...);
+int dax_init_logger(const char *name, uint32_t topics);
+int dax_log_set_lua_function(lua_State *L);
+//void dax_log_set_deault_topics(uint32_t topics);
+void dax_log(uint32_t topic, const char *format, ...);
 
 /* Create and destroy connections to the server */
 int dax_connect(dax_state *ds);      /* Connect to the server */

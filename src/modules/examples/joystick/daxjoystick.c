@@ -84,6 +84,7 @@ int main(int argc,char *argv[]) {
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        kill(getpid(), SIGQUIT);
     }
     /* TODO: instead of creating the tags here, we might add some create_tag() routines and simply
      * get handles for the strings in the array.  If the tag doesn't exist then create a single tag
@@ -110,12 +111,12 @@ int main(int argc,char *argv[]) {
     }
 
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
-    dax_log(LOG_MINOR,"Joystick Module Starting");
+    dax_log(LOG_MAJOR,"Joystick Module Starting");
 
     while(1) { /* device file open loop */
         fd = _open_device();
         if(fd > 0) {
-            dax_log(LOG_MINOR,"Connected to joystick at fd = %d", fd);
+            dax_log(LOG_MINOR, "Connected to joystick at fd = %d", fd);
             while(read_event(fd, &event) == 0) {
                 switch (event.type)
                 {

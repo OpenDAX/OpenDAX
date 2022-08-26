@@ -22,15 +22,16 @@
 #define __DAXLOG_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 typedef struct {
-    uint32_t topics;
-    void (*log_func)(void *data, char *format, ...);
+    uint32_t mask;
+    void (*log_func)(uint32_t topic, void *data, char *str);
     void *data;
 } service_item;
 
 typedef struct {
-    int fd;
+    FILE *file;
 } stdio_service;
 
 

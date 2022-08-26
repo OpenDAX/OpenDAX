@@ -30,13 +30,48 @@
 
 #define LOG_STRING_SIZE 256
 
-static uint32_t _log_mask = LOG_ALL;
+static uint32_t _default_topics = LOG_ALL;
+static const char *_name;
+
 static void (*_topic_callback)(char *topic);
 
+
 int
-dax_init_logger(char *name) {
-    DF("yep");
+dax_init_logger(const char *name, uint32_t topics) {
+    /* The name may be used for some loggin services. */
+    if(name != NULL) {
+        _name = name;
+    }
+    if(topics) {
+        _default_topics = topics;
+    }
     return 0;
+}
+
+static int
+_add_service(lua_State *L) {
+    return 0;
+}
+
+/* Dummys to make the below function happy so we don't have to link in Lua */
+void lua_pushcclosure(lua_State *L, lua_CFunction fn, int n) {
+    return;
+}
+
+void lua_setglobal(lua_State *L, const char *name) {
+    return;
+}
+
+/* Set the add_log_service() function for the configuration Lua state */
+int
+dax_log_set_lua_function(lua_State *L) {
+    if(L != NULL) {
+        lua_pushcfunction(L, _add_service);
+        lua_setglobal(L, "add_log_service");
+        return 0;
+    } else {
+        return ERR_ARG;
+    }
 }
 
 /* This parses the string in the 'topic_string' sets
@@ -53,16 +88,16 @@ dax_parse_log_topics(char *topic_string) {
 
     s = strtok(temp, ",");
     while(s != NULL) {
-        if(strcmp(s,"ALL") == 0) _log_mask |= LOG_ALL;
-        if(strcmp(s,"ERROR") == 0) _log_mask |= LOG_ERROR;
-        if(strcmp(s,"FATAL") == 0) _log_mask |= LOG_FATAL;
-        if(strcmp(s,"MAJOR") == 0) _log_mask |= LOG_MAJOR;
-        if(strcmp(s,"MINOR") == 0) _log_mask |= LOG_MINOR;
-        if(strcmp(s,"COMM") == 0) _log_mask |= LOG_COMM;
-        if(strcmp(s,"MSG") == 0) _log_mask |= LOG_MSG;
-        if(strcmp(s,"MSGERR") == 0) _log_mask |= LOG_MSGERR;
-        if(strcmp(s,"CONFIG") == 0) _log_mask |= LOG_CONFIG;
-        if(strcmp(s,"MODULE") == 0) _log_mask |= LOG_MODULE;
+        if(strcmp(s,"ALL") == 0) _default_topics |= LOG_ALL;
+        if(strcmp(s,"ERROR") == 0) _default_topics |= LOG_ERROR;
+        if(strcmp(s,"FATAL") == 0) _default_topics |= LOG_FATAL;
+        if(strcmp(s,"MAJOR") == 0) _default_topics |= LOG_MAJOR;
+        if(strcmp(s,"MINOR") == 0) _default_topics |= LOG_MINOR;
+        if(strcmp(s,"COMM") == 0) _default_topics |= LOG_COMM;
+        if(strcmp(s,"MSG") == 0) _default_topics |= LOG_MSG;
+        if(strcmp(s,"MSGERR") == 0) _default_topics |= LOG_MSGERR;
+        if(strcmp(s,"CONFIG") == 0) _default_topics |= LOG_CONFIG;
+        if(strcmp(s,"MODULE") == 0) _default_topics |= LOG_MODULE;
         
         if(_topic_callback != NULL) { /* If there is a callback function assigned */
             _topic_callback(s);       /* Call it */
@@ -75,12 +110,12 @@ dax_parse_log_topics(char *topic_string) {
 
 void
 dax_set_log_mask(uint32_t mask) {
-    _log_mask = mask;
+    _default_topics = mask;
 }
 
 uint32_t
 dax_get_log_mask(void) {
-    return _log_mask;
+    return _default_topics;
 }
 
 /* This assigns a callback function that if set, will be called for each logging topic
@@ -92,13 +127,13 @@ dax_log_topic_callback(void (*topic_callback)(char *topic)) {
 }
 
 void
-dax_log(int mask, const char *format, ...)
+dax_log(uint32_t mask, const char *format, ...)
 {
     char output[LOG_STRING_SIZE];
     va_list val;
 
     /* check if the callback has been set and _verbosity is set high enough */
-    if(mask & _log_mask) {
+    if(mask & _default_topics) {
         va_start(val, format);
             vprintf(format, val);
             printf("\n");
