@@ -48,7 +48,7 @@ _open_file(void) {
 }
 
 int
-mod_init(dax_state *_ds) {
+init(dax_state *_ds) {
     int result;
     lua_State *L;
     const char *s;

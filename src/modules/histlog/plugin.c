@@ -49,7 +49,7 @@ plugin_load(char *file) {
         return ERR_NOTFOUND;
     }
     /* TODO: Check these for errors and deal appropriately */
-    *(void **)(&_init) = dlsym(plugin, "mod_init");
+    *(void **)(&_init) = dlsym(plugin, "init");
     *(void **)(&add_tag) = dlsym(plugin, "add_tag");
     *(void **)(&free_tag) = dlsym(plugin, "free_tag");
     *(void **)(&write_data) = dlsym(plugin, "write_data");
