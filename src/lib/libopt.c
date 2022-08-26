@@ -49,7 +49,6 @@ dax_init_config(dax_state *ds, char *name)
     result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
     result += dax_add_attribute(ds, "server", "server", 'S', flags, "LOCAL");
-    result += dax_add_attribute(ds, "logtopics", "topics", 'T', flags, "FATAL,ERROR,MAJOR");
     result += dax_add_attribute(ds, "name", "name", 'N', flags, name);
     result += dax_add_attribute(ds, "cachesize", "cachesize", 'Z', flags, "8");
     result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'O', flags, DEFAULT_TIMEOUT);
@@ -57,6 +56,7 @@ dax_init_config(dax_state *ds, char *name)
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "config", "config", 'C', flags, NULL);
     result += dax_add_attribute(ds, "confdir", "confdir", 'K', flags, ETC_DIR);
+    result += dax_add_attribute(ds, "logtopics", "topics", 'T', flags, NULL);
     //result += dax_add_attribute(ds, "", "", '', flags, "");
 
     if(result) {
@@ -491,11 +491,20 @@ _verify_config(dax_state *ds)
 int
 dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {
+    uint32_t logmask;
+    char *topics;
+
     if(ds->modulename == NULL) {
         return ERR_NO_INIT;
     }
-    if(flags & CFG_CMDLINE)
+    if(flags & CFG_CMDLINE) {
         _parse_commandline(ds, argc, argv);
+        topics = dax_get_attr(ds, "logtopics");
+        if( topics != NULL) {
+            logmask = dax_parse_log_topics(topics);
+            dax_log_set_default_topics(logmask);
+        }
+    }
     /* This sets the confdir parameter to ETC_DIR if it
      * has not already been set on the command line */
     if(dax_get_attr(ds, "confdir") == NULL) {

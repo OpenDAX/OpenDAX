@@ -109,8 +109,8 @@ dax_parse_log_topics(char *topic_string) {
 }
 
 void
-dax_set_log_mask(uint32_t mask) {
-    _default_topics = mask;
+dax_log_set_default_topics(uint32_t topics) {
+    _default_topics = topics;
 }
 
 uint32_t

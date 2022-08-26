@@ -209,7 +209,7 @@ dax_parse_log_topics(char *topic_string) {
 // }
 
 void
-dax_log_set_deault_topics(uint32_t topics) {
+dax_log_set_default_topics(uint32_t topics) {
     _default_topics = topics;
 }
 

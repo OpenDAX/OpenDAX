@@ -34,7 +34,7 @@ main(int argc, char *argv[])
     dax_dint temp, n;
     
     initialize_tagbase();
-    dax_set_log_mask(LOG_ALL);
+    dax_log_set_default_topics(LOG_ALL);
     result = tag_add("queue_test", DAX_DINT | DAX_QUEUE, 1, 0);
     if(result < 0) exit(-1);
     for(temp = 1; temp<25; temp++) {
