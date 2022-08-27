@@ -67,6 +67,7 @@ dax_init(char *name)
         free(ds);
         return NULL;
     }
+    ds->last_msg = NULL;
     ds->event_size = 1;
     ds->event_count = 0;
     /* Event Message FIFO Queue */
