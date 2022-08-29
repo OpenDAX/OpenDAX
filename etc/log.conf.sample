@@ -7,13 +7,13 @@
 
 s = {}
 s.type = "stdio"
-s.topics = "CONFIG,MAJOR,MINOR"
-s.file = "stdout"
+s.topics = "ERROR,FATAL"
+s.file = "stderr"
 
 add_log_service(s)
 
-s.topics = "ERROR,FATAL"
-s.file = "stderr"
+s.topics = "CONFIG,MAJOR,MINOR"
+s.file = "stdout"
 
 add_log_service(s)
 

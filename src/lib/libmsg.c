@@ -371,7 +371,8 @@ _connection_thread(void *arg)
         while(ds->sfd >= 0) { /* Main connection loop */
             result = _read_next_message(ds);
             if(result == ERR_DISCONNECTED) {
-                _connection_cleanup(ds);
+                break;
+                //_connection_cleanup(ds);
             }
         }
         _connection_cleanup(ds);
@@ -518,7 +519,6 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
         *((uint32_t *)&buff[0]) = mtos_udint(type);
         *((uint32_t *)&buff[4]) = mtos_udint(count);
         *((uint32_t *)&buff[8]) = mtos_udint(attr);
-
 
         strcpy(&buff[12], name);
     } else {

@@ -140,10 +140,12 @@ _msg_setup_local_socket(void)
     unlink(addr.sun_path); /* Delete the socket if it exists on the filesystem */
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
         dax_log(LOG_FATAL, "Unable to bind to local socket: %s", addr.sun_path);
+        kill(getpid(), SIGQUIT);
     }
 
     if(listen(fd, 5) < 0) {
         dax_log(LOG_FATAL, "Unable to listen for some reason");
+        kill(getpid(), SIGQUIT);
     }
     FD_SET(fd, &_listenfdset);
     msg_add_fd(fd);
