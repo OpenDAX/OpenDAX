@@ -20,7 +20,6 @@
 
 #include "process.h"
 #include "mstr_config.h"
-#include "logger.h"
 #include "daemon.h"
 #include <common.h>
 #include <syslog.h>
@@ -59,7 +58,6 @@ main(int argc, const char *argv[])
     /* If we ever open the logger with syslog instead, we'll have to
      * make sure and close the logger before we deamonize and then
      * call logger_init() again afterwards */
-    logger_init(LOG_TYPE_STDOUT, "opendax");
     process_init();
     /* TODO: We should have individual configuration objects that we retrieve
      * from this function, instead of the global data in the source file. */
@@ -67,7 +65,6 @@ main(int argc, const char *argv[])
 
     if(opt_daemonize()) {
         daemonize("opendax");
-        logger_init(LOG_TYPE_SYSLOG, "opendax");
     }
     process_start_all();
 
@@ -84,7 +81,7 @@ main(int argc, const char *argv[])
         }
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
-            xlog(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
+            dax_log(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
             /* TODO: Should stop all running modules and wait for them
                to exit.  If they fail then kill -9 those rascals*/
             kill(0, SIGTERM); /* ...this'll do for now */
@@ -111,7 +108,7 @@ void
 catch_signal(int sig)
 {
     // TODO: No printfs in signal handlers
-    xlog(LOG_MINOR, "Master received signal %d", sig);
+    dax_log(LOG_MINOR, "Master received signal %d", sig);
 }
 
 

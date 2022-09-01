@@ -15,7 +15,8 @@ Client Modules handle all of interface to the outside world.  The application lo
 
 The low level communications to the OpenDAX server takes place through a BSD Socket interface.  There is no requirement that the module be running on the same machine as the server.  The entire application can be distributed however the application developer desires.  If the module is on the same machine, it can communicate to the server via UNIX Domain Socket.  If the module is on a remote host then it will have to use a TCP Socket.  The UNIX Domain sockets are considerably faster than TCP since they are really nothing more than a memory copy within the kernel.
 
-The exact nature of the communication is subject to change at this point so I won't go into that in too much detail here.  Right now there are two sockets that are created for each module.  The primary socket allows the module to send and receive data to the server, the second socket is used for asynchronous event reporting.
+The exact nature of the communication is subject to change at this point so I
+won't go into that in too much detail here
 
 At some point in the future we hope to implement some server-to-server communication that might facilitate redundancy or an even better ability to distribute the system.  Right now there is only one server in any application and all the modules communicate to that single server.
 
@@ -23,7 +24,15 @@ The server contains the tag database.  A tag\index{tag} is the atomic unit of da
 
 The tag database contains the names of these tags, their data type\index{data type}, the actual real time value and the events that the tag responds too.  It is the central store house of information in OpenDAX.  Different modules work with tags in different ways.  For instance, the \modbus \index{Modbus}module reads data from one or more \modbus devices and stores that information in tags within the server.  The tags are arrays of type UINT or BOOL\footnote{UINT is an unsigned 16 bit data type, BOOL is a single bit data type} depending on the command.  The names of these tags are a configurable parameter of the \modbus module.  If and HMI or Logic module need the information from the \modbus module they would read these tags to get it.
 
-The server also contains information about the currently connected modules.  Modules must register with the server when they are started before the server will answer any queries by the module.  This registration step is how the module and the server learn what they need to learn about each other to properly communicate.  Once registered the server can keep track of that module through the file descriptor of the socket on which the the connection is made.  This information can be made available to other modules that may need it.
+The server also contains information about the currently connected modules. 
+Modules must register with the server when they are started before the server
+will answer any queries by the module.  This registration step is how the module
+and the server learn what they need to learn about each other to properly
+communicate.  Once registered the server can keep track of that module through
+the file descriptor of the socket on which the the connection is made.  This
+information can be made available to other modules that may need it.  All of
+this information is made available to the system via system tags that are
+created when the module connects and deleted when the module disconnects.
 
 There is another program that is included in the OpenDAX distribution that is optional for the system to function but it's very useful.  It is the master program.  (This is the program that we actuall call 'opendax')  Modules can be started by the OpenDAX master or by any other means that the operating system has for starting processes (i.e. shell prompt, scripts etc).  If the module is to be started by the master there are a few advantages.  First the master will know if the module dies for some reason because the operating system will send it a signal.  This allows the master to restart the module or alert the user that a part of the system is down.
 

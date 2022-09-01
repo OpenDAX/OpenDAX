@@ -42,6 +42,8 @@ dax_init(char *name)
     ds = malloc(sizeof(dax_state));
     if(ds == NULL) return NULL;
 
+    dax_init_logger(name, 0);
+
     ds->attr_head = NULL;
     ds->L = NULL;
     ds->modulename = strdup(name);
@@ -65,6 +67,7 @@ dax_init(char *name)
         free(ds);
         return NULL;
     }
+    ds->last_msg = NULL;
     ds->event_size = 1;
     ds->event_count = 0;
     /* Event Message FIFO Queue */
@@ -77,11 +80,6 @@ dax_init(char *name)
     pthread_mutex_init(&ds->msg_lock, NULL);
     pthread_cond_init(&ds->event_cond, NULL);
     pthread_cond_init(&ds->msg_cond, NULL);
-
-    /* Logging functions */
-    ds->dax_debug = NULL;
-    ds->dax_error = NULL;
-    ds->dax_log = NULL;
 
     return ds;
 }

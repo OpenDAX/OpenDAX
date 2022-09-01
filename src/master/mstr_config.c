@@ -20,25 +20,15 @@
 
 
 #include "mstr_config.h"
-#include "logger.h"
 #include "process.h"
 #include <getopt.h>
 
 static char *_pidfile;
 static char *_configfile;
 static int _daemonize;
-static int _verbosity;
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
-    int length;
-
-    if(!_configfile) {
-        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
-        _configfile = (char *)malloc(sizeof(char) * length);
-        if(_configfile)
-            sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
-    }
     _daemonize = -1; /* We set it to negative so we can determine when it's been set */
     _pidfile = NULL;
 }
@@ -61,6 +51,7 @@ parsecommandline(int argc, const char *argv[])
 
     static struct option options[] = {
         {"config", required_argument, 0, 'C'},
+        {"logtopics", required_argument, 0, 'T'},
         {"deamonize", no_argument, 0, 'D'},
         {"pidfile", required_argument, 0, 'p'},
         {"logger", required_argument, 0, 'L'},
@@ -75,6 +66,9 @@ parsecommandline(int argc, const char *argv[])
         case 'C':
             _configfile = strdup(optarg);
             break;
+        case 'T':
+            dax_log_set_default_topics(strdup(optarg));
+            break;
         case 'p':
             _pidfile = strdup(optarg);
             break;
@@ -82,7 +76,7 @@ parsecommandline(int argc, const char *argv[])
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
         case 'v':
-            _verbosity++;
+            dax_log_set_default_mask(LOG_ALL);
             break;
         case 'D':
             _daemonize = 1;
@@ -118,7 +112,7 @@ _set_uid_gid(dax_process *proc)
         if(pw != NULL) {
             proc->uid = pw->pw_uid;
         } else {
-            xlog(LOG_ERROR, "Unable to find uid for user %s", proc->user);
+            dax_log(LOG_ERROR, "Unable to find uid for user %s", proc->user);
         }
     }
     /* Neither the uid or the username were set */
@@ -131,7 +125,7 @@ _set_uid_gid(dax_process *proc)
         if(gr != NULL) {
             proc->gid = gr->gr_gid;
         } else {
-            xlog(LOG_ERROR, "Unable to find gid for group %s", proc->group);
+            dax_log(LOG_ERROR, "Unable to find gid for group %s", proc->group);
         }
     }
     /* Neither the gid or the groupname were set */
@@ -157,7 +151,7 @@ _add_process(lua_State *L)
 
     lua_getfield(L, -1, "name");
     if( !(name = (char *)lua_tostring(L, -1)) ) {
-        xerror("No process name given");
+        dax_log(LOG_ERROR, "No process name given");
         return 0;
     }
     lua_pop(L, 1);
@@ -166,7 +160,7 @@ _add_process(lua_State *L)
     lua_getfield(L, -1, "path");
     path = (char *)lua_tostring(L, -1);
     if(path == NULL) {
-        xerror("No path given for process %s", name);
+        dax_log(LOG_ERROR, "No path given for process %s", name);
         return 0;
     }
     lua_pop(L, 1);
@@ -234,25 +228,39 @@ static int
 readconfigfile(void)
 {
     lua_State *L;
+    int length;
     char *string;
 
-    xlog(2, "Reading Configuration file %s", _configfile);
+    dax_log(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
+
+    /* If no configuration file was given on the command line we build the default */
+    if(_configfile == NULL) {
+        length = strlen(ETC_DIR) + strlen("/opendax.conf") +1;
+        _configfile = (char *)malloc(sizeof(char) * length);
+        if(_configfile) {
+            sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
+        } else {
+            dax_log(LOG_FATAL, "Unable to allocate memory for configuration file");
+        }
+    }
+
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals. */
+    luaopen_base(L);
 
     lua_pushcfunction(L, _add_process);
     lua_setglobal(L, "add_process");
 
-    luaopen_base(L);
+    dax_log_set_lua_function(L);
 
     lua_pushstring(L, "opendax");
     lua_setglobal(L, CONFIG_GLOBALNAME);
 
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
-        xerror("Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_log(LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return 1;
     }
 
@@ -292,13 +300,6 @@ readconfigfile(void)
 //    }
 //    lua_pop(L, 1);
 
-    /* TODO: This needs to be changed to handle the new topic handlers */
-    if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        //_verbosity = (int)lua_tonumber(L, 4);
-        //set_log_topic(_verbosity);
-        set_log_topic(0xFFFFFFFF);
-    }
-
     /* Clean up and get out */
     lua_close(L);
 
@@ -316,7 +317,7 @@ opt_configure(int argc, const char *argv[])
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
-        xerror("Unable to read configuration running with defaults");
+        dax_log(LOG_WARN, "Unable to read configuration running with defaults");
     }
     setdefaults();
 

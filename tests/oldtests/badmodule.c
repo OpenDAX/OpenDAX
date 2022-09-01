@@ -84,7 +84,10 @@ __add_tags(void)
     result += dax_tag_add(ds,&msg_tag, tagname, DAX_DINT, 1, 0);
     snprintf(tagname, 256, "%s_noquit", dax_get_attr(ds, "tagprefix"));
 	result += dax_tag_add(ds,&noquit_tag, tagname, DAX_BOOL, 1, 0);
-	if(result) dax_fatal(ds, "Can't Add Tags");
+	if(result) {
+        dax_log(LOG_FATAL, "Can't Add Tags");
+        kill(getpid(), SIGQUIT);
+    }
     dax_event_add(ds, &quit_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
     dax_event_add(ds, &cpu_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
     dax_event_add(ds, &mem_tag, EVENT_CHANGE, NULL, NULL, __update_tags, NULL, NULL);
@@ -135,9 +138,8 @@ main(int argc,char *argv[])
         return ERR_ALLOC;
     }
 
-    dax_log(ds, "Starting bad module");
-    dax_set_debug_topic(ds, 0xFFFF); /* This should get them all out there */
-
+    dax_log(LOG_MINOR, "Starting bad module");
+    
     dax_init_config(ds, "badmodule");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagprefix","tagprefix", 't', flags, "bad");
@@ -145,7 +147,7 @@ main(int argc,char *argv[])
     dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
     if(dax_connect(ds))
-        dax_fatal(ds, "Unable to register with the server");
+        dax_log(LOG_FATAL, "Unable to register with the server");
     __add_tags();
 
     /* Free the configuration memory once we are done with it */
@@ -155,7 +157,7 @@ main(int argc,char *argv[])
     /* If we have a quit time in the server then we'll just wait it out then bail */
     if(quit_time > 0) {
         usleep(quit_time);
-        dax_fatal(ds, "Quiting because I'm out of time");
+        dax_log(LOG_FATAL, "Quiting because I'm out of time");
     }
     gettimeofday(&start, NULL);
     last = start;
@@ -163,17 +165,17 @@ main(int argc,char *argv[])
         if(_caught_signal == SIGQUIT) {
             dax_read_tag(ds, noquit_tag, &no_quit);
             if(!no_quit) {
-                dax_debug(ds, LOG_MAJOR, "Gotta Go");
+                dax_log(LOG_MAJOR, "Gotta Go");
                 exit(0);
             } else {
-                dax_debug(ds, LOG_MAJOR, "I don't think so scooter");
+                dax_log(LOG_MAJOR, "I don't think so scooter");
             }
             _caught_signal = 0;
         }
         gettimeofday(&now, NULL);
         /* Here we check the quit time again in case it has changed since we started */
         if(quit_time > 0 && __difftimeval(&start, &now) > quit_time) {
-            dax_fatal(ds, "Quiting because I'm out of time");
+            dax_log(LOG_FATAL, "Quiting because I'm out of time");
         }
         __waste_memory(mem_usage);
         if(cpu_percent > 0) {

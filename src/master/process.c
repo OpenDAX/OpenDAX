@@ -20,7 +20,8 @@
  * handling program. */
 
 #include "process.h"
-#include "logger.h"
+#include <common.h>
+#include <opendax.h>
 #include <sys/time.h>
 #include <unistd.h>
 #include <signal.h>
@@ -115,7 +116,7 @@ dax_process *
 process_add(char *name, char *path, char *arglist, unsigned int flags)
 {
     dax_process *new, *this;
-    xlog(LOG_CONFIG,"Adding process %s to configuration",name);
+    dax_log(LOG_DEBUG,"Adding process %s to configuration",name);
 
     new = malloc(sizeof(dax_process));
     if(new) {
@@ -228,7 +229,7 @@ process_start_all(void)
                 timeout = rem;
                 result = nanosleep(&timeout, &rem);
                 if(errno == EFAULT)
-                    xfatal("Serious problem with nanosleep in function process_start_all()");
+                    dax_log(LOG_FATAL, "Serious problem with nanosleep in function process_start_all()");
                 assert(errno != EINVAL);
             }
         }
@@ -244,13 +245,13 @@ process_start(dax_process *proc)
     int result = 0;
 
     if(proc) { /* We are the parent */
-        if(result) xerror("Unable to properly set up pipes for %s\n", proc->name);
+        if(result) dax_log(LOG_ERROR,"Unable to properly set up pipes for %s\n", proc->name);
         child_pid = fork();
         if(child_pid > 0) { /* This is the parent */
             proc->pid = child_pid;
             proc->exit_status = 0;
 
-            xlog(LOG_VERBOSE, "Starting Process - %s - %d",proc->path,child_pid);
+            dax_log(LOG_MAJOR, "Starting Process - %s - %d",proc->path,child_pid);
             gettimeofday(&proc->starttime, NULL);
             proc->state = PSTATE_STARTED;
             return child_pid;
@@ -258,12 +259,12 @@ process_start(dax_process *proc)
             /* TODO: Environment???? */
             /* TODO: Change the UID of the process */
             if(execvp(proc->path, proc->arglist)) {
-                xerror("start_module exec failed - %s - %s",
+                dax_log(LOG_ERROR, "start_module exec failed - %s - %s",
                        proc->path, strerror(errno));
                 exit(errno);
             }
         } else { /* Error on the fork */
-            xerror("start_module fork failed - %s - %s", proc->path, strerror(errno));
+            dax_log(LOG_ERROR, "start_module fork failed - %s - %s", proc->path, strerror(errno));
         }
     } else {
         return 0;
@@ -298,7 +299,7 @@ _cleanup_process(pid_t pid, int status)
      * the PID that we passed but we should check because there may not
      * be a module with our PID */
     if(proc) {
-        xlog(LOG_MINOR, "Cleaning up Process %d - Returned Status %d", pid, status);
+        dax_log(LOG_MINOR, "Cleaning up Process %d - Returned Status %d", pid, status);
         proc->pid = 0;
         proc->last_etime = 0;
         proc->last_ptime = 0;
@@ -307,7 +308,7 @@ _cleanup_process(pid_t pid, int status)
         gettimeofday(&proc->deadtime, NULL);
         return 0;
     } else {
-        xerror("Process %d not found for cleanup", pid);
+        dax_log(LOG_ERROR, "Process %d not found for cleanup", pid);
         return ERR_NOTFOUND;
     }
     return 0;
@@ -329,7 +330,7 @@ _process_get_cpu_stat(dax_process *proc)
     snprintf(filename, 128, "/proc/%d/stat", proc->pid);
     f = fopen(filename, "r");
     if(f == NULL) {
-        xerror("Unable to open file %s", filename);
+        dax_log(LOG_ERROR, "Unable to open file %s", filename);
         return errno;
     }
     result = fscanf(f, "%d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %*d %*d %*d %*d %*u %*u %ld", &pid, &utime, &stime, &rss);
@@ -339,7 +340,7 @@ _process_get_cpu_stat(dax_process *proc)
     /* Now read and parse the cpu stat file */
     f = fopen("/proc/stat", "r");
     if(f == NULL) {
-        xerror("Unable to open file proc/stat for pid %d", proc->pid);
+        dax_log(LOG_ERROR, "Unable to open file proc/stat for pid %d", proc->pid);
         return errno;
     }
     fgets(line, 1024, f); /* For now we are ignoring the first line of the file. */
@@ -371,7 +372,7 @@ _process_get_cpu_stat(dax_process *proc)
 static inline void
 _process_restart(dax_process *proc)
 {
-    xlog(LOG_MAJOR, "Restarting Process - %s - Delay = %d mSec", proc->name, proc->restartdelay);
+    dax_log(LOG_MAJOR, "Restarting Process - %s - Delay = %d mSec", proc->name, proc->restartdelay);
     proc->restartcount++;
     process_start(proc);
     /* Now we increase the restart delay */
@@ -434,27 +435,27 @@ process_scan(void)
                 /* If we come back around and have been condemned then we
                  * need to kill it the hard way.*/
                 if(this->state == PSTATE_CONDEMNED) {
-                    xlog(LOG_MODULE, "Killing process %s [%d]", this->name, this->pid);
+                    dax_log(LOG_MODULE, "Killing process %s [%d]", this->name, this->pid);
                     kill(this->pid, SIGKILL);
                 }
                 _process_get_cpu_stat(this);
                 if(this->cpu > 0.0 && this->pcpu > this->cpu) {
-                    xlog(LOG_MODULE, "Process %s [%d] has exceeded CPU usage of %f",
+                    dax_log(LOG_MODULE, "Process %s [%d] has exceeded CPU usage of %f",
                             this->name, this->pid, this->cpu);
                     this->state = PSTATE_CONDEMNED;
                 }
                 if(this->mem > 0 && this->rss > this->mem) {
-                    xlog(LOG_MODULE, "Process %s [%d] has exceeded Memory usage of %ld",
+                    dax_log(LOG_MODULE, "Process %s [%d] has exceeded Memory usage of %ld",
                             this->name, this->pid, this->mem);
                     this->state = PSTATE_CONDEMNED;
                 }
                 /* The first time through we terminate the process the easy way */
                 if(this->state == PSTATE_CONDEMNED) {
-                    xlog(LOG_MODULE, "Commanding process %s [%d] to quit",
+                    dax_log(LOG_MODULE, "Commanding process %s [%d] to quit",
                             this->name, this->pid);
                     kill(this->pid, SIGQUIT);
                 }
-                xlog(LOG_VERBOSE | LOG_MODULE, "%s: PID = %d, CPU = %f%%, Memory = %ld kb", this->name, this->pid, this->pcpu, this->rss);
+                dax_log(LOG_MODULE, "%s: PID = %d, CPU = %f%%, Memory = %ld kb", this->name, this->pid, this->pcpu, this->rss);
             }
         }
         this = this->next;

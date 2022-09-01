@@ -67,20 +67,31 @@ extern "C" {
 #define DAX_32BITS  0x0005
 #define DAX_64BITS  0x0006
 
-/* These are the debug logging topics.  Each debug message is
+/* These are the logging topics.  Each log message is
  * assigned one or more of these topics and will only be logged
  * when the corresponding bit is set in the configuration */
-#define LOG_ERROR   0x00000001  /* Log errors that are returned from functions */
-#define LOG_MAJOR   0x00000002  /* Major Program Milestones */
-#define LOG_MINOR   0x00000004  /* Minor Program Milestones */
-#define LOG_FUNC    0x00000008  /* Function Entries */
-#define LOG_COMM    0x00000010  /* Communications Milestones */
-#define LOG_MSG     0x00000020  /* Messages */
-#define LOG_MSGERR  0x00000040  /* Errors returned to Modules */
-#define LOG_CONFIG  0x00000080  /* Configurations */
-#define LOG_MODULE  0x00000100  /* Module Milestones */
-#define LOG_VERBOSE 0x80000000  /* Used to increase the verbosity of the other topics */
-#define LOG_ALL     0xFFFFFFFF  /* Log everything */
+#define LOG_MINOR     0x00000001  /* Minor Program Milestones */
+#define LOG_MAJOR     0x00000002  /* Major Program Milestones */
+#define LOG_WARN      0x00000004  /* Program warnings */
+#define LOG_ERROR     0x00000008  /* Program errors */
+#define LOG_FATAL     0x00000010  /* Program errors */
+#define LOG_MODULE    0x00000020  /* Module Milestones */
+#define LOG_COMM      0x00000040  /* Communications Milestones */
+#define LOG_MSG       0x00000080  /* Messages */
+#define LOG_MSGERR    0x00000100  /* Message Errors */
+#define LOG_CONFIG    0x00000200  /* Configuration file prints */
+#define LOG_PROTOCOL  0x00000400  /* Protocol Dumps */
+#define LOG_INFO      0x00000800  /* Low priority information */
+#define LOG_DEBUG     0x00001000  /* Debug messages */
+#define LOG_USER1     0x01000000  /* Module specific log topic */
+#define LOG_USER2     0x02000000  /* Module specific log topic */
+#define LOG_USER3     0x04000000  /* Module specific log topic */
+#define LOG_USER4     0x08000000  /* Module specific log topic */
+#define LOG_USER5     0x10000000  /* Module specific log topic */
+#define LOG_USER6     0x20000000  /* Module specific log topic */
+#define LOG_USER7     0x40000000  /* Module specific log topic */
+#define LOG_USER8     0x80000000  /* Module specific log topic */
+#define LOG_ALL       0xFFFFFFFF  /* Log everything */
 
 /*! Macro to get the size of the datatype in bits*/
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
@@ -298,28 +309,14 @@ int dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name
 int dax_free_config(dax_state *ds);
 int dax_free(dax_state *ds);
 
-void dax_set_debug_topic(dax_state *ds, uint32_t);
-
-
-/* These functions accept a function pointer to functions that would
- * print debug and error messages.  The functions should be declared as...
- * void functionname(const char *); These are required because the library
- * uses some functions for error messaging and this allows the module to deal
- * with these messages how it sees fit.  These would normally not be used and
- * when these callbacks are not set the default messaging is used. */
-void dax_set_debug(dax_state *ds, void (*debug)(const char *msg));
-void dax_set_error(dax_state *ds, void (*error)(const char *msg));
-void dax_set_log(dax_state *ds, void (*log)(const char *msg));
-
-/* These are the functions that a module should actually call to log
- * a message or log and exit. These are the functions that are basically
- * overridden by the above _set functions.  The reason for the complexity
- * is that these functions are also used internally by the library and
- * this keeps everything consistent. */
-void dax_debug(dax_state *ds, int topic, const char *format, ...);
-void dax_error(dax_state *ds, const char *format, ...);
-void dax_log(dax_state *ds, const char *format, ...);
-void dax_fatal(dax_state *ds, const char *format, ...);
+/* Logging library functions */
+uint32_t dax_parse_log_topics(char *topic_string);
+int dax_log_topic_callback(void (*topic_callback)(char *topic));
+int dax_init_logger(const char *name, uint32_t topics);
+int dax_log_set_lua_function(lua_State *L);
+void dax_log_set_default_mask(uint32_t mask);
+void dax_log_set_default_topics(char *topics);
+void dax_log(uint32_t topic, const char *format, ...);
 
 /* Create and destroy connections to the server */
 int dax_connect(dax_state *ds);      /* Connect to the server */

@@ -52,7 +52,7 @@ _message_send(dax_state *ds, int command, void *payload, size_t size)
     result = write(ds->sfd, buff, size + MSG_HDR_SIZE);
     if(result < 0) {
     /* TODO: Should we handle the case when this returns due to a signal */
-        dax_error(ds, "_message_send: %s", strerror(errno));
+        dax_log(LOG_ERROR, "_message_send: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
     return 0;
@@ -154,7 +154,7 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
         free(ds->last_msg);
         ds->last_msg = NULL;
         pthread_mutex_unlock(&ds->msg_lock);
-        dax_error(ds, "Received a response of a different type than expected\n");
+        dax_log(LOG_ERROR, "Received a response of a different type than expected\n");
         return ERR_GENERIC;
     }
     return 0;
@@ -183,7 +183,7 @@ _get_connection(dax_state *ds)
     if( ! strcasecmp("local",  server)) {
         /* create a UNIX domain stream socket */
         if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-            dax_error(ds, "Unable to create local socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to create local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         }
         /* fill socket address structure with our address */
@@ -193,15 +193,15 @@ _get_connection(dax_state *ds)
 
         len = offsetof(struct sockaddr_un, sun_path) + strlen(addr_un.sun_path);
         if (connect(fd, (struct sockaddr *)&addr_un, len) < 0) {
-            dax_error(ds, "Unable to connect to local socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to connect to local socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
-            dax_debug(ds, LOG_COMM, "Connected to Local Server fd = %d", fd);
+            dax_log(LOG_COMM, "Connected to Local Server fd = %d", fd);
         }
     } else { /* We are supposed to connect over the network */
         /* create an IPv4 TCP socket */
         if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            dax_error(ds, "Unable to create remote socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to create remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         }
         memset(&addr_in, 0, sizeof(addr_in));
@@ -210,10 +210,10 @@ _get_connection(dax_state *ds)
         inet_pton(AF_INET, dax_get_attr(ds, "serverip"), &addr_in.sin_addr);
 
         if (connect(fd, (struct sockaddr *)&addr_in, sizeof(addr_in)) < 0) {
-            dax_error(ds, "Unable to connect to remote socket - %s", strerror(errno));
+            dax_log(LOG_ERROR, "Unable to connect to remote socket - %s", strerror(errno));
             return ERR_NO_SOCKET;
         } else {
-            dax_debug(ds, LOG_COMM, "Connected to Network Server fd = %d", fd);
+            dax_log(LOG_COMM, "Connected to Network Server fd = %d", fd);
         }
     }
     tv.tv_sec = opt_get_msgtimeout(ds) / 1000;
@@ -221,7 +221,7 @@ _get_connection(dax_state *ds)
 
     len = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     if(len) {
-        dax_error(ds, "Problem setting socket timeout - s", strerror(errno));
+        dax_log(LOG_ERROR, "Problem setting socket timeout - s", strerror(errno));
     }
     return fd;
 
@@ -251,7 +251,7 @@ _mod_register(dax_state *ds, char *name)
     *((uint32_t *)&buff[4]) = htonl(CONNECT_SYNC);  /* registration flags */
     strcpy(&buff[CON_HDR_SIZE], name);                /* The rest is the name */
 
-    dax_debug(ds, LOG_COMM, "Sending registration for name - %s", ds->modulename);
+    dax_log(LOG_COMM, "Sending registration for name - %s", ds->modulename);
     if((result = _message_send(ds, MSG_MOD_REG, buff, CON_HDR_SIZE + len)))
         return result;
     len = DAX_MSGMAX;
@@ -306,11 +306,11 @@ _read_next_message(dax_state *ds)
     result = _message_get(ds->sfd, msg);
     if(result) {
         if(result == ERR_DISCONNECTED) {
-            dax_error(ds, "Server disconnected abruptly\n");
+            dax_log(LOG_ERROR, "Server disconnected abruptly\n");
         } else if(result == ERR_TIMEOUT) {
             ; /* Do nothing for timeout */
         } else {
-            dax_error(ds, "_message_get() returned error %d\n", result);
+            dax_log(LOG_ERROR, "_message_get() returned error %d\n", result);
         }
         free(msg);
         return result;
@@ -320,7 +320,7 @@ _read_next_message(dax_state *ds)
         if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
                 events_lost++;
-                dax_error(ds, "Event received from the server is lost.  Total = %u\n", events_lost);
+                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u\n", events_lost);
             }
             free(ds->emsg_queue[0]); /* Free the top one */
             for(n = 0;n<ds->emsg_queue_size-1;n++) {
@@ -371,7 +371,8 @@ _connection_thread(void *arg)
         while(ds->sfd >= 0) { /* Main connection loop */
             result = _read_next_message(ds);
             if(result == ERR_DISCONNECTED) {
-                _connection_cleanup(ds);
+                break;
+                //_connection_cleanup(ds);
             }
         }
         _connection_cleanup(ds);
@@ -412,8 +413,8 @@ dax_connect(dax_state *ds)
 }
 
 /*!
- * Unregister our client module with the server and dax_disconnect
- * the sockets of the connection
+ * Unregister our client module with the server and disconnect
+ * from the server
  * 
  * @param ds The pointer to the dax state object
  * 
@@ -449,6 +450,11 @@ dax_mod_get(dax_state *ds, char *modname)
 
 /*!
  * This is a generic function for setting module parameters.
+ * @param ds The pointer to the dax state object
+ * @param cmd The function to be called
+ * @param param The arguments to send with the command can be NULL
+ *
+ * @returns Zero on success or an error code otherwise
  */
 int
 dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
@@ -467,14 +473,14 @@ dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
         /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
     result = _message_send(ds, MSG_MOD_SET, buff, size);
     if(result) {
-        dax_error(ds, "Can't send MSG_MOD_SET message");
+        dax_log(LOG_ERROR, "Can't send MSG_MOD_SET message");
         pthread_mutex_unlock(&ds->lock);
         return result;
     }
     size = 0;
     result = _message_recv(ds, MSG_MOD_SET, buff, &size, 1);
     if(result) {
-        dax_error(ds, "Problem receiving message MSG_MOD_SET : result = %d", result);
+        dax_log(LOG_ERROR, "Problem receiving message MSG_MOD_SET : result = %d", result);
         pthread_mutex_unlock(&ds->lock);
         return result;
     }
@@ -513,7 +519,6 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
         *((uint32_t *)&buff[0]) = mtos_udint(type);
         *((uint32_t *)&buff[4]) = mtos_udint(count);
         *((uint32_t *)&buff[8]) = mtos_udint(attr);
-
 
         strcpy(&buff[12], name);
     } else {
@@ -618,7 +623,7 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
         result = _message_send(ds, MSG_TAG_GET, buff, size + 2);
         if(result) {
-            dax_error(ds, "Can't send MSG_TAG_GET message");
+            dax_log(LOG_ERROR, "Can't send MSG_TAG_GET message");
             free(buff);
             pthread_mutex_unlock(&ds->lock);
             return result;
@@ -667,7 +672,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         *((tag_index *)&buff[1]) = idx;
         result = _message_send(ds, MSG_TAG_GET, buff, sizeof(tag_index) + 1);
         if(result) {
-            dax_error(ds, "Can't send MSG_TAG_GET message");
+            dax_log(LOG_ERROR, "Can't send MSG_TAG_GET message");
             pthread_mutex_unlock(&ds->lock);
             return result;
         }
@@ -675,7 +680,6 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         size = DAX_TAGNAME_SIZE + 17;
         result = _message_recv(ds, MSG_TAG_GET, buff, &size, 1);
         if(result) {
-            //dax_error("Unable to retrieve tag for index %d", idx);
             pthread_mutex_unlock(&ds->lock);
             return result;
         }
@@ -928,6 +932,14 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
     return 0;
 }
 
+/*!
+ * Removed an override on the given tag
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ * @param data Pointer to the data that we are using as the override
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_tag_del_override(dax_state *ds, tag_handle handle) {
     int i, n, result = 0, size, sendsize;
@@ -1024,6 +1036,18 @@ dax_tag_get_override(dax_state *ds, tag_handle handle, void *data, void *mask) {
     return result;
 }
 
+/*!
+ * Causes the override to become active.  After this command is sent to
+ * the tag server the tag server will start sending the value that was
+ * given in the dax_tag_add_override() instead of the actual value.  Other
+ * modules can still write to the tag but the read functions will still
+ * return the values in the override.
+ *
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_tag_set_override(dax_state *ds, tag_handle handle) {
     int result = 0, sendsize;
@@ -1048,7 +1072,18 @@ dax_tag_set_override(dax_state *ds, tag_handle handle) {
     return 0;
 }
 
-
+/*!
+ * Causes the override to become inactive.  After this command is sent to
+ * the tag server the tag server will again start sending the actual data
+ * of the tag instead of the override value.  Essentially the tag will
+ * behave normally.  The override still exists and can be made active again
+ * with the dax_tag_set_override()
+ *
+ * @param ds Pointer to the dax state object.
+ * @param handle handle of the tag data to override
+ *
+ * @returns Zero upon success or an error code otherwise
+*/
 int
 dax_tag_clr_override(dax_state *ds, tag_handle handle) {
     int result = 0, sendsize;
@@ -1082,14 +1117,11 @@ dax_tag_clr_override(dax_state *ds, tag_handle handle) {
  * This eliminates the race condition that exists with normal read/modify/write
  * operations.
  *
- * @param ds Pointer to the dax state ojbect
- * @param h  Pointer to a handle that repreents the tag or the part of the
+ * @param ds Pointer to the dax state object
+ * @param h  Pointer to a handle that represents the tag or the part of the
  *           tag that we wish to apply the operation to.
- * @param data Any data that may be required by this event.  For example if
- *             the event is a Greater Than event then this data would represent
- *             the number that the tag given by the handle would be compared against.
- *             If not needed for the particular event type being created it should
- *             be set to NULL.
+ * @param data Any data that may be required by this operation.
+ *
  * @param operation Number representing the operation that we wish to perform.
  *
  * @returns Zero on success or an error code otherwise.
@@ -1414,7 +1446,7 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
  * @param ds Pointer to the dax state object
  * @param cdt_type Identifier to the type that we are requesting
  *                 This can be set to zero of name is being used
- *                 to retrive this type
+ *                 to retrieve this type
  * @param name Name of the type that we wish to retrieve.  If type
  *             is being used to retrieve the type then NULL can be
  *             passed here.
@@ -1527,7 +1559,8 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
     return result;
 }
 
-/* Send message to the server to add a data group.  Groups
+/*!
+ * Add a data group to the tag server .  Data groups
  * are a way to aggregate tags or parts of tags into a single
  * group that can be read or written all at once.
  *
@@ -1540,7 +1573,7 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
  *                with all the information necessary to access this group.
  *                This will be used in all the functions that access the group.
  *                This function allocates memory so it will have be deleted with
- *                the dax_gropu_del() function to free everything.
+ *                the dax_group_del() function to free everything.
  */
 tag_group_id *
 dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t options) {
@@ -1617,13 +1650,14 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
     return id;
 }
 
-/* Reads a tag data group from the server.  It reads the data from the server
+/*!
+ * Reads a tag data group from the server.  It reads the data from the server
  * and writes it into the data area pointed to by 'buff'.  buff must be large
  * enough to contain the entire tag data group.
  *
  * @param ds      Pointer to the dax state object
- * @param id      Pointer to the tag group id returned by group_add()
- * @param data    Pointer to a buffer that will recieve the data
+ * @param id      Pointer to the tag group id returned by dax_group_add()
+ * @param data    Pointer to a buffer that will receive the data
  * @param size    Size of the above buffer
  * @returns       0 on success an error code otherwise
  */
@@ -1656,11 +1690,13 @@ dax_group_read(dax_state *ds, tag_group_id *id, void *data, size_t size) {
     return result;
 }
 
-/* Writes a tag data group to the server.
+/*!
+ * Writes a tag data group to the server.
  *
  * @param ds      Pointer to the dax state object
- * @param id      Pointer to the tag group id returned by group_add()
- * @param data    Pointer to a buffer that will recieve the data
+ * @param id      Pointer to the tag group id returned by dax_group_add()
+ * @param data    Pointer to the buffer that will be written
+ *
  * @returns       0 on success an error code otherwise
  */
 int
@@ -1687,6 +1723,14 @@ dax_group_write(dax_state *ds, tag_group_id *id, void *data) {
     return result;
 }
 
+/*!
+ * Deletes a tag data group from the server.
+ *
+ * @param ds      Pointer to the dax state object
+ * @param id      Pointer to the tag group id returned by dax_group_add()
+ *
+ * @returns       0 on success an error code otherwise
+ */
 int
 dax_group_del(dax_state *ds, tag_group_id *id) {
     int result;

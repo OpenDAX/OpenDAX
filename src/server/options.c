@@ -35,21 +35,12 @@ static char *_configfile;
 static char *_socketname;
 static struct in_addr _serverip;
 static unsigned int _serverport;
-static int _verbosity;
 static int _min_buffers;
 
 
 /* Initialize the configuration to NULL or 0 for cleanliness */
 static void initconfig(void) {
-    int length;
 
-    if(!_configfile) {
-        length = strlen(ETC_DIR) + strlen("/tagserver.conf") +1;
-        _configfile = (char *)malloc(sizeof(char) * length);
-        if(_configfile)
-            sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
-    }
-    _verbosity = 0;
     _min_buffers = 0;
     _socketname = NULL;
     _serverip.s_addr = 0;
@@ -75,7 +66,8 @@ parsecommandline(int argc, const char *argv[])
     char c;
 
     static struct option options[] = {
-        {"config", required_argument, 0, 'C'},
+        {"configfile", required_argument, 0, 'C'},
+        {"logtopics", required_argument, 0, 'T'},
         {"socketname", required_argument, 0, 'S'},
         {"serverip", required_argument, 0, 'I'},
         {"serverport", required_argument, 0, 'P'},
@@ -85,17 +77,20 @@ parsecommandline(int argc, const char *argv[])
     };
 
 /* Get the command line arguments */
-    while ((c = getopt_long (argc, (char * const *)argv, "C:S:I:P:Vv",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:K:S:I:P:Vv", options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
+            break;
+        case 'T':
+            dax_log_set_default_topics(strdup(optarg));
             break;
         case 'S':
             _socketname = strdup(optarg);
             break;
         case 'I':
             if(! inet_aton(optarg, &_serverip)) {
-                xerror("Unknown IP address %s", optarg);
+                dax_log(LOG_ERROR, "Unknown IP address %s", optarg);
             }
             break;
         case 'P':
@@ -106,7 +101,7 @@ parsecommandline(int argc, const char *argv[])
             exit(0);
             break;
         case 'v':
-            _verbosity = LOG_ALL;
+            dax_log_set_default_mask(LOG_ALL);
             break;
         case '?':
             printf("Got the big ?\n");
@@ -125,22 +120,35 @@ static int
 readconfigfile(void)
 {
     lua_State *L;
-//    char *string;
+    int length;
 
-    xlog(2, "Reading Configuration file %s", _configfile);
+    dax_log(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
+    
+    /* If no configuration file was given on the command line we build the default */
+    if(_configfile == NULL) {
+        length = strlen(ETC_DIR) + strlen("/tagserver.conf") +1;
+        _configfile = (char *)malloc(sizeof(char) * length);
+        if(_configfile) {
+            sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
+        } else {
+            dax_log(LOG_FATAL, "Unable to allocate memory for configuration file");
+        }
+    }
+    
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals. */
-
     luaopen_base(L);
+
+    dax_log_set_lua_function(L);
 
     lua_pushstring(L, "tagserver");
     lua_setglobal(L, CONFIG_GLOBALNAME);
 
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
-        xerror("Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_log(LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return 1;
     }
 
@@ -149,13 +157,6 @@ readconfigfile(void)
         _min_buffers = (int)lua_tonumber(L, -1);
     }
     lua_pop(L, 1);
-
-    /* TODO: This needs to be changed to handle the new topic handlers */
-    if(_verbosity == 0) { /* Make sure we didn't get anything on the commandline */
-        //_verbosity = (int)lua_tonumber(L, 4);
-        set_log_topic(_verbosity);
-        //set_log_topic(0xFFFFFFFF);
-    }
 
     /* Clean up and get out */
     lua_close(L);
@@ -174,10 +175,9 @@ opt_configure(int argc, const char *argv[])
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
-        xerror("Unable to read configuration running with defaults");
+        dax_log(LOG_WARN, "Unable to read configuration running with defaults");
     }
     setdefaults();
-    set_log_topic(_verbosity);
     return 0;
 }
 

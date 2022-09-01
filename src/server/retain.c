@@ -108,7 +108,7 @@ ret_init(char *filename) {
     int result;
     char buff[8];
 
-    xlog(LOG_MINOR, "Setting up Tag Retention");
+    dax_log(LOG_MINOR, "Setting up Tag Retention");
     if(filename == NULL) {
         filename = "retentive.db";
     }
@@ -118,38 +118,38 @@ ret_init(char *filename) {
         if(errno == ENOENT) {
             _fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
             if(_fd < 0) {
-                xerror("Unable to create Retention File, %s - %s", filename, strerror);
+                dax_log(LOG_ERROR, "Unable to create Retention File, %s - %s", filename, strerror);
                 _fd = 0;
                 return ERR_GENERIC;
             }
             result = write(_fd, "DAXRET\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
             if(result != 16) {
-                xerror("Error Writing to Retention File");
+                dax_log(LOG_ERROR, "Error Writing to Retention File");
                 _fd=0;
                 return ERR_GENERIC;
             }
             return 0;
         } else { /* Some other error opening the file */
-            xerror("Error Opening Retention File, %s - %s",filename, strerror(errno));
+            dax_log(LOG_ERROR, "Error Opening Retention File, %s - %s",filename, strerror(errno));
             return ERR_GENERIC;
         }
     }
     /* If we make it this far we should have the file open */
     result = read(_fd, buff, 8);
     if(result != 8) {
-        xerror("Error reading file signature");
+        dax_log(LOG_ERROR, "Error reading file signature");
         _fd = 0;
         return ERR_GENERIC;
     }
     if(strncmp("DAXRET", buff, 6) != 0) {
-        xerror("File signature doesn't match");
+        dax_log(LOG_ERROR, "File signature doesn't match");
         _fd = 0;
         return ERR_GENERIC;
     }
     memcpy(&_version, &buff[6], 2);
 
     if(_version != 1) {
-        xerror("Wrong File Version");
+        dax_log(LOG_ERROR, "Wrong File Version");
         _fd = 0;
         return ERR_GENERIC;
     }
@@ -190,7 +190,7 @@ int
 ret_add_tag(int index) {
     uint32_t offset;
 
-    xlog(LOG_MINOR, "Adding Retained Tag at index %d", index);
+    dax_log(LOG_MINOR, "Adding Retained Tag at index %d", index);
     /* TODO: Implement retaining custom data type tags */
     if(IS_CUSTOM(_db[index].type)) return ERR_NOTIMPLEMENTED;
     if(_fd == 0) return ERR_FILE_CLOSED;

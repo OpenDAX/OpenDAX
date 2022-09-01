@@ -1,5 +1,18 @@
 -- Main configuration file for the OpenDAX tag server
 
--- require "common.conf"
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/common.conf")
 
-statustag = "_status"
+-- The name of the local domain socket that will be created for local 
+-- client module communications
+socketname = "/tmp/opendax"
+
+-- The IP address and TCP port that the server will listen on
+serverip = "0.0.0.0"
+serverport = 7777
+
+-- The minimum number of communication buffers that will be maintained
+-- in the system.  The server uses pre-allocated buffers for communication
+-- and this designates the minimum number that will be maintained.
+min_buffers = 5

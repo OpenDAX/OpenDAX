@@ -108,14 +108,10 @@ int main(int argc,char *argv[]) {
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
 
-
-    /* TODO: These have got to move to the configuration */
-    dax_set_debug_topic(ds, 0);
-
  /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_fatal(ds, "Unable to find OpenDAX");
-        getout(_quitsignal);
+        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        getout(-1);
     }
     /* No setup work to do here.  We'll go straight to running */
     dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
@@ -157,7 +153,7 @@ int main(int argc,char *argv[]) {
     }
     while(1) {
         if(_quitsignal) {
-            dax_debug(ds, LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
 

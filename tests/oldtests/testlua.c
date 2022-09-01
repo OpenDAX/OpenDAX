@@ -43,7 +43,7 @@ _run_test(lua_State *L)
     /* load and run the test script */
     if(luaL_loadfile(L, script)) {
         /* Here the error is allowed to propagate up and kill the whole thing */
-        dax_error(ds, "Problem loading script - %s", lua_tostring(L, -1));
+        dax_log(LOG_ERROR, "Problem loading script - %s", lua_tostring(L, -1));
     }
     if(lua_pcall(L, 0, 0, 0)) {
         test_fail();

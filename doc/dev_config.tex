@@ -7,17 +7,24 @@ libdax library will need some configuration information to help it know how to
 communicate with the server.
 
 There are two methods for the module to receive configuration information.
-The server, the master and each module may have it's own configuration file that can be read and
-each program can receive configuration information passed as command line
-arguments.
+A configuration file may or may not exist for each program or arguments can
+be passed via the command line.
 
-There is a precedence between these configurations.  If a configuration
+If a configuration
 attribute is present on the command line it will take precedence over that same
-attribute given in the configuration files.  Configuration files are Lua scripts
-which allows them to import and excecute other Lua configuration files.  This
-gives the user a way to set up universal configuration options.
+attribute given in the configuration files.  An exception to this is the logging
+configuration.  Once logging services are added via the configuration file those
+services will determine how messages are logged and anything passed on the 
+command line will be ignored.
 
-Configuration is made up of attributes.  An example of an attribute would be the
+Configuration files are Lua scripts which makes the configuraiton system in
+OpenDAX very powerful.  It allows configuration files to import and excecute 
+other Lua configuration files.  This gives the user a way to set up universal 
+configuration options that are common accross the entire system.  It also allows
+the configuration to include variables, loops and conditions that add a lot
+of power to configuration.
+
+Basic configuration is made up of attributes.  An example of an attribute would be the
 name of the local unix domain socket that the module should use to communicate
 to the server.  The attribute name might be \texttt{socketname} and the value
 \texttt{/tmp/opendax}\footnote{In fact these are the defaults for the local

@@ -26,7 +26,12 @@
 #include <ctype.h>
 
 
-/* Initialize the module configuration */
+/*!
+ * Initialize the module configuration
+ * 
+ * @param ds Pointer to DAX State object
+ * @param name Name of the module.
+ */
 int
 dax_init_config(dax_state *ds, char *name)
 {
@@ -44,7 +49,6 @@ dax_init_config(dax_state *ds, char *name)
     result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
     result += dax_add_attribute(ds, "server", "server", 'S', flags, "LOCAL");
-    result += dax_add_attribute(ds, "debugtopic", "topic", 'T', flags, "MAJOR");
     result += dax_add_attribute(ds, "name", "name", 'N', flags, name);
     result += dax_add_attribute(ds, "cachesize", "cachesize", 'Z', flags, "8");
     result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'O', flags, DEFAULT_TIMEOUT);
@@ -52,7 +56,11 @@ dax_init_config(dax_state *ds, char *name)
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "config", "config", 'C', flags, NULL);
     result += dax_add_attribute(ds, "confdir", "confdir", 'K', flags, ETC_DIR);
+    result += dax_add_attribute(ds, "logtopics", "logtopics", 'T', flags, NULL);
     //result += dax_add_attribute(ds, "", "", '', flags, "");
+
+    flags = CFG_CMDLINE | CFG_ARG_NONE;
+    result += dax_add_attribute(ds, "verbose", "verbose", 'v', flags, NULL);
 
     if(result) {
         return ERR_GENERIC;
@@ -223,6 +231,8 @@ dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, ch
     return ERR_NOTFOUND;
 }
 
+
+
 /* TODO: Add callback for before and after the module conf script is called */
 /* TODO: Add a callback for each entry and exit point in the configuration.  I
  * should probably do this with a single callback and some flags?  */
@@ -375,6 +385,25 @@ _get_lua_globals(dax_state *ds) {
     return 0;
 }
 
+/* We use this function to override the print() function in Lua for
+ * the configuration.  This function takes the string passed to
+ * print() and passes it to the logger with LOG_CONFIG topic */
+static int
+_config_print(lua_State *L) {
+    const char *str;
+
+    if(lua_gettop(L) != 1) {
+        luaL_error(L, "String argument required for print()");
+    }
+    str = lua_tostring(L, 1);
+    if(str!= NULL) {
+        dax_log(LOG_CONFIG, str);
+    } else {
+        luaL_error(L, "Problem with string passed to print()");    
+    }
+    return 0;
+}
+
 /* This function tries to open the module specific configuration
  * file and run it. */
 static inline int
@@ -405,11 +434,13 @@ _mod_config_file(dax_state *ds) {
     lua_setglobal(ds->L, CONFIG_GLOBALNAME);
     lua_pushstring(ds->L, cdir);
     lua_setglobal(ds->L, "configdir");
-
-
+    /* Override the print function with our logging function */
+    lua_pushcfunction(ds->L, _config_print);
+    lua_setglobal(ds->L, "print");
+    
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
-        dax_error(ds, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
+        dax_log(LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         free(cfile);
         return ERR_GENERIC;
     } else {
@@ -442,20 +473,19 @@ _set_defaults(dax_state *ds)
     return 0;
 }
 
-/* Just for testing */
+/* Prints the configuration attributes */
 static inline void
 _print_config(dax_state *ds)
 {
     optattr *this;
         
     this = ds->attr_head;
-
-    /* This loop checks that none of the symbols have already been used. */
+    printf("Configuration for %s\n", ds->modulename);
     while(this != NULL) {
         if(this->value != NULL) {
-            printf("%s = %s\n", this->name, this->value);
+            printf("  %s = %s\n", this->name, this->value);
         } else {
-            printf("%s = NULL\n", this->name);
+            printf("  %s = NULL\n", this->name);
         }
         this = this->next;
     }
@@ -485,11 +515,21 @@ _verify_config(dax_state *ds)
 int
 dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {
+    char *topics;
+
     if(ds->modulename == NULL) {
         return ERR_NO_INIT;
     }
-    if(flags & CFG_CMDLINE)
+    if(flags & CFG_CMDLINE) {
         _parse_commandline(ds, argc, argv);
+        topics = dax_get_attr(ds, "logtopics");
+        if( topics != NULL) {
+            dax_log_set_default_topics(topics);
+        }
+        if(dax_get_attr(ds, "verbose")) {
+            dax_log_set_default_mask(LOG_ALL);
+        }
+    }
     /* This sets the confdir parameter to ETC_DIR if it
      * has not already been set on the command line */
     if(dax_get_attr(ds, "confdir") == NULL) {
@@ -501,11 +541,13 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
         ds->modulename = strdup(dax_get_attr(ds, "name"));
         if(ds->modulename==NULL) return ERR_ALLOC;
     }
-    if(flags & CFG_MODCONF)
+    if(flags & CFG_MODCONF) {
+        dax_log_set_lua_function(ds->L);
         _mod_config_file(ds);
+    }
 
     _set_defaults(ds);
-    //--_print_config(ds);
+    //_print_config(ds);
     return _verify_config(ds);
 }
 
@@ -579,7 +621,7 @@ opt_lua_init_func(dax_state *ds) {
     result = lua_getglobal(ds->L, "init_hook");
     if(result == LUA_TFUNCTION) {
         if(lua_pcall(ds->L, 0, 0, 0)) {
-            dax_error(ds, "error running init_function: %s", lua_tostring(ds->L, -1));
+            dax_log(LOG_ERROR, "error running init_function: %s", lua_tostring(ds->L, -1));
         }
     }
     lua_pop(ds->L, 1);

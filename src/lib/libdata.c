@@ -345,7 +345,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
  * @param ds Pointer to dax state object
  * @param handle The handle that describes the data that we wish to read
  * @param data The buffer where this function will store the data
- * @returns Zero on succes or an error code otherwise
+ * @returns Zero on success or an error code otherwise
  */
 int
 dax_read_tag(dax_state *ds, tag_handle handle, void *data)
@@ -477,7 +477,14 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
 
 
 /*!
- * Higher level tag write function
+ * Higher level tag write function.  This function is much more intelligent
+ * about what type of data is being written.  It does any conversions that may
+ * be necessary and then sends the data
+ *
+ * @param ds Pointer to dax state object
+ * @param handle The handle that describes the data that we wish to write
+ * @param data The buffer of data to be written
+ * @returns Zero on success or an error code otherwise
  */
 int
 dax_write_tag(dax_state *ds, tag_handle handle, void *data)
@@ -528,7 +535,17 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
 }
 
 /*!
- * Higher level tag masked write function
+ * Higher level tag maksed write function.  This function is much more intelligent
+ * about what type of data is being written.  It does any conversions that may
+ * be necessary and then sends the data.  The mask allows us to only change parts
+ * of the data.  Any bits that '0' in the mask will prevent the data from being
+ * changed.  The data buffer and the mask should be the same size
+ *
+ * @param ds Pointer to dax state object
+ * @param handle The handle that describes the data that we wish to write
+ * @param data The buffer of data to be written
+ * @param mask The buffer of data mask
+ * @returns Zero on success or an error code otherwise
  */
 int
 dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
@@ -577,7 +594,6 @@ dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
     }
     return result;
 }
-
 
 
 /* These two functions walk through the given data using the handles in the group id

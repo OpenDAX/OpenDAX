@@ -38,6 +38,7 @@ add_executable(cachetest cachetest.c ${LIB_SOURCE_DIR}/libdata.c
                                      ${LIB_SOURCE_DIR}/libmsg.c
                                      ${LIB_SOURCE_DIR}/libopt.c
                                      ${LIB_SOURCE_DIR}/lua/libdaxlua.c
+                                     ../testlog.c 
                                      )
 # target_link_libraries(cachetest
 target_link_libraries(cachetest ${LUA_LIBRARIES})
@@ -70,6 +71,7 @@ foreach(file ${files})
                                          ${SERVER_SOURCE_DIR}/retain.c
                                          ${SERVER_SOURCE_DIR}/mapping.c
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
+                                         ../testlog.c 
   )
 endforeach()
 
@@ -87,5 +89,6 @@ add_executable(groups_test groups_test.c fakefunction.c
                                          ${SERVER_SOURCE_DIR}/retain.c
                                          ${SERVER_SOURCE_DIR}/mapping.c
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
+                                         ../testlog.c 
   )
 add_test(internal_server_tag_group groups_test)

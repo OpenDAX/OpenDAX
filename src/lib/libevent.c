@@ -172,7 +172,7 @@ dispatch_event(dax_state *ds, dax_message *msg, dax_id *id)
         }
     }
     ds->event_data = NULL; /* This indicates that the data is out of scope now */
-    dax_error(ds, "dax_event_dispatch() received an event that does not exist in database");
+    dax_log(LOG_ERROR, "dax_event_dispatch() received an event that does not exist in database");
     return ERR_GENERIC;
 }
 
@@ -268,7 +268,10 @@ dax_event_poll(dax_state *ds, dax_id *id)
  * event callback function returns.  If the data is meant to persist it will be
  * the responsibility of the event callback function to store it.
  *
- * If this function is called while the data is out of scope and error will be
+ * The option EVENT_OPT_SEND_DATA will have to be set for the event with the
+ * dax_event_options() function or no data will be returned by the server.
+ *
+ * If this function is called while the data is out of scope an error will be
  * returned.
  *
  * @param ds   Pointer to the dax state object

@@ -28,4 +28,6 @@ if(BUILD_MQTT)
   add_subdirectory(mqtt)
 endif()
 
-add_subdirectory(examples)
+if(BUILD_EXAMPLES)
+   add_subdirectory(examples)
+endif()

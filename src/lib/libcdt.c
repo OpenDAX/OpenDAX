@@ -22,10 +22,6 @@
 #include <libcommon.h>
 #include <ctype.h>
 
-/* The main datatype array for the module's cdt cache */
-//static datatype *_datatypes;
-//static unsigned int _datatype_size;
-
 /* This defines the starting size of the datatype array.
  * It is also the amount that the datatype array will
  * grow when necessary */
@@ -102,7 +98,13 @@ _add_member_to_cache(dax_state *ds, int index, char *desc) {
 }
 
 /*!
- * Calculate the size (in bytes) of the datatype
+ * Calculate the size (in bytes) of the datatype.  This function
+ * can be used on all datatypes including compound data types.
+ *
+ * @param ds The pointer to the dax state object
+ * @param type The type whose size we are trying to get
+ *
+ * @returns the size of the given datatype
  */
 int
 dax_get_typesize(dax_state *ds, tag_type type)
@@ -224,7 +226,7 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
     /* At this point we should have the spot for the datatype */
     str = strtok_r(typedesc, ":", &last);
     if(str == NULL) {
-        dax_error(ds, "add_cdt_to_cache(): Something is seriously wrong with the string");
+        dax_log(LOG_ERROR, "add_cdt_to_cache(): Something is seriously wrong with the string");
         return ERR_ARG;
     }
     result = _insert_type(ds, index, str);
@@ -238,10 +240,13 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
 }
 
 /*! 
- * Creates an empty Custom Datatype with 'name' if
- * 'error' is non NULL then results are put there.
- * Returns NULL on error and a pointer to the new
- * datatype if successful.
+ * Creates an empty Custom Datatype
+ *
+ * @param name The name that will be given to the new type
+ * @param errors a pointer to an integer that will contain
+ *               any errors that we encounter
+ * @returns NULL on error or a pointer to the new
+ *          datatype if successful.
  */
 dax_cdt *
 dax_cdt_new(char *name, int *error)
@@ -275,6 +280,16 @@ dax_cdt_new(char *name, int *error)
 
 /*!
  * Adds a member to the Custom Datatype.
+ *
+ * @param ds The pointer to the dax state object
+ * @param cdt The pointer to the cdt that was returned by dax_cdt_new
+ * @param name The name of the member that we are adding
+ * @param type The data type of the member that we are adding.
+ *             This can be another custom data type.  Nesting
+ *             data types is allowed.
+ * @param count The number of items if this member is an array.
+ *
+ * @returns Zero on success and an error code otherwise
  */
 int
 dax_cdt_member(dax_state *ds, dax_cdt *cdt, char *name, tag_type type, unsigned int count)
@@ -320,10 +335,12 @@ _cdt_member_free(cdt_member *member) {
 }
 
 /*! 
- * free the compound data type.  This function will only be
+ * Free the compound data type.  This function will only be
  * used by the module if the dax_cdt_create() function is never
  * called for some reason, because the cdt_create() function
  * frees the CDT once it has been created in the server.
+ *
+ * @param cdt The custom data type that was returned by dax_cdt_new()
  */
 void
 dax_cdt_free(dax_cdt *cdt) {
@@ -334,7 +351,7 @@ dax_cdt_free(dax_cdt *cdt) {
 
 
 /*!
- * Find the datatype of the given name and return it's numeric ID.
+ * Find the data type of the given name and return it's numeric ID.
  * both base data types and compound data types can be found with
  * this function.
  * 
@@ -394,6 +411,7 @@ dax_string_to_type(dax_state *ds, char *type)
  * 
  * @param ds Pointer to the dax state object
  * @param type The numeric type identifier
+ *
  * @returns A pointer to the name of the data type or NULL on error
  */
 const char *
@@ -513,7 +531,6 @@ _parse_bit_index(dax_state *ds, tag_type type, tag_handle *h, char *digit, int i
     h->bit = strtol(digit, &endptr, 10);
     /* This indicates that there is extra text past the number */
     if(endptr[0] != '\0') {
-        //dax_error(ds, "Tag %s, has no member %s", tagname, nextname);
         return ERR_ARG;
     }
     size = dax_get_typesize(ds, type);
@@ -666,11 +683,11 @@ _dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int strlen, int count)
             return _parse_bit_index(ds, tag.type, h, membername, index, count);
         }
         else if(!IS_CUSTOM(tag.type)) {
-            dax_error(ds, "Tag %s, has no member %s", tagname, membername);
+            dax_log(LOG_ERROR, "Tag %s, has no member %s", tagname, membername);
             return ERR_ARG;
         }
         if(tag.count > 1 && index == ERR_NOTFOUND) {
-            dax_error(ds, "Ambiguous reference in tag %s", tagname);
+            dax_log(LOG_ERROR, "Ambiguous reference in tag %s", tagname);
             return ERR_ARBITRARY;
         }
         result = _parse_next_member(ds, tag.type, h, membername, count);

@@ -7,6 +7,7 @@
 #cmakedefine HAVE_STRING_H @HAVE_STRING_H@
 #cmakedefine HAVE_STRINGS_H @HAVE_STRINGS_H@
 #cmakedefine HAVE_SYS_SELECT_H @HAVE_SYS_SELECT_H@
+#cmakedefine HAVE_PROCDIR @HAVE_PROCDIR@
 
 #cmakedefine OS_LINUX @OS_LINUX@
 

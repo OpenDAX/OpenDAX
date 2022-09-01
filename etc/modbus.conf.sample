@@ -2,7 +2,9 @@
 
 -- Configuration file for OpenDAX Modbus module
 
-require "common.conf"
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/common.conf")
 
 p = {}
 c = {}

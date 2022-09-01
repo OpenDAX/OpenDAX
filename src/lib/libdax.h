@@ -131,11 +131,7 @@ struct dax_state {
     dax_message **emsg_queue; /* Event Message FIFO Queue */
     int emsg_queue_size;     /* Total size of the Event Message Queue */
     int emsg_queue_count;    /* number of entries in the event message queue */
-    //int emsg_queue_read;     /* index to the next event to read in the queue */
     dax_message *last_msg;   /* The last message received on the socket */
-    void (*dax_debug)(const char *output);
-    void (*dax_error)(const char *output);
-    void (*dax_log)(const char *output);
 };
 
 #define MIN_TIMEOUT      500
