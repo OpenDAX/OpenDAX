@@ -429,7 +429,7 @@ _set_attribute(tag_index idx, uint32_t attr) {
  * count is greater than 1 an array is created.  It returns the index
  * of the newly created tag or an error. */
 tag_index
-tag_add(char *name, tag_type type, unsigned int count, uint32_t attr)
+tag_add(char *name, tag_type type, uint32_t count, uint32_t attr)
 {
     int n;
     void *newdata;
@@ -441,7 +441,6 @@ tag_add(char *name, tag_type type, unsigned int count, uint32_t attr)
         return ERR_ARG;
     }
 
-    dax_log(LOG_MSG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
     if(_tagnextindex >= _dbsize) {
         if(_database_grow()) {
             dax_log(LOG_ERROR, "Failure to increase database size");
@@ -452,11 +451,11 @@ tag_add(char *name, tag_type type, unsigned int count, uint32_t attr)
     }
     result = _checktype(type);
     if( result ) {
-        dax_log(LOG_ERROR, "tag_add() passed an unknown datatype %x", type);
+        dax_log(LOG_MSGERR, "tag_add() passed an unknown datatype %x", type);
         return ERR_BADTYPE; /* is the datatype valid */
     }
     if(_validate_name(name)) {
-        dax_log(LOG_ERROR, "%s is not a valid tag name", name);
+        dax_log(LOG_MSGERR, "%s is not a valid tag name", name);
         return ERR_TAG_BAD;
     }
 
@@ -487,7 +486,7 @@ tag_add(char *name, tag_type type, unsigned int count, uint32_t attr)
                 return ERR_ALLOC;
             }
         } else {
-            dax_log(LOG_ERROR, "Duplicate tag name %s", name);
+            dax_log(LOG_MSGERR, "Duplicate tag name %s", name);
             return ERR_TAG_DUPL;
         }
     } else {
@@ -536,6 +535,7 @@ tag_add(char *name, tag_type type, unsigned int count, uint32_t attr)
         tag_write(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
     _set_attribute(n, attr);
+    dax_log(LOG_MSG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
 
     return n;
 }
@@ -560,7 +560,6 @@ tag_del(tag_index idx)
         dax_log(LOG_ERROR, "tag_del() trying to delete already deleted tag %d", idx);
         return ERR_DELETED;
     }
-    dax_log(LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
     event_del_check(idx); /* Check to see if we have a deleted event for this tag */
     if(IS_CUSTOM(_db[idx].type)) {
         _cdt_dec_refcount(_db[idx].type);
@@ -576,6 +575,7 @@ tag_del(tag_index idx)
     _db[idx].name = NULL;
     _db[idx].data = NULL;
     _tagcount--;
+    dax_log(LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
 
     return 0;
 }

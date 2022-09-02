@@ -378,9 +378,6 @@ msg_dispatcher(int fd, unsigned char *buff)
  * When this message is called with a zero size it's an unregister
  * message.  Otherwise the first four bytes are the PID of the calling module
  * the next four bytes are some flags and then the rest is the module name. */
-
-// TODO: Probably get rid of the PID and replace it with a timeout or something
-//       since we aren't starting the modules anymore it's kinda useless.
 int
 msg_mod_register(dax_message *msg)
 {
@@ -460,7 +457,7 @@ msg_tag_add(dax_message *msg)
     return 0;
 }
 
-/* TODO: Make this function do something */
+/* Delete a tag */
 int
 msg_tag_del(dax_message *msg)
 {
@@ -473,6 +470,7 @@ msg_tag_del(dax_message *msg)
     dax_log(LOG_MSG, "Tag Delete Message for index '%d' from module %d", idx, msg->fd);
     result = tag_get_index(idx, &tag);
     if(result) {
+        dax_log(LOG_MSGERR, "Tag Delete Message with unknown tag");
         return ERR_ARG;
     }
     if(msg->data[8] == '_') {
@@ -523,6 +521,7 @@ msg_tag_get(dax_message *msg)
     return 0;
 }
 
+/* TODO: Make this do something */
 int
 msg_tag_list(dax_message *msg)
 {
@@ -617,7 +616,7 @@ msg_tag_mask_write(dax_message *msg)
     return 0;
 }
 
-
+/* TODO: Make this do something */
 int
 msg_mod_get(dax_message *msg)
 {
