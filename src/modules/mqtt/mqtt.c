@@ -37,56 +37,9 @@ MQTTClient_message pubmsg = MQTTClient_message_initializer;
 volatile MQTTClient_deliveryToken deliveredtoken;
 
 
-static int
-_write_lua_to_dax(lua_State *L, tag_handle *h) {
-    void *data, *mask;
-    int q = 0;
-    int n, result;
-
-    data = malloc(h->size);
-    if(data == NULL) {
-        dax_log(LOG_ERROR, "Unable to allocate data area");
-    }
-
-    mask = malloc(h->size);
-    if(mask == NULL) {
-        free(data);
-        dax_log(LOG_ERROR, "Unable to allocate mask memory");
-    }
-    bzero(mask, h->size);
-
-    result = daxlua_lua_to_dax(L, *h, data, mask);
-    if(result) {
-        free(data);
-        free(mask);
-        /* The error message should be on top of the stack */
-        dax_log(LOG_ERROR, lua_tostring(L, -1));
-    }
-
-    /* This checks the mask to determine which function to use
-     * to write the data to the server */
-    /* TODO: Might want to scan through and find the beginning and end of
-     * any changed data and send less through the socket.  */
-    for(n = 0; n < h->size && q == 0; n++) {
-        if( ((unsigned char *)mask)[n] != 0xFF) {
-            q = 1;
-        }
-    }
-    if(q) {
-        result = dax_mask_tag(ds, *h, data, mask);
-    } else {
-        result = dax_write_tag(ds, *h, data);
-    }
-
-    free(data);
-    free(mask);
-    return result;
-}
-
-
 void delivered(void *context, MQTTClient_deliveryToken dt)
 {
-    printf("Message with token value %d delivery confirmed\n", dt);
+    DF("Message with token value %d delivery confirmed", dt);
     deliveredtoken = dt;
 }
 
@@ -95,7 +48,7 @@ void delivered(void *context, MQTTClient_deliveryToken dt)
 int
 msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *message)
 {
-    int size;
+    int size, result, offset;
     subscriber_t *sub;
     lua_State* L;
 
@@ -107,6 +60,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
         L = dax_get_luastate(ds);
 
         if(sub->formatter != 0) { /* We need to run our formatter function */
+            lua_settop(L, 0); /* Delete the stack */
             /* Get the formatter function from the registry and push it onto the stack */
             lua_rawgeti(L, LUA_REGISTRYINDEX, sub->formatter);
             lua_pushstring(L, topicName); /* First argument is the topic */
@@ -114,7 +68,26 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
             if(lua_pcall(L, 2, 1, 0) != LUA_OK) {
                 dax_log(LOG_ERROR, "Formatter funtion for %s - %s", topicName, lua_tostring(L, -1));
             } else { /* Success */
-            
+                if(sub->tag_count == 1) {
+                    result = daxlua_lua_to_dax(L, sub->h[0], sub->buff, sub->mask);
+                    if(result) {
+                        dax_log(LOG_LOGICERR, "Problem converting Lua value to tag for topic %s: %d", sub->topic, result);
+                    }
+                } else if(sub->tag_count > 1) {
+                    /* If there is more than one tag then it is assumed that there is
+                       an array returned from the formatter function that contains the
+                       values for the tags. */
+                    offset = 0;
+                    for(int n=0;n<sub->tag_count;n++) {
+                        if(lua_rawgeti(L, 1, n+1) != LUA_TNIL) {
+                            result = daxlua_lua_to_dax(L, sub->h[n], &((uint8_t *)sub->buff)[offset], &((uint8_t *)sub->mask)[offset]);
+                            offset += sub->h[n].size;
+                        } else {
+                            dax_log(LOG_LOGICERR, "Formatter didn't return the right kind of data for %s", sub->topic);
+                        }
+                        lua_pop(L, 1);
+                    }
+                }
             }
         } else {
             /* No formatter function configured so we just do a raw
@@ -125,17 +98,13 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
             size = MIN(message->payloadlen, sub->buff_size);
             /* TODO we could avoid this memory copy if we know the payload is big enough */
             memcpy(sub->buff, message->payload, size);
-
-            if(sub->group != NULL) { /* We are using a tag group */
-                dax_group_write(ds, sub->group, sub->buff);
-            } else { /* just one tag */
-                dax_write_tag(ds, sub->h[0], sub->buff);
-            }
         }
-        //payload = strndup(message->payload, message->payloadlen);
-        //DF("  sub topic: %s", sub->topic);
-        //DF("    message: %s", payload);
-        ///free(payload);
+
+        if(sub->group != NULL) { /* We are using a tag group */
+            dax_group_write(ds, sub->group, sub->buff);
+        } else { /* just one tag */
+            dax_write_tag(ds, sub->h[0], sub->buff);
+        }
     } else {
         /* This is a bad error and it means that we have a problem with how we are finding
          * the subscription topic that matches the one that we received from the broker */
@@ -163,7 +132,7 @@ static int
 subscribe(subscriber_t *sub) {
     int result;
     if(sub->tag_count == 0 && sub->formatter == 0) {
-        dax_log(LOG_ERROR, "No tags or formatter function given for topic %s", sub->topic);
+        dax_log(LOG_WARN, "No tags or formatter function given for topic %s", sub->topic);
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
@@ -176,7 +145,7 @@ subscribe(subscriber_t *sub) {
         for(int n=0;n<sub->tag_count;n++) {
             result = dax_tag_handle(ds, &sub->h[n], sub->tagnames[n], 1);
             if(result) {
-                dax_log(LOG_ERROR, "Unable to add tag %s as subscription", sub->tagnames[n]);
+                dax_log(LOG_WARN, "Unable to add tag %s as subscription", sub->tagnames[n]);
                 return 1;
             }
         }
@@ -185,28 +154,36 @@ subscribe(subscriber_t *sub) {
     if(sub->tag_count > 1) {
         sub->group = dax_group_add(ds, &result, sub->h, sub->tag_count, 0);
         if(result) {
-            dax_log(LOG_ERROR, "Unable to create tag group - %d", result);
+            dax_log(LOG_WARN, "Unable to create tag group - %d", result);
         }
         sub->buff = malloc(dax_group_get_size(sub->group));
         if(sub->buff == NULL) {
-            dax_log(LOG_ERROR, "Unable to allocate tag data buffer");
+            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+        }
+        /* Having a mask makes the Lua to Dax conversion easier */
+        sub->mask = malloc(dax_group_get_size(sub->group));
+        if(sub->mask == NULL) {
+            dax_log(LOG_WARN, "Unable to allocate tag data mask");
         }
         sub->buff_size = dax_group_get_size(sub->group);
     } else if(sub->tag_count == 1) { /* We just have the one tag */
         DF("sub->h = %p", sub->h);
         sub->buff = malloc(sub->h[0].size);
         if(sub->buff == NULL) {
-            dax_log(LOG_ERROR, "Unable to allocate tag data buffer");
+            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+        }sub->mask = malloc(sub->h[0].size);
+        if(sub->mask == NULL) {
+            dax_log(LOG_WARN, "Unable to allocate tag data mask");
         }
         sub->buff_size = sub->h[0].size;
     }
-    DF("Subscribe to %s", sub->topic);
     result = MQTTClient_subscribe(client, sub->topic, 0);
     if(result != MQTTCLIENT_SUCCESS) {
-        dax_log(LOG_ERROR, "Unable to subscribe to %s", sub->topic);
+        dax_log(LOG_WARN, "Unable to subscribe to %s", sub->topic);
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
     } else {
         sub->enabled = ENABLE_GOOD; /* We're rolling now */
+        dax_log(LOG_DEBUG, "SubscribeD to %s", sub->topic);
     }
     return 0;
 }
@@ -227,55 +204,157 @@ setup_subscribers() {
     return bad_subs;
 }
 
+/* This get's called by the dax event system when the trigger of any given
+ * publisher hits.  udata should contain a pointer to the publisher structure
+ * that we are associated with */
 void
-event_callback(dax_state *ds, void *udata) {
+publish_callback(dax_state *ds, void *udata) {
     publisher_t *pub = (publisher_t *)udata;
-    
-    if(pub->format_type == CFG_STR) {
-        
+    int result;
+    int offset;
+    const char *data;
+    size_t len;
+    lua_State *L;
+
+    L = dax_get_luastate(ds);
+
+    if(pub->tag_count == 1) {
+        result = dax_read_tag(ds, pub->h[0], pub->buff);
+        if(result) {
+            dax_log(LOG_WARN, "Unable to read tag %s for topic %s", pub->tagnames[0], pub->topic);
+        }
+    } else {
+        result = dax_group_read(ds, pub->group, pub->buff, pub->buff_size);
+        if(result) {
+            dax_log(LOG_WARN, "Unable to read tag group for topic %s", pub->topic);
+        }
     }
-    printf("Event hit on %s\n", pub->topic);
+
+    if(pub->formatter != 0) { /* We need to run our formatter function */
+        lua_settop(L, 0); /* Delete the stack */
+        /* Get the formatter function from the registry and push it onto the stack */
+        lua_rawgeti(L, LUA_REGISTRYINDEX, pub->formatter);
+        lua_pushstring(L, pub->topic); /* First argument is the topic */
+        if(pub->tag_count == 0) {
+            lua_pushnil(L); /* Push a NIL if we don't have any tags */
+        } else if(pub->tag_count == 1) {
+            if(result) { /* From the tag read above */
+                lua_pushnil(L);
+            } else {
+                daxlua_dax_to_lua(L, pub->h[0], pub->buff);
+            }
+        } else { /* Multiple tags */
+            if(result) {
+                lua_pushnil(L);
+            } else {
+                lua_newtable(L); /* Pub a new table on top of the stack */
+                offset = 0;
+                for(int n=0;n<pub->tag_count;n++) {
+                    daxlua_dax_to_lua(L, pub->h[n], &((uint8_t *)pub->buff)[offset]);
+                    lua_rawseti(L, -2, n+1); /* put the value in the table */
+                    offset += pub->h[n].size;
+                }
+            }
+        }
+        if(lua_pcall(L, 2, 1, 0) != LUA_OK) {
+            dax_log(LOG_WARN, "Formatter funtion for %s - %s", pub->topic, lua_tostring(L, -1));
+        }
+        /* The data that is supposed to be published should have been returned by the formatter function */
+        data = lua_tolstring(L, 1, &len);
+        if(data != NULL) {
+            result = MQTTClient_publish(client, pub->topic, len, data, pub->qos, pub->retained, NULL);
+            if(result != MQTTCLIENT_SUCCESS) {
+                dax_log(LOG_ERROR, "Unable to publish data to %s", pub->topic);
+            }
+        } else {
+            dax_log(LOG_WARN, "Bad return value from formatter on topic %s", pub->topic);
+        }
+    } else { /* No formatter function so we just do a raw binary copy */
+        result = MQTTClient_publish(client, pub->topic, pub->buff_size, pub->buff, pub->qos, pub->retained, NULL);
+        if(result != MQTTCLIENT_SUCCESS) {
+            dax_log(LOG_ERROR, "Unable to publish data to %s", pub->topic);
+        }
+    }
 }
 
 static int
 publish(publisher_t *pub) {
     int result;
     dax_type_union val;
+    tag_handle h;
     
-    if(pub->tag_count == 0) {
-        dax_log(LOG_ERROR, "No tags given for topic %s", pub->topic);
+    /* We'll set this for now in case we have an error in here somewhere */
+    pub->enabled = ENABLE_FAIL;
+
+    if(pub->tag_count == 0 && pub->formatter == 0) {
+        dax_log(LOG_WARN, "No tags or formatter function given for topic %s", pub->topic);
         pub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
-    if(pub->h == NULL) { /* We need to allocate our array of tag handles */
-        pub->h = (tag_handle *)malloc(sizeof(tag_handle) * pub->tag_count);
-    }
-    /* Now search through the tagnames and get handles for all of the tags */
-    for(int n=0;n<pub->tag_count;n++) {
-        result = dax_tag_handle(ds, &pub->h[n], pub->tagnames[n], 1);
-        if(result) {
-            dax_log(LOG_ERROR, "Unable to add tag %s to publication", pub->tagnames[n]);
-            return 1;
-        }            
-    }
-    if(pub->update_tag == NULL) {
+    if(pub->tag_count > 0) {
+        if(pub->h == NULL) { /* We need to allocate our array of tag handles */
+            pub->h = (tag_handle *)malloc(sizeof(tag_handle) * pub->tag_count);
+            assert(pub->h != NULL);
+        }
+        /* Now search through the tagnames and get handles for all of the tags */
         for(int n=0;n<pub->tag_count;n++) {
-            if( pub->event_data != NULL ) {
-                printf("Add event for tag %s, with val %s\n", pub->tagnames[n], pub->event_data);
-                dax_string_to_val(pub->event_data, pub->h[n].type, &val, NULL, 0);
-                result = dax_event_add(ds, &pub->h[n], pub->update_mode, &val, NULL, event_callback, pub, NULL);
-            } else {
-                printf("Add event for tag %s\n", pub->tagnames[n]);
-                result = dax_event_add(ds, &pub->h[n], pub->update_mode, NULL, NULL, event_callback, pub, NULL);
-            }
+            result = dax_tag_handle(ds, &pub->h[n], pub->tagnames[n], 1);
             if(result) {
-                dax_log(LOG_ERROR, "Problem adding update event for tag %s", pub->tagnames[n]);
+                dax_log(LOG_WARN, "Unable to add tag %s to publisher", pub->tagnames[n]);
                 return 1;
             }
         }
     }
-    
-    // printf("Set to publish to %s\n", pub->topic);
+    /* TODO: How should errors be handled here */
+    if(pub->tag_count > 1) {
+        pub->group = dax_group_add(ds, &result, pub->h, pub->tag_count, 0);
+        if(result) {
+            dax_log(LOG_WARN, "Unable to create tag group - %d", result);
+            return 1;
+        }
+        pub->buff = malloc(dax_group_get_size(pub->group));
+        if(pub->buff == NULL) {
+            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+            return 1;
+        }
+        /* Having a mask makes the Lua to Dax conversion easier */
+        pub->mask = malloc(dax_group_get_size(pub->group));
+        if(pub->mask == NULL) {
+            dax_log(LOG_WARN, "Unable to allocate tag data mask");
+            return 1;
+        }
+        pub->buff_size = dax_group_get_size(pub->group);
+    } else if(pub->tag_count == 1) { /* We just have the one tag */
+        DF("pub->h = %p", pub->h);
+        pub->buff = malloc(pub->h[0].size);
+        if(pub->buff == NULL) {
+            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+            return 1;
+        }pub->mask = malloc(pub->h[0].size);
+        if(pub->mask == NULL) {
+            dax_log(LOG_WARN, "Unable to allocate tag data mask");
+            return 1;
+        }
+        pub->buff_size = pub->h[0].size;
+    }
+    result = dax_tag_handle(ds, &h, pub->trigger_tag, 1);
+    if(result) {
+        dax_log(LOG_WARN, "Unable to find trigger tag %s for topic %s", pub->trigger_tag, pub->topic);
+        return 1;
+    }
+
+    result = dax_string_to_val(pub->trigger_value, h.type, &val, NULL, 0);
+    if(result) {
+        dax_log(LOG_WARN, "Problem converting trigger value %s for topic %s", pub->trigger_value, pub->topic);
+        return 1;
+    }
+    result = dax_event_add(ds, &h, pub->trigger_type, &val, &pub->trigger_id, publish_callback, pub, NULL);
+    if(result) {
+        dax_log(LOG_WARN, "Problem adding event for topic %s", pub->topic);
+        return 1;
+    }
+ 
+    dax_log(LOG_DEBUG, "Set to publish to %s", pub->topic);
     pub->enabled = ENABLE_GOOD; /* We're rolling now */
     return 0;
 }

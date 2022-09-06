@@ -175,15 +175,19 @@ _get_new_pub(void)
     publisher_count++;
     /* Initialize the script structure */
     publishers[n].enabled = ENABLE_UNINIT;
-    publishers[n].format_type = CFG_STR;
+    publishers[n].formatter = 0;
     publishers[n].tag_count = 0;
     publishers[n].tagnames = NULL;
     publishers[n].qos = 0;
     publishers[n].h = NULL;
     publishers[n].topic = NULL;
-    publishers[n].update_mode = 0;
-    publishers[n].update_tag = NULL;
-    publishers[n].event_data = NULL;
+    publishers[n].retained = 0;
+    publishers[n].trigger_tag = NULL;
+    publishers[n].trigger_type = EVENT_WRITE;
+    publishers[n].trigger_value = "0";
+    publishers[n].group = NULL;
+    publishers[n].buff = NULL;
+    publishers[n].buff_size = 0;
     return n;
 }
 
@@ -212,16 +216,16 @@ _add_pub(lua_State *L)
     }
     lua_pop(L, 1);
 
-    /* Retrieve tagname string or tagnames array from table */
-    lua_getfield(L, 1, "tagname");
-    if( lua_isnil(L, -1)) {
-        lua_getfield(L, 1, "tagnames");
-        if( lua_isnil(L, -1)) {
-            luaL_error(L, "At least one tagname is required for publisher");
+    if(lua_getfield(L, 1, "retained") != LUA_TNIL) {
+        if(lua_toboolean(L, -1)) {
+            publishers[idx].retained = 1;
         }
-        if(! lua_istable(L, -1)) {
-            luaL_error(L, "Tagnames should be a table");
-        } else {
+    }
+    lua_pop(L, 1);
+
+    /* Retrieve tags array from table */
+    if(lua_getfield(L, 1, "tags") != LUA_TNIL) {
+        if(lua_istable(L, -1)) {
             lua_len(L, -1);
             len = lua_tointeger(L, -1);
             lua_pop(L, 1);
@@ -237,53 +241,65 @@ _add_pub(lua_State *L)
                 publishers[idx].tagnames[i] = strdup(s);
             }
             publishers[idx].tag_count = len;
+        } else if(lua_isstring(L, -1)) {
+            s = lua_tostring(L, -1);
+            publishers[idx].tagnames = malloc(sizeof(char *));
+            if(publishers[idx].tagnames == NULL) {
+                luaL_error(L, "Unable to allocate space for tagnames");
+            }
+            publishers[idx].tagnames[0] = strdup(s);
+            publishers[idx].tag_count = 1;
+        } else {
+            luaL_error(L, "At least one tagname is required for subscription");
+        }
+    }
+    lua_pop(L, 1); /* Pop off tags */
+
+    if(lua_getfield(L, 1, "formatter") != LUA_TNIL) {
+        if(! lua_isfunction(L, -1)) {
+            luaL_error(L, "Formatter should be a function");
+        }
+        /* Pop the function off the stack and write it to the regsitry and assign
+           the reference to .formatter */
+        publishers[idx].formatter = luaL_ref(L, LUA_REGISTRYINDEX);
+    } else {
+        lua_pop(L, 1); /* Pop nil */
+    }   
+ 
+    if(lua_getfield(L, 1, "qos") != LUA_TNIL) {
+        publishers[idx].qos = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1); /* Pop off QOS */
+
+    lua_getfield(L, 1, "trigger_tag");    
+    if(! lua_isnil(L, -1)) {
+        s = lua_tostring(L, -1);
+        publishers[idx].trigger_tag = strdup(s);
+        if(publishers[idx].trigger_tag == NULL) {
+            luaL_error(L, "Unable to allocate space for format string");
         }
     } else {
-        s = lua_tostring(L, -1);
-        publishers[idx].tagnames = malloc(sizeof(char *));
-        if(publishers[idx].tagnames == NULL) {
-            luaL_error(L, "Unable to allocate space for tagnames");
-        }
-        publishers[idx].tagnames[0] = strdup(s);
-        publishers[idx].tag_count = 1;
-    }
-    lua_pop(L, 1); /* Pop off tagnmaes */
-    
-    lua_getfield(L, 1, "type");
-    if(! lua_isnil(L, -1)) {
-        publishers[idx].format_type = lua_tointeger(L, -1);
-    }
-    lua_pop(L, 1);
-    
-    lua_getfield(L, 1, "format");
-    if(! lua_isnil(L, -1)) {
-        s = lua_tostring(L, -1);
-        publishers[idx].format_str = strdup(s);
-        if(publishers[idx].format_str == NULL) {
-            luaL_error(L, "Unable to allocate space for format string");
+        if(publishers[idx].tag_count > 0) {
+            /* If we don't have a trigger tag then we'll use the first
+             * tagname given */
+            publishers[idx].trigger_tag = publishers[idx].tagnames[0]; 
+        } else {
+            luaL_error(L, "A trigger tag must be set");
         }
     }
     lua_pop(L, 1);
 
-    lua_getfield(L, 1, "update_tag");    
+    lua_getfield(L, 1, "trigger_type");    
     if(! lua_isnil(L, -1)) {
-        s = lua_tostring(L, -1);
-        publishers[idx].update_tag = strdup(s);
-        if(publishers[idx].update_tag == NULL) {
-            luaL_error(L, "Unable to allocate space for format string");
-        }
+         publishers[idx].trigger_type = lua_tointeger(L, -1);
     }
     lua_pop(L, 1);
 
-    lua_getfield(L, 1, "update_mode");    
-    if(! lua_isnil(L, -1)) {
-         publishers[idx].update_mode = lua_tointeger(L, -1);
-    }
-    lua_pop(L, 1);
 
-    lua_getfield(L, 1, "event_data");    
+
+    lua_getfield(L, 1, "trigger_value");    
     if(! lua_isnil(L, -1)) {
-        publishers[idx].event_data = strdup(lua_tostring(L, -1));
+        publishers[idx].trigger_value = strdup(lua_tostring(L, -1));
     
     }
     lua_pop(L, 1);
@@ -309,28 +325,22 @@ configure(int argc, char *argv[])
     /* Set some globals for the  configuration script to use. */
     /* Minor problem here is that the script could change these */
     L = dax_get_luastate(ds);
-    // lua_pushinteger(L, CFG_RAW);
-    // lua_setglobal(L, "RAW");
-    // lua_pushinteger(L, CFG_STR);
-    // lua_setglobal(L, "STR");
-    // lua_pushinteger(L, CFG_RE);
-    // lua_setglobal(L, "RE");
-    // lua_pushinteger(L, EVENT_WRITE);
-    // lua_setglobal(L, "WRITE");
-    // lua_pushinteger(L, EVENT_CHANGE);
-    // lua_setglobal(L, "CHANGE");
-    // lua_pushinteger(L, EVENT_EQUAL);
-    // lua_setglobal(L, "EQUAL");
-    // lua_pushinteger(L, EVENT_SET);
-    // lua_setglobal(L, "SET");
-    // lua_pushinteger(L, EVENT_RESET);
-    // lua_setglobal(L, "RESET");
-    // lua_pushinteger(L, EVENT_GREATER);
-    // lua_setglobal(L, "GREATER");
-    // lua_pushinteger(L, EVENT_LESS);
-    // lua_setglobal(L, "LESS");
-    // lua_pushinteger(L, EVENT_DEADBAND);
-    // lua_setglobal(L, "DEADBAND");
+    lua_pushinteger(L, EVENT_WRITE);
+    lua_setglobal(L, "WRITE");
+    lua_pushinteger(L, EVENT_CHANGE);
+    lua_setglobal(L, "CHANGE");
+    lua_pushinteger(L, EVENT_EQUAL);
+    lua_setglobal(L, "EQUAL");
+    lua_pushinteger(L, EVENT_SET);
+    lua_setglobal(L, "SET");
+    lua_pushinteger(L, EVENT_RESET);
+    lua_setglobal(L, "RESET");
+    lua_pushinteger(L, EVENT_GREATER);
+    lua_setglobal(L, "GREATER");
+    lua_pushinteger(L, EVENT_LESS);
+    lua_setglobal(L, "LESS");
+    lua_pushinteger(L, EVENT_DEADBAND);
+    lua_setglobal(L, "DEADBAND");
     
     
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
@@ -349,8 +359,6 @@ configure(int argc, char *argv[])
 
     dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
-    //dax_free_config(ds);
-    
     return 0;
 }
 

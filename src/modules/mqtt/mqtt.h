@@ -46,6 +46,7 @@ typedef struct {
    int formatter;
    tag_group_id *group;
    void *buff;
+   void *mask;
    int buff_size;
 } subscriber_t;
 
@@ -53,16 +54,20 @@ typedef struct {
 typedef struct {
    uint8_t enabled;
    char *topic;
+   int retained;
    char **tagnames;  /* Array of tagnames */
    tag_handle *h;   /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
    uint8_t qos;
-   int format_type;
-   char *format_str;
-   char *update_tag;
-//   uint8_t binformat[8];
-   tag_type update_mode;
-   char *event_data; /* We use a string for convenience */
+   int formatter; /* Reference to Lua formatting function */
+   tag_group_id *group;
+   void *buff;
+   void *mask;
+   int buff_size;
+   char *trigger_tag; /* Tag used to trigger the publish */
+   uint8_t trigger_type; /* Event type used with the trigger tag */
+   char *trigger_value;  /* Value used if the Event type needs it. */
+   dax_id trigger_id;
 } publisher_t;
 
 
