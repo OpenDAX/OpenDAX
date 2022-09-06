@@ -440,6 +440,7 @@ int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 
 /* Tag data group functions */
 tag_group_id *dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t options);
+int dax_group_get_size(tag_group_id *id);
 int dax_group_read(dax_state *ds, tag_group_id *id, void *buff, size_t size);
 int dax_group_write(dax_state *ds, tag_group_id *id, void *buff);
 int dax_group_del(dax_state *ds, tag_group_id *id);

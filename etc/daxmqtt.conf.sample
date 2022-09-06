@@ -2,10 +2,18 @@
 --It is basically a Lua script itself
 
 -- Configuration files that are common for all programs
-dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/log.conf")
 --dofile(configdir .. "/common.conf")
 
-verbosity = 10 --needs to change to the new way
+-- The init_hook function will be run right after the connection
+-- to the tag server is made.
+function init_hook()
+    tag_add("tag_1", "DINT", 1)
+    tag_add("tag_2", "DINT", 1)
+    tag_add("tag_3", "DINT", 1)
+    tag_add("tag_4", "DINT", 4)
+end
+
 
 broker_ip = "127.0.0.1"
 -- broker_ip = "192.168.1.157"
@@ -16,26 +24,32 @@ clientid = "OpenDAX"
 -- username = "uname"
 -- password = "pword"
 
--- Simple subscriptions
+-- Raw subscriptions
+-- If we don't set a format function then a raw binary copy
+-- will be made to the tags given in the array 'tags' or the
+-- string 'tag'
 s = {}
 s.topic = "dax_topic_1"
-s.tagname = "tag_1"
-s.type = RAW    -- Message should contain raw binary tag data
+s.tags = {"tag_1", "tag_2", "tag_3"}
 s.qos = 0
 add_sub(s)
 
-s.topic = "dax_topic_2"
-s.tagname = "tag_2"
-add_sub(s)
+function format_1(topic, payload)
+    print("Topic = " .. topic)
+    print("Strlen = " .. string.len(payload))
+    print(payload)
+    tag_write("tag_1", tonumber(payload))
+end
 
-s.topic = "dax_topic_3"
-s.tagname = "tag_3"
-s.type = STR   -- Message contains a string that represents the value
+s = {}
+s.topic = "dax_topic_2"
+s.formatter = format_1
+s.qos = 1
 add_sub(s)
 
 
 -- Simple Producers
-
+--[[
 p = {}
 p.topic = "dax_topic_4"
 p.tagname = "tag_4"
@@ -44,7 +58,7 @@ p.type = RAW      -- send as raw binary data
 p.update_mode = WRITE  -- send on tag's write event
 p.qos = 1
 
-add_pub(p)
+--add_pub(p)
 
 p.topic = "dax_topic_5"
 p.tagname = "tag_5"
@@ -52,13 +66,13 @@ p.type = STR      -- send as a string
 p.format = "Temperature = %.2f deg F" -- printf type string formatting
 p.update_mode = WRITE  -- send on tag's write event
 
-add_pub(p)
+--add_pub(p)
 
 p.topic = "dax_topic_6"
 p.tagname = "tag_6"
 p.update_mode = CHANGE  -- send on tag's change event
 
-add_pub(p)
+--add_pub(p)
 
 p.topic = "dax_topic_7"
 p.tagname = "tag_7"
@@ -69,7 +83,7 @@ p.update_mode = CHANGE  -- send on tag's change event
 --p.update_tag = "tag_5_update" -- if this is set then use this tag for the event instead 
 p.event_data = 2345.432 -- If the update event needs data
 
-add_pub(p)
+--add_pub(p)
 
 
 
@@ -94,7 +108,7 @@ s.format = "[3210][3210]" -- 4 bytes Big endian format
 -- s.format = "([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?),([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)"
 
 -- To add the subscription we pass this table to the function
-add_sub(s)
+--add_sub(s)
 
 
 
@@ -120,3 +134,4 @@ p.format = "[3210][3210]" -- 4 bytes Big endian format
 -- p.format = "%f,%f"  -- A printf() type format string
 
 -- add_pub(p)
+--]]

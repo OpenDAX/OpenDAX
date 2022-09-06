@@ -43,9 +43,10 @@ typedef struct {
    tag_handle *h;    /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
    uint8_t qos;
-   int format_type;
-   char *format_str;
-//   uint8_t binformat[8];
+   int formatter;
+   tag_group_id *group;
+   void *buff;
+   int buff_size;
 } subscriber_t;
 
 /* Contains all the information to identify a publisher */

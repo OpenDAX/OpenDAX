@@ -28,9 +28,6 @@
 #include <libcommon.h>
 #include <pthread.h>
 
-#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
-#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
-#define ABS(a)     (((a) < 0) ? -(a) : (a))
 
 
 /* Compiler Options */

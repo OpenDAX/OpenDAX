@@ -1591,7 +1591,7 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
         *result = ERR_ARG;
         return NULL;
     }
-    size = 0;
+    group_size = 0;
     for(n=0; n<count; n++) {
         group_size += h[n].size;
         if(group_size > MSG_TAG_GROUP_DATA_SIZE) {
@@ -1648,6 +1648,18 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
     }
     pthread_mutex_unlock(&ds->lock);
     return id;
+}
+
+
+/*!
+ * Get the size of tag data group in bytes 
+ *
+ * @param id      Pointer to the tag group id
+ * @returns       The size of the group in bytes
+ */
+int
+dax_group_get_size(tag_group_id *id) {
+    return id->size;
 }
 
 /*!

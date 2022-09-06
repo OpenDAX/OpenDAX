@@ -394,7 +394,6 @@ msg_mod_register(dax_message *msg)
 
         /* Is this the initial registration of the synchronous socket */
         if(flags & CONNECT_SYNC) {
-            dax_log(LOG_MSG, "Register Module message received for %s fd = %d", &msg->data[8], msg->fd);
             /* TODO: Need to check for errors there */
             mod = module_register(&msg->data[MSG_HDR_SIZE], parint, msg->fd);
             if(!mod) {
@@ -413,10 +412,12 @@ msg_mod_register(dax_message *msg)
                 //strncpy(&buff[30], mod->name, DAX_MSGMAX - 26 - 1);
                 //_message_send(msg->fd, MSG_MOD_REG, buff, 30 + strlen(mod->name) + 1, RESPONSE);
                 _message_send(msg->fd, MSG_MOD_REG, buff, 30 + 1, RESPONSE);
+                dax_log(LOG_MSG, "Register Module message received for %s fd = %d", &msg->data[8], msg->fd);
             }
         } else { /* If the flags are bad send error */
             result = ERR_MSG_BAD;
             _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
+            dax_log(LOG_MSG, "Register Module message received for %s returning error %d", &msg->data[8], result);
         }
     } else {
         //dax_log(LOG_MSG, "Unregistering Module fd = %d", msg->fd);
@@ -845,13 +846,13 @@ int msg_map_add(dax_message *msg)
 
 int msg_map_del(dax_message *msg)
 {
-    printf("Message Delete\n");
+    DF("Message Map Delete\n");
     return 0;
 }
 
 int msg_map_get(dax_message *msg)
 {
-    printf("Message Get\n");
+    DF("Message Map Get\n");
     return 0;
 }
 
@@ -868,8 +869,10 @@ msg_group_add(dax_message *msg) {
 
     if(id < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), ERROR);
+        dax_log(LOG_MSGERR, "Group Add Message for %s Returning Error %d",mod->name, id); 
     } else {
         _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), RESPONSE);
+        dax_log(LOG_MSG, "Group Add Message for %s", mod->name);
     }
     return 0;
 }
@@ -885,10 +888,11 @@ msg_group_del(dax_message *msg) {
     result = group_del(mod, index);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_DEL, &result, sizeof(int), ERROR);
-    } else {
+        dax_log(LOG_MSGERR, "Group Delete Message for %s Returning Error %d",mod->name, result); 
+     } else {
         _message_send(msg->fd, MSG_GRP_DEL, &result, sizeof(int), RESPONSE);
+        dax_log(LOG_MSG, "Group Delete Message for %s", mod->name);
     }
-    printf("Message Group Delete\n");
     return 0;
 }
 
@@ -905,10 +909,11 @@ msg_group_read(dax_message *msg) {
     result = group_read(mod, index, buff, MSG_TAG_GROUP_DATA_SIZE);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_READ, &result, sizeof(int), ERROR);
+        dax_log(LOG_MSGERR, "Group Read Message for %s Returning Error %d",mod->name, result); 
     } else {
         _message_send(msg->fd, MSG_GRP_READ, buff, result, RESPONSE);
+        dax_log(LOG_MSG, "Group Read Message for %s", mod->name);
     }
-    printf("Message Group Read\n");
     return 0;
 }
 
@@ -924,10 +929,11 @@ msg_group_write(dax_message *msg) {
     result = group_write(mod, index, (uint8_t *)&msg->data[4]);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_WRITE, &result, sizeof(int), ERROR);
+        dax_log(LOG_MSGERR, "Group Write Message for %s Returning Error %d",mod->name, result); 
     } else {
         _message_send(msg->fd, MSG_GRP_WRITE, NULL, 0, RESPONSE);
+        dax_log(LOG_MSG, "Group Write Message for %s", mod->name);
     }
-    printf("Message Group Write\n");
     return 0;
 }
 
@@ -938,10 +944,11 @@ msg_group_mask_write(dax_message *msg) {
     result = ERR_NOTIMPLEMENTED;
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_MWRITE, &result, sizeof(int), ERROR);
+        //dax_log(LOG_MSGERR, "Group Masked Write Message for %s Returning Error %d",mod->name, result); 
     } else {
         _message_send(msg->fd, MSG_GRP_MWRITE, NULL, 0, RESPONSE);
+        //dax_log(LOG_MSG, "Group Masked Write Message for %s", mod->name);
     }
-    printf("Message Group Masked Write\n");
     return 0;
 }
 
@@ -1026,7 +1033,6 @@ msg_get_override(dax_message *msg) {
     } else {
         _message_send(msg->fd, MSG_GET_OVRD, buff, size * 2, RESPONSE);
     }
-    printf("Message Get Override\n");
     return 0;
 
 }

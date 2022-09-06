@@ -66,6 +66,10 @@ _topic_to_string(uint32_t topic) {
             return "INFO";
         case LOG_DEBUG:
             return "DEBUG";
+        case LOG_LOGIC:
+            return "LOGIC";
+        case LOG_LOGICERR:
+            return "LOGICERR";
         default:
             return "?";
     }

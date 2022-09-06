@@ -535,7 +535,7 @@ tag_add(char *name, tag_type type, uint32_t count, uint32_t attr)
         tag_write(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
     _set_attribute(n, attr);
-    dax_log(LOG_MSG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
+    dax_log(LOG_DEBUG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
 
     return n;
 }
@@ -570,12 +570,12 @@ tag_del(tag_index idx)
     events_del_all(_db[idx].events);
     map_del_all(_db[idx].mappings);
     _del_index(_db[idx].name);
+    dax_log(LOG_DEBUG, "Tag deleted with name = %s", _db[idx].name);
     xfree(_db[idx].name);
     xfree(_db[idx].data);
     _db[idx].name = NULL;
     _db[idx].data = NULL;
     _tagcount--;
-    dax_log(LOG_MSG, "Tag deleted with name = %s", _db[idx].name);
 
     return 0;
 }

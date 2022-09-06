@@ -20,7 +20,8 @@
 
 
 #include "mqtt.h"
-#include "MQTTClient.h"
+#include <MQTTClient.h>
+#include <libdaxlua.h>
 
 
 void quit_signal(int sig);
@@ -35,41 +36,111 @@ MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 MQTTClient_message pubmsg = MQTTClient_message_initializer;
 volatile MQTTClient_deliveryToken deliveredtoken;
 
+
+static int
+_write_lua_to_dax(lua_State *L, tag_handle *h) {
+    void *data, *mask;
+    int q = 0;
+    int n, result;
+
+    data = malloc(h->size);
+    if(data == NULL) {
+        dax_log(LOG_ERROR, "Unable to allocate data area");
+    }
+
+    mask = malloc(h->size);
+    if(mask == NULL) {
+        free(data);
+        dax_log(LOG_ERROR, "Unable to allocate mask memory");
+    }
+    bzero(mask, h->size);
+
+    result = daxlua_lua_to_dax(L, *h, data, mask);
+    if(result) {
+        free(data);
+        free(mask);
+        /* The error message should be on top of the stack */
+        dax_log(LOG_ERROR, lua_tostring(L, -1));
+    }
+
+    /* This checks the mask to determine which function to use
+     * to write the data to the server */
+    /* TODO: Might want to scan through and find the beginning and end of
+     * any changed data and send less through the socket.  */
+    for(n = 0; n < h->size && q == 0; n++) {
+        if( ((unsigned char *)mask)[n] != 0xFF) {
+            q = 1;
+        }
+    }
+    if(q) {
+        result = dax_mask_tag(ds, *h, data, mask);
+    } else {
+        result = dax_write_tag(ds, *h, data);
+    }
+
+    free(data);
+    free(mask);
+    return result;
+}
+
+
 void delivered(void *context, MQTTClient_deliveryToken dt)
 {
     printf("Message with token value %d delivery confirmed\n", dt);
     deliveredtoken = dt;
 }
 
-/* Cheating for now and just writing one and ignoring the formatting */
-void
-_write_formatted_string(subscriber_t *sub, char *payload)
-{
-    uint8_t v[8];
-    
-    dax_string_to_val(payload, sub->h[0].type, v, NULL, 0);
-    dax_write_tag(ds, sub->h[0], v);
-}
-
+/* This callback function is called by the PAHO MQTT library whenever a message arrives on
+ * a topic that we have subscribed to. */ 
 int
 msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *message)
 {
-    int i;
-    char* payload;
+    int size;
     subscriber_t *sub;
-    
+    lua_State* L;
+
+    dax_log(LOG_PROTOCOL, "Message arrived on topic '%s'", topicName);
+
     sub = get_sub(topicName);
     if(sub != NULL) {
-        payload = strndup(message->payload, message->payloadlen);
-        if(sub->format_type == CFG_STR) {
-            _write_formatted_string(sub, payload);
+
+        L = dax_get_luastate(ds);
+
+        if(sub->formatter != 0) { /* We need to run our formatter function */
+            /* Get the formatter function from the registry and push it onto the stack */
+            lua_rawgeti(L, LUA_REGISTRYINDEX, sub->formatter);
+            lua_pushstring(L, topicName); /* First argument is the topic */
+            lua_pushlstring(L, message->payload, message->payloadlen);
+            if(lua_pcall(L, 2, 1, 0) != LUA_OK) {
+                dax_log(LOG_ERROR, "Formatter funtion for %s - %s", topicName, lua_tostring(L, -1));
+            } else { /* Success */
+            
+            }
+        } else {
+            /* No formatter function configured so we just do a raw
+             * binary copy to the tag or the tag group */
+            if(message->payloadlen != sub->buff_size) {
+                dax_log(LOG_WARN, "Message payload is not the same size as the buffer");
+            }
+            size = MIN(message->payloadlen, sub->buff_size);
+            /* TODO we could avoid this memory copy if we know the payload is big enough */
+            memcpy(sub->buff, message->payload, size);
+
+            if(sub->group != NULL) { /* We are using a tag group */
+                dax_group_write(ds, sub->group, sub->buff);
+            } else { /* just one tag */
+                dax_write_tag(ds, sub->h[0], sub->buff);
+            }
         }
-
-        printf("Message arrived\n");
-        printf("     topic: %s\n", sub->topic);
-        printf("   message: %s\n", payload);
-
-        free(payload);
+        //payload = strndup(message->payload, message->payloadlen);
+        //DF("  sub topic: %s", sub->topic);
+        //DF("    message: %s", payload);
+        ///free(payload);
+    } else {
+        /* This is a bad error and it means that we have a problem with how we are finding
+         * the subscription topic that matches the one that we received from the broker */
+        DF("We received topic '%s' with no subscription match", topicName);
+        dax_log(LOG_ERROR, "We received topic '%s' with no subscription match", topicName);
     }
 
     MQTTClient_freeMessage(&message);
@@ -91,35 +162,59 @@ connlost(void *context, char *cause)
 static int
 subscribe(subscriber_t *sub) {
     int result;
-    if(sub->tag_count == 0) {
-        dax_log(LOG_ERROR, "No tags given for topic %s", sub->topic);
+    if(sub->tag_count == 0 && sub->formatter == 0) {
+        dax_log(LOG_ERROR, "No tags or formatter function given for topic %s", sub->topic);
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
-    if(sub->h == NULL) { /* We need to allocate our array of tag handles */
-        sub->h = (tag_handle *)malloc(sizeof(tag_handle) * sub->tag_count);
-    }
-    /* Now search through the tagnames and get handles for all of the tags */
-    for(int n=0;n<sub->tag_count;n++) {
-        result = dax_tag_handle(ds, &sub->h[n], sub->tagnames[n], 1);
-        if(result) {
-            dax_log(LOG_ERROR, "Unable to add tag %s as subscription", sub->tagnames[n]);
-            return 1;
+    if(sub->tag_count > 0) {
+        if(sub->h == NULL) { /* We need to allocate our array of tag handles */
+            sub->h = (tag_handle *)malloc(sizeof(tag_handle) * sub->tag_count);
+            assert(sub->h != NULL);
+        }
+        /* Now search through the tagnames and get handles for all of the tags */
+        for(int n=0;n<sub->tag_count;n++) {
+            result = dax_tag_handle(ds, &sub->h[n], sub->tagnames[n], 1);
+            if(result) {
+                dax_log(LOG_ERROR, "Unable to add tag %s as subscription", sub->tagnames[n]);
+                return 1;
+            }
         }
     }
-    // printf("Subscribe to %s\n", sub->topic);
-    MQTTClient_subscribe(client, sub->topic, 0);
-    sub->enabled = ENABLE_GOOD; /* We're rolling now */
+    /* TODO: How should errors be handled here */
+    if(sub->tag_count > 1) {
+        sub->group = dax_group_add(ds, &result, sub->h, sub->tag_count, 0);
+        if(result) {
+            dax_log(LOG_ERROR, "Unable to create tag group - %d", result);
+        }
+        sub->buff = malloc(dax_group_get_size(sub->group));
+        if(sub->buff == NULL) {
+            dax_log(LOG_ERROR, "Unable to allocate tag data buffer");
+        }
+        sub->buff_size = dax_group_get_size(sub->group);
+    } else if(sub->tag_count == 1) { /* We just have the one tag */
+        DF("sub->h = %p", sub->h);
+        sub->buff = malloc(sub->h[0].size);
+        if(sub->buff == NULL) {
+            dax_log(LOG_ERROR, "Unable to allocate tag data buffer");
+        }
+        sub->buff_size = sub->h[0].size;
+    }
+    DF("Subscribe to %s", sub->topic);
+    result = MQTTClient_subscribe(client, sub->topic, 0);
+    if(result != MQTTCLIENT_SUCCESS) {
+        dax_log(LOG_ERROR, "Unable to subscribe to %s", sub->topic);
+        sub->enabled = ENABLE_FAIL; /* Can't recover from this */
+    } else {
+        sub->enabled = ENABLE_GOOD; /* We're rolling now */
+    }
     return 0;
 }
-
-
 
 
 /* Does the initial subscription of all the configured subscribers */
 static int
 setup_subscribers() {
-    int result;
     subscriber_t *sub;
     int bad_subs = 0;
     
@@ -188,7 +283,6 @@ publish(publisher_t *pub) {
 /* Does the initial subscription of all the configured subscribers */
 static int
 setup_publishers() {
-    int result;
     publisher_t *pub;
     int bad_pubs = 0;
     
@@ -260,11 +354,7 @@ client_loop(void) {
 int
 main(int argc,char *argv[]) {
     struct sigaction sa;
-    int flags, result = 0, scan = 0, n;
-    char *str, *tagname, *event_tag, *event_type;
-    tag_handle h_full, h_part;
-    dax_dint data[5];
-
+    
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;

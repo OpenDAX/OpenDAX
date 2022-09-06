@@ -59,19 +59,21 @@ _get_new_sub(void)
     subscriber_count++;
     /* Initialize the script structure */
     subscribers[n].enabled = ENABLE_UNINIT;
-    subscribers[n].format_type = CFG_STR;
+    subscribers[n].formatter = 0;
     subscribers[n].tag_count = 0;
     subscribers[n].tagnames = NULL;
     subscribers[n].qos = 0;
     subscribers[n].h = NULL;
     subscribers[n].topic = NULL;
+    subscribers[n].group = NULL;
+    subscribers[n].buff = NULL;
+    subscribers[n].buff_size = 0;
     return n;
 }
 
 
 static int
-_add_sub(lua_State *L)
-{
+_add_sub(lua_State *L) {
     int  idx;
     int i, len;
     const char *s;
@@ -93,16 +95,9 @@ _add_sub(lua_State *L)
     }
     lua_pop(L, 1);
 
-    /* Retrieve tagname string or tagnames array from table */
-    lua_getfield(L, 1, "tagname");
-    if( lua_isnil(L, -1)) {
-        lua_getfield(L, 1, "tagnames");
-        if( lua_isnil(L, -1)) {
-            luaL_error(L, "At least one tagname is required for subscription");
-        }
-        if(! lua_istable(L, -1)) {
-            luaL_error(L, "Tagnames should be a table");
-        } else {
+    /* Retrieve tags array from table */
+    if(lua_getfield(L, 1, "tags") != LUA_TNIL) {
+        if(lua_istable(L, -1)) {
             lua_len(L, -1);
             len = lua_tointeger(L, -1);
             lua_pop(L, 1);
@@ -118,41 +113,35 @@ _add_sub(lua_State *L)
                 subscribers[idx].tagnames[i] = strdup(s);
             }
             subscribers[idx].tag_count = len;
+        } else if(lua_isstring(L, -1)) {
+            s = lua_tostring(L, -1);
+            subscribers[idx].tagnames = malloc(sizeof(char *));
+            if(subscribers[idx].tagnames == NULL) {
+                luaL_error(L, "Unable to allocate space for tagnames");
+            }
+            subscribers[idx].tagnames[0] = strdup(s);
+            subscribers[idx].tag_count = 1;
+        } else {
+            luaL_error(L, "At least one tagname is required for subscription");
         }
+    }
+    lua_pop(L, 1); /* Pop off tags */
+    
+    if(lua_getfield(L, 1, "formatter") != LUA_TNIL) {
+        if(! lua_isfunction(L, -1)) {
+            luaL_error(L, "Formatter should be a function ");
+        }
+        /* Pop the function off the stack and write it to the regsitry and assign
+           the reference to .formatter */
+        subscribers[idx].formatter = luaL_ref(L, LUA_REGISTRYINDEX);
     } else {
-        s = lua_tostring(L, -1);
-        subscribers[idx].tagnames = malloc(sizeof(char *));
-        if(subscribers[idx].tagnames == NULL) {
-            luaL_error(L, "Unable to allocate space for tagnames");
-        }
-        subscribers[idx].tagnames[0] = strdup(s);
-        subscribers[idx].tag_count = 1;
-    }
-
-    lua_pop(L, 1); /* Pop off tagnmaes */
-    
-    lua_getfield(L, 1, "type");
-    if(! lua_isnil(L, -1)) {
-        subscribers[idx].format_type = lua_tointeger(L, -1);
-    }
-    lua_pop(L, 1); /* Pop off tagnmaes */
-    
-    lua_getfield(L, 1, "format");
-    
-    if(! lua_isnil(L, -1)) {
-        s = lua_tostring(L, -1);
-        subscribers[idx].format_str = strdup(s);
-        if(subscribers[idx].format_str == NULL) {
-            luaL_error(L, "Unable to allocate space for format string");
-        }
-    }
-    lua_pop(L, 1); /* Pop off tagnmaes */
-
-    lua_getfield(L, 1, "qos");
-    if(! lua_isnil(L, -1)) {
+        lua_pop(L, 1); /* Pop nil */
+    }   
+ 
+    if(lua_getfield(L, 1, "qos") != LUA_TNIL) {
         subscribers[idx].qos = lua_tointeger(L, -1);
     }
-    lua_pop(L, 1); /* Pop off tagnmaes */
+    lua_pop(L, 1); /* Pop off QOS */
     
     return 0;
 }
@@ -320,28 +309,28 @@ configure(int argc, char *argv[])
     /* Set some globals for the  configuration script to use. */
     /* Minor problem here is that the script could change these */
     L = dax_get_luastate(ds);
-    lua_pushinteger(L, CFG_RAW);
-    lua_setglobal(L, "RAW");
-    lua_pushinteger(L, CFG_STR);
-    lua_setglobal(L, "STR");
-    lua_pushinteger(L, CFG_RE);
-    lua_setglobal(L, "RE");
-    lua_pushinteger(L, EVENT_WRITE);
-    lua_setglobal(L, "WRITE");
-    lua_pushinteger(L, EVENT_CHANGE);
-    lua_setglobal(L, "CHANGE");
-    lua_pushinteger(L, EVENT_EQUAL);
-    lua_setglobal(L, "EQUAL");
-    lua_pushinteger(L, EVENT_SET);
-    lua_setglobal(L, "SET");
-    lua_pushinteger(L, EVENT_RESET);
-    lua_setglobal(L, "RESET");
-    lua_pushinteger(L, EVENT_GREATER);
-    lua_setglobal(L, "GREATER");
-    lua_pushinteger(L, EVENT_LESS);
-    lua_setglobal(L, "LESS");
-    lua_pushinteger(L, EVENT_DEADBAND);
-    lua_setglobal(L, "DEADBAND");
+    // lua_pushinteger(L, CFG_RAW);
+    // lua_setglobal(L, "RAW");
+    // lua_pushinteger(L, CFG_STR);
+    // lua_setglobal(L, "STR");
+    // lua_pushinteger(L, CFG_RE);
+    // lua_setglobal(L, "RE");
+    // lua_pushinteger(L, EVENT_WRITE);
+    // lua_setglobal(L, "WRITE");
+    // lua_pushinteger(L, EVENT_CHANGE);
+    // lua_setglobal(L, "CHANGE");
+    // lua_pushinteger(L, EVENT_EQUAL);
+    // lua_setglobal(L, "EQUAL");
+    // lua_pushinteger(L, EVENT_SET);
+    // lua_setglobal(L, "SET");
+    // lua_pushinteger(L, EVENT_RESET);
+    // lua_setglobal(L, "RESET");
+    // lua_pushinteger(L, EVENT_GREATER);
+    // lua_setglobal(L, "GREATER");
+    // lua_pushinteger(L, EVENT_LESS);
+    // lua_setglobal(L, "LESS");
+    // lua_pushinteger(L, EVENT_DEADBAND);
+    // lua_setglobal(L, "DEADBAND");
     
     
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
@@ -361,7 +350,7 @@ configure(int argc, char *argv[])
     dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
     //dax_free_config(ds);
-
+    
     return 0;
 }
 
@@ -378,15 +367,53 @@ get_sub_iter(void) {
     }
 }
 
-/* return a pointer to the subscription given by topic */
+/* This function is used to compare the topics that we are subscribed to
+   with the topic that is received in a message.  It takes into account
+   the wildcard characters '+' and '#' */
+static int
+_topic_compare(char *subscription, char *received) {
+    char cs, cr;
+    int i=0, j=0;
+
+    while(1) {
+        cs = subscription[i];
+        cr = received[j];
+        if(cs == '+') {
+            i++; /* skip the '+' */
+            /* Now we need to roll past the next sub topic to either the next '/'
+               or the end of the string */
+            while(cr != '/' && cr != '\0') {
+                cr = received[++j];
+            }
+        } else if(cs != cr) {
+            return -1; /* No match */
+        }
+        if(cs == '\0' && cr == '\0') {
+            return 0; /* We have a winner */
+        }
+        if(cs == '/' && subscription[i+1] == '#') {
+            return 0; /* Wildcard character so the rest doesn't matter */
+        }
+        /* else if they are the same then continue on */
+        i++;
+        j++;
+    }
+
+}
+
+/* return a pointer to the subscription that matches the topic */
 // TODO This function just does a linear search through the array.
 //      would be better as a sorted array and bisection search or something
+// TODO Right now we only match the first subscription so we can only
+//      have one subscription per topic match.  Does this matter?
 subscriber_t *
 get_sub(char *topic) {
     int n;
     for(n=0;n<subscriber_count;n++) {
-        if(! strcmp(topic, subscribers[n].topic)) {
-            return &subscribers[n];
+        if(subscribers[n].enabled == ENABLE_GOOD) { /* We only care if this sub is good */
+            if(_topic_compare(subscribers[n].topic, topic) == 0) {
+                return &subscribers[n]; 
+            }
         }
     }
     return NULL;
