@@ -143,7 +143,7 @@ subscribe(subscriber_t *sub) {
         }
         /* Now search through the tagnames and get handles for all of the tags */
         for(int n=0;n<sub->tag_count;n++) {
-            result = dax_tag_handle(ds, &sub->h[n], sub->tagnames[n], 1);
+            result = dax_tag_handle(ds, &sub->h[n], sub->tagnames[n], 0);
             if(result) {
                 dax_log(LOG_WARN, "Unable to add tag %s as subscription", sub->tagnames[n]);
                 return 1;
@@ -183,7 +183,7 @@ subscribe(subscriber_t *sub) {
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
     } else {
         sub->enabled = ENABLE_GOOD; /* We're rolling now */
-        dax_log(LOG_DEBUG, "SubscribeD to %s", sub->topic);
+        dax_log(LOG_DEBUG, "Subscribed to %s", sub->topic);
     }
     return 0;
 }

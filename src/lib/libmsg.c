@@ -306,11 +306,11 @@ _read_next_message(dax_state *ds)
     result = _message_get(ds->sfd, msg);
     if(result) {
         if(result == ERR_DISCONNECTED) {
-            dax_log(LOG_ERROR, "Server disconnected abruptly\n");
+            dax_log(LOG_ERROR, "Server disconnected abruptly");
         } else if(result == ERR_TIMEOUT) {
             ; /* Do nothing for timeout */
         } else {
-            dax_log(LOG_ERROR, "_message_get() returned error %d\n", result);
+            dax_log(LOG_ERROR, "_message_get() returned error %d", result);
         }
         free(msg);
         return result;
@@ -320,7 +320,7 @@ _read_next_message(dax_state *ds)
         if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
                 events_lost++;
-                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u\n", events_lost);
+                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u", events_lost);
             }
             free(ds->emsg_queue[0]); /* Free the top one */
             for(n = 0;n<ds->emsg_queue_size-1;n++) {
