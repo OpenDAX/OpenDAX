@@ -74,7 +74,7 @@ extern "C" {
 #define LOG_MAJOR     0x00000002  /* Major Program Milestones */
 #define LOG_WARN      0x00000004  /* Program warnings */
 #define LOG_ERROR     0x00000008  /* Program errors */
-#define LOG_FATAL     0x00000010  /* Program errors */
+#define LOG_FATAL     0x00000010  /* Program fatal errors */
 #define LOG_MODULE    0x00000020  /* Module Milestones */
 #define LOG_COMM      0x00000040  /* Communications Milestones */
 #define LOG_MSG       0x00000080  /* Messages */
@@ -83,6 +83,8 @@ extern "C" {
 #define LOG_PROTOCOL  0x00000400  /* Protocol Dumps */
 #define LOG_INFO      0x00000800  /* Low priority information */
 #define LOG_DEBUG     0x00001000  /* Debug messages */
+#define LOG_LOGIC     0x00002000  /* Embedded logic messages */
+#define LOG_LOGICERR  0x00004000  /* Embedded logic errors */
 #define LOG_USER1     0x01000000  /* Module specific log topic */
 #define LOG_USER2     0x02000000  /* Module specific log topic */
 #define LOG_USER3     0x04000000  /* Module specific log topic */
@@ -438,6 +440,7 @@ int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 
 /* Tag data group functions */
 tag_group_id *dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t options);
+int dax_group_get_size(tag_group_id *id);
 int dax_group_read(dax_state *ds, tag_group_id *id, void *buff, size_t size);
 int dax_group_write(dax_state *ds, tag_group_id *id, void *buff);
 int dax_group_del(dax_state *ds, tag_group_id *id);

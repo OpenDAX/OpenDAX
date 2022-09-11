@@ -24,11 +24,11 @@ OpenDAX could be used for anything from controlling the air conditioner in a hom
 
 DAX stands for Data Acquisition and eXchange. The system works by combining a master program (opendax), a real time database server (tagserver) a library (libdax) and set of modules. The opendax server handles the starting, stopping and monitoring of process that make up a particular OpenDAX system.  It is actually an optional part of the system.  The user can start and stop each process manually if desired.
 
-The tagbase server is the program that manages the real time data that is used throughout the system.  It could hold the temperature or pressure of a process, the status of a switch or some command data from the Human Interface to a logic module.  Each piece of information is called a 'Tag'  Each tag can be a single value or an array of values.  (Multi dimensional arrays are not supported.)  Each tag is defined as a given data type.  There are several base data types. These represent simple number types like INT or FLOAT.  It is possible to create compound
+The tag server is the program that manages the real time data that is used throughout the system.  It could hold the temperature or pressure of a process, the status of a switch or some command data from the Human Interface to a logic module.  Each piece of information is called a 'Tag'  Each tag can be a single value or an array of values.  (Multi dimensional arrays are not supported.)  Each tag is defined as a given data type.  There are several base data types. These represent simple number types like INT or FLOAT.  It is possible to create compound
 data types that are collections of the base data types and other compound data types.
 
-The modules do all the work and communicate with the \texttt{tagbase} server through the libdax library. There could be modules for reading and writing to I/O points, data logging, alarming, machine interface, and logic. The primary interface to the tagbase server is the \texttt{daxc} module, which is a command line interface module that can
-be used to read and write tags, check status and do all other types of maintenance in the tagbase server.
+The modules do all the work and communicate with the \texttt{tagserver} through the \texttt{libdax} library. There could be modules for reading and writing to I/O points, data logging, alarming, machine interface, and logic. The primary interface to the tag server is the \texttt{daxc} module, which is a command line interface module that can
+be used to read and write tags, check status and do all other types of maintenance in the tag server.
 
 There is no requirement that all of the modules have to be on the same machine.  There is also no requirement that the modules be on the machine with the tag server.  Any process that is to be started by the \texttt{opendax} server will have to be on the same computer.  Modules communicate to the server by one of two mechanisms.  Either a TCP/IP connection or a \textit{local domain socket}.  The \textit{local domain socket} has the advantage of being very fast because the operating system kernel simply copies memory from one process to another.  The disadvantage is that the module that wants to use this communication mechanism must be on the same machine as the tag server. If the module is on another machine then it will have to use the TCP/IP protocol to communicate with the tag server.
 
@@ -39,96 +39,148 @@ modules was.
 \chapter{Getting Started}
 \input{install.tex}
 
+\section{Configuration}
+There are two ways to pass configuration information into any given \opendax program.  The first is simply to pass command line arguments and the second is via a configuration file.  There is likely some overlap between what options can be passed with either method but some options only make sense for the command line (an example is the \texttt{config} option that specifies which configuration file to use).  Some options might be too complex to put on the command line and will require a configuration file.
+
+If a configuration attribute is present on the command line it will take precedence over that same attribute given in the configuration files.  An exception to this is the logging configuration.  Once logging services are added via the configuration file those services will determine how messages are logged and anything passed on the  command line will be ignored.
+
+The \opendax configuration system is very sophisticated.  It is based on the \textit{Lua} scripting language.  In fact all of the configuration files in the base \opendax programs are nothing more than Lua scripts.  These scripts run in the sandbox of the program that calls them and some global data is pre-defined to help.
+
+Using a scripting language like Lua makes configuration very powerful.  Some of the simple things that you can do are using variables to store commonly used values, such as a file system path or an IP address that needs to be reused in many parts of the configuration.  If there are parts of the configuration that are common between many client modules, that information can be stored in single files and the function \texttt{dofile()} can be used to import that code into many configurations.  A common example of this is the message logging configuration.
+
+Before a configuration script is executed certain 'globals' are assigned to the script.  A very important one is the string \texttt{calling\_module}.  This string contains the name of the module that is running the configuration script.  This allows for common code to be shared between different parts of the system and simple \texttt{if} statements to be used to separate which code will be run.  The \texttt{print()} function is overridden in the configuration script to send the given string to the message logging facility instead of simply printing to the console.  These messages will be sent to any service that has the \texttt{CONFIG} topic configured.
+
+Other functions and globals may be set for different modules.  See the individual module's documentation for more information.
+
+The default configuration file for the tagserver is \texttt{./tagserver.conf} and the default configuration filename for the master daemon is \texttt{./opendax.conf}.  Typically the default configuration filename for a client module is that module's name with \texttt{.conf} extension.  This can overridden with the \texttt{-C} command line option.
+
 \chapter{The OpenDAX Master Server}
 
 
 \chapter{The Tag Server}
+The tag server contains the central database of all the real-time data.  The entire system is centered around the tag server.
 
+The tag server is named \texttt{tagserver} it is very simple to run and will typically run just fine without any configuration using the defaults.  There are only a few configuration options.
+
+\begin{list}{}{Command Line Options}
+	\item[\texttt{--configfile, -C}] - This option requires an argument that represents the configuration file that will be read on system start.  By default the file \texttt{./tagserver.conf} will be used.
+	\item[\texttt{--version, -V}] - If this option is set, the tag server will simply display version information and exit.
+	\item[\texttt{--logtopics, -T}] - This option requires an argument that is a comma delimited string containing the topics that we wish to log.  It only affects the default logging service.  If any logging services are configured in the configuration file then this will be overridden by the newly created logging service.
+	\item[\texttt{--verbose, -v}] - This option simply sets the default logging topics to ALL.  This has the effect of passing all the messages to the default logging service.
+	\item[\texttt{--socketname, -S}] - This option requires an argument that represents the filename that will be used for the local domain socket.  By default it's \texttt{/tmp/opendax}.
+	\item[\texttt{--serverip, -I}] - The IP address that the server will listen on.  Default is 0.0.0.0 which has the effect of listening on all interfaces.
+	\item[\texttt{--serverport, -P}] - The TCP port that the server will bind to.  Default is 7777.
+\end{list}
+
+Some of this configuration is duplicated in the configuration file.  Here is an example configuration file.
+
+
+\begin{verbatim}
+-- Main configuration file for the OpenDAX tag server
+
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+
+-- The name of the local domain socket that will be created for local 
+-- client module communications
+socketname = "/tmp/opendax"
+
+-- The IP address and TCP port that the server will listen on
+serverip = "0.0.0.0"
+serverport = 7777
+
+-- The minimum number of communication buffers that will be maintained
+-- in the system.  The server uses pre-allocated buffers for communication
+-- and this designates the minimum number that will be maintained.
+min_buffers = 5
+
+\end{verbatim}
+
+The \texttt{dofile()} functions simply load and run the configuration scripts that are given.  This is a very powerful feature of OpenDAX configuration.  It allows for common configuration code to be reused in many parts of the OpenDAX system.  Here we are just putting all of the message logging configurations in a
+separate file.
 
 \chapter{Modules}
-Modules are where all the real work gets done on an OpenDAX system.  The server is the glue that holds all the modules together but the modules are where it all happens.  The OpenDAX distribution comes with a few included modules.  They are described in this chapter.  If you have received modules from other sources you'll have to consult the documentation that came with that module.
+Modules are where all the real work gets done on an \opendax system.  The server is the glue that holds all the modules together but the modules are where it all happens.  The \opendax distribution comes with a few included modules.  They are described in this chapter.  If you have received modules from other sources you'll have to consult the documentation that came with that module.
 
-\section{Generic Module Configuration}
-There are many options to be configured for each of the different modules.  For those, consult the section that describes the module that you are interested in.  There are a few options that are common to all modules and they are described here.
+\section{Common Module Configuration}
 
-There are two places that modules receive configuration information.
+The module configuration file is usually named after the module.  For instance the configuration file for the \emph{daxlua} module is called \emph{daxlua.conf}.  These files would contain information that is specific to each module.  The \emph{daxlua} configuration contains the location of the script files to execute as an example.
 
-\begin{itemize}
-\item The module configuration file
-\item Command line arguments
-\end{itemize}
+There are some configuration options that are common to all modules that are included in the distribution.  Some can only be given on the command line, others only in the configuration file.
 
-If a configuration attribute is present on the command line it will take precedence over that same attribute given in the configuration files.  An exception to this is the logging configuration.  Once logging services are added via the configuration file those services will determine how messages are logged and anything passed on the  command line will be ignored.
+\begin{list}{}{Command Line Options}
+	\item[\texttt{--config, -C}] - The full path to the requested configuration file.  This file will be used in lieu of the default configuration.
+	\item[\texttt{--confdir, -K}] - If this option is specified the default configuration directory will be changed.  The normal default configuration filename will be used (i.e. <modulename>.conf) but it will be loaded from this directory.
+	\item[\texttt{--logtopics, -T}] - This option requires an argument that is a comma delimited string containing the topics that we wish to log.  It only affects the default logging service.  If any logging services are configured in the configuration file then this will be overridden by the newly created logging service.
+	\item[\texttt{--verbose, -v}] - This option simply sets the default logging topics to ALL.  This has the effect of passing all the messages to the default logging service.
+	\item[\texttt{--socketname, -U}] - This option requires an argument that represents the filename that will be used for the local domain socket.  By default it's \texttt{/tmp/opendax}.
+	\item[\texttt{--serverip, -I}] - The IP address that the module will use for network connections.  Default it \texttt{127.0.0.1}.
+	\item[\texttt{--serverport, -P}] - The TCP port that the module will use for network connections.  Default is 7777.
+	\item[\texttt{--server, -S}] - Should be either \texttt{LOCAL} or \texttt{NETWORK}.  If set to \texttt{NETWORK} a TCP connection will be made to the tag server.  Otherwise the unix domain socket will be used.  Default is \texttt{LOCAL}
+	\item[--name, -N] - Module name.  The name of the module is used for determining the default configuration file, it's sent to the server to identify the module to the server and it's passed to the modules configuration file as the \texttt{calling\_module} global variable.  It's also used in the message logging system for some services.
+	\item[--cachesize, -Z] - The \texttt{libdax} library maintains a cache of recently used tag definitions so that it does not have to constantly query the server for this information every time tags need to be accessed.  The higher this number is the less the module will have to query the server but the more memory will be used.
+	\item[--msgtimeout, -O] - The time before a timeout error will be generated for communication with the tag server.  Other timeouts may need to be set for specific client module communications, but this one is specifically for the client module / tag server communications.
+\end{list}
 
-The module configuration file is a file that will most likely be named after the module.  For instance the configuration file for the \emph{daxlua} module is called \emph{daxlua.conf}.  These files would contain information that is specific to each module.  The \emph{daxlua} configuration contains the location of the script files to execute as an example.
-
-The OpenDAX server and most of the modules use the Lua scripting language as the configuration file format.  The configuration files are actually executed within the server or modules process as a Lua script.  Generally the configuration is given by simple key/value pairs such as \ldots
+The following is an example of a module configuration file.
 
 \begin{verbatim}
-daemonize = 1
+-- Example module configuration file, showing the configuration
+-- options that are common to all the modules supplied with OpenDAX
+
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+
+-- The name can be set here and it will effect the name given to the
+-- server once connected as well as any message logging services that
+-- use the module name.  Obviously the configuration file and the
+-- global variable 'calling_module' will be either the default name of
+-- the module or a name that was passed on the command line.
+name = "monkey"
+
+-- The name of the local domain socket that will be used to
+-- communicate with a local server
 socketname = "/tmp/opendax"
-min_buffers = 64
+
+-- The IP address and TCP port of the server
+serverip = "0.0.0.0"
+serverport = 7777
+
+-- When set to NETWORK the client module will use TCP/IP as the
+-- communication mechanism to the server.
+server = "LOCAL"
+--server = "NETWORK"
+
+-- The size of the tag cache
+cachesize = 32
+
+-- The server message timeout in mSec
+msgtimeout = 500
 \end{verbatim}
 
-This may be sufficient for many systems but the Lua configuration system in OpenDAX is far more powerful than that.  It is also possible to import other configuration files, make decisions with \emph{if} statements, loop with \emph{for} or \emph{while}.
-
-<<insert Lua tutorial in here somewhere>>
-
-When the configuration file is read a global variable named \emph{calling\_module} is set to a string equal to the module's name.  This indicates to the configuration script which module is currently running the script.  You can use the variable to have multiple module configurations in a single file.  This makes it possible to separate configuration information based on function instead of by module.  For example, it would be easier to have all of the configurations for a set of flowmeters in a file called \emph{flowmeters.lua} and then include that file in each module that requires it.  The variable \emph{calling\_module} can then be used within that configuration file to determine whether it is configuring the modbus module or the historical logging module.
-
-Here is an example \ldots
-
-\begin{verbatim}
---Global data that is used throughout
-flowmeters = {}
-flowmeters[1] = {}
-flowmeters[1].tagname = "FT_0101"
-flowmeters[1].description = "Inlet Flow to Plant"
-flowmeters[1].node    = 1
-flowmeters[2] = {}
-flowmeters[2].tagname = "FT_0102"
-flowmeters[2].description = "Outlet Flow from Plant"
-flowmeters[2].node    = 2
-...more flowmeters
-
-if calling_module == "modbus" then
-  for i=1,10 do
-    --use .tagname and .node to configure modbus commands
-  end
-end
-
-if calling_module == "logger" then
-  for i=1,10 do
-    --use .tagname and .description to configure the logger
-  end
-end
-
-if calling_module == "alarm" then
-  for i=1,10 do
-    --use .tagname and .description to configure the alarms
-  end
-end
-\end{verbatim}
-
-This construct gives the application developer a lot of flexibility in how he/she generates configurations for each particular application.
+With the exception of the message logging configuration the command line options will override the configuration file options.
 
 \chapter{Command Line Client Module}
 The command line client module is called 'daxc'.  It is useful for debugging and examining or manipulating OpenDAX data in real time.  It can also be used for automating some OpenDAX tasks from a shell script.  It can be run interactively, it can read input from STDIN or a filename can be passed to it that has lists of daxc commands to execute.
 
 \section{Configuration}
-There is very little configuration that needs to be done to the daxc module.  The general configuration that is needed for all modules such as server address, ports etc are all that is really required.  There are a few extra command line options that can be used.
+There is very little configuration that needs to be done to the \texttt{daxc} module.  The general configuration that is needed for all modules such as server address, ports etc are all that is really required.  There are a few command line options that are specific to the \texttt{daxc} module.
 
-\subparagraph*{-f, --file}
-Following '-f' or '--file' with the name of a file will cause daxc to open that file and run the commands in that file.
+There is no configuration file for \texttt{daxc}.  All of the configuration is passed on the command line.
 
-\subparagraph*{-x, --execute}
-The execute options should be followed by a command that is to be executed by daxc.
+\begin{verbatim}
+Usage:
+$ daxc [-xiqUIPSZOCKTv] [filename]
+\end{verbatim}
 
-\subparagraph*{-i, --interactive}
-When the module is started with the -f or -x options the default behavior of the module is to exit when finished with those commands.  If this option is used the program will enter interactive mode after those commands are issued.
+If \texttt{filename} is given the commands in the file will be executed as though
+they were received through \texttt{stdin}.  \texttt{daxc} will also act correctly if a \textit{shebang} is used for the file.  So the file can also be marked as executable and \texttt{daxc} will act as expected.  Blank lines and lines that start with '\#' are ignored.
 
-\subparagraph*{-q, --quiet}
-Suppresses some output of the program while it is executing a file or a command line option.  It does nothing for interactive mode.  This is useful for running the module from shell scripts. 
+\begin{list}{}{daxc Command Line Options}
+  \item[--execute, -x] - The execute options should be followed by a command that is to be executed by daxc.
+  \item[--interactive, -i] - When the module is started with the -f or -x options the default behavior of the module is to exit when finished with those commands.  If this option is used the program will enter interactive mode after those commands are issued.
+  \item[--quiet, -q] - Suppresses some output of the program while it is executing a file or a command line option.  It does nothing for interactive mode.  This is useful for running the module from shell scripts. 
+\end{list}
 
 \section{Commands}
 
@@ -197,6 +249,8 @@ The \textit{exit} command simply exits the daxc module.
 
 \chapter{Lua Scripting Module}
 
+\chapter{MQTT Module}
+\input{mqtt.tex}
 
 \chapter{Module Development}
 

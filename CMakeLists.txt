@@ -42,10 +42,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(OS_LINUX 1)
 endif()
 
+if(EXISTS "/proc")
+    set(HAVE_PROCDIR 1)
+endif()
+
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(strings.h HAVE_STRINGS_H)
 check_include_file(sys/select.h HAVE_SYS_SELECT_H)
-
 
 include(FindLua)
 # message("Lua Libraries Found: ${LUA_LIBRARIES}")

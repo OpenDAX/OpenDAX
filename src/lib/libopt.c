@@ -404,6 +404,29 @@ _config_print(lua_State *L) {
     return 0;
 }
 
+/* We use this function to override the print() function in Lua for
+ * any scripts that run after the configuration hooks.  This gives 
+ * the module the ability to run scripts configured in the
+ * configuration later in the execution for logic, formatting, etc.
+ * This function takes the string passed to print() and passes 
+ * it to the logger with LOG_LOGIC topic */
+static int
+_logic_print(lua_State *L) {
+    const char *str;
+
+    if(lua_gettop(L) != 1) {
+        luaL_error(L, "String argument required for print()");
+    }
+    str = lua_tostring(L, 1);
+    if(str!= NULL) {
+        dax_log(LOG_LOGIC, str);
+    } else {
+        luaL_error(L, "Problem with string passed to print()");    
+    }
+    return 0;
+}
+
+
 /* This function tries to open the module specific configuration
  * file and run it. */
 static inline int
@@ -613,6 +636,13 @@ opt_lua_init_func(dax_state *ds) {
     int result;
 
     daxlua_set_state(ds->L, ds);
+    /* Here we add the functions and packages that may be needed by
+      the init_hook() function as well as any that might be used
+      by functions that the module would like */
+    luaL_requiref(ds->L, "string", luaopen_string, 1);
+    luaL_requiref(ds->L, "math", luaopen_math, 1);
+    luaL_requiref(ds->L, "table", luaopen_table, 1);
+    luaL_requiref(ds->L, "utf8", luaopen_utf8, 1);
     daxlua_register_function(ds->L, "tag_add");
     daxlua_register_function(ds->L, "tag_write");
     daxlua_register_function(ds->L, "tag_read");
@@ -625,5 +655,9 @@ opt_lua_init_func(dax_state *ds) {
         }
     }
     lua_pop(ds->L, 1);
+    /* Override the print function with our logging function */
+    lua_pushcfunction(ds->L, _logic_print);
+    lua_setglobal(ds->L, "print");
+
     return 0;
 }

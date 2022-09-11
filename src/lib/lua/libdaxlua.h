@@ -31,5 +31,6 @@ int luaopen_daxlib (lua_State *L);
 void daxlua_set_constants(lua_State *L);
 int daxlua_register_function(lua_State *L, char *function_name);
 int daxlua_set_state(lua_State *L, dax_state *new_ds);
-
+int daxlua_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask);
+void daxlua_dax_to_lua(lua_State *L, tag_handle h, void *data);
 #endif

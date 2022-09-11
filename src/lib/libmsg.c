@@ -306,11 +306,11 @@ _read_next_message(dax_state *ds)
     result = _message_get(ds->sfd, msg);
     if(result) {
         if(result == ERR_DISCONNECTED) {
-            dax_log(LOG_ERROR, "Server disconnected abruptly\n");
+            dax_log(LOG_ERROR, "Server disconnected abruptly");
         } else if(result == ERR_TIMEOUT) {
             ; /* Do nothing for timeout */
         } else {
-            dax_log(LOG_ERROR, "_message_get() returned error %d\n", result);
+            dax_log(LOG_ERROR, "_message_get() returned error %d", result);
         }
         free(msg);
         return result;
@@ -320,7 +320,7 @@ _read_next_message(dax_state *ds)
         if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
                 events_lost++;
-                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u\n", events_lost);
+                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u", events_lost);
             }
             free(ds->emsg_queue[0]); /* Free the top one */
             for(n = 0;n<ds->emsg_queue_size-1;n++) {
@@ -371,7 +371,8 @@ _connection_thread(void *arg)
         while(ds->sfd >= 0) { /* Main connection loop */
             result = _read_next_message(ds);
             if(result == ERR_DISCONNECTED) {
-                _connection_cleanup(ds);
+                break;
+                //_connection_cleanup(ds);
             }
         }
         _connection_cleanup(ds);
@@ -518,7 +519,6 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
         *((uint32_t *)&buff[0]) = mtos_udint(type);
         *((uint32_t *)&buff[4]) = mtos_udint(count);
         *((uint32_t *)&buff[8]) = mtos_udint(attr);
-
 
         strcpy(&buff[12], name);
     } else {
@@ -1591,7 +1591,7 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
         *result = ERR_ARG;
         return NULL;
     }
-    size = 0;
+    group_size = 0;
     for(n=0; n<count; n++) {
         group_size += h[n].size;
         if(group_size > MSG_TAG_GROUP_DATA_SIZE) {
@@ -1648,6 +1648,18 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
     }
     pthread_mutex_unlock(&ds->lock);
     return id;
+}
+
+
+/*!
+ * Get the size of tag data group in bytes 
+ *
+ * @param id      Pointer to the tag group id
+ * @returns       The size of the group in bytes
+ */
+int
+dax_group_get_size(tag_group_id *id) {
+    return id->size;
 }
 
 /*!

@@ -66,7 +66,7 @@ parsecommandline(int argc, const char *argv[])
     char c;
 
     static struct option options[] = {
-        {"config", required_argument, 0, 'C'},
+        {"configfile", required_argument, 0, 'C'},
         {"logtopics", required_argument, 0, 'T'},
         {"socketname", required_argument, 0, 'S'},
         {"serverip", required_argument, 0, 'I'},
