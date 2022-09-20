@@ -141,9 +141,13 @@ extern "C" {
 
 /* Tag attribute bits */
 #define TAG_ATTR_READONLY   0x0001 /* Read only tag */
-#define TAG_ATTR_VIRTUAL    0x0002 /* Tag is a virtual tag, read only attribute */
-#define TAG_ATTR_RETAIN     0x0004 /* Tag retention attribute */
-#define TAG_ATTR_OVERRIDE   0x0008 /* Tag override attribute */
+#define TAG_ATTR_VIRTUAL    0x0002 /* Tag is a virtual tag */
+#define TAG_ATTR_RETAIN     0x0004 /* Tag will be retained */
+#define TAG_ATTR_OVR_SET    0x0008 /* Tag override is set */
+#define TAG_ATTR_MAPPING    0x1000 /* Tag is the source of at least one map */
+#define TAG_ATTR_EVENT      0x2000 /* Tag has at least one event */
+#define TAG_ATTR_OVERRIDE   0x4000 /* Tag has override installed */
+
 
 /* Module parameters */
 #define MOD_CMD_RUNNING     0x01 /* Set/Clear Modules Running Flag */
@@ -257,7 +261,7 @@ struct dax_tag {
     tag_index idx;        /* Unique tag index */
     tag_type type;        /* Tags data type */
     unsigned int count;   /* The number of items in the tag array */
-    unsigned int attr;
+    uint16_t attr;
     char name[DAX_TAGNAME_SIZE + 1];
 };
 

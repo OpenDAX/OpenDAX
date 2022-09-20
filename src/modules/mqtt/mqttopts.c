@@ -59,7 +59,7 @@ _get_new_sub(void)
     subscriber_count++;
     /* Initialize the script structure */
     subscribers[n].enabled = ENABLE_UNINIT;
-    subscribers[n].formatter = 0;
+    subscribers[n].filter = 0;
     subscribers[n].tag_count = 0;
     subscribers[n].tagnames = NULL;
     subscribers[n].qos = 0;
@@ -127,13 +127,13 @@ _add_sub(lua_State *L) {
     }
     lua_pop(L, 1); /* Pop off tags */
     
-    if(lua_getfield(L, 1, "formatter") != LUA_TNIL) {
+    if(lua_getfield(L, 1, "filter") != LUA_TNIL) {
         if(! lua_isfunction(L, -1)) {
-            luaL_error(L, "Formatter should be a function ");
+            luaL_error(L, "filter should be a function ");
         }
         /* Pop the function off the stack and write it to the regsitry and assign
-           the reference to .formatter */
-        subscribers[idx].formatter = luaL_ref(L, LUA_REGISTRYINDEX);
+           the reference to .filter */
+        subscribers[idx].filter = luaL_ref(L, LUA_REGISTRYINDEX);
     } else {
         lua_pop(L, 1); /* Pop nil */
     }   
@@ -175,7 +175,7 @@ _get_new_pub(void)
     publisher_count++;
     /* Initialize the script structure */
     publishers[n].enabled = ENABLE_UNINIT;
-    publishers[n].formatter = 0;
+    publishers[n].filter = 0;
     publishers[n].tag_count = 0;
     publishers[n].tagnames = NULL;
     publishers[n].qos = 0;
@@ -255,13 +255,13 @@ _add_pub(lua_State *L)
     }
     lua_pop(L, 1); /* Pop off tags */
 
-    if(lua_getfield(L, 1, "formatter") != LUA_TNIL) {
+    if(lua_getfield(L, 1, "filter") != LUA_TNIL) {
         if(! lua_isfunction(L, -1)) {
-            luaL_error(L, "Formatter should be a function");
+            luaL_error(L, "Filter should be a function");
         }
         /* Pop the function off the stack and write it to the regsitry and assign
-           the reference to .formatter */
-        publishers[idx].formatter = luaL_ref(L, LUA_REGISTRYINDEX);
+           the reference to .filter */
+        publishers[idx].filter = luaL_ref(L, LUA_REGISTRYINDEX);
     } else {
         lua_pop(L, 1); /* Pop nil */
     }   

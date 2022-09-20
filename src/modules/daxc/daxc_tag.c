@@ -38,7 +38,7 @@ show_tag(int n, dax_tag temp_tag)
         if(temp_tag.attr & TAG_ATTR_READONLY) printf(" READONLY");
         if(temp_tag.attr & TAG_ATTR_VIRTUAL)  printf(" VIRTUAL");
         if(temp_tag.attr & TAG_ATTR_RETAIN)   printf(" RETAINED");
-        if(temp_tag.attr & TAG_ATTR_OVERRIDE) printf(" OVERRIDE");
+        if(temp_tag.attr & TAG_ATTR_OVR_SET) printf(" OVERRIDE");
     }
     printf("\n");
 }

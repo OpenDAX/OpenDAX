@@ -22,24 +22,26 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "../modtest_common.h"
+#include "mqtt_test.h"
 #include <MQTTClient.h>
 
-void getout(int);
+/* Number of subscription count before we continue */
+#define SUB_COUNT 4
 
+extern dax_state *ds;
 
-MQTTClient client;
-MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-MQTTClient_message pubmsg = MQTTClient_message_initializer;
-volatile MQTTClient_deliveryToken deliveredtoken;
-pid_t server_pid, mod_pid;
-dax_state *ds;
-tag_handle h1, h2, h3, h4;
+static MQTTClient client;
+static tag_handle h1, h2, h3, h4;
 
-
+static void
+getout(int exit_status) {
+    DF("Getting out with exit code %d", exit_status);
+    exit(exit_status);
+}
 
 /* Tries to read the tag, if failure waits a few mSec and tries
  * again.  After so many tries we exit with failure*/
-static void
+static int
 _get_tag(tag_handle *h, char *tagname, int count) {
     int n;
     int result;
@@ -55,19 +57,19 @@ _get_tag(tag_handle *h, char *tagname, int count) {
     }
     if(n==5) {
         DF("Could never get the tag");
-        getout(-1);
+        return(-1);
     }
 }
 
-static void
+static int
 _publish(char *topic, int len, void *buff) {
     int result;
 
-    DF("Publish");
-    result = MQTTClient_publish(client, topic, len, buff, 0, 0, NULL);
+    DF("Publish %s", topic);
+    result = test_publish(client, topic, len, buff, 0, 0, NULL);
     if(result != MQTTCLIENT_SUCCESS) {
         dax_log(LOG_FATAL, "Unable to publish data to %s", topic);
-        getout(-1);
+        return(-1);
     }
 
 }
@@ -79,7 +81,7 @@ _test_single(void) {
     test = 0x12345678;
     _publish("dax_topic_1", 4, &test);
     test = 0;
-    usleep(10000);
+    //usleep(10000);
     dax_read_tag(ds, h1, &test);
     
     if(test != 0x12345678) {
@@ -122,7 +124,7 @@ _test_array(void) {
     values[2] = 0x77777777;
     values[3] = 0x88888888;
     _publish("dax_topic_3", 16, values);
-    usleep(10000);
+    //usleep(10000);
     dax_read_tag(ds, h4, test);
     
     for(int n=0;n<4;n++) {
@@ -159,83 +161,31 @@ _test_hybrid(void) {
 }
 
 
-void delivered(void *context, MQTTClient_deliveryToken dt)
-{
-    DF("Message with token value %d delivery confirmed", dt);
-    deliveredtoken = dt;
-}
-
-int
-msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *message)
-{
-    return 0;
-}
-
-
-int
-main(int argc, char *argv[])
-{
-    int s;
-    uint8_t buff[1024];
-    char conn_str[64];
-    int status, n, i;
-    int result;
-
-    /* Run the tag server and the modbus module */
-    server_pid = run_server();
-    mod_pid = run_module("../../../src/modules/mqtt/daxmqtt", "conf/raw_subscribe.conf");
-    /* Connect to the tag server */
-    ds = dax_init("test");
-    if(ds == NULL) {
-        dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
-        kill(getpid(), SIGQUIT);
-    }
-    dax_init_config(ds, "test");
-    dax_configure(ds, argc, argv, CFG_CMDLINE);
-    result = dax_connect(ds);
-    if(result) {
-        DF("Can't connect to tagserver");
-        getout(-1);
-    }
-    snprintf(conn_str, 64, "tcp://%s:%s", "127.0.0.1", "1883");
-    MQTTClient_create(&client, conn_str, "OpenDAX MQTT Test Client", MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    MQTTClient_setCallbacks(client, NULL, NULL, msgarrived, delivered);
-    conn_opts.keepAliveInterval = 20;
-    conn_opts.connectTimeout = 10;
-    conn_opts.cleansession = 1;
- 
-    if ((result = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
-        dax_log(LOG_FATAL, "Failed to connect, return code %d", result);
-        getout(-1);
-    }
+void *
+test_thread(void *arg) {
+    thread_args_t *args = (thread_args_t *)arg;
 
     _get_tag(&h1, "tag_1", 0);
     _get_tag(&h2, "tag_2", 0);
     _get_tag(&h3, "tag_3", 0);
     _get_tag(&h4, "tag_4", 0);
 
+    /* This essentially waits until the module has finished subscribing to
+       all of the topics that have been configured */
+    pthread_mutex_lock(&args->sub_lock);
+    while(args->subscriptions < SUB_COUNT) {
+        pthread_cond_wait(&args->sub_cond, &args->sub_lock);
+        DF("Checking");
+    }
+    pthread_mutex_unlock(&args->sub_lock);
+
     if(_test_single() != 0) getout(-1);
     if(_test_multiple() != 0) getout(-1);
     if(_test_array() != 0) getout(-1);
-    if(_test_hybrid() != 0) getout(-1);
-    DF("PASSED!");
-    getout(0);
+    if(_test_hybrid() != 0) getout(-1); 
+    kill(getpid(), SIGQUIT); /* Send kill signal to ourselves */
     
+
 }
 
-void
-getout(int exit_status) {
-    int status;
 
-    MQTTClient_disconnect(client, 10000);
-    MQTTClient_destroy(&client);
-    dax_disconnect(ds);
-    kill(mod_pid, SIGINT);
-    kill(server_pid, SIGINT);
-    if( waitpid(mod_pid, &status, 0) != mod_pid )
-        fprintf(stderr, "Error killing modbus module\n");
-    if( waitpid(server_pid, &status, 0) != server_pid )
-        fprintf(stderr, "Error killing tag server\n");
-
-    exit(exit_status);
-}

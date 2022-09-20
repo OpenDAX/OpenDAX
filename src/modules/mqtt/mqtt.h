@@ -43,7 +43,7 @@ typedef struct {
    tag_handle *h;    /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
    uint8_t qos;
-   int formatter;
+   int filter;
    tag_group_id *group;
    void *buff;
    void *mask;
@@ -59,7 +59,7 @@ typedef struct {
    tag_handle *h;   /* Array of handles to the tags */
    int tag_count;    /* Number of tagnames we are watching */
    uint8_t qos;
-   int formatter; /* Reference to Lua formatting function */
+   int filter; /* Reference to Lua formatting function */
    tag_group_id *group;
    void *buff;
    void *mask;

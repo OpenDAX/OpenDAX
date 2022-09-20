@@ -89,7 +89,7 @@ typedef struct dax_datamap_t {
 /* This is the internal structure for the tag array. */
 typedef struct {
     tag_type type;
-    unsigned int attr;
+    uint16_t attr;
     unsigned int count;
     char *name;
     int nextevent;           /* Counter for keeping track of event IDs */

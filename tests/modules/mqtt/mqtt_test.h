@@ -1,5 +1,5 @@
-/*  OpenDAX - An open source data acquisition and control system 
- *  Copyright (c) 2007 Phil Birkelbach
+/*  OpenDAX - An open source data acquisition and control system
+ *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,29 +17,16 @@
  */
 
 #include <opendax.h>
-#include <sys/time.h>
-#include <signal.h>
+#include <pthread.h>
+#include <common.h>
+#include <MQTTClient.h>
+#include "../modtest_common.h"
 
-#ifndef __FUNC_H
-#define __FUNC_H
+typedef struct {
+    pthread_mutex_t sub_lock;
+    pthread_cond_t sub_cond;
+    int subscriptions;
+} thread_args_t;
 
-/* Wrappers for system calls */
-ssize_t xwrite(int fd, const void *buff, size_t nbyte);
-
-/* Memory management functions.  These are just to override the
- * standard memory management functions in case I decide to do
- * something createive with them later. */
-
-void *xmalloc(size_t);
-void *xrealloc(void *, size_t);
-void *xcalloc(size_t, size_t);
-void xfree(void *);
-
-/* Portability functions */
-
-char *xstrcpy(const char *);
-char *xstrdup(char *);
-
-time_t xtime(void);
-
-#endif /* !__FUNC_H */
+LIBMQTT_API int test_publish(MQTTClient handle, const char* topicName, int payloadlen, const void* payload, int qos, int retained, MQTTClient_deliveryToken* dt);
+void *test_thread(void *arg);

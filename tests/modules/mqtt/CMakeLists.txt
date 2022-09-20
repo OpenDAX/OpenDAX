@@ -26,28 +26,28 @@ endforeach()
 
 message("SRC DIR ${CMAKE_SOURCE_DIR}")
 
-# This builds a test module that is linked with our "fake" MQTT library instead of Paho
-add_executable(mqtt_test_module ${CMAKE_SOURCE_DIR}/src/modules/mqtt/mqtt.c
-                                ${CMAKE_SOURCE_DIR}/src/modules/mqtt/mqttopts.c
-                                fake_mqtt.c
-)
-target_link_libraries(mqtt_test_module dax)
-#add_test(module_modbus_server_responses module_modbus_server_responses)
-#set_tests_properties(mqtt_test_module PROPERTIES TIMEOUT 10)
-
-set(test_list mqtt_raw_subscribe
-              )
+# These tests are basically the mqtt module linked with our fake_mqtt.c file instead
+# of the paho library.  The module is also compiled with a file that contains at least
+# one function that is a thread launched by the MQTTClient_connect() function that
+# essentially runs the test by intercepting the publish/subscribe messages and comparing
+# results with the tag data. There is a small runner program that is the actual test.  It
+# uses the TEST_NAME definition to determine which test to run at compile time.  Each
+# test is two executables.  The first is the modified MQTT module and the second
+# is trhe runner.   The runner is necessary because we need to launch the tagserver
+# as well as the test module
+set(test_list raw_subscribe
+   )
 
 foreach(test IN LISTS test_list)
-  add_executable(${test} ${test}.c ../modtest_common.c)
+  add_executable(${test}  ${test}.c
+                          ${CMAKE_SOURCE_DIR}/src/modules/mqtt/mqtt.c
+                          ${CMAKE_SOURCE_DIR}/src/modules/mqtt/mqttopts.c
+                          fake_mqtt.c)
   target_link_libraries(${test} dax)
-  target_link_libraries(${test} paho-mqtt3c)
-  add_test(${test} ${test})
-  set_tests_properties(${test} PROPERTIES TIMEOUT 5)
+  #target_link_libraries(${test} paho-mqtt3c)
+  add_executable(mqtt_${test} mqtt_runner.c ../modtest_common.c)
+  target_compile_definitions(mqtt_${test} PUBLIC TEST_NAME="${test}")
+  add_test(mqtt_${test} mqtt_${test})
+  set_tests_properties(mqtt_${test} PROPERTIES TIMEOUT 5)
 endforeach()
 
-#add_executable(mqtt_simple_subscribe mqtt_simple_subscribe.c ../modtest_common.c)
-#target_link_libraries(mqtt_simple_subscribe dax)
-#target_link_libraries(mqtt_simple_subscribe paho-mqtt3c)
-#add_test(mqtt_simple_subscribe mqtt_simple_subscribe)
-#set_tests_properties(mqtt_simple_subscribe PROPERTIES TIMEOUT 10)
