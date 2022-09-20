@@ -59,14 +59,14 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
 
         L = dax_get_luastate(ds);
 
-        if(sub->formatter != 0) { /* We need to run our formatter function */
+        if(sub->filter != 0) { /* We need to run our filter function */
             lua_settop(L, 0); /* Delete the stack */
-            /* Get the formatter function from the registry and push it onto the stack */
-            lua_rawgeti(L, LUA_REGISTRYINDEX, sub->formatter);
+            /* Get the filter function from the registry and push it onto the stack */
+            lua_rawgeti(L, LUA_REGISTRYINDEX, sub->filter);
             lua_pushstring(L, topicName); /* First argument is the topic */
             lua_pushlstring(L, message->payload, message->payloadlen);
             if(lua_pcall(L, 2, 1, 0) != LUA_OK) {
-                dax_log(LOG_ERROR, "Formatter funtion for %s - %s", topicName, lua_tostring(L, -1));
+                dax_log(LOG_ERROR, "filter funtion for %s - %s", topicName, lua_tostring(L, -1));
             } else { /* Success */
                 if(sub->tag_count == 1) {
                     result = daxlua_lua_to_dax(L, sub->h[0], sub->buff, sub->mask);
@@ -75,7 +75,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
                     }
                 } else if(sub->tag_count > 1) {
                     /* If there is more than one tag then it is assumed that there is
-                       an array returned from the formatter function that contains the
+                       an array returned from the filter function that contains the
                        values for the tags. */
                     offset = 0;
                     for(int n=0;n<sub->tag_count;n++) {
@@ -83,14 +83,14 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
                             result = daxlua_lua_to_dax(L, sub->h[n], &((uint8_t *)sub->buff)[offset], &((uint8_t *)sub->mask)[offset]);
                             offset += sub->h[n].size;
                         } else {
-                            dax_log(LOG_LOGICERR, "Formatter didn't return the right kind of data for %s", sub->topic);
+                            dax_log(LOG_LOGICERR, "Filter didn't return the right kind of data for %s", sub->topic);
                         }
                         lua_pop(L, 1);
                     }
                 }
             }
         } else {
-            /* No formatter function configured so we just do a raw
+            /* No filter function configured so we just do a raw
              * binary copy to the tag or the tag group */
             if(message->payloadlen != sub->buff_size) {
                 dax_log(LOG_WARN, "Message payload is not the same size as the buffer");
@@ -131,8 +131,8 @@ connlost(void *context, char *cause)
 static int
 subscribe(subscriber_t *sub) {
     int result;
-    if(sub->tag_count == 0 && sub->formatter == 0) {
-        dax_log(LOG_WARN, "No tags or formatter function given for topic %s", sub->topic);
+    if(sub->tag_count == 0 && sub->filter == 0) {
+        dax_log(LOG_WARN, "No tags or filter function given for topic %s", sub->topic);
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
@@ -167,7 +167,6 @@ subscribe(subscriber_t *sub) {
         }
         sub->buff_size = dax_group_get_size(sub->group);
     } else if(sub->tag_count == 1) { /* We just have the one tag */
-        DF("sub->h = %p", sub->h);
         sub->buff = malloc(sub->h[0].size);
         if(sub->buff == NULL) {
             dax_log(LOG_WARN, "Unable to allocate tag data buffer");
@@ -230,10 +229,10 @@ publish_callback(dax_state *ds, void *udata) {
         }
     }
 
-    if(pub->formatter != 0) { /* We need to run our formatter function */
+    if(pub->filter != 0) { /* We need to run our filter function */
         lua_settop(L, 0); /* Delete the stack */
-        /* Get the formatter function from the registry and push it onto the stack */
-        lua_rawgeti(L, LUA_REGISTRYINDEX, pub->formatter);
+        /* Get the filter function from the registry and push it onto the stack */
+        lua_rawgeti(L, LUA_REGISTRYINDEX, pub->filter);
         lua_pushstring(L, pub->topic); /* First argument is the topic */
         if(pub->tag_count == 0) {
             lua_pushnil(L); /* Push a NIL if we don't have any tags */
@@ -257,9 +256,9 @@ publish_callback(dax_state *ds, void *udata) {
             }
         }
         if(lua_pcall(L, 2, 1, 0) != LUA_OK) {
-            dax_log(LOG_WARN, "Formatter funtion for %s - %s", pub->topic, lua_tostring(L, -1));
+            dax_log(LOG_WARN, "filter funtion for %s - %s", pub->topic, lua_tostring(L, -1));
         }
-        /* The data that is supposed to be published should have been returned by the formatter function */
+        /* The data that is supposed to be published should have been returned by the filter function */
         data = lua_tolstring(L, 1, &len);
         if(data != NULL) {
             result = MQTTClient_publish(client, pub->topic, len, data, pub->qos, pub->retained, NULL);
@@ -267,9 +266,9 @@ publish_callback(dax_state *ds, void *udata) {
                 dax_log(LOG_ERROR, "Unable to publish data to %s", pub->topic);
             }
         } else {
-            dax_log(LOG_WARN, "Bad return value from formatter on topic %s", pub->topic);
+            dax_log(LOG_WARN, "Bad return value from filter on topic %s", pub->topic);
         }
-    } else { /* No formatter function so we just do a raw binary copy */
+    } else { /* No filter function so we just do a raw binary copy */
         result = MQTTClient_publish(client, pub->topic, pub->buff_size, pub->buff, pub->qos, pub->retained, NULL);
         if(result != MQTTCLIENT_SUCCESS) {
             dax_log(LOG_ERROR, "Unable to publish data to %s", pub->topic);
@@ -286,8 +285,8 @@ publish(publisher_t *pub) {
     /* We'll set this for now in case we have an error in here somewhere */
     pub->enabled = ENABLE_FAIL;
 
-    if(pub->tag_count == 0 && pub->formatter == 0) {
-        dax_log(LOG_WARN, "No tags or formatter function given for topic %s", pub->topic);
+    if(pub->tag_count == 0 && pub->filter == 0) {
+        dax_log(LOG_WARN, "No tags or filter function given for topic %s", pub->topic);
         pub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
@@ -421,9 +420,9 @@ client_loop(void) {
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
             dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
-            getout(_quitsignal);
+            getout(0);
         }
-        dax_event_wait(ds, 1000, NULL);
+        dax_event_wait(ds, 500, NULL);
         cycle_count++;
     }
 

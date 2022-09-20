@@ -21,14 +21,24 @@
  *  test-only mqtt module that is linked with this file instead of with the Paho
  *  library so that we don't have to have a broker installed and so we can
  *  intercept and manipulate the messages.
+ *  The idea is that we start a thread on connect and keep track of how many
+ *  subscriptions happen 
  */
 
-#include <MQTTClient.h>
+
+#include "mqtt_test.h"
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 /*  Callback functions */
 static MQTTClient_connectionLost *_cl;
 static MQTTClient_messageArrived *_ma;
 static MQTTClient_deliveryComplete *_dc;
+static void *_context;
+static pthread_t _test_thread;
+
+static thread_args_t thread_args;
 
 
 LIBMQTT_API void
@@ -43,11 +53,33 @@ MQTTClient_free(void* ptr) {
 
 LIBMQTT_API int
 MQTTClient_subscribe(MQTTClient handle, const char* topic, int qos) {
+    DF("Subscribe to %s", topic);
+    pthread_mutex_lock(&thread_args.sub_lock);
+    thread_args.subscriptions++;
+    pthread_cond_signal(&thread_args.sub_cond);
+    pthread_mutex_unlock(&thread_args.sub_lock);
     return MQTTCLIENT_SUCCESS;
 }
 
 LIBMQTT_API int
 MQTTClient_publish(MQTTClient handle, const char* topicName, int payloadlen, const void* payload, int qos, int retained, MQTTClient_deliveryToken* dt) {
+    
+    return MQTTCLIENT_SUCCESS;
+}
+
+LIBMQTT_API int
+test_publish(MQTTClient handle, const char* topicName, int payloadlen, const void* payload, int qos, int retained, MQTTClient_deliveryToken* dt) {
+    MQTTClient_message msg;
+    msg.struct_id[0] = (char *)"M";
+    msg.struct_id[1] = (char *)"Q";
+    msg.struct_id[2] = (char *)"T";
+    msg.struct_id[3] = (char *)"M";
+    msg.struct_version = 0;
+    msg.payloadlen = payloadlen;
+    msg.payload = payload;
+    msg.qos = qos;
+    msg.retained = retained;
+    _ma(_context, topicName, strlen(topicName), &msg);
     return MQTTCLIENT_SUCCESS;
 }
 
@@ -60,17 +92,31 @@ MQTTClient_create(MQTTClient* handle, const char* serverURI, const char* clientI
 LIBMQTT_API int
 MQTTClient_setCallbacks(MQTTClient handle, void* context, MQTTClient_connectionLost* cl,
 						MQTTClient_messageArrived* ma, MQTTClient_deliveryComplete* dc) {
+    _cl = cl;
+    _ma = ma;
+    _dc = dc;
+    _context = context;
     return MQTTCLIENT_SUCCESS;
 }
 
 
 LIBMQTT_API int
 MQTTClient_connect(MQTTClient handle, MQTTClient_connectOptions* options) {
+    int result;
+
+    result = pthread_create(&_test_thread, NULL, test_thread, &thread_args);
+    if(result) {
+        dax_log(LOG_ERROR, "Unable to create thread");
+    }
     return MQTTCLIENT_SUCCESS;
 }
 
 
 LIBMQTT_API int MQTTClient_disconnect(MQTTClient handle, int timeout) {
+    int status;
+
+    kill(getpid(), SIGQUIT);
+
     return MQTTCLIENT_SUCCESS;
 }
 
