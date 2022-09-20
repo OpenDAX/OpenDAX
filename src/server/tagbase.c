@@ -685,7 +685,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
         }
         /* Copy the data into the right place. */
         memcpy(data, &(_db[idx].data[offset]), size);
-        if(_db[idx].attr & TAG_ATTR_OVERRIDE) {
+        if(_db[idx].attr & TAG_ATTR_OVR_SET) {
             for(n=0; n<size; n++) {
                  x = _db[idx].odata[n+offset] & _db[idx].omask[n+offset];
                  y = _db[idx].data[n+offset] & ~_db[idx].omask[n+offset];
@@ -1140,6 +1140,7 @@ override_add(tag_index idx, int offset, void *data, void *mask, int size) {
     if((offset + size) > tag_size) return ERR_2BIG;
     memcpy(&_db[idx].odata[offset], data, size);
     memcpy(&_db[idx].omask[offset], mask, size);
+    _db[idx].attr |= TAG_ATTR_OVERRIDE; /* Indicate that we have an override installed */
 
     return 0;
 }
@@ -1163,7 +1164,8 @@ override_del(tag_index idx, int offset, void *mask, int size) {
         _db[idx].omask[n+offset] &= ~((uint8_t *)mask)[n];
         _db[idx].odata[n+offset] &= ~((uint8_t *)mask)[n];
     }
-    _db[idx].attr &= ~TAG_ATTR_OVERRIDE;
+    /* Remove both of the flags that indicate we have an override installed or set */
+    _db[idx].attr &= ~(TAG_ATTR_OVERRIDE | TAG_ATTR_OVR_SET); 
     tag_size = _db[idx].count * type_size(_db[idx].type);
     for(n=0;n<tag_size;n++) {
         if(_db[idx].omask[n])  return 0;
@@ -1204,9 +1206,9 @@ override_set(tag_index idx, uint8_t flag) {
     }
     if(flag) {
         if(_db[idx].odata == NULL) return ERR_ILLEGAL;
-        _db[idx].attr |= TAG_ATTR_OVERRIDE;
+        _db[idx].attr |= TAG_ATTR_OVR_SET;
     } else {
-        _db[idx].attr &= ~TAG_ATTR_OVERRIDE;
+        _db[idx].attr &= ~TAG_ATTR_OVR_SET;
     }
     return 0;
 }

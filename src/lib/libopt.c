@@ -467,6 +467,7 @@ _mod_config_file(dax_state *ds) {
         free(cfile);
         return ERR_GENERIC;
     } else {
+        dax_log(LOG_DEBUG, "Configured using file %s",cfile);
         _get_lua_globals(ds);
     }
     

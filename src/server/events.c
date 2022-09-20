@@ -632,6 +632,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
     if(head == NULL) {
         new->next = NULL;
         _db[h.index].events = new;
+        _db[h.index].attr |= TAG_ATTR_EVENT; /* Add attribute flag to show we have at least one event */
     } else {
         /* For now we are not going to sort these events.  The right optimization
          * would be to sort by the bottom of the range.  This way the
@@ -701,6 +702,10 @@ event_del(int index, int id, dax_module *module)
         }
         last = this;
         this = this->next;
+    }
+    /* If there are no more events on this tag then reset the attibute flag */
+    if(_db[index].events == NULL) {
+        _db[index].attr &= ~TAG_ATTR_EVENT;
     }
     module->event_count--;
     return result;

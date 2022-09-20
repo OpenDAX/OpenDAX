@@ -639,9 +639,9 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         tag->idx = stom_dint( *((int *)&buff[0]) );
         tag->type = stom_udint(*((uint32_t *)&buff[4]));
         tag->count = stom_udint(*((uint32_t *)&buff[8]));
-        tag->attr = stom_udint(*((uint32_t *)&buff[12]));
+        tag->attr = stom_udint(*((uint16_t *)&buff[12]));
         buff[size - 1] = '\0'; /* Just to make sure */
-        strcpy(tag->name, &buff[16]);
+        strcpy(tag->name, &buff[14]);
         cache_tag_add(ds, tag);
         free(buff);
     }
@@ -686,9 +686,9 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         tag->idx = stom_dint(*((int32_t *)&buff[0]));
         tag->type = stom_dint(*((int32_t *)&buff[4]));
         tag->count = stom_dint(*((int32_t *)&buff[8]));
-        tag->attr = stom_dint(*((int32_t *)&buff[12]));
-        buff[DAX_TAGNAME_SIZE + 16] = '\0'; /* Just to be safe */
-        strcpy(tag->name, &buff[16]);
+        tag->attr = stom_dint(*((int16_t *)&buff[12]));
+        buff[DAX_TAGNAME_SIZE + 14] = '\0'; /* Just to be safe */
+        strcpy(tag->name, &buff[14]);
         /* Add the tag to the tag cache */
         cache_tag_add(ds, tag);
     }
@@ -999,7 +999,7 @@ dax_tag_del_override(dax_state *ds, tag_handle handle) {
 /*!
  * Retrieve the override mask as well as the actual data of the tag.  When the override
  * is set this is the only way to read the 'actual' value as the normal tag reading functions
- * will return the override value.
+ * will return the overridden value.
  * @param ds Pointer to the dax state object.
  * @param handle handle of the tag data to override
  * @param data Pointer to the data buffer

@@ -510,7 +510,7 @@ main (int argc, const char * argv[]) {
                 master_errors += _setup_master_events(config.ports[n]);
             }
         }
-        dax_event_wait(ds, 1000, NULL);
+        dax_event_wait(ds, 500, NULL);
         if(_caught_signal) {
             if(_caught_signal == SIGHUP) {
                 dax_log(LOG_MINOR, "Should be Reconfiguring Now");
