@@ -28,7 +28,9 @@ if(BUILD_MQTT)
   add_subdirectory(mqtt)
 endif()
 
-add_subdirectory(histlog)
+if(BUILD_HISTLOG)
+  add_subdirectory(histlog)
+endif()
 
 if(BUILD_EXAMPLES)
    add_subdirectory(examples)

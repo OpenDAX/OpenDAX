@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#  Copyright (c) 2022 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,17 +14,15 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+include_directories(.)
 
-add_executable(histlog_module histlog.c
-                              plugin.c
-                              histopts.c
-                              histutil.c)
-set_target_properties(histlog_module PROPERTIES OUTPUT_NAME histlog)
-target_link_libraries(histlog_module dax)
-target_link_libraries(histlog_module pthread)
-target_link_libraries(histlog_module dl)
+add_library(dhl_sqlite dhl_sqlite.c)
 
-install(TARGETS histlog_module DESTINATION bin)
+#target_link_libraries(dax ${LUA_LIBRARIES})
+#target_link_libraries(dax pthread)
 
-add_subdirectory(plugins)
-add_subdirectory(libdhl)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_options(dhl_sqlite PRIVATE -Wall)
+endif()
+install(TARGETS dhl_sqlite DESTINATION lib)
+

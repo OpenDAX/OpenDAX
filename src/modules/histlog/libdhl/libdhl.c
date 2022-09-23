@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -15,14 +15,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- *  Main header file for the OpenDAX Historical Logging SQLite plugin
+ *  Main source code file for the OpenDAX Historical Logging query library
  */
 
-#include <common.h>
-#include <opendax.h>
+#include <time.h>
 
-typedef struct tag_object {
-    const char *name;
-    tag_type type;
-    int handle;
-} tag_object;

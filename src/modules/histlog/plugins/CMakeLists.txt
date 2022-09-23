@@ -18,4 +18,6 @@
 
 add_subdirectory(file)
 #add_subdirectory(mysql)
-#add_subdirectory(sqlite)
+if(SQLite3_FOUND)
+  add_subdirectory(sqlite)
+endif()

@@ -28,6 +28,7 @@ enable_testing()
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
+option(BUILD_HISTLOG "Build Historical Logging Module" ON)
 option(BUILD_JOYSTICK "Build Joystick Module" ON)
 option(BUILD_EXAMPLES "Build Example Modules" ON)
 option(INTERNAL_TESTS "Build and Run Internal System Tests" ON)
@@ -62,6 +63,18 @@ message("Lua Version ${LUA_VERSION_STRING} found")
 set(LUA_VERSION_TEST "${LUA_VERSION_MAJOR}${LUA_VERSION_MINOR}")
 if(${LUA_VERSION_TEST} LESS 53)
   message(FATAL_ERROR "Lua Version 5.3 or later required")
+endif()
+
+# SQLite is used in the historical logging module as one of the plugin types
+include(FindSQLite3)
+if(NOT SQLite3_FOUND)
+  message(STATUS "SQLite Libraries not found")
+endif()
+
+include(CheckTypeSize)
+check_type_size(time_t SIZEOF_TIME)
+if(NOT SIZEOF_TIME EQUAL 8)
+  message(WARNING "Size of time_t is ${SIZEOF_TIME}")
 endif()
 
 # This is for the config.h file
