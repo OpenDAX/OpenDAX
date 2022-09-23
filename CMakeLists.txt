@@ -69,6 +69,8 @@ endif()
 include(FindSQLite3)
 if(NOT SQLite3_FOUND)
   message(STATUS "SQLite Libraries not found")
+else()
+  add_compile_definitions(HAVE_SQLITE)
 endif()
 
 include(CheckTypeSize)

@@ -1053,6 +1053,19 @@ cdt_get_name(tag_type type)
     }
 }
 
+/* Returns a pointer to the CDT given by 'type' */
+datatype *
+cdt_get_entry(tag_type type) {
+    int index;
+    
+    index = CDT_TO_INDEX(type);
+    if(IS_CUSTOM(type) && index > 0 && index < _datatype_size) {
+        return &_datatypes[index];
+    } else {
+        return NULL;
+    }
+}
+
 
 /* Adds a member to the datatype referenced by it's array index 'cdt_index'.
  * Returns 0 on success, nonzero error code on failure. */

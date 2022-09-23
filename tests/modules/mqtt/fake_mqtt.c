@@ -70,16 +70,16 @@ MQTTClient_publish(MQTTClient handle, const char* topicName, int payloadlen, con
 LIBMQTT_API int
 test_publish(MQTTClient handle, const char* topicName, int payloadlen, const void* payload, int qos, int retained, MQTTClient_deliveryToken* dt) {
     MQTTClient_message msg;
-    msg.struct_id[0] = (char *)"M";
-    msg.struct_id[1] = (char *)"Q";
-    msg.struct_id[2] = (char *)"T";
-    msg.struct_id[3] = (char *)"M";
+    msg.struct_id[0] = 'M';
+    msg.struct_id[1] = 'Q';
+    msg.struct_id[2] = 'T';
+    msg.struct_id[3] = 'M';
     msg.struct_version = 0;
     msg.payloadlen = payloadlen;
-    msg.payload = payload;
+    msg.payload = (void *)payload;
     msg.qos = qos;
     msg.retained = retained;
-    _ma(_context, topicName, strlen(topicName), &msg);
+    _ma(_context, (char *)topicName, strlen(topicName), &msg);
     return MQTTCLIENT_SUCCESS;
 }
 
