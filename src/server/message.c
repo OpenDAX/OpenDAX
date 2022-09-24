@@ -466,12 +466,13 @@ msg_tag_del(dax_message *msg)
     result = tag_get_index(idx, &tag);
     if(result) {
         dax_log(LOG_MSGERR, "Tag Delete Message with unknown tag");
-        return ERR_ARG;
+        result = ERR_ARG;
+    } else if(tag.name[0] == '_') {
+        dax_log(LOG_MSGERR, "Modules are not allowed to remove reserved tags");
+        result = ERR_ILLEGAL; /* Modules are not allowed to remove reserved tags */
+    } else {
+        result = tag_del(idx);
     }
-    if(msg->data[8] == '_') {
-        return ERR_ILLEGAL; /* Modules are not allowed to remove reserved tags */
-    }
-    result = tag_del(idx);
 
     if(!result) {
         _message_send(msg->fd, MSG_TAG_DEL, &idx, sizeof(tag_index), RESPONSE);
