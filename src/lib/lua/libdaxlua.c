@@ -171,11 +171,13 @@ _read_callback(cdt_iter member, void *udata)
     lua_rawset(L, -3);
 }
 
+/* This function takes a data buffer as returned from the tag server and
+ * converts it into the proper Lua value and pushes that onto the Lua stack */
 /* This is the top level function for taking the data that is is in *data,
  * iterating through the tag give by handle 'h' and storing that information
  * into a Lua variable on the top of the Lua stack. */
-static void
-_send_tag_to_lua(lua_State *L, tag_handle h, void *data)
+void
+daxlua_dax_to_lua(lua_State *L, tag_handle h, void *data)
 {
     cdt_iter tag;
     struct iter_udata udata;
@@ -409,14 +411,18 @@ _write_callback(cdt_iter member, void *udata)
     }
 }
 
+/* Main function that takes the tag on the top of the given Lua stack
+ * and converts it to a *data area and a *mask area that can be written
+ * to the tag server.  data and mask should be allocated and be large
+ * enough to hold the entire tag. */
 /* This function takes care of the top level of the tag.  If the tag
  * is a simple base datatype tag then the _pop_base_datatype() function
  * is called directly and write is complete.  If the tag is a compound
  * datatype then the top level is taken care of and then it's turned
  * over to the recursive write_callback() function through the
  * cdt iterator. */
-static int
-_get_tag_from_lua(lua_State *L, tag_handle h, void* data, void *mask){
+int
+daxlua_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask){
     cdt_iter tag;
     struct iter_udata udata;
     int n, offset;
@@ -765,7 +771,7 @@ _tag_read(lua_State *L) {
     }
     /* This function figures all the tag data out and pushes the right
      * thing onto the top of the Lua stack */
-    _send_tag_to_lua(L, *hp, data);
+    daxlua_dax_to_lua(L, *hp, data);
 
     free(data);
     return 1;
@@ -809,7 +815,7 @@ _tag_write(lua_State *L) {
     }
     bzero(mask, hp->size);
 
-    result = _get_tag_from_lua(L, *hp, data, mask);
+    result = daxlua_lua_to_dax(L, *hp, data, mask);
     if(result) {
         free(data);
         free(mask);
@@ -1222,6 +1228,8 @@ _set_log_constants(lua_State *L) {
         LOG_PROTOCOL,
         LOG_INFO,
         LOG_DEBUG,
+        LOG_LOGIC,
+        LOG_LOGICERR,
         LOG_USER1,
         LOG_USER2,
         LOG_USER3,
@@ -1246,6 +1254,8 @@ _set_log_constants(lua_State *L) {
         "LOG_PROTOCOL",
         "LOG_INFO",
         "LOG_DEBUG",
+        "LOG_LOGIC",
+        "LOG_LOGICERR",
         "LOG_USER1",
         "LOG_USER2",
         "LOG_USER3",

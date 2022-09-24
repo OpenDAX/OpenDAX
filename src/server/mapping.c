@@ -128,6 +128,7 @@ map_add(tag_handle src, tag_handle dest)
     }
     new_map->next = _db[src.index].mappings;
     _db[src.index].mappings = new_map;
+    _db[src.index].attr |= TAG_ATTR_MAPPING;
 
     return new_map->id;
 }
@@ -155,6 +156,10 @@ map_del(tag_index index, int id) {
                 return 0;
             }
         }
+    }
+    /* If there are no more mappings reset the attribute flag */
+    if(_db[index].mappings == NULL) {
+        _db[index].attr &= ~TAG_ATTR_MAPPING;
     }
     return ERR_NOTFOUND;
 }

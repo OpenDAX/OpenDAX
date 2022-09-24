@@ -51,7 +51,7 @@ run_server(void) {
         printf("Forking problem");
         exit(-1);
     }
-    usleep(100000);
+    usleep(50000);
     return pid;
 }
 

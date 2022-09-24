@@ -235,7 +235,7 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
         result = _add_member_to_cache(ds, index, str);
         if(result) return result;
     }
-    //--printf("add_cdt_to_cache() type = 0x%X, name = %s\n", type, typedesc);
+    //DF("add_cdt_to_cache() type = 0x%X, name = %s", type, typedesc);
     return 0;
 }
 

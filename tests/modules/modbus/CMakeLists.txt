@@ -14,10 +14,6 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# This is the CList file that takes care of all of the compartmentalized tests
-# Most of the tests are written in Python and use the ctypes module to
-# interface with the libraries.
-
 # To run an individual test...
 # ctest -R <testname> -V
 

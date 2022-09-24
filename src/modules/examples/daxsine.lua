@@ -1,4 +1,20 @@
 #!/usr/bin/lua
+--  Copyright (c) 2022 Phil Birkelbach
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
 -- This file outputs sine waves to the given OpenDAX tags.  It's purpose is
 -- to simply show how to do such things.  It can also be used as a way
 -- to test other modules such as historical logging or HMI
@@ -40,7 +56,7 @@ end
 tags = {
         {"tag1", 500, 5.0, 5, 5},
         {"tag2", 200, 40.0, 0, 4},
-        {"tag3", 300, 60.0, 0, 4},
+        {"tag3", 3000, 60.0, 0, 40},
         {"tag4", 4000, 80.0, 0, 4},
         {"tag5", 5000, 90.0, 0, 4},
         {"tag6", 6000, 100.0, 0, 4},
@@ -60,6 +76,6 @@ while true do
     for k, tag in pairs(tags) do
         calc(tag[6], tag[2], tag[3], tag[4], tag[5])
     end
-    dax.sleep(10)
+    dax.sleep(100)
     x = x + 1
 end

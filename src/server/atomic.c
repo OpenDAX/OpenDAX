@@ -151,6 +151,19 @@ atomic_op(tag_handle h, void *data, uint16_t op) {
         case ATOMIC_OP_DEC:
             if(h.type == DAX_BOOL) return ERR_ILLEGAL;
             return _atomic_dec(h, data);
+        case ATOMIC_OP_NOT:
+            return ERR_NOTIMPLEMENTED;
+        case ATOMIC_OP_OR:
+            return ERR_NOTIMPLEMENTED;
+        case ATOMIC_OP_AND:
+            return ERR_NOTIMPLEMENTED;
+        case ATOMIC_OP_NOR:
+            return ERR_NOTIMPLEMENTED;
+        case ATOMIC_OP_NAND:
+            return ERR_NOTIMPLEMENTED;
+        case ATOMIC_OP_XOR:
+            return ERR_NOTIMPLEMENTED;
+
     }
     /* The rest of the data types are not done yet */
     /* TODO Finish the bitwise operators */

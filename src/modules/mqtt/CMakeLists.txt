@@ -17,7 +17,6 @@
 add_executable(mqtt_module mqtt.c mqttopts.c)
 set_target_properties(mqtt_module PROPERTIES OUTPUT_NAME daxmqtt)
 target_link_libraries(mqtt_module dax)
-#target_link_libraries(mqtt_module daxlua_library)
 target_link_libraries(mqtt_module pthread)
 target_link_libraries(mqtt_module paho-mqtt3c)
 

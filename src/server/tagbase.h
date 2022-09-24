@@ -62,6 +62,8 @@
 #define INDEX_STARTED    3
 #define INDEX_LASTMODULE 4
 
+#define CDT_FLAGS_RETAINED 0x80;
+
 typedef struct dax_event_t {
     int id;              /* Unique identifier for this event definition */
 
@@ -89,7 +91,7 @@ typedef struct dax_datamap_t {
 /* This is the internal structure for the tag array. */
 typedef struct {
     tag_type type;
-    unsigned int attr;
+    uint16_t attr;
     unsigned int count;
     char *name;
     int nextevent;           /* Counter for keeping track of event IDs */
@@ -111,7 +113,7 @@ typedef struct {
 
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
-tag_index tag_add(char *name, tag_type type, unsigned int count, uint32_t attr);
+tag_index tag_add(char *name, tag_type type, uint32_t count, uint32_t attr);
 tag_index virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf);
 int tag_del(tag_index idx);
 int tag_get_name(char *, dax_tag *);
@@ -132,8 +134,9 @@ int atomic_op(tag_handle h, void *data, uint16_t op);
 
 /* Custom DataType functions */
 tag_type cdt_create(char *str, int *error);
-unsigned int cdt_get_type(char *name);
-char *cdt_get_name(unsigned int type);
+tag_type cdt_get_type(char *name);
+char *cdt_get_name(tag_type type);
+datatype *cdt_get_entry(tag_type type);
 int type_size(tag_type type);
 int serialize_datatype(tag_type type, char **str);
 

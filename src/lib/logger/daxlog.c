@@ -66,6 +66,10 @@ _topic_to_string(uint32_t topic) {
             return "INFO";
         case LOG_DEBUG:
             return "DEBUG";
+        case LOG_LOGIC:
+            return "LOGIC";
+        case LOG_LOGICERR:
+            return "LOGICERR";
         default:
             return "?";
     }
@@ -82,7 +86,7 @@ _log_stdio(uint32_t topic, void *data, char *str) {
     stdio_service *config;
     config = (stdio_service *)data;
 
-    fprintf(config->file, "%s: %s\n",_topic_to_string(topic), str);
+    fprintf(config->file, "[%s] %s: %s\n",_name, _topic_to_string(topic), str);
 }
 
 static int
@@ -295,7 +299,7 @@ dax_log(uint32_t topic, const char *format, ...)
     vsnprintf(output, LOG_STRING_SIZE, format, val);
     va_end(val);
     if(_service_count == 0 && _default_topics & topic) {
-        printf("%s: %s\n", _topic_to_string(topic), output);
+        printf("[%s] %s: %s\n",_name, _topic_to_string(topic), output);
     } else {
         /* Loop through the services and call the function if
            we have a match */

@@ -2,10 +2,18 @@
 --It is basically a Lua script itself
 
 -- Configuration files that are common for all programs
-dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/log.conf")
 --dofile(configdir .. "/common.conf")
 
-verbosity = 10 --needs to change to the new way
+-- The init_hook function will be run right after the connection
+-- to the tag server is made.
+function init_hook()
+    tag_add("tag_1", "DINT", 1)
+    tag_add("tag_2", "DINT", 1)
+    tag_add("tag_3", "DINT", 1)
+    tag_add("tag_4", "DINT", 1)
+end
+
 
 broker_ip = "127.0.0.1"
 -- broker_ip = "192.168.1.157"
@@ -16,49 +24,82 @@ clientid = "OpenDAX"
 -- username = "uname"
 -- password = "pword"
 
--- Simple subscriptions
+-- Raw subscriptions
+-- If we don't set a filter function then a raw binary copy
+-- will be made to the tags given in the array 'tags' or the
+-- string 'tag'
 s = {}
 s.topic = "dax_topic_1"
-s.tagname = "tag_1"
-s.type = RAW    -- Message should contain raw binary tag data
+s.tags = {"tag_1", "tag_2", "tag_3"}
 s.qos = 0
-add_sub(s)
+--add_sub(s)
 
+function filter_1(topic, payload)
+    print("Topic = " .. topic)
+    print(payload)
+    return tonumber(payload)
+end
+
+s = {}
 s.topic = "dax_topic_2"
-s.tagname = "tag_2"
-add_sub(s)
+s.tags = "tag_4"
+s.filterter = filter_1
+s.qos = 0
+--add_sub(s)
 
+-- Example of a multi tag filterting function and subscription
+function filter_2(topic, payload)
+    print("Topic = " .. topic)
+    print(payload)
+    x={}
+    -- Assuming a comma separated string of numbers...
+    --  i.e.  "1234,2345,5678"
+    for num in string.gmatch(payload, '([^,]+)') do
+        table.insert(x, tonumber(num))
+    end
+    -- The list that is returned should correspond to the number and 
+    -- types of the associated tags given in s.tags
+    return x
+end
+
+s = {}
 s.topic = "dax_topic_3"
-s.tagname = "tag_3"
-s.type = STR   -- Message contains a string that represents the value
-add_sub(s)
+s.tags = {"tag_1", "tag_2", "tag_3"}
+s.qos = 0
+s.filterter = filter_2
+--add_sub(s)
 
 
--- Simple Producers
+-- Simple Producer
+function filter_3(topic, value)
+    return string.filter("%d,%d,%d", value[1], value[2], value[3])
+end
 
 p = {}
 p.topic = "dax_topic_4"
-p.tagname = "tag_4"
-p.format = "[3210]" -- four bytes big endian format
-p.type = RAW      -- send as raw binary data
-p.update_mode = WRITE  -- send on tag's write event
+p.filterter = filter_3
+p.trigger_tag = "tag_4"
+p.trigger_type = CHANGE
+--p.trigger_value = 12
+p.tags = {"tag_1", "tag_2", "tag_3"}
+--p.tags = "tag_1"
 p.qos = 1
 
 add_pub(p)
-
+--[[
 p.topic = "dax_topic_5"
 p.tagname = "tag_5"
 p.type = STR      -- send as a string
-p.format = "Temperature = %.2f deg F" -- printf type string formatting
+p.filter = "Temperature = %.2f deg F" -- printf type string filterting
 p.update_mode = WRITE  -- send on tag's write event
 
-add_pub(p)
+--add_pub(p)
 
 p.topic = "dax_topic_6"
 p.tagname = "tag_6"
 p.update_mode = CHANGE  -- send on tag's change event
 
-add_pub(p)
+--add_pub(p)
 
 p.topic = "dax_topic_7"
 p.tagname = "tag_7"
@@ -69,7 +110,7 @@ p.update_mode = CHANGE  -- send on tag's change event
 --p.update_tag = "tag_5_update" -- if this is set then use this tag for the event instead 
 p.event_data = 2345.432 -- If the update event needs data
 
-add_pub(p)
+--add_pub(p)
 
 
 
@@ -82,19 +123,19 @@ s.tagnames = {"tag_10", "tag_11"}  -- OpenDAX tagnames in an array
 -- There are three ways to read the value
 -- Assumes that the data is the binary representation of the number
 s.type = RAW
-s.format = "[3210][3210]" -- 4 bytes Big endian format
+s.filter = "[3210][3210]" -- 4 bytes Big endian filter
 
--- The received data is a string which we'll parse with scanf type formatting
+-- The received data is a string which we'll parse with scanf type filterting
 -- s.type = STR
--- s.format = "tag1=%f,tag2=%f"  -- A scanf() type format string
+-- s.filter = "tag1=%f,tag2=%f"  -- A scanf() type filter string
 
 -- The received data is a string that we'll parse with a regular expression
 -- Each match is assumed to be the next tag`
 -- s.type = RE
--- s.format = "([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?),([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)"
+-- s.filter = "([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?),([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)"
 
 -- To add the subscription we pass this table to the function
-add_sub(s)
+--add_sub(s)
 
 
 
@@ -113,10 +154,11 @@ p.update_tag = "tag_20_update" -- When the tag UpdateTag changes
 -- There are two ways to write the values
 -- Write the raw binary value
 p.type = RAW
-p.format = "[3210][3210]" -- 4 bytes Big endian format
+p.filter = "[3210][3210]" -- 4 bytes Big endian filter
 
--- Write a string with printf type formatting
+-- Write a string with printf type filterting
 -- p.type = STR
--- p.format = "%f,%f"  -- A printf() type format string
+-- p.filter = "%f,%f"  -- A printf() type filter string
 
 -- add_pub(p)
+--]]

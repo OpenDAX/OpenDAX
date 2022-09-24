@@ -306,11 +306,11 @@ _read_next_message(dax_state *ds)
     result = _message_get(ds->sfd, msg);
     if(result) {
         if(result == ERR_DISCONNECTED) {
-            dax_log(LOG_ERROR, "Server disconnected abruptly\n");
+            dax_log(LOG_ERROR, "Server disconnected abruptly");
         } else if(result == ERR_TIMEOUT) {
             ; /* Do nothing for timeout */
         } else {
-            dax_log(LOG_ERROR, "_message_get() returned error %d\n", result);
+            dax_log(LOG_ERROR, "_message_get() returned error %d", result);
         }
         free(msg);
         return result;
@@ -320,7 +320,7 @@ _read_next_message(dax_state *ds)
         if(ds->emsg_queue_count == ds->emsg_queue_size) {/* FIFO is full */
             if(events_lost % 20 == 0) { /* We only log every 20 of these */
                 events_lost++;
-                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u\n", events_lost);
+                dax_log(LOG_ERROR, "Event received from the server is lost.  Total = %u", events_lost);
             }
             free(ds->emsg_queue[0]); /* Free the top one */
             for(n = 0;n<ds->emsg_queue_size-1;n++) {
@@ -639,9 +639,9 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
         tag->idx = stom_dint( *((int *)&buff[0]) );
         tag->type = stom_udint(*((uint32_t *)&buff[4]));
         tag->count = stom_udint(*((uint32_t *)&buff[8]));
-        tag->attr = stom_udint(*((uint32_t *)&buff[12]));
+        tag->attr = stom_udint(*((uint16_t *)&buff[12]));
         buff[size - 1] = '\0'; /* Just to make sure */
-        strcpy(tag->name, &buff[16]);
+        strcpy(tag->name, &buff[14]);
         cache_tag_add(ds, tag);
         free(buff);
     }
@@ -686,9 +686,9 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
         tag->idx = stom_dint(*((int32_t *)&buff[0]));
         tag->type = stom_dint(*((int32_t *)&buff[4]));
         tag->count = stom_dint(*((int32_t *)&buff[8]));
-        tag->attr = stom_dint(*((int32_t *)&buff[12]));
-        buff[DAX_TAGNAME_SIZE + 16] = '\0'; /* Just to be safe */
-        strcpy(tag->name, &buff[16]);
+        tag->attr = stom_dint(*((int16_t *)&buff[12]));
+        buff[DAX_TAGNAME_SIZE + 14] = '\0'; /* Just to be safe */
+        strcpy(tag->name, &buff[14]);
         /* Add the tag to the tag cache */
         cache_tag_add(ds, tag);
     }
@@ -999,7 +999,7 @@ dax_tag_del_override(dax_state *ds, tag_handle handle) {
 /*!
  * Retrieve the override mask as well as the actual data of the tag.  When the override
  * is set this is the only way to read the 'actual' value as the normal tag reading functions
- * will return the override value.
+ * will return the overridden value.
  * @param ds Pointer to the dax state object.
  * @param handle handle of the tag data to override
  * @param data Pointer to the data buffer
@@ -1482,11 +1482,11 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
 
     size = MSG_DATA_SIZE;
     result = _message_recv(ds, MSG_CDT_GET, buff, &size, 1);
+    pthread_mutex_unlock(&ds->lock);
     if(result == 0) {
         type = stom_udint(*((tag_type *)buff));
         result = add_cdt_to_cache(ds, type, &(buff[4]));
     }
-    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
@@ -1591,7 +1591,7 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
         *result = ERR_ARG;
         return NULL;
     }
-    size = 0;
+    group_size = 0;
     for(n=0; n<count; n++) {
         group_size += h[n].size;
         if(group_size > MSG_TAG_GROUP_DATA_SIZE) {
@@ -1648,6 +1648,18 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
     }
     pthread_mutex_unlock(&ds->lock);
     return id;
+}
+
+
+/*!
+ * Get the size of tag data group in bytes 
+ *
+ * @param id      Pointer to the tag group id
+ * @returns       The size of the group in bytes
+ */
+int
+dax_group_get_size(tag_group_id *id) {
+    return id->size;
 }
 
 /*!

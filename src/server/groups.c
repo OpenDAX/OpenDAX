@@ -107,7 +107,7 @@ group_add(dax_module *mod, uint8_t *handles, uint8_t count) {
 
     mod->tag_groups[index].flags |= GRP_FLAG_NOT_EMPTY;
     mod->tag_groups[index].count = count;
-
+    dax_log(LOG_MSG, "Group Add message from %s", mod->name);
     return index;
 }
 
@@ -121,6 +121,7 @@ group_del(dax_module *mod, int index) {
     mod->tag_groups[index].flags = 0x00;
     mod->tag_groups[index].count = 0;
     mod->groups_size--;
+    dax_log(LOG_MSG, "Group Delete message from %s", mod->name);
     return 0;
 }
 

@@ -21,5 +21,12 @@
 # To run an individual test...
 # ctest -R <testname> -V
 
-add_subdirectory(modbus)
 add_subdirectory(daxc)
+
+if(BUILD_MODBUS)
+  add_subdirectory(modbus)
+endif()
+
+if(BUILD_MQTT)
+  add_subdirectory(mqtt)
+endif()
