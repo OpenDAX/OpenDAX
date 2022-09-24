@@ -1482,11 +1482,11 @@ dax_cdt_get(dax_state *ds, tag_type cdt_type, char *name)
 
     size = MSG_DATA_SIZE;
     result = _message_recv(ds, MSG_CDT_GET, buff, &size, 1);
+    pthread_mutex_unlock(&ds->lock);
     if(result == 0) {
         type = stom_udint(*((tag_type *)buff));
         result = add_cdt_to_cache(ds, type, &(buff[4]));
     }
-    pthread_mutex_unlock(&ds->lock);
     return result;
 }
 
