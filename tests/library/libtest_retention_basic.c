@@ -27,7 +27,10 @@
 #include <sys/wait.h>
 #include "libtest_common.h"
 
-
+/* We have to run two tests because we need the tag server to exit
+   and then start again to test tag retetion.  The first test sets
+   everything up and the second test determines if all is retained
+   properly */
 int
 test_one(int argc, char *argv[])
 {

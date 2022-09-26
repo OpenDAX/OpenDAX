@@ -569,7 +569,7 @@ msg_tag_write(dax_message *msg)
 
     dax_log(LOG_MSG, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
     if(is_tag_readonly(idx)) {
-        return ERR_READONLY;
+        result = ERR_READONLY;
     } else {
         result = tag_write(idx, offset, data, size);
     }

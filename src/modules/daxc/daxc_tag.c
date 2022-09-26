@@ -20,6 +20,7 @@
 
 
 #include "daxc.h"
+#include <ctype.h>
 
 extern dax_state *ds;
 extern int quiet_mode;
@@ -128,14 +129,31 @@ int
 tag_del(char **tokens)
 {
     dax_tag temp_tag;
+    int result;
     
-    if( dax_tag_byname(ds, &temp_tag, tokens[0]) ) {
+    if(isdigit(tokens[0][0])) {
+        result = dax_tag_byindex(ds, &temp_tag, atoi(tokens[0]));
+    } else {
+        result = dax_tag_byname(ds, &temp_tag, tokens[0]);
+    }
+
+    if(result ==  ERR_NOTFOUND) {
         fprintf(stderr, "ERROR: Unknown Tagname %s\n", tokens[0]);
         return 1;
-    } else {
-        if(dax_tag_del(ds, temp_tag.idx)) {
-            fprintf(stderr, "ERROR: Unable to delete tag\n");
-        }
+    } else if(result == ERR_ARG) {
+        fprintf(stderr, "ERROR: Unknown Tag Index %d\n", atoi(tokens[0]));
+        return 1;
+    } else if(result == ERR_DELETED) {
+        fprintf(stderr, "ERROR: Tag was already deleted\n");
+        return 1;
+    }
+    result = dax_tag_del(ds, temp_tag.idx);
+    if(result == ERR_ILLEGAL) {
+        fprintf(stderr, "ERROR: Not allowed to delete that tag\n");
+        return 1;
+    } else if(result) {
+        fprintf(stderr, "ERROR: Unable to delete tag\n");
+        return 1;
     }
     return 0;
 }
