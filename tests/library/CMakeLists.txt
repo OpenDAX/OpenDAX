@@ -14,8 +14,9 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# These internal tests link directly to different parts of the system. So that
-# they can test functions at a low level.
+# These tests exercise the system at the library call level.  The tag server
+# is started and then various library functions are called to test different
+# aspects of the system.
 
 include_directories(../../src/lib)
 include_directories(../../src/server)
@@ -35,8 +36,8 @@ set(test_list event_wait
               event_data
               event_deleted
               event_queue_simple
-#              event_queue_overflow1 
-#              event_queue_overflow2
+              # event_queue_overflow1 
+              # event_queue_overflow2
               dax_write_tag_001
               group_add
               group_read
@@ -44,6 +45,8 @@ set(test_list event_wait
               queue_test
               atomic_inc
               atomic_dec
+              atomic_not
+              atomic_or
               override_basic 
               override_get 
               retention_basic 

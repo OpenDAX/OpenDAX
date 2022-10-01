@@ -18,7 +18,7 @@
 
 /*
  *  This test sends tag handle requests to the server in many different ways and
- *  verifies that the handles that are returned are correctr.
+ *  verifies that the handles that are returned are correct.
  */
 
 #include <common.h>

@@ -17,8 +17,7 @@
  */
 
 /*
- *  This test creates a single write event and uses dax_event_poll() to
- *  to test whether or not it is called properly
+ *  This test checks the atomic decrement operation
  */
 
 #include <common.h>

@@ -16,7 +16,9 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* This is a generic test that runs the given Lua script and returns the exit code */
+/* This is a generic test that runs the given Lua script and returns the exit code
+   It's just like the run_test program except that this one has a thread that fires
+   an event for the Lua script to intercept. */
 
 #include <opendax.h>
 #include <signal.h>

@@ -1147,7 +1147,9 @@ dax_atomic_op(dax_state *ds, tag_handle h, void *data, uint16_t operation) {
     buff[16]=h.bit;                               /* Bit offset */
     *(dax_dint *)&buff[17] = mtos_uint(operation);/* Operation */
 
-    memcpy(&buff[21], data, h.size);
+    if(data != NULL) {
+        memcpy(&buff[21], data, h.size);
+    }
 
     pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_ATOMIC_OP, buff, sendsize);
