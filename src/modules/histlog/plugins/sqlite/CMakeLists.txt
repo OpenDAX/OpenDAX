@@ -18,8 +18,7 @@ include_directories(.)
 
 add_library(dhl_sqlite dhl_sqlite.c)
 
-#target_link_libraries(dax ${LUA_LIBRARIES})
-#target_link_libraries(dax pthread)
+target_link_libraries(dhl_sqlite sqlite3)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     target_compile_options(dhl_sqlite PRIVATE -Wall)
