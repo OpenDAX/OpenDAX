@@ -73,6 +73,10 @@ foreach(file ${files})
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
                                          ../testlog.c 
   )
+  if(SQLite3_FOUND)
+    target_link_libraries(${TESTNAME} sqlite3)
+  endif()
+
 endforeach()
 
 add_test(internal_library_cache cachetest)
@@ -91,4 +95,7 @@ add_executable(groups_test groups_test.c fakefunction.c
                                          ${SERVER_SOURCE_DIR}/virtualtag.c
                                          ../testlog.c 
   )
+if(SQLite3_FOUND)
+  target_link_libraries(groups_test sqlite3)
+endif()
 add_test(internal_server_tag_group groups_test)

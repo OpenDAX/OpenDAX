@@ -185,10 +185,10 @@ get_help(char **tokens) {
         }
     } else if(!strncasecmp(tokens[0], "del", 3)) {
         if(tokens[1] == NULL) {
-            printf("Usage: DEL [TAG|TYPE|MAP|EVENT]\n\n");
+            printf("Usage: DEL [TAG|TYPE|MAP|EVENT]\n");
         } else if(!strncasecmp(tokens[1], "tag", 3)) {
-            printf("Usage: DEL TAG tagname\n\n");
-            printf("THIS IS NOT CURRENTLY IMPLEMENTED\n");
+            printf("Usage: DEL TAG [tagname|index]\n\n");
+            printf("Delete tag given by either the given name or numerical index\n");
         } else if(!strncasecmp(tokens[1], "type", 4)) {
             printf("Usage: DEL TYPE typename\n\n");
             printf("THIS IS NOT CURRENTLY IMPLEMENTED\n");

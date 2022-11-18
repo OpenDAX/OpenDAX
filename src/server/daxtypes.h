@@ -64,7 +64,7 @@ typedef struct dax_Module {
  * members are represented as a linked list */
 struct cdt_member {
     char *name;
-    unsigned int type;
+    uint32_t type;
     uint32_t count;
     struct cdt_member *next;
 };
@@ -75,7 +75,7 @@ typedef struct cdt_member cdt_member;
  * datatype. */
 struct datatype {
     char *name;
-    unsigned char flags;
+    uint8_t flags;
     unsigned int refcount; /* Number of tags of this type */
     cdt_member *members;
 };

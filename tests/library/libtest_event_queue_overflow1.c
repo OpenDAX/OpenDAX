@@ -18,6 +18,9 @@
 
 /*
  *  This test checks that the event queue grows when it's supposed to
+
+ !!!! Right now the event message queue in the library is of a fixed size
+      and does not grow so these queue growing tests will fail.
  */
 
 #include <common.h>

@@ -37,6 +37,7 @@ _test_simple(void) {
     /* Initialize the module */
     mod.groups_size = 0;
     mod.tag_groups = NULL;
+    mod.name = "test";
 
     index = group_add(&mod, NULL, 0);
     if(index < 0) exit(index);
@@ -55,6 +56,7 @@ _test_group_array_growth(void) {
     /* Initialize the module */
     mod.groups_size = 0;
     mod.tag_groups = NULL;
+    mod.name = "test";
 
     for(n=0;n<TAG_GROUP_START_COUNT;n++) {
         index = group_add(&mod, NULL, 0);
@@ -85,6 +87,7 @@ _test_group_size(void) {
     /* Initialize the module */
     mod.groups_size = 0;
     mod.tag_groups = NULL;
+    mod.name = "test";
 
     index = group_add(&mod, NULL, 0);
     if(index < 0) exit(index);

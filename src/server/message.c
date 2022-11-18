@@ -466,12 +466,13 @@ msg_tag_del(dax_message *msg)
     result = tag_get_index(idx, &tag);
     if(result) {
         dax_log(LOG_MSGERR, "Tag Delete Message with unknown tag");
-        return ERR_ARG;
+        result = ERR_ARG;
+    } else if(tag.name[0] == '_') {
+        dax_log(LOG_MSGERR, "Modules are not allowed to remove reserved tags");
+        result = ERR_ILLEGAL; /* Modules are not allowed to remove reserved tags */
+    } else {
+        result = tag_del(idx);
     }
-    if(msg->data[8] == '_') {
-        return ERR_ILLEGAL; /* Modules are not allowed to remove reserved tags */
-    }
-    result = tag_del(idx);
 
     if(!result) {
         _message_send(msg->fd, MSG_TAG_DEL, &idx, sizeof(tag_index), RESPONSE);
@@ -568,7 +569,7 @@ msg_tag_write(dax_message *msg)
 
     dax_log(LOG_MSG, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
     if(is_tag_readonly(idx)) {
-        return ERR_READONLY;
+        result = ERR_READONLY;
     } else {
         result = tag_write(idx, offset, data, size);
     }

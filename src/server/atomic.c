@@ -89,7 +89,7 @@ _atomic_inc(tag_handle h, void *data) {
             *(dax_lreal *)&_db[h.index].data[h.byte] += *(dax_lreal *)data;
             return 0;
     }
-    return 0;
+    return 1;
 }
 
 static int
@@ -133,8 +133,82 @@ _atomic_dec(tag_handle h, void *data) {
             *(dax_lreal *)&_db[h.index].data[h.byte] -= *(dax_lreal *)data;
             return 0;
     }
-    return 0;
+    return 1;
 }
+
+static int
+_atomic_not(tag_handle h, void *data) {
+    int n;
+    
+    if(h.type == DAX_REAL || h.type == DAX_LREAL) {
+        return ERR_ILLEGAL;
+    } else if(h.type == DAX_BOOL) {
+        // There has got to be a more efficient way to do this but we're gonna do it the
+        // easy way for now.  Just looping through each bit in turn.
+        int byte = h.byte;
+        int bit = h.bit;
+        for(n=0;n<h.count;n++) {
+            _db[h.index].data[byte] ^= (0x01 << bit);
+            bit++;
+            if(bit==8) {
+                byte++;
+                bit = 0;
+            }
+        }
+        return 0;
+    } else {
+        for(n=0;n<h.size;n++) {
+            *(dax_byte *)&_db[h.index].data[h.byte+n] = ~*(dax_byte *)&_db[h.index].data[h.byte+n]; 
+        }
+        return 0;
+    }
+    return 1;
+}
+
+static int
+_atomic_or(tag_handle h, void *data) {
+    int n;
+    dax_byte *_data;
+    _data = (dax_byte *)data;
+    dax_byte temp, mask ;
+
+    if(h.type == DAX_REAL || h.type == DAX_LREAL) {
+        return ERR_ILLEGAL;
+    } else if(h.type == DAX_BOOL && !(h.count % 8 == 0 && h.bit == 0)) {
+        DF("h.count = %d", h.count);
+        DF("h.size = %d", h.size);
+        DF("h.bit = %d", h.bit);
+        DF("h.byte = %d", h.byte);
+
+        /* This i s a bit mask to clean up the higher order (spare) bits that
+         * may be in data */
+        mask = ~(0xFF << (h.count%8));
+        DF("_data[1] = %X", _data[1]);
+        _data[h.count/8] &= mask;
+        DF("mask = %X", mask);
+        DF("_data[1] = %X", _data[1]);
+        for(n=0; n<h.size; n++) {
+            DF("data[%d] = %d", n, _data[n]);
+            temp = 0;
+            if(n != 0) {
+                temp = (_data[n-1] >> (8-h.bit));
+                DF("temp = %X", temp);    
+            }
+            temp |= (_data[n] << h.bit);
+            DF("temp = %X", temp);
+            ((dax_byte *)_db[h.index].data)[h.byte+n] |= temp; 
+        }
+        return 0;
+    } else {
+        DF("Easy way!!!!");
+        for(n=0;n<h.size;n++) {
+            *(dax_byte *)&_db[h.index].data[h.byte+n] |= ((dax_byte *)data)[h.byte+n]; 
+        }
+        return 0;
+    }
+    return 1;
+}
+
 
 
 int
@@ -152,9 +226,9 @@ atomic_op(tag_handle h, void *data, uint16_t op) {
             if(h.type == DAX_BOOL) return ERR_ILLEGAL;
             return _atomic_dec(h, data);
         case ATOMIC_OP_NOT:
-            return ERR_NOTIMPLEMENTED;
+            return _atomic_not(h, data);
         case ATOMIC_OP_OR:
-            return ERR_NOTIMPLEMENTED;
+            return _atomic_or(h, data);
         case ATOMIC_OP_AND:
             return ERR_NOTIMPLEMENTED;
         case ATOMIC_OP_NOR:

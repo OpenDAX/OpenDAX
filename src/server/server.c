@@ -89,7 +89,7 @@ messagethread(void)
     while(1) {
         result = msg_receive();
         if(result) {
-            dax_log(LOG_ERROR, "Message received with error: %d\n", result);
+            dax_log(LOG_ERROR, "Message received with error: %d", result);
             sleep(1);
         }
     }

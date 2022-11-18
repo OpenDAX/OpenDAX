@@ -1,5 +1,5 @@
 /*  OpenDAX - An open source data acquisition and control system
- *  Copyright (c) 2021 Phil Birkelbach
+ *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  */
 
 /*
- *  This test checks that automic increment operation
+ *  This test verifies that deleting a system tag will fail
  */
 
 #include <common.h>
@@ -44,17 +44,15 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     }
-    result = dax_tag_add(ds, &h, "Test1", DAX_DINT, 1, 0);
-    if(result) return -1;
-    temp = 12;
-    result = dax_write_tag(ds, h, &temp);
-    if(result) return -1;
-    temp = 2;
-    result = dax_atomic_op(ds, h, &temp, ATOMIC_OP_INC);
-    if(result) return -1;
-    result = dax_read_tag(ds, h, &temp);
-    if(result) return -1;
-    if(temp != 14) return -1;
+    
+    result = dax_tag_handle(ds, &h, "_time", 0);
+    if(result) return result;
+    /* This should fail */
+    result = dax_tag_del(ds, h.index);
+    if(result != ERR_ILLEGAL) {
+        DF("Should not have been able to delete that tag");
+        return -1;
+    }
     return 0;
 }
 
