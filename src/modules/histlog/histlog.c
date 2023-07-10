@@ -29,7 +29,7 @@ static void getout(int exitstatus);
 
 dax_state *ds;
 static int _quitsignal;
-static unsigned int _flush_interval;
+static double _flush_interval;
 extern tag_config *tag_list;
 
 static int
@@ -220,8 +220,8 @@ main(int argc,char *argv[]) {
     int result;
     uint32_t loopcount = 0, interval = 1;
     int tag_failures = -1;
-    struct timespec ts;
-    time_t lasttime=0;
+    double time_now;
+    double lasttime=0;
 
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
@@ -245,8 +245,8 @@ main(int argc,char *argv[]) {
         dax_log(LOG_ERROR, "Unable to load a plugin");
         kill(getpid(), SIGQUIT);
     }
-    _flush_interval = (unsigned int)strtol(dax_get_attr(ds, "flush_interval"), NULL, 0);
-    DF("flush interval set to %d", _flush_interval);
+    _flush_interval = atof(dax_get_attr(ds, "flush_interval"));
+    DF("flush interval set to %f", _flush_interval);
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_log(LOG_FATAL, "Unable to find OpenDAX");
@@ -257,15 +257,18 @@ main(int argc,char *argv[]) {
     lasttime = 0;
 
     while(1) {
-        clock_gettime(CLOCK_REALTIME, &ts);
-        if(ts.tv_sec > lasttime + _flush_interval) {
+        time_now = hist_gettime();
+        //clock_gettime(CLOCK_REALTIME, &ts);
+        //if(ts.tv_sec > lasttime + _flush_interval) {
+        if(time_now > lasttime + _flush_interval) {
             if(tag_failures && loopcount % interval == 0) {
                 tag_failures = _add_tags();
                 interval += 1;
                 if(interval > 12) interval=12;
             }
             flush_data();
-            lasttime = ts.tv_sec;
+            //lasttime = ts.tv_sec;
+            lasttime = time_now;
             loopcount++;
         }
         /* The first time through and as long as we have some unfound tags
