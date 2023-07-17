@@ -98,8 +98,8 @@ add_tag(const char *tagname, uint32_t type, const char *attributes) {
     if(tag == NULL) return NULL;
     tag->name = tagname;
     tag->type = type;
+    dax_log(LOG_DEBUG, "Added tag %s type = %d", tag->name, tag->type);
 
-    fprintf(stderr, "Adding ye olde tag %s type = %d\n", tagname, type);
     return tag;
 }
 
@@ -115,7 +115,6 @@ free_tag(tag_object *tag) {
 int
 write_data(tag_object *tag, void *value, double timestamp) {
     char val_string[256];
-
     if(value == NULL) {
         fprintf(log_file, "%s,%f,NULL\n", tag->name, timestamp);
     } else {
@@ -138,7 +137,7 @@ _add_tags(void) {
 }
 
 int
-flush_data(void) {
+flush_data(double time) {
     static int firstrun = 1;
 
     if(firstrun) {

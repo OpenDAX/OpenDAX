@@ -18,6 +18,10 @@
  *  Main source code file for the OpenDAX Historical Logging SQLite plugin
  */
 
+// TODO:
+//   Add indexes to make queries more efficient (maybe configuration???)
+//   Add prepared queries for adding data and purging the database
+
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -26,81 +30,138 @@
 #include "dhl_sqlite.h"
 
 static dax_state *ds;
-static tag_handle rotate_handle;
 
-static const char *log_directory;
-static char *rotate_tag;
-static FILE *log_file;
-static int rotate_flag;
+static const char *database_filename;
+static sqlite3 *log_db;
+static double purge_interval;
 
 static double (*_gettime)(void);
 
-static void
-_rotate_callback(dax_state *_ds, void *udata) {
-    rotate_flag = 1;
-}
-
-static void
+static int
 _open_file(void) {
-    char filename[256]; /* Should probably allocate this */
-
-    snprintf(filename, 256, "%s/dax_%f.log", log_directory, _gettime());
-    log_file = fopen(filename, "a");
+    int result;
+    result = sqlite3_open(database_filename, &log_db);
+    if(result != SQLITE_OK) {
+        dax_log(LOG_ERROR, "Unable to open database file %s", database_filename);
+    }
+    return result;
 }
+
+static int
+_build_database(sqlite3 *db) {
+    char *errorMsg = NULL;
+    int result;
+    char *sql = "CREATE TABLE Tags (" \
+        "id	INTEGER,        " \
+        "tagname	TEXT NOT NULL UNIQUE," \
+        "description	TEXT," \
+        "type INTEGER NOT NULL," \
+        "PRIMARY KEY(id)" \
+        ");" \
+        "CREATE TABLE Data ( " \
+	    "id	INTEGER NOT NULL, " \
+	    "tagid	INTEGER NOT NULL, " \
+	    "timestamp REAL NOT NULL," \
+	    "data	NUMERIC, " \
+	    "PRIMARY KEY(id), " \
+	    "FOREIGN KEY(tagid) REFERENCES Tags(id) " \
+        ");" \
+        "CREATE TABLE MetaData ( " \
+	    "id	INTEGER NOT NULL, " \
+	    "key	TEXT NOT NULL UNIQUE, " \
+	    "val	TEXT NOT NULL, " \
+	    "PRIMARY KEY(id)" \
+	    ");"; 
+    result = sqlite3_exec(db, sql, NULL, 0, &errorMsg);
+    if( result != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s - %d\n", errorMsg, result);
+        sqlite3_free(errorMsg);
+    } else {
+        fprintf(stdout, "Table created successfully\n");
+    }
+    result = sqlite3_exec(db, "INSERT INTO MetaData(key, val) VALUES ('VERSION', '1');", NULL, 0, &errorMsg);
+    if( result != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s - %d\n", errorMsg, result);
+        sqlite3_free(errorMsg);
+    }
+    result = sqlite3_exec(db, "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;", NULL, 0, &errorMsg);
+    if( result != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s - %d\n", errorMsg, result);
+        sqlite3_free(errorMsg);
+    }
+    return 0;
+
+}
+
 
 int
 init(dax_state *_ds) {
-    int result;
     lua_State *L;
     const char *s;
 
     ds = _ds;
     L = dax_get_luastate(ds);
-    lua_getglobal(L, "directory");
+    lua_getglobal(L, "filename");
     s = lua_tostring(L, -1);
     if(s == NULL) {
-        log_directory = "logs";
+        database_filename = "logs";
     } else {
-        log_directory = strdup(s);
+        database_filename = strdup(s);
     }
     lua_pop(L, 1);
 
-    lua_getglobal(L, "rotate_tag");
+    /* The database is constantly  purge of data that is older than now - purge_interval*/
+    lua_getglobal(L, "purge_interval");
     s = lua_tostring(L, -1);
     if(s == NULL) {
-        rotate_tag = "hist_rotate";
+        purge_interval = 0.0;  /* Zero disables the feature */
     } else {
-        rotate_tag = strdup(s);
+        purge_interval = atof(s);
     }
+    dax_log(LOG_DEBUG, "Purge interval set to %f", purge_interval);
     lua_pop(L, 1);
 
-    DIR* dir = opendir(log_directory);
-    if (dir) {
-        /* Directory exists. */
-        closedir(dir);
-    } else if (ENOENT == errno) {
-        result = mkdir(log_directory, 0777);
-        if(result) {
-            dax_log(LOG_ERROR, "%s", strerror(errno));
-        }
-    } else {
-        dax_log(LOG_ERROR, "%s", strerror(errno));
-    }
     _open_file();
+    _build_database(log_db);
     return 0;
 }
 
+static int
+_add_tag_callback(void *userdata, int count, char** val, char** key) {
+    int n;
+    uint32_t *tag_index = (uint32_t*)userdata;
+    *tag_index = atoll(val[0]);
+    return 0;
+}
 
 tag_object *
 add_tag(const char *tagname, uint32_t type, const char *attributes) {
     tag_object *tag;
+    char *errorMsg = NULL;
+    int result;
+    char sql[256];
 
     tag = malloc(sizeof(tag_object));
     if(tag == NULL) return NULL;
     tag->name = tagname;
     tag->type = type;
-
-    fprintf(stderr, "Adding ye olde tag %s type = %d\n", tagname, type);
+    
+    snprintf(sql, 256, "INSERT INTO Tags('tagname', 'type') VALUES ('%s', 2)", tagname);
+    result = sqlite3_exec(log_db, sql, NULL, 0, &errorMsg);
+    if(result == SQLITE_CONSTRAINT) {
+        dax_log(LOG_DEBUG, "Tag %s already exists in the database", tagname); // TODO: Check that the type is the same and error out otherwise
+        sqlite3_free(errorMsg);
+    } else if( result != SQLITE_OK){
+        dax_log(LOG_ERROR, "SQL: %s - %d", errorMsg, result);
+        sqlite3_free(errorMsg);
+    }
+    snprintf(sql, 256, "SELECT id FROM Tags WHERE tagname = '%s';", tagname); 
+    result = sqlite3_exec(log_db, sql, _add_tag_callback, &tag->tag_index, &errorMsg);
+    if( result != SQLITE_OK ){
+        dax_log(LOG_ERROR, "SQL: %s - %d", errorMsg, result);
+        sqlite3_free(errorMsg);
+    }
+    dax_log(LOG_DEBUG, "Added tag %s type = %d, index = %d", tag->name, tag->type, tag->tag_index);
     return tag;
 }
 
@@ -116,46 +177,49 @@ free_tag(tag_object *tag) {
 int
 write_data(tag_object *tag, void *value, double timestamp) {
     char val_string[256];
-
+    char *errorMsg = NULL;
+    int result;
+    char sql[256];
+    
     if(value == NULL) {
-        fprintf(log_file, "%s,%f,NULL\n", tag->name, timestamp);
+        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp') VALUES (%d, %f);", tag->tag_index, timestamp); 
     } else {
         dax_val_to_string(val_string, 256, tag->type, value, 0);
-        fprintf(log_file, "%s,%f,%s\n", tag->name, timestamp, val_string);
+        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp','data') VALUES (%d, %f, %s);", tag->tag_index, timestamp, val_string); 
+    }
+    result = sqlite3_exec(log_db, sql, _add_tag_callback, &tag->tag_index, &errorMsg);
+    if( result != SQLITE_OK ){
+        dax_log(LOG_ERROR, "Adding Data: %s - %d", errorMsg, result);
+        sqlite3_free(errorMsg);
     }
     return 0;
 }
 
 static void
 _add_tags(void) {
-    int result;
-
-    result = dax_tag_add(ds, &rotate_handle, rotate_tag, DAX_BOOL, 1, 0);
-    if(result) {
-        dax_log(LOG_ERROR, "Unable to add file rotation tag %s", rotate_tag);
-    } else {
-        result=  dax_event_add(ds, &rotate_handle, EVENT_SET, NULL, NULL, _rotate_callback, NULL, NULL);
-    }
+    // Used to add any extra tags that this plugin needs
 }
 
 int
-flush_data(void) {
+flush_data(double time) {
+    int result;
     static int firstrun = 1;
+    char *errorMsg = NULL;
+    char sql[256];
 
     if(firstrun) {
         _add_tags();
         firstrun = 0;
     }
-    if(rotate_flag) {
-        dax_sint val = 0;
-        DF("rotate");
-        fclose(log_file);
-        _open_file();
-        dax_write_tag(ds, rotate_handle, &val); /* reset the command */
-        rotate_flag = 0;
+    if(purge_interval > 0.0) {
+        snprintf(sql, 256, "DELETE FROM Data WHERE timestamp < %f;", time - purge_interval); 
+
+        result = sqlite3_exec(log_db, sql, NULL, 0, &errorMsg);
+        if( result != SQLITE_OK ){
+            dax_log(LOG_ERROR, "Database Purge: %s - %d", errorMsg, result);
+            sqlite3_free(errorMsg);
+        }   
     }
-    fflush(log_file);
-    // TODO: Should also create new files and delete old files based on configuration here
     return 0;
 }
 

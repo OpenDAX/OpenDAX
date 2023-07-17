@@ -24,5 +24,5 @@
 typedef struct tag_object {
     const char *name;
     tag_type type;
-    int handle;
+    uint32_t tag_index; /* Database index to use as FK */
 } tag_object;
