@@ -380,6 +380,7 @@ _connection_thread(void *arg)
         return NULL;
     } else {
         result = ds->sfd;
+        ds->error_code = result;
         pthread_barrier_wait(&ds->connect_barrier);
     }
     return NULL;
@@ -389,7 +390,7 @@ _connection_thread(void *arg)
 /*!
  * Setup the module data structures and send registration message
  * to the server.
- * 
+ *
  * @param ds Pointer to the dax state object.
  *
  * @returns Zero on success or an error code otherwise
@@ -415,9 +416,9 @@ dax_connect(dax_state *ds)
 /*!
  * Unregister our client module with the server and disconnect
  * from the server
- * 
+ *
  * @param ds The pointer to the dax state object
- * 
+ *
  * @returns Zero on success or an error code otherwise
  */
 int
@@ -488,7 +489,7 @@ dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
     return 0;
 }
 
-/*! 
+/*!
  * Adds a tag to the tag server.
  * @param ds The pointer to the dax state object
  * @param h  Pointer to a tag handle structure.  This structure will be filled
@@ -497,7 +498,7 @@ dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
  * @param name Pointer to the name of the new name
  * @param type Data type.
  * @param count If count is greater than 1 then an array is created.
- * 
+ *
  * @returns Zero on success and an error code otherwise
  */
 int
@@ -563,10 +564,10 @@ dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, 
 
 /*!
  * Delete a tag from the tagserver.
- * 
+ *
  * @param ds Pointer to the dax state object
  * @param index Database index of the tag to be deleted
- * 
+ *
  * @returns Zero on success or an error code otherwise
  */
 int
@@ -576,7 +577,7 @@ dax_tag_del(dax_state* ds, tag_index index)
     size_t size;
     char buff[sizeof(tag_index)];
     *((uint32_t *)&buff[0]) = mtos_udint(index);
-    
+
     pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_DEL, buff, sizeof(buff));
     if(result) {
@@ -587,17 +588,17 @@ dax_tag_del(dax_state* ds, tag_index index)
     size = 4; /* we just need the handle */
     result = _message_recv(ds, MSG_TAG_DEL, buff, &size, 1);
     pthread_mutex_unlock(&ds->lock);
-    return result;        
+    return result;
 }
 
 /*!
  * Retrieve a tag definition based on the tags name.
- * 
+ *
  * @param ds Pointer to the dax state object
  * @param tag Pointer to the structure that this function will
  *            fill with the tags information
  * @param name The name of the tag that we are requesting
- * 
+ *
  * @returns Zero on success or an error code otherwise
  */
 int
@@ -651,12 +652,12 @@ dax_tag_byname(dax_state *ds, dax_tag *tag, char *name)
 
 /*!
  * Retrieve the tag by it's index.
- * 
+ *
  * @param ds Pointer to the dax state object
  * @param tag Pointer to the structure that this function will
  *            fill with the tags information
  * @param idx The index of the tag that we are requesting
- * 
+ *
  * @returns Zero on success or an error code otherwise
  */
  int
@@ -701,14 +702,14 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
  * like it appears in the server.  It is up to the module to convert
  * the data to the servers's number format.  There are other functions
  * in this library to help with the conversion.
- * 
+ *
  * @param ds The pointer to the dax state object
- * @param idx Tag index found in the tag_handle of the tag as 
- *            returned by the dax_tag_add() function.  
+ * @param idx Tag index found in the tag_handle of the tag as
+ *            returned by the dax_tag_add() function.
  * @param offset The byte offset within the data area of the tag
  * @param data Pointer to a data area where the data will be written
  * @size size The number of bytes to read.
- * 
+ *
  * @returns Zero upon success or an error code otherwise
  */
 int
@@ -725,7 +726,7 @@ dax_read(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size)
     *((tag_index *)&buff[0]) = mtos_dint(idx);
     *((uint32_t *)&buff[4]) = mtos_dint(offset);
     *((uint32_t *)&buff[8]) = mtos_dint(size);
-    
+
     pthread_mutex_lock(&ds->lock);
     result = _message_send(ds, MSG_TAG_READ, (void *)buff, sizeof(buff));
     if(result) {
@@ -748,7 +749,7 @@ dax_read(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size)
 /*!
  * Raw low level database write.  Used to write raw data to the database.
  * This function makes no assumptions about the type of data and simply
- * writes the data to the database. It is assumed that the data is 
+ * writes the data to the database. It is assumed that the data is
  * already in the servers number format.
  * @param ds Pointer to the dax state object.
  * @param idx The index of the tag that we are writing to
@@ -756,7 +757,7 @@ dax_read(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size)
  *               writing the data
  * @param data Pointer to the data that we wish to write
  * @param size Size of the data that we wish to write in bytes
- * 
+ *
  * @returns Zero upon success or an error code otherwise
  */
 int
@@ -778,8 +779,8 @@ dax_write(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size
 
     /* Write the data to the message buffer */
     *((tag_index *)&buff[0]) = mtos_dint(idx);
-    *((uint32_t *)&buff[4]) = mtos_dint(offset); 
-    
+    *((uint32_t *)&buff[4]) = mtos_dint(offset);
+
     memcpy(&buff[8], data, size);
 
     pthread_mutex_lock(&ds->lock);
@@ -814,7 +815,7 @@ dax_write(dax_state *ds, tag_index idx, uint32_t offset, void *data, size_t size
  *             any bit is clear (=0) in this mask the data in the tag server
  *             will remain unchanged.
  * @param size Size of the data that we wish to write in bytes
- * 
+ *
  * @returns Zero upon success or an error code otherwise
 */
 int
@@ -1172,9 +1173,9 @@ dax_atomic_op(dax_state *ds, tag_handle h, void *data, uint16_t operation) {
 /*!
  * Add an event to the tag server.  An event is triggered when the conditions
  * given become true.
- * 
+ *
  * @param ds Pointer to the dax state ojbect
- * @param h  Pointer to a handle that repreents the tag or the part of the 
+ * @param h  Pointer to a handle that repreents the tag or the part of the
  *           tag that we wish to apply the event to.
  * @param event_type The type of event
  * @param data Any data that may be required by this event.  For example if
@@ -1194,7 +1195,7 @@ dax_atomic_op(dax_state *ds, tag_handle h, void *data, uint16_t operation) {
  * @param free_callback If given, this function will be called when the event
  *                      is deleted.  This gives the module a method to free
  *                      the udata if necessary.  Can be set to NULL if not needed.
- * 
+ *
  * @returns Zero on success or an error code otherwise.
  */
 int
@@ -1261,10 +1262,10 @@ dax_event_add(dax_state *ds, tag_handle *h, int event_type, void *data,
 
 /*!
  * Delete the given event from the tag server
- * 
+ *
  * @param ds Pointer to the dax state object.
  * @param id The identifier of the event that we wish to remove.
- * 
+ *
  * @returns Zero on success or an error code otherwise
  */
 
@@ -1444,7 +1445,7 @@ dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type)
  *
  * If this function returns success then it can be assumed that
  * the type is in the cache and can then be retrieved there.
- * 
+ *
  * @param ds Pointer to the dax state object
  * @param cdt_type Identifier to the type that we are requesting
  *                 This can be set to zero of name is being used
@@ -1654,7 +1655,7 @@ dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t opti
 
 
 /*!
- * Get the size of tag data group in bytes 
+ * Get the size of tag data group in bytes
  *
  * @param id      Pointer to the tag group id
  * @returns       The size of the group in bytes

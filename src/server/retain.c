@@ -24,14 +24,16 @@
 #include "tagbase.h"
 #include <sys/stat.h>
 #include <fcntl.h>
+#ifdef HAVE_SQLITE
 #include <sqlite3.h>
+#endif
 
 extern _dax_tag_db *_db;
 
 #ifdef HAVE_SQLITE
 static sqlite3 *_sql;
 static sqlite3_stmt *update_stmt;
-    
+
 #else
 static int _fd;
 static uint16_t _version;
@@ -47,7 +49,7 @@ _create_types(void) {
     int result, error;
     char *name;
     char *definition;
-    
+
     result = sqlite3_prepare_v2(_sql, "SELECT name,definition FROM types ORDER BY id;", -1, &stmt, NULL);
     if(result != SQLITE_OK) {
         /* Most errors are because we have a new file */
@@ -84,7 +86,7 @@ _create_tags(void) {
     tag_index tag_index;
 
 
-    // CREATE ALL THE DATATYPES FIRST 
+    // CREATE ALL THE DATATYPES FIRST
     result = sqlite3_prepare_v2(_sql, "SELECT name,type,count,data FROM tags;", -1, &stmt, NULL);
     if(result != SQLITE_OK) {
         /* Most errors are because we have a new file */
@@ -98,14 +100,14 @@ _create_tags(void) {
         count = sqlite3_column_int(stmt, 2);
         data =  sqlite3_column_blob(stmt, 3);
         size =  sqlite3_column_bytes(stmt, 3);
-        
+
         tag_index = tag_add(name, cdt_get_type(type), count, 0);
-        
+
         if(tag_index < 0) {
             dax_log(LOG_ERROR, "Retained tag not created properly");
         } else {
             memcpy(_db[tag_index].data, data, MIN(size, tag_get_size(tag_index)));
-        } 
+        }
     }
     if(result != SQLITE_DONE) {
         dax_log(LOG_ERROR, "Problem writing tags to database - %d", result);
@@ -330,7 +332,7 @@ _add_type(tag_type type) {
     if(dt == NULL) {
         dax_log(LOG_ERROR, "Bad type passed");
     }
-    /* Loop through all the members and recursively add any 
+    /* Loop through all the members and recursively add any
        compound data types that we find */
     next = dt->members;
     while(next != NULL) {
@@ -342,9 +344,9 @@ _add_type(tag_type type) {
     /* Turn the type into a string that we can use to reload it later */
     serialize_datatype(type, &type_str);
     if(_sql == NULL) return ERR_FILE_CLOSED;
-    
+
     snprintf(query, 256, "INSERT INTO main.types(id,name,definition) VALUES (%d,'%s',?);",index, dt->name);
-    
+
     result = sqlite3_prepare_v2(_sql, query, -1, &stmt , NULL);
     if(result != SQLITE_OK) {
         dax_log(LOG_ERROR, "Unable to create tag in retention ");
@@ -357,7 +359,7 @@ _add_type(tag_type type) {
         return -1;
     }
     sqlite3_finalize(stmt);
-    
+
     return 0;
 }
 
@@ -367,16 +369,16 @@ ret_add_tag(int index) {
     int id;
     int result;
     char query[256];
-    
+
     dax_log(LOG_DEBUG, "Adding Retained Tag at index %d", index);
     /* TODO: Implement retaining custom data type tags */
     if(IS_CUSTOM(_db[index].type)) {
         _add_type(_db[index].type);
     }
     if(_sql == NULL) return ERR_FILE_CLOSED;
-    snprintf(query, 256, "INSERT INTO main.tags(name,type,count,data) VALUES ('%s','%s',%d,NULL);", 
+    snprintf(query, 256, "INSERT INTO main.tags(name,type,count,data) VALUES ('%s','%s',%d,NULL);",
                          _db[index].name, cdt_get_name(_db[index].type), _db[index].count);
-    
+
     result = sqlite3_prepare_v2(_sql, query, -1, &stmt , NULL);
     if(result != SQLITE_OK) {
         dax_log(LOG_ERROR, "Unable to create tag in retention ");
@@ -397,9 +399,9 @@ ret_add_tag(int index) {
 
 int
 ret_del_tag(int index) {
-    
+
     dax_log(LOG_DEBUG, "Deleting Retained Tag at index %d", index);
-    
+
     return 0;
 }
 
@@ -422,7 +424,7 @@ ret_tag_write(int index) {
 
 int
 ret_close(void) {
-    
+
     dax_log(LOG_DEBUG, "Closing Tag Data Retention");
     return 0;
 }
