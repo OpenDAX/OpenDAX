@@ -27,7 +27,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include "../modtest_common.h"
+#include "modbus_common.h"
 
 struct mod_frame {
     uint16_t tid;

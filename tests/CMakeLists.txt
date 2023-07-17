@@ -21,6 +21,8 @@
 # To run an individual test...
 # ctest -R <testname> -V
 
+add_compile_definitions(BUILD_DIR="${CMAKE_BINARY_DIR}")
+
 if(INTERNAL_TESTS)
   add_subdirectory(internal)
 endif()

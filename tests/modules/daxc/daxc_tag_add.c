@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include "../modtest_common.h"
+#include "../../modtest_common.h"
 
 int fin, fout, ferr;
 dax_state *ds;

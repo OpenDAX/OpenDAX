@@ -20,7 +20,7 @@
 #include <pthread.h>
 #include <common.h>
 #include <MQTTClient.h>
-#include "../modtest_common.h"
+#include "../../modtest_common.h"
 
 typedef struct {
     pthread_mutex_t sub_lock;

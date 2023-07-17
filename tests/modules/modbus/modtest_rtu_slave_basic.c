@@ -32,7 +32,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "../modtest_common.h"
 #include "modbus_common.h"
 
 struct mod_frame {

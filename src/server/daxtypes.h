@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  * This header contains the private type definitions for the opendax server.
  * For definitions common to the server and the library see libcommon.h
  */
@@ -47,7 +47,7 @@ typedef struct dax_Module {
     char *name;
     in_addr_t host;     /* the modules host id */
     unsigned int flags; /* Configuration Flags for the module */
-    unsigned int state; /* Modules Current Running State */
+    dax_uint state;     /* Modules Current Running State */
     int fd;             /* The socket file descriptor for this module */
     tag_index tagindex; /* The index of the tag that represents this module */
     uint32_t timeout;  /* Module communication timeout. */
@@ -60,7 +60,7 @@ typedef struct dax_Module {
 
 /* These are the compound datatype definitions. */
 
-/* This is the compound datatype member definition.  The 
+/* This is the compound datatype member definition.  The
  * members are represented as a linked list */
 struct cdt_member {
     char *name;

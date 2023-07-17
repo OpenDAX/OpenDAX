@@ -19,12 +19,12 @@
 
 
 # Check server responses
-add_executable(module_daxc_tag daxc_tag.c ../modtest_common.c)
+add_executable(module_daxc_tag daxc_tag.c ../../modtest_common.c)
 target_link_libraries(module_daxc_tag dax)
 add_test(module_daxc_tag module_daxc_tag)
 set_tests_properties(module_daxc_tag PROPERTIES TIMEOUT 10)
 
-add_executable(module_daxc_tag_add daxc_tag_add.c ../modtest_common.c)
+add_executable(module_daxc_tag_add daxc_tag_add.c ../../modtest_common.c)
 target_link_libraries(module_daxc_tag_add dax)
 add_test(module_daxc_tag_add module_daxc_tag_add)
 set_tests_properties(module_daxc_tag_add PROPERTIES TIMEOUT 10)

@@ -29,27 +29,9 @@
 #include <assert.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "../modtest_common.h"
 
 int error = 0;
-
-pid_t
-run_server(void) {
-    int result;
-    pid_t pid;
-
-    pid = fork();
-
-    if(pid == 0) { // Child
-        execl("../../src/server/tagserver", "../../src/server/tagserver", "-v", NULL);
-        printf("Failed to launch tagserver\n");
-        exit(-1);
-    } else if(pid < 0) {
-        exit(-1);
-    } else {
-       return pid;
-    }
-    return result;
-}
 
 static
 void *_event_thread(void *arg) {

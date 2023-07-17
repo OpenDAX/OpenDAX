@@ -28,7 +28,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "../modtest_common.h"
+#include "modbus_common.h"
 
 /* sock: socket on which to send data
  * outbuff: pointer to the bytes that we want to send

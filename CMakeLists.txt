@@ -18,8 +18,8 @@ include(CheckIncludeFile)
 
 # This allows us to use VERSION in the project command
 cmake_policy(SET CMP0048 NEW)
-project(OpenDAX VERSION 0.9)
 cmake_minimum_required(VERSION 3.10.2)
+project(OpenDAX VERSION 0.9)
 
 set(BUILD_SHARED_LIBS ON)
 

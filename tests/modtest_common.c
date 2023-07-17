@@ -40,18 +40,31 @@ _gettime(void) {
 pid_t
 run_server(void) {
     pid_t pid;
+    dax_state *ds;
+    char filename[256];
 
     pid = fork();
+    sprintf(filename, "%s/src/server/tagserver", BUILD_DIR);
 
     if(pid == 0) { // Child
-        execl("../../../src/server/tagserver", "../../../src/server/tagserver", "-v", NULL);
+        execl(filename, filename, "-v", NULL);
         printf("Failed to launch tagserver\n");
         exit(-1);
     } else if(pid < 0) {
         printf("Forking problem");
         exit(-1);
     }
-    usleep(50000);
+    /* Try to connect to the server multiple times until then exit */
+    ds = dax_init("test_loader");
+    dax_init_config(ds, "test_loader");
+    dax_configure(ds, 1, (char **)"dummy", 0);
+    for(int n=0;n<10;n++) {
+        if(dax_connect(ds) == 0) {
+            break;
+        }
+        usleep(50000);
+    }
+    dax_disconnect(ds);
     return pid;
 }
 

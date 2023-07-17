@@ -21,7 +21,6 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include "../modtest_common.h"
 #include "mqtt_test.h"
 #include <MQTTClient.h>
 
@@ -83,7 +82,7 @@ _test_single(void) {
     test = 0;
     //usleep(10000);
     dax_read_tag(ds, h1, &test);
-    
+
     if(test != 0x12345678) {
         DF("Single Test Fail");
         return -1;
@@ -104,7 +103,7 @@ _test_multiple(void) {
     dax_read_tag(ds, h1, &test[0]);
     dax_read_tag(ds, h2, &test[1]);
     dax_read_tag(ds, h3, &test[2]);
-    
+
     for(int n=0;n<3;n++) {
         if(test[n] != values[n]) {
             DF("test[%d] != values[%d], %d, %d", n, n, test[n], values[n]);
@@ -126,7 +125,7 @@ _test_array(void) {
     _publish("dax_topic_3", 16, values);
     //usleep(10000);
     dax_read_tag(ds, h4, test);
-    
+
     for(int n=0;n<4;n++) {
         if(test[n] != values[n]) {
             DF("test[%d] != values[%d], %d, %d", n, n, test[n], values[n]);
@@ -150,7 +149,7 @@ _test_hybrid(void) {
     usleep(10000);
     dax_read_tag(ds, h1, &test[0]);
     dax_read_tag(ds, h4, &test[1]);
-    
+
     for(int n=0;n<5;n++) {
         if(test[n] != values[n]) {
             DF("test[%d] != values[%d], %d, %d", n, n, test[n], values[n]);
@@ -182,9 +181,9 @@ test_thread(void *arg) {
     if(_test_single() != 0) getout(-1);
     if(_test_multiple() != 0) getout(-1);
     if(_test_array() != 0) getout(-1);
-    if(_test_hybrid() != 0) getout(-1); 
+    if(_test_hybrid() != 0) getout(-1);
     kill(getpid(), SIGQUIT); /* Send kill signal to ourselves */
-    
+
 
 }
 

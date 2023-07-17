@@ -20,7 +20,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include "../modtest_common.h"
+#include "../../modtest_common.h"
 
 static pid_t _server_pid;
 static pid_t _mod_pid;
@@ -31,7 +31,7 @@ main(int argc, char *argv[]) {
     int s;
     uint8_t buff[1024];
     char conf_str[64];
-    
+
     int status;
     int result;
 

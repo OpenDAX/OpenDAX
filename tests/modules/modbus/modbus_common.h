@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "../../modtest_common.h"
 
 pid_t run_socat(void);
 int read_coils(int sock, uint16_t addr, uint16_t count, uint8_t *rbuff);

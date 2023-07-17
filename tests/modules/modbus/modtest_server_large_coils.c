@@ -25,7 +25,6 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-#include "../modtest_common.h"
 #include "modbus_common.h"
 
 

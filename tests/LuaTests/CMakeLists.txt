@@ -26,8 +26,9 @@ set(SERVER_SOURCE_DIR ../../src/server)
 include_directories(${SERVER_SOURCE_DIR})
 include_directories(${LIB_SOURCE_DIR})
 
-add_executable(run_test run_test.c)
-add_executable(run_test_event run_test_event.c)
+add_executable(run_test run_test.c ../modtest_common.c)
+target_link_libraries(run_test dax)
+add_executable(run_test_event run_test_event.c ../modtest_common.c)
 target_link_libraries(run_test_event dax pthread)
 
 add_test(luatest_basic "run_test" "test_basic.lua")

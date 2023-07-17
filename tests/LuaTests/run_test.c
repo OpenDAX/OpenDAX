@@ -26,26 +26,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
+#include "../modtest_common.h"
 
-pid_t
-run_server(void) {
-    int result;
-    pid_t pid;
-
-    pid = fork();
-
-    if(pid == 0) { // Child
-        execl("../../src/server/tagserver", "../../src/server/tagserver", "-v", NULL);
-        printf("Failed to launch tagserver\n");
-        exit(-1);
-    } else if(pid < 0) {
-        exit(-1);
-    } else {
-        usleep(100000);
-       return pid;
-    }
-    return result;
-}
 
 int
 main(int argc, char *argv[]) {
