@@ -357,9 +357,9 @@ configure(int argc, char *argv[])
     dax_set_luafunction(ds, (void *)_add_pub, "add_pub");
     dax_set_luafunction(ds, (void *)_add_sub, "add_sub");
 
-    dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
+    result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
-    return 0;
+    return result;
 }
 
 /* iterator that returns each subscriber in turn.  Returns

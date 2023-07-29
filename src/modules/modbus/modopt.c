@@ -542,7 +542,7 @@ modbus_configure(int argc, const char *argv[])
     dax_set_luafunction(ds, (void *)_add_port, "add_port");
     dax_set_luafunction(ds, (void *)_add_command, "add_command");
     
-    dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
+    result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
     dax_clear_luafunction(ds, "add_port");
     dax_clear_luafunction(ds, "add_command");
@@ -551,7 +551,7 @@ modbus_configure(int argc, const char *argv[])
     
     printconfig();
 
-    return 0;
+    return result;
 }
 
 

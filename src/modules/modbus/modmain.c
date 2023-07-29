@@ -20,7 +20,7 @@
 
 #include <common.h>
 #include <opendax.h>
-
+#define _GNU_SOURCE
 #include <signal.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -469,7 +469,8 @@ main (int argc, const char * argv[]) {
        Bail if there is an error. */
     result = modbus_configure(argc, argv);
     if(result) {
-        exit(-1);
+        dax_log(LOG_FATAL, "Fatal error in configuration");
+        exit(result);
     }
 
     if( dax_connect(ds) ) {

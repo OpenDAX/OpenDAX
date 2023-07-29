@@ -101,9 +101,9 @@ configure(int argc, char *argv[]) {
     dax_set_luafunction(ds, (void *)_set_axis, "set_axis");
     dax_set_luafunction(ds, (void *)_set_button, "set_button");
 
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
+    result = dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
 
     /* Free the configuration data */
     dax_free_config (ds);
-    return 0;
+    return result;
 }

@@ -79,7 +79,11 @@ int main(int argc,char *argv[]) {
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "event_type","event_type", 'y', flags, "poll");
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
+    result = dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
+    if(result) {
+        dax_log(LOG_FATAL, "Fatal error in configuration");
+        exit(result);
+    }
 
     /* Get the results of the configuration */
     tagname = strdup(dax_get_attr(ds, "tagname"));

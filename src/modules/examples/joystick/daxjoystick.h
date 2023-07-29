@@ -21,6 +21,7 @@
 #ifndef __DAXJOYSTICK_H
 #define __DAXJOYSTICK_H
 
+#define _GNU_SOURCE
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>

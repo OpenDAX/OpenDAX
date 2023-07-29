@@ -15,7 +15,7 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
- 
+
  * This file contains libdax configuration functions
  */
 
@@ -28,7 +28,7 @@
 
 /*!
  * Initialize the module configuration
- * 
+ *
  * @param ds Pointer to DAX State object
  * @param name Name of the module.
  */
@@ -91,7 +91,7 @@ dax_clear_luafunction(dax_state *ds, char *name)
 
 /*!
  * Retrieves the configuration Lua state from the dax state object.
- * 
+ *
  * This can be used to set global variables or other advanced uses
  * of the Lua scripting language.  The configuration script will
  * be run by the dax_configure() function.
@@ -107,7 +107,7 @@ static int
 _validate_name(char *name)
 {
     int n;
-    
+
     if(name != NULL) {
         /* First character has to be a letter or '_' */
         if( !isalpha(name[0]) && name[0] != '_' ) {
@@ -128,7 +128,7 @@ static int
 _validate_longopt(char *name)
 {
     int n;
-    
+
     if(name != NULL) {
         /* name can be letters, numbers '-' or '_' */
         for(n = 1; n < strlen(name) ;n++) {
@@ -146,9 +146,9 @@ static int
 _check_attr(dax_state *ds, char *name, char *longopt, char shortopt)
 {
     optattr *this;
-    
+
     this = ds->attr_head;
-    
+
     if(_validate_name(name)) {
         return ERR_ARG;
     }
@@ -156,7 +156,7 @@ _check_attr(dax_state *ds, char *name, char *longopt, char shortopt)
     if(_validate_longopt(longopt)) {
         return ERR_ARG;
     }
-    
+
     /* This loop checks that none of the symbols have already been used. */
     while(this != NULL) {
         if(!strcmp(this->name, name)) {
@@ -178,7 +178,7 @@ dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int f
 {
     optattr *newattr;
     int result;
-    
+
     /* Check for bad symbols */
     if( (result = _check_attr(ds, name, longopt, shortopt)) ) {
         return result;
@@ -206,22 +206,22 @@ dax_add_attribute(dax_state *ds, char *name, char *longopt, char shortopt, int f
         newattr->next = NULL;
         newattr->value = NULL;
     }
-    
+
     /* We'll just stick it in the top */
-    newattr->next = ds->attr_head; 
+    newattr->next = ds->attr_head;
     ds->attr_head = newattr;
     return 0;
 }
 
-/* This assigns the callback function that will be called by the 
+/* This assigns the callback function that will be called by the
  * configuration when the attribute given by 'name' is found
  * in the command line argument or in the configuration file. */
 int
 dax_attr_callback(dax_state *ds, char *name, int (*attr_callback)(char *name, char *value)) {
     optattr *this;
-    
+
     this = ds->attr_head;
-    
+
     while(this != NULL) {
         if( ! strcmp(this->name, name) ){
             this->callback = attr_callback;
@@ -263,8 +263,8 @@ _parse_commandline(dax_state *ds, int argc, char **argv) {
     char *shortopts;
     struct option *options;
     optattr *this;
-    
-    /* This loop counts the attribute list and the size of the 
+
+    /* This loop counts the attribute list and the size of the
      * string that we'll need or the short opts so that we know
      * how much memory to allocate. */
     this = ds->attr_head;
@@ -288,7 +288,7 @@ _parse_commandline(dax_state *ds, int argc, char **argv) {
         free(shortopts);
         return ERR_ALLOC;
     }
-    
+
     /* This loop assigns the option structure and strings
      * from the attribute list */
     this = ds->attr_head;
@@ -356,9 +356,9 @@ static int
 _get_lua_globals(dax_state *ds) {
     optattr *this;
     const char *s;
-    
+
     this = ds->attr_head;
-    
+
     while(this != NULL) {
         /* If the value has not already been set and we
          * are actually looking for the attribute in this
@@ -399,16 +399,16 @@ _config_print(lua_State *L) {
     if(str!= NULL) {
         dax_log(LOG_CONFIG, str);
     } else {
-        luaL_error(L, "Problem with string passed to print()");    
+        luaL_error(L, "Problem with string passed to print()");
     }
     return 0;
 }
 
 /* We use this function to override the print() function in Lua for
- * any scripts that run after the configuration hooks.  This gives 
+ * any scripts that run after the configuration hooks.  This gives
  * the module the ability to run scripts configured in the
  * configuration later in the execution for logic, formatting, etc.
- * This function takes the string passed to print() and passes 
+ * This function takes the string passed to print() and passes
  * it to the logger with LOG_LOGIC topic */
 static int
 _logic_print(lua_State *L) {
@@ -421,7 +421,7 @@ _logic_print(lua_State *L) {
     if(str!= NULL) {
         dax_log(LOG_LOGIC, str);
     } else {
-        luaL_error(L, "Problem with string passed to print()");    
+        luaL_error(L, "Problem with string passed to print()");
     }
     return 0;
 }
@@ -433,14 +433,14 @@ static inline int
 _mod_config_file(dax_state *ds) {
     int length;
     char *cfile, *cdir;
-    
+
     /* This gets the default configuration file name
      * We add 2 for the NULL character and the '/' */
     cfile = dax_get_attr(ds, "config");
     //--printf("dax_get_attr(\"config\") returned %s\n", cfile);
-    if(cfile == NULL) { 
+    if(cfile == NULL) {
         /* No configuration file in the attribute list then we'll
-         * build the path from the default config directory and 
+         * build the path from the default config directory and
          * the module name that was passed to dax_init_config() */
         cdir = dax_get_attr(ds, "confdir");
         length = strlen(cdir) + strlen(ds->modulename) + strlen("/.conf") + 1;
@@ -452,7 +452,7 @@ _mod_config_file(dax_state *ds) {
         }
     }
     luaopen_base(ds->L);
-    
+
     lua_pushstring(ds->L, ds->modulename);
     lua_setglobal(ds->L, CONFIG_GLOBALNAME);
     lua_pushstring(ds->L, cdir);
@@ -460,7 +460,7 @@ _mod_config_file(dax_state *ds) {
     /* Override the print function with our logging function */
     lua_pushcfunction(ds->L, _config_print);
     lua_setglobal(ds->L, "print");
-    
+
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
         dax_log(LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
@@ -470,7 +470,7 @@ _mod_config_file(dax_state *ds) {
         dax_log(LOG_DEBUG, "Configured using file %s",cfile);
         _get_lua_globals(ds);
     }
-    
+
     free(cfile);
     return 0;
 }
@@ -502,7 +502,7 @@ static inline void
 _print_config(dax_state *ds)
 {
     optattr *this;
-        
+
     this = ds->attr_head;
     printf("Configuration for %s\n", ds->modulename);
     while(this != NULL) {
@@ -540,6 +540,7 @@ int
 dax_configure(dax_state *ds, int argc, char **argv, int flags)
 {
     char *topics;
+    int result;
 
     if(ds->modulename == NULL) {
         return ERR_NO_INIT;
@@ -567,19 +568,19 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
     }
     if(flags & CFG_MODCONF) {
         dax_log_set_lua_function(ds->L);
-        _mod_config_file(ds);
+        result = _mod_config_file(ds);
     }
-
     _set_defaults(ds);
     //_print_config(ds);
-    return _verify_config(ds);
+    _verify_config(ds);
+    return result;
 }
 
 /* Returns the pointer to the requested attribute */
 char *
 dax_get_attr(dax_state *ds, char *name) {
     optattr *this;
-    
+
     this = ds->attr_head;
     if(name == NULL) {
         return NULL;
@@ -601,7 +602,7 @@ int
 dax_set_attr(dax_state *ds, char *name, char *value)
 {
     optattr *this;
-    
+
     this = ds->attr_head;
     while(this != NULL) {
         if(!strcmp(this->name, name)) {

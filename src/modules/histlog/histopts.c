@@ -83,12 +83,12 @@ histlog_configure(int argc,char *argv[]) {
     dax_set_luafunction(ds, (void *)_add_tag, "add_tag");
 
     /* Execute the configuration */
-    dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
+    result = dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
     /* We need to clear all of the functions that we add in case the plugin
      * want to re-run the configuration */
     dax_clear_luafunction(ds, "add_tag");
     /* We don't free the configuration because the plugin might want to use
      * parts of the Lua configuration file for specific configuration or
      * custom functions */
-    return 0;
+    return result;
 }

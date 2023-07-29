@@ -79,7 +79,11 @@ int main(int argc,char *argv[]) {
         dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
         kill(getpid(), SIGQUIT);
     }
-    configure(argc, argv);
+    result = configure(argc, argv);
+    if(result) {
+        dax_log(LOG_FATAL, "Fatal error in configuration");
+        exit(result);
+    }
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {

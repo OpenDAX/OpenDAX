@@ -18,6 +18,7 @@
  *  Main header file for the OpenDAX Command Line Client module
  */
 
+#define _GNU_SOURCE
 #include <common.h>
 #include <opendax.h>
 #include <signal.h>

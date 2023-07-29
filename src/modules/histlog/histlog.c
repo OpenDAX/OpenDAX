@@ -18,6 +18,7 @@
  *  Main source code file for the OpenDAX Historical Logging module
  */
 
+#define _GNU_SOURCE
 #include <signal.h>
 #include <time.h>
 #include <opendax.h>
@@ -238,7 +239,12 @@ main(int argc,char *argv[]) {
         dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
     }
 
-    histlog_configure(argc, argv);
+    result = histlog_configure(argc, argv);
+    if(result) {
+        dax_log(LOG_FATAL, "Fatal error in configuration");
+        exit(result);
+    }
+
 
     result = plugin_load(dax_get_attr(ds, "plugin"));
     if(result) {

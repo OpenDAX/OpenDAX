@@ -432,6 +432,7 @@ client_loop(void) {
 int
 main(int argc,char *argv[]) {
     struct sigaction sa;
+    int result = 0;
     
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
@@ -447,7 +448,12 @@ main(int argc,char *argv[]) {
         exit(-1);
     }
 
-    configure(argc, argv);
+    result = configure(argc, argv);
+    if(result) {
+        dax_log(LOG_FATAL, "Fatal error in configuration");
+        exit(result);
+    }
+
     
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
