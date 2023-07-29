@@ -12,7 +12,19 @@ root="/Users/phil/opendax/modules/daxlua/"
 --init is the script that is run once when the program launches
 initscript = root.."init.lua"
 
-verbosity = 10 --needs to change to the new way
+-- Number of worker threads for handling event trigger scripts
+event_thread_count = 8
+-- Size of the event queue.  This is the number of event triggered scripts that can
+-- be waiting for a worker thread to deal with them.
+event_queue_size = 128
+
+-- Adds an interval thread.  These threads will run all of
+-- the scripts that are assigned to them by name every time
+-- the given time has elapsed
+
+add_interval_thread("valves", 500)
+add_interval_thread("1sec", 1000)
+add_interval_thread("slow", 5000)
 
 -- Scripts are configured in a table.
 s = {}
@@ -20,7 +32,7 @@ s = {}
 s.name = "demo1"  --Unique name for the script
 s.enable = true   --If false the script will not run
 s.filename = root.."demo1.lua"  --The path to the script
-s.rate = 2000      --The periodic rate at which the script will run in mSec
+s.thread = "valves"      --The periodic rate at which the script will run in mSec
 
 -- Once the table has been configured, pass it to 'add_script()'
 add_script(s)
@@ -28,7 +40,7 @@ add_script(s)
 -- Repeat as needed
 s.name = "demo2"
 s.filename = root.."demo2.lua"
-s.rate = 2200
+s.thread = "slow"
 add_script(s)
 
 -- This script is not periodic but is triggered by an event.

@@ -26,45 +26,7 @@
 
 /* TODO: Allow user to set whether an error in a script is fatal */
 
-static char *initscript;
-static script_t *scripts = NULL;
-static int scripts_size = 0;
-static int scriptcount = 0;
 extern dax_state *ds;
-
-/* This function returns an index into the scripts[] array for
-   the next unassigned script */
-static int
-_get_new_script(void)
-{
-    void *ns;
-    int n;
-
-    /* Allocate the script array if it has not already been done */
-    if(scriptcount == 0) {
-        scripts = malloc(sizeof(script_t) * NUM_SCRIPTS);
-        if(scripts == NULL) {
-            dax_log(LOG_FATAL, "Cannot allocate memory for the scripts");
-            kill(getpid(), SIGQUIT);
-        }
-        scripts_size = NUM_SCRIPTS;
-    } else if(scriptcount == scripts_size) {
-        ns = realloc(scripts, sizeof(script_t) * (scripts_size + NUM_SCRIPTS));
-        if(ns != NULL) {
-            scripts = ns;
-        } else {
-            dax_log(LOG_ERROR, "Failure to allocate additional scripts");
-            return -1;
-        }
-    }
-    n = scriptcount;
-    scriptcount++;
-    /* Initialize the script structure */
-    scripts[n].globals = NULL;
-    scripts[n].firstrun = 1;
-    scripts[n].name = NULL;
-    return n;
-}
 
 
 /* When this function is called it is expected that there
@@ -105,128 +67,130 @@ _set_trigger(lua_State *L, script_t *s) {
 static int
 _add_script(lua_State *L)
 {
-    int si;
+    script_t *si;
     char *string;
 
     if(! lua_istable(L, 1) ) {
         luaL_error(L, "Table needed to add script");
     }
 
-    si = _get_new_script();
+    si = get_new_script();
 
-    if(si < 0) {
+    if(si == NULL) {
         /* Just bail for now */
         return 0;
     }
 
     lua_getfield(L, 1, "enable");
-    if( lua_isnil(L, -1)) {
-        scripts[si].enable = 1;
+    if(lua_isnil(L, -1)) {
+        si->enable = 1;
     } else {
-        scripts[si].enable = lua_toboolean(L, -1);
+        si->enable = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "thread");
+    string = (char *)lua_tostring(L, -1);
+    if(string) {
+        si->threadname = strdup(string);
+    } else {
+        si->threadname = NULL;
     }
     lua_pop(L, 1);
 
     lua_getfield(L, 1, "trigger");
     if(lua_istable(L, -1)) {
-        _set_trigger(L, &scripts[si]);
+        _set_trigger(L, si);
     } else {
-        scripts[si].trigger = 0;
+        si->trigger = 0;
     }
     lua_pop(L, 1);
 
     lua_getfield(L, 1, "name");
     string = (char *)lua_tostring(L, -1);
-    fprintf(stderr, "We got a script name of %s\n", string);
+    DF("We got a script name of %s", string);
     if(string) {
         /* check for duplicate name */
         if(get_script_name(string)) {
-            scriptcount--; /* This effectively deletes the script */
+            del_script(); /* This effectively deletes the script */
             luaL_error(L, "duplicate script name %s", string);
         }
-        scripts[si].name = strdup(string);
+        si->name = strdup(string);
     } else {
         luaL_error(L, "name is required for a script");
-        scripts[si].name = NULL;
+        si->name = NULL;
     }
     lua_pop(L, 1);
 
     lua_getfield(L, 1, "filename");
     string = (char *)lua_tostring(L, -1);
     if(string) {
-        scripts[si].filename = strdup(string);
+        si->filename = strdup(string);
     } else {
-        scripts[si].filename = NULL;
-        scripts[si].enable = 0;
-    }
-    lua_pop(L, 1);
-
-    lua_getfield(L, 1, "rate");
-    scripts[si].rate = lua_tointeger(L, -1);
-    if(scripts[si].rate <= 0) {
-        scripts[si].rate = DEFAULT_RATE;
+        si->filename = NULL;
+        si->enable = 0;
     }
     lua_pop(L, 1);
 
     return 0;
 }
+
+static int
+_add_interval_thread(lua_State *L) {
+    char *name;
+    long interval;
+
+    if(lua_gettop(L) != 2) {
+        luaL_error(L, "add_interval_thread function requires two arguments (name, interval)");
+    }
+    if(lua_isstring(L, 1)) {
+        name = (char *)lua_tostring(L, 1);
+    } else {
+        luaL_error(L, "first argument to add_interval_thread function must be a string");
+    }
+    if(lua_isnumber(L, 2)) {
+        interval = lua_tonumber(L, 2);
+    } else {
+        luaL_error(L, "second argument to add_interval_thread must be a number");
+    }
+
+    add_interval_thread(name, interval);
+    return 0;
+}
+
 
 /* Public function to initialize the module */
 int
 configure(int argc, char *argv[])
 {
     int flags, result = 0;
+    char *s;
 
     dax_init_config(ds, "daxlua");
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute(ds, "initscript", "initscript", 'i', flags, "init.lua");
+    result += dax_add_attribute(ds, "event_thread_count", "event_thread_count", 'n', flags, "8");
     if(result) {
-        dax_log(LOG_FATAL, "Problem with the configuration");
+         dax_log(LOG_FATAL, "Problem with the configuration");
+    }
+    result += dax_add_attribute(ds, "event_queue_size", "event_queue_size", 's', flags, "128");
+    if(result) {
+         dax_log(LOG_FATAL, "Problem with the configuration");
     }
 
     dax_set_luafunction(ds, (void *)_add_script, "add_script");
+    dax_set_luafunction(ds, (void *)_add_interval_thread, "add_interval_thread");
 
-    dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
+    result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
-    initscript = strdup(dax_get_attr(ds, "initscript"));
+    s = dax_get_attr(ds, "event_thread_count");
+    if(s != NULL)
+        thread_set_qthreadcount(strtoul(s, NULL, 10));
+    s = dax_get_attr(ds, "event_queue_size");
+    if(s != NULL)
+        thread_set_queue_size(strtoul(s, NULL, 10));
 
     dax_free_config(ds);
 
-    return 0;
+    return result;
 }
 
-/* Configuration retrieval functions */
-char *
-get_init(void)
-{
-    return initscript;
-}
-
-int
-get_scriptcount(void)
-{
-    return scriptcount;
-}
-
-script_t *
-get_script(int index)
-{
-    if(index < 0 || index >= scriptcount) {
-        return NULL;
-    } else {
-        return &scripts[index];
-    }
-}
-
-script_t *
-get_script_name(char *name)
-{
-    int n;
-
-    for(n = 0; n < scriptcount; n++) {
-        if( scripts[n].name && name && ! strcmp(scripts[n].name, name)) {
-            return &scripts[n];
-        }
-    }
-    return NULL;
-}

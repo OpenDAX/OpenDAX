@@ -545,36 +545,36 @@ send_tag(lua_State *L, tag_handle h)
 }
 
 
-static int
-_add_global(char *script, char *varname, unsigned char mode)
-{
-    global_t *glo;
-    script_t *scr;
-    tag_handle h;
-    int result;
+// static int
+// _add_global(char *script, char *varname, unsigned char mode)
+// {
+//     global_t *glo;
+//     script_t *scr;
+//     tag_handle h;
+//     int result;
 
-    /* This would indicate that it's a dax tag */
-    if(mode != MODE_STATIC) {
-        result = dax_tag_handle(ds, &h, varname, 0);
-        if(result) return result;
-    }
+//     /* This would indicate that it's a dax tag */
+//     if(mode != MODE_STATIC) {
+//         result = dax_tag_handle(ds, &h, varname, 0);
+//         if(result) return result;
+//     }
 
-    scr = get_script_name(script);
-    if(scr == NULL) return -1;
+//     scr = get_script_name(script);
+//     if(scr == NULL) return -1;
 
-    glo = malloc(sizeof(global_t));
-    if(glo) {
-        glo->name = strdup( varname );
-        glo->mode = mode;
-        glo->ref = LUA_NOREF;
-        glo->handle = h;
-        glo->next = scr->globals;
-        scr->globals = glo;
-    } else {
-        return ERR_ALLOC;
-    }
-    return 0;
-}
+//     glo = malloc(sizeof(global_t));
+//     if(glo) {
+//         glo->name = strdup( varname );
+//         glo->mode = mode;
+//         glo->ref = LUA_NOREF;
+//         glo->handle = h;
+//         glo->next = scr->globals;
+//         scr->globals = glo;
+//     } else {
+//         return ERR_ALLOC;
+//     }
+//     return 0;
+// }
 
 /* Adds a tag to the *globals list for registration
    Three arguments.  First is name of the script
@@ -584,39 +584,39 @@ _add_global(char *script, char *varname, unsigned char mode)
    I don't want any limits but couldn't the scriptname be assumed
    if run from a normal script or given if meant for another script? */
 /* TODO: Should we add the ability to remove these from the list? */
-static int
-_register_tag(lua_State *L)
-{
-    char *script, *varname, *modestring;
-    unsigned char mode = 0;
-    int n;
+// static int
+// _register_tag(lua_State *L)
+// {
+//     char *script, *varname, *modestring;
+//     unsigned char mode = 0;
+//     int n;
 
-    script = (char *)lua_tostring(L, 1);
-    if(script == NULL) {
-        luaL_error(L, "Script name argument not supplied");
-    }
-    varname = (char *)lua_tostring(L, 2);
-    if(varname == NULL) {
-        luaL_error(L, "Tag name argument not supplied");
-    }
-    modestring = (char *)lua_tostring(L, 3);
-    if(modestring == NULL) {
-        luaL_error(L, "Mode string argument not supplied");
-    }
-    for(n = 0; modestring[n] != '\0'; n++) {
-        if(modestring[n] == 'r' || modestring[n] == 'R') {
-            mode |= MODE_READ;
-        } else if(modestring[n] == 'w' || modestring[n] == 'W') {
-            mode |= MODE_WRITE;
-        } else {
-            luaL_error(L, "Invalid mode string");
-        }
-    }
-    if(_add_global(script, varname, mode) < 0) {
-        luaL_error(L, "Problem adding tag to global registry");
-    }
-    return 0;
-}
+//     script = (char *)lua_tostring(L, 1);
+//     if(script == NULL) {
+//         luaL_error(L, "Script name argument not supplied");
+//     }
+//     varname = (char *)lua_tostring(L, 2);
+//     if(varname == NULL) {
+//         luaL_error(L, "Tag name argument not supplied");
+//     }
+//     modestring = (char *)lua_tostring(L, 3);
+//     if(modestring == NULL) {
+//         luaL_error(L, "Mode string argument not supplied");
+//     }
+//     for(n = 0; modestring[n] != '\0'; n++) {
+//         if(modestring[n] == 'r' || modestring[n] == 'R') {
+//             mode |= MODE_READ;
+//         } else if(modestring[n] == 'w' || modestring[n] == 'W') {
+//             mode |= MODE_WRITE;
+//         } else {
+//             luaL_error(L, "Invalid mode string");
+//         }
+//     }
+//     if(_add_global(script, varname, mode) < 0) {
+//         luaL_error(L, "Problem adding tag to global registry");
+//     }
+//     return 0;
+//}
 
 /* Adds a static definition to the *globals list.  A Static
  * variable is one that will live between calls to the script
@@ -625,24 +625,24 @@ _register_tag(lua_State *L)
 /* TODO: should this be allowed in a normal script?  I guess
  I don't want any limits but couldn't the scriptname be assumed
  if run from a normal script or given if meant for another script? */
-static int
-_register_static(lua_State *L)
-{
-    char *script, *varname;
+// static int
+// _register_static(lua_State *L)
+// {
+//     char *script, *varname;
 
-    script = (char *)lua_tostring(L, 1);
-    if(script == NULL) {
-        luaL_error(L, "Script name argument not supplied");
-    }
-    varname = (char *)lua_tostring(L, 2);
-    if(varname == NULL) {
-        luaL_error(L, "Variable name argument not supplied");
-    }
-    if(_add_global(script, varname, MODE_STATIC) < 0) {
-        luaL_error(L, "Problem adding variable to global registry");
-    }
-    return 0;
-}
+//     script = (char *)lua_tostring(L, 1);
+//     if(script == NULL) {
+//         luaL_error(L, "Script name argument not supplied");
+//     }
+//     varname = (char *)lua_tostring(L, 2);
+//     if(varname == NULL) {
+//         luaL_error(L, "Variable name argument not supplied");
+//     }
+//     if(_add_global(script, varname, MODE_STATIC) < 0) {
+//         luaL_error(L, "Problem adding variable to global registry");
+//     }
+//     return 0;
+// }
 
 
 
@@ -663,11 +663,11 @@ setup_interpreter(lua_State *L)
     daxlua_register_function(L,"tag_write");
     daxlua_register_function(L, "log");
 
-    lua_pushcfunction(L, _register_tag);
-    lua_setglobal(L, "register_tag");
+    // lua_pushcfunction(L, _register_tag);
+    // lua_setglobal(L, "register_tag");
 
-    lua_pushcfunction(L, _register_static);
-    lua_setglobal(L, "register_static");
+    // lua_pushcfunction(L, _register_static);
+    // lua_setglobal(L, "register_static");
     daxlua_set_constants(L);
     /* register the libraries that we need*/
     luaopen_base(L);

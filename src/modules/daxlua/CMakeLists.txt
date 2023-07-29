@@ -14,10 +14,8 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_executable(daxlua_module daxlua.c luaif.c luaopt.c)
+add_executable(daxlua_module daxlua.c scripts.c threads.c luaif.c luaopt.c)
 set_target_properties(daxlua_module PROPERTIES OUTPUT_NAME daxlua)
-target_link_libraries(daxlua_module dax)
-target_link_libraries(daxlua_module daxlua_library)
-target_link_libraries(daxlua_module pthread)
+target_link_libraries(daxlua_module dax daxlua_library pthread)
 
 install(TARGETS daxlua_module DESTINATION bin)
