@@ -108,7 +108,7 @@ _add_script(lua_State *L)
 
     lua_getfield(L, 1, "name");
     string = (char *)lua_tostring(L, -1);
-    DF("We got a script name of %s", string);
+
     if(string) {
         /* check for duplicate name */
         if(get_script_name(string)) {
@@ -131,6 +131,10 @@ _add_script(lua_State *L)
         si->enable = 0;
     }
     lua_pop(L, 1);
+
+    if(si->threadname != NULL && si->trigger !=0) {
+        dax_log(LOG_WARN, "Script '%s' is assigned to a trigger as well as an interval.", si->name);
+    }
 
     return 0;
 }
@@ -158,6 +162,85 @@ _add_interval_thread(lua_State *L) {
     return 0;
 }
 
+static int
+_add_global_tag(lua_State *L) {
+    int result;
+    char *scriptname;
+    char *varname;
+    char *tagname;
+    int mode;
+    script_t *script;
+
+    if(lua_gettop(L) != 4) {
+        luaL_error(L, "add_global_tag function requires four arguments (scriptname, varname, tagname, mode)");
+    }
+    if(lua_isstring(L, 1)) {
+        scriptname = (char *)lua_tostring(L, 1);
+    } else {
+        luaL_error(L, "name reauried for get_script_id()");
+    }
+    if(lua_isstring(L, 2)) {
+        varname = (char *)lua_tostring(L, 2);
+    } else {
+        luaL_error(L, "tagname reauried for get_script_id()");
+    }
+    if(lua_isstring(L, 3)) {
+        tagname = (char *)lua_tostring(L, 3);
+    } else {
+        luaL_error(L, "tagname reauried for get_script_id()");
+    }
+    if(lua_isnumber(L, 4)) {
+        mode = lua_tonumber(L, 4);
+    } else {
+        luaL_error(L, "second argument to add_interval_thread must be a number");
+    }
+    script = get_script_name(scriptname);
+    if(script == NULL) {
+        luaL_error(L, "no script named %s", scriptname);
+    } else {
+        /* Make sure that the value that we want to store is at the top of the stack */
+        result = add_global(script, varname, tagname, mode);
+        if(result) {
+            luaL_error(L, "unable to allocate memory for global tag %s", varname);
+        }
+    }
+
+    DF("Adding global tag %s to script %s mode = %d", tagname, scriptname, mode);
+    return 0;
+}
+
+
+static int
+_add_global_static(lua_State *L) {
+    char *name;
+    char *varname;
+    script_t *script;
+
+    if(lua_gettop(L) != 3) {
+        luaL_error(L, "add_global_statoc function requires three arguments (scriptname, varname, value)");
+    }
+    if(lua_isstring(L, 1)) {
+        name = (char *)lua_tostring(L, 1);
+    } else {
+        luaL_error(L, "name reauried for get_script_id()");
+    }
+
+    if(lua_isstring(L, 2)) {
+        varname = (char *)lua_tostring(L, 2);
+    } else {
+        luaL_error(L, "varname reauried for get_script_id()");
+    }
+
+    script = get_script_name(name);
+    if(script == NULL) {
+        luaL_error(L, "no script named %$", name);
+    } else {
+        /* Make sure that the value that we want to store is at the top of the stack */
+        add_static(script, L, varname);
+    }
+    return 0;
+}
+
 
 /* Public function to initialize the module */
 int
@@ -165,6 +248,7 @@ configure(int argc, char *argv[])
 {
     int flags, result = 0;
     char *s;
+    lua_State *L;
 
     dax_init_config(ds, "daxlua");
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
@@ -177,8 +261,16 @@ configure(int argc, char *argv[])
          dax_log(LOG_FATAL, "Problem with the configuration");
     }
 
+    L = dax_get_luastate(ds);
+    lua_pushinteger(L, MODE_READ);
+    lua_setglobal(L, "READ");
+    lua_pushinteger(L, MODE_WRITE);
+    lua_setglobal(L, "WRITE");
+
     dax_set_luafunction(ds, (void *)_add_script, "add_script");
     dax_set_luafunction(ds, (void *)_add_interval_thread, "add_interval_thread");
+    dax_set_luafunction(ds, (void *)_add_global_tag, "add_global_tag");
+    dax_set_luafunction(ds, (void *)_add_global_static, "add_global_static");
 
     result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 

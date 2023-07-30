@@ -58,11 +58,12 @@ get_new_script(void)
     n = scriptcount;
     scriptcount++;
     /* Initialize the script structure */
-    scripts[n].L = NULL;
+    scripts[n].L = luaL_newstate();
     scripts[n].name =  "";
     scripts[n].globals = NULL;
     scripts[n].firstrun = 1;
     scripts[n].name = NULL;
+    scripts[n].failed = 0;
     return &scripts[n];
 }
 
@@ -73,27 +74,103 @@ del_script(void) {
    scriptcount--;
 }
 
+int
+add_global(script_t *script, char *varname, char* tagname, unsigned char mode) {
+    global_t *glo;
+
+    glo = malloc(sizeof(global_t));
+    if(glo) {
+        glo->name = strdup( varname );
+        glo->tagname = strdup( tagname );
+        if(glo->name == NULL || glo->tagname == NULL) {
+            free(glo);
+            return ERR_ALLOC;
+        }
+        glo->mode = mode;
+        glo->ref = LUA_NOREF;
+        glo->next = script->globals;
+        script->globals = glo;
+    } else {
+        return ERR_ALLOC;
+    }
+    return 0;
+}
+
+/* This function creates a static variable from the value that is on
+   top of the Lua stack that is passed. */
+int
+add_static(script_t *script, lua_State *L, char* varname) {
+    global_t *glo;
+    int lt;
+
+    glo = malloc(sizeof(global_t));
+    if(glo) {
+        glo->name = strdup( varname );
+        glo->mode = MODE_STATIC | MODE_INIT;
+
+        /* since we cannot simply copy a value from one stack to another (lua_xmove does not
+           work since these are not in the same thread) we are limiting our values to numbers
+           strings and booleans. To move tables we'd have to manually traverse the table and
+           it's just not worth it. */
+        lt = lua_type(L, -1);
+        if(lt == LUA_TBOOLEAN) {
+            lua_pushboolean(script->L, lua_toboolean(L, -1));
+        } else if(lt == LUA_TNUMBER) {
+            if(lua_isinteger(L, -1)) {
+                lua_pushinteger(script->L, lua_tointeger(L, -1));
+            } else {
+                lua_pushnumber(script->L, lua_tonumber(L, -1));
+            }
+        } else if(lt == LUA_TSTRING) {
+            lua_pushstring(script->L, lua_tostring(L, -1));
+        } else {
+            dax_log(LOG_WARN, "Static variable, '%s', cannot be %s", varname, luaL_typename(L, -1));
+            lua_pushnil(script->L);
+        }
+        glo->ref = luaL_ref(script->L, LUA_REGISTRYINDEX);
+
+        glo->next = script->globals;
+        script->globals = glo;
+    } else {
+        return ERR_ALLOC;
+    }
+    return 0;
+}
+
+
+
 /* Looks into the list of tags in the script and reads those tags
  * from the server.  Then makes these tags global Lua variables
  * to the script */
 static inline int
-_receive_globals(script_t *s)
-{
+_receive_globals(script_t *s) {
+    int result;
     global_t *this;
 
     this = s->globals;
 
     while(this != NULL) {
-        if(this->mode & MODE_READ) {
-            if(fetch_tag(s->L, this->handle)) {
-                return -1;
+        /* If we are not initialized yet then we should try to get a handle */
+        if(! (this->mode & MODE_INIT) ) {
+            result = dax_tag_handle(ds, &this->handle, this->tagname, 0);
+            if(result == 0) {
+                /* If successfull then set the INIT flag */
+                this->mode = this->mode | MODE_INIT;
             } else {
-                lua_setglobal(s->L, this->name);
+                dax_log(LOG_DEBUG, "Failed to get tag %s.  Will retry.", this->tagname);
+            }
+        }
+        if(this->mode & MODE_READ && this->mode & MODE_INIT) {
+            if(fetch_tag(s->L, this->handle)) {
+                // TODO we might should unitialize this tag if it has been deleted
+                lua_pushnil(s->L);
             }
         } else if((this->mode & MODE_STATIC) && this->ref != LUA_NOREF) {
             lua_rawgeti(s->L, LUA_REGISTRYINDEX, this->ref);
-            lua_setglobal(s->L, this->name);
+        } else {
+            lua_pushnil(s->L);
         }
+        lua_setglobal(s->L, this->name);
         this = this->next;
     }
 
@@ -107,6 +184,9 @@ _receive_globals(script_t *s)
 
     lua_pushinteger(s->L, (lua_Integer)s->lastscan);
     lua_setglobal(s->L, "_lastscan");
+
+    lua_pushinteger(s->L, (lua_Integer)s->thisscan);
+    lua_setglobal(s->L, "_thisscan");
 
     lua_pushinteger(s->L, (lua_Integer)s->rate);
     lua_setglobal(s->L, "_rate");
@@ -131,28 +211,18 @@ _send_globals(script_t *s)
     this = s->globals;
 
     while(this != NULL) {
-        if(this->mode & MODE_WRITE) {
+        /* If the write mode flag is set and we are initialized */
+        if(this->mode & MODE_WRITE && this->mode & MODE_INIT) {
             lua_getglobal(s->L, this->name);
 
             if(send_tag(s->L, this->handle)) {
                 return -1;
             }
             lua_pop(s->L, 1);
-        } else if(this->mode & MODE_STATIC) {
-            lua_getglobal(s->L, this->name);
-            if(this->ref == LUA_NOREF) {
-                this->ref = luaL_ref(s->L, LUA_REGISTRYINDEX);
-            } else {
-                lua_rawseti(s->L, LUA_REGISTRYINDEX, this->ref);
-            }
         }
+
         this = this->next;
     }
-
-    lua_getglobal(s->L, "_rate");
-    s->rate = lua_tointeger(s->L, -1);
-    if(s->rate < 0) s->rate = 1000;
-    lua_pop(s->L, 1);
 
     return 0;
 }
@@ -245,13 +315,16 @@ run_script(script_t *s) {
     struct timespec start;
 
     /* In this case do nothing */
-    if(s->L == NULL || s->enable == 0) {
+    if(s->failed || s->enable == 0) {
         return;
     }
+
+    /* Set the lastscan value in uSec */
+    s->lastscan = s->thisscan;
     /* Get the time since system startup (in Linux) */
     clock_gettime(CLOCK_MONOTONIC, &start);
     /* This is the time that we are running the script now in mSec since system startup */
-    s->thisscan = start.tv_sec*1000 + start.tv_nsec / 1000;
+    s->thisscan = start.tv_sec*1e6 + start.tv_nsec / 1000;
 
     /* retrieve the funciton and put it on the stack */
     lua_rawgeti(s->L, LUA_REGISTRYINDEX, s->func_ref);
@@ -263,6 +336,7 @@ run_script(script_t *s) {
         /* Run the script that is on the top of the stack */
         if( lua_pcall(s->L, 0, 0, 0) ) {
             dax_log(LOG_ERROR, "Error Running Script - %s", lua_tostring(s->L, -1));
+            s->failed = 1;
         }
         /* Write the configured global tags out to the server */
         /* TODO: Should we do something if this fails, if register globals
@@ -272,82 +346,8 @@ run_script(script_t *s) {
         s->firstrun = 0;
     }
 
-    /* Set the lastscan value in uSec */
-    s->lastscan = start.tv_sec*1000 + start.tv_nsec / 1000;
-
 }
 
-/* This is the actual script thread function.  Here we run each periodic
- * script in it's own thread with it's own delay. */
-// int
-// lua_script_thread(script_t *s)
-// {
-//     lua_State *L;
-
-//     /* Create a lua interpreter object */
-//     L = luaL_newstate();
-//     setup_interpreter(L);
-//     /* load and compile the file */
-//     if(luaL_loadfile(L, s->filename) ) {
-//         dax_log(LOG_ERROR, "Error Loading Main Script - %s", lua_tostring(L, -1));
-//         return 1;
-//     }
-//     /* Basicaly stores the Lua script */
-//     s->func_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-
-//     if(s->trigger) {
-//         pthread_cond_init(&s->condition, NULL);
-//         pthread_mutex_init(&s->mutex, NULL);
-//         _setup_script_event(L, s);
-//     }
-
-//     /* Main Infinite Loops */
-//     if(s->trigger) {
-//         while(1) { /* This is the event driven loop */
-//             pthread_mutex_lock(&s->mutex);
-//             pthread_cond_wait(&s->condition, &s->mutex);
-//             pthread_mutex_unlock(&s->mutex);
-//             if(s->enable) {
-//                 _run_script(L, s);
-//             }
-//         }
-//     } else {
-//         while(1) { /* This is the periodic loop */
-//             if(s->enable) {
-//                 _run_script(L, s);
-//                 /* If it takes longer than the scanrate then just go again instead of sleeping */
-//                 if(s->lastscan < s->rate)
-//                     usleep((s->rate - s->lastscan) * 1000);
-//             } else {
-//                 usleep(s->rate * 1000);
-//             }
-//         }
-//     }
-//     /* Clean up and get out */
-//     lua_close(L);
-
-//     /* Should never get here */
-//     return 1;
-// }
-
-
-/* This function attempts to start the thread given by s */
-// static int
-// _start_thread(script_t *s)
-// {
-//     pthread_attr_t attr;
-
-//     pthread_attr_init(&attr);
-//     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-//     if(pthread_create(&s->thread, &attr, (void *)&lua_script_thread, (void *)s)) {
-//         dax_log(LOG_ERROR, "Unable to start thread for script - %s", s->name);
-//         return -1;
-//     } else {
-//         dax_log(LOG_MAJOR, "Started Thread for script - %s", s->name);
-//         return 0;
-//     }
-// }
 
 int
 start_all_scripts(void)

@@ -32,9 +32,10 @@
 #define DEFAULT_RATE 1000
 
 /* These are the modes for the scripts globals. */
-#define MODE_READ   0x01
-#define MODE_WRITE  0x02
-#define MODE_STATIC 0X04
+#define MODE_READ     0x01  /* Tag read from server before script runs */
+#define MODE_WRITE    0x02  /* Tag written to the server after the scrpt runs */
+#define MODE_STATIC   0x04  /* Static global value (mutulally exclusive from read / wrtite */
+#define MODE_INIT     0x80  /* Flag set after then handle has been initialized */
 
 /* This is the representation of a custom Lua global
    if the mode is static then the tagname will be written
@@ -42,6 +43,7 @@
    or both to the OpenDAX server as a tag. */
 typedef struct Global_t {
     char *name;
+    char *tagname;
     unsigned char mode;
     tag_handle handle;
     int ref;
@@ -52,6 +54,7 @@ typedef struct Global_t {
 typedef struct Script_t {
     lua_State *L;
     char enable;
+    char failed;
     char trigger;
     char *name;
     char *filename;
@@ -75,6 +78,7 @@ typedef struct Script_t {
 typedef struct Interval_thread_t {
     char *name;
     unsigned int interval;
+    uint32_t overruns;
     pthread_t thread;
     unsigned int scriptcount; /* Number of scripts */
     script_t **scripts; /* Array of script pointers */
@@ -99,6 +103,8 @@ int start_all_scripts(void);
 int get_script_count(void);
 script_t *get_script(int index);
 script_t *get_script_name(char *name);
+int add_global(script_t *script, char *varname, char* tagname, unsigned char mode);
+int add_static(script_t *script, lua_State *L, char* varname);
 
 
 /* luaif.c - Lua Interface functions */

@@ -79,7 +79,7 @@ main(int argc, char *argv[])
                 exit(-1);
             }
         }
-
+        // TODO: Update thread status tags (overruns, scan times, etc)
     }
 
     /* Should never get here */

@@ -22,6 +22,7 @@
 #include "daxlua.h"
 #include <pthread.h>
 #include <time.h>
+#include <unistd.h>
 
 
 /* script queue threads threads
@@ -58,8 +59,9 @@ add_interval_thread(char *name, long interval) {
         return ERR_ALLOC;
     }
 
-    new_thread->name = name;
+    new_thread->name = strdup(name);
     new_thread->interval = interval;
+    new_thread->overruns = 0;
     new_thread->scriptcount = 0;
     new_thread->scripts = NULL;
     new_thread->next = NULL;
@@ -74,7 +76,6 @@ add_interval_thread(char *name, long interval) {
         this->next = new_thread;
     }
 
-    DF("Adding interval thread name = %s, interval = %ld", name, interval);
     return 0;
 }
 
@@ -82,6 +83,7 @@ static void *
 _interval_thread(void* thread_def) {
     interval_thread_t *t;
     struct timespec start, end;
+    long long sleep_time;
 
     t = (interval_thread_t *)thread_def;
 
@@ -91,7 +93,12 @@ _interval_thread(void* thread_def) {
             run_script(t->scripts[n]);
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
-        usleep(t->interval * 1000); /* Just for now need to calculate the time */
+        sleep_time = (t->interval * 1000) - ((end.tv_sec - start.tv_sec) * 1e6) + ((end.tv_nsec - start.tv_nsec) / 1e3);
+        if(sleep_time < 0) {
+            t->overruns++;
+        } else {
+            usleep(sleep_time); /* Just for now need to calculate the time */
+        }
 
     }
 
@@ -129,16 +136,13 @@ _start_interval_thread(interval_thread_t *t) {
     for(n=0;n<count;n++) {
         s = get_script(n);
         if(s->threadname != NULL && strcmp(t->name, s->threadname) == 0) {
-            DF("Assigning %s to thread", s->name, t->name)
             t->scripts[x++] = s;
             /* Create a lua interpreter object */
-            s->L = luaL_newstate();
             setup_interpreter(s->L);
             /* load and compile the file */
             if(luaL_loadfile(s->L, s->filename) ) {
                 dax_log(LOG_ERROR, "Error Loading Main Script - %s", lua_tostring(s->L, -1));
-                /* This is a memory leak, but it'll only happen once */
-                s->L = NULL; /* So we know that we have a problem */
+                s->failed = 1;
             } else {
                 /* Basicaly stores the Lua script */
                 s->func_ref = luaL_ref(s->L, LUA_REGISTRYINDEX);
