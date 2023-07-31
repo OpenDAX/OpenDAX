@@ -64,11 +64,13 @@ typedef struct Script_t {
     int event_count;
     int event_type;
     lua_Number event_value;
+    tag_handle event_handle;
+    uint8_t *event_buff;
     unsigned char firstrun;
     uint64_t lastscan;
     uint64_t thisscan;
     long executions;
-    long rate;
+    long interval;
     global_t *globals;
 } script_t;
 
@@ -84,11 +86,6 @@ typedef struct Interval_thread_t {
     script_t **scripts; /* Array of script pointers */
     struct Interval_thread_t *next;
 } interval_thread_t;
-
-typedef struct Queue_thread_t {
-    pthread_t thread;
-} queue_thread_t;
-
 
 
 /* luaopt.c - Configuration functions */
@@ -119,6 +116,6 @@ int tag_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask);
 void thread_set_qthreadcount(unsigned int count);
 void thread_set_queue_size(unsigned int size);
 int add_interval_thread(char *name, long interval);
-void thread_start_all(void);
+int thread_start_all(void);
 
 #endif /* !__DAXLUA_H */

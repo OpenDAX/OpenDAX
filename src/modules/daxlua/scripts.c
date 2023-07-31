@@ -61,6 +61,7 @@ get_new_script(void)
     scripts[n].L = luaL_newstate();
     scripts[n].name =  "";
     scripts[n].globals = NULL;
+    scripts[n].event_buff = NULL;
     scripts[n].firstrun = 1;
     scripts[n].name = NULL;
     scripts[n].failed = 0;
@@ -188,8 +189,8 @@ _receive_globals(script_t *s) {
     lua_pushinteger(s->L, (lua_Integer)s->thisscan);
     lua_setglobal(s->L, "_thisscan");
 
-    lua_pushinteger(s->L, (lua_Integer)s->rate);
-    lua_setglobal(s->L, "_rate");
+    lua_pushinteger(s->L, (lua_Integer)s->interval);
+    lua_setglobal(s->L, "_interval");
 
     lua_pushinteger(s->L, (lua_Integer)s->executions);
     lua_setglobal(s->L, "_executions");
@@ -227,89 +228,6 @@ _send_globals(script_t *s)
     return 0;
 }
 
-/* Converts the lua_Number that we would get off of the Lua stack into
- * the proper form and assigns it to the write member of the union 'dest'
- * a pointer to this union can then be passed to dax_event_add() as the
- * data argument for EQUAL, GREATER, LESS and DEADBAND events. */
-static inline void
-_convert_lua_number(tag_type datatype, dax_type_union *dest, lua_Number x) {
-
-    switch(datatype) {
-        case DAX_BYTE:
-            dest->dax_byte = (dax_byte)x;
-            return;
-        case DAX_SINT:
-        case DAX_CHAR:
-            dest->dax_sint = (dax_sint)x;
-            return;
-        case DAX_UINT:
-        case DAX_WORD:
-            dest->dax_uint = (dax_uint)x;
-            return;
-        case DAX_INT:
-            dest->dax_int = (dax_int)x;
-            return;
-        case DAX_UDINT:
-        case DAX_DWORD:
-        case DAX_TIME:
-            dest->dax_udint = (dax_udint)x;
-            return;
-        case DAX_DINT:
-            dest->dax_dint = (dax_dint)x;
-            return;
-        case DAX_ULINT:
-        case DAX_LWORD:
-            dest->dax_ulint = (dax_ulint)x;
-            return;
-        case DAX_LINT:
-            dest->dax_lint = (dax_lint)x;
-            return;
-        case DAX_REAL:
-            dest->dax_real = (dax_real)x;
-            return;
-        case DAX_LREAL:
-            dest->dax_lreal = (dax_lreal)x;
-            return;
-        default:
-            dest->dax_ulint = 0L;
-    }
-    return;
-}
-
-// static void
-// _script_event_dispatch(dax_state *d, void *udata) {
-//     script_t *s;
-//     s = (script_t *)udata;
-//     pthread_mutex_lock(&s->mutex);
-//     pthread_cond_signal(&s->condition);
-//     pthread_mutex_unlock(&s->mutex);
-// }
-
-static void
-_script_event_dispatch(dax_state *d, void *udata) {
-   DF("Do some stuff");
-}
-
-static inline int
-_setup_script_event(lua_State *L, script_t *s) {
-    tag_handle h;
-    dax_type_union u;
-    int result;
-
-    result = dax_tag_handle(ds, &h, s->event_tagname, s->event_count);
-    if(result) {
-        return result;
-    }
-
-    _convert_lua_number(h.type, &u, s->event_value);
-    result = dax_event_add(ds, &h, s->event_type, (void *)&u,
-                           NULL, _script_event_dispatch, s, NULL);
-    if(result) {
-        return(result);
-    }
-    return 0;
-}
-
 void
 run_script(script_t *s) {
     struct timespec start;
@@ -335,7 +253,7 @@ run_script(script_t *s) {
     } else {
         /* Run the script that is on the top of the stack */
         if( lua_pcall(s->L, 0, 0, 0) ) {
-            dax_log(LOG_ERROR, "Error Running Script - %s", lua_tostring(s->L, -1));
+            dax_log(LOG_ERROR, "Error Running Script %s - %s",s->name, lua_tostring(s->L, -1));
             s->failed = 1;
         }
         /* Write the configured global tags out to the server */
@@ -347,7 +265,6 @@ run_script(script_t *s) {
     }
 
 }
-
 
 int
 start_all_scripts(void)

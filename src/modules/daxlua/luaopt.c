@@ -98,14 +98,6 @@ _add_script(lua_State *L)
     }
     lua_pop(L, 1);
 
-    lua_getfield(L, 1, "trigger");
-    if(lua_istable(L, -1)) {
-        _set_trigger(L, si);
-    } else {
-        si->trigger = 0;
-    }
-    lua_pop(L, 1);
-
     lua_getfield(L, 1, "name");
     string = (char *)lua_tostring(L, -1);
 
@@ -119,6 +111,14 @@ _add_script(lua_State *L)
     } else {
         luaL_error(L, "name is required for a script");
         si->name = NULL;
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "trigger");
+    if(lua_istable(L, -1)) {
+        _set_trigger(L, si);
+    } else {
+        si->trigger = 0;
     }
     lua_pop(L, 1);
 

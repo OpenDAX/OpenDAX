@@ -1317,7 +1317,7 @@ dax_event_get(dax_state *ds, dax_id id)
  * Set options flags on the given event.
  *
  * @param ds Pointer to the dax state object.
- * @param id The identifier of the event that we wish to remove.
+ * @param id The identifier of the event.
  * @param options Options bits
  *
  * @returns Zero on success or an error code otherwise

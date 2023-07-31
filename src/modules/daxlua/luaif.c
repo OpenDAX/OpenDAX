@@ -29,8 +29,7 @@
 extern dax_state *ds;
 
 int
-daxlua_init(void)
-{
+daxlua_init(void) {
     return 0;
 }
 
@@ -48,8 +47,7 @@ struct iter_udata {
 /* This function figures out what type of data the tag is and translates
  * buff appropriately and pushes the value onto the lua stack */
 static inline void
-_read_to_stack(lua_State *L, tag_type type, void *buff)
-{
+_read_to_stack(lua_State *L, tag_type type, void *buff) {
     switch (type) {
         /* Each number has to be cast to the right datatype then dereferenced
            and then cast to double for pushing into the Lua stack */
@@ -484,6 +482,8 @@ fetch_tag(lua_State *L, tag_handle h)
     }
     /* This function figures all the tag data out and pushes the right
      * thing onto the top of the Lua stack */
+    // TODO: We should be able to convert this to use the libdaxlua library functions instead
+    //       and get all this duplication out of here
     tag_dax_to_lua(L, h, data);
 
     free(data);
@@ -511,6 +511,8 @@ send_tag(lua_State *L, tag_handle h)
     }
     bzero(mask, h.size);
 
+    // TODO: We should be able to convert this to use the libdaxlua library functions instead
+    //       and get all this duplication out of here
     result = tag_lua_to_dax(L, h, data, mask);
     if(result) {
         free(data);
