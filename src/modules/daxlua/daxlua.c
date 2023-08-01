@@ -40,7 +40,6 @@ main(int argc, char *argv[])
         fprintf(stderr, "Unable to Allocate DaxState Object\n");
         return ERR_ALLOC;
     }
-    daxlua_init();
 
     /* Reads the configuration */
     if(configure(argc,argv)) {

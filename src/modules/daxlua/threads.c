@@ -292,6 +292,8 @@ _run_queue_scripts(void) {
     }
 }
 
+/* This is the function that actually gets assigned to the opendax event.  The
+   userdata pointer should be a pointer to the script that we wish to run */
 static void
 _script_event_dispatch(dax_state *d, void *udata) {
     script_t *script;
@@ -303,7 +305,7 @@ _script_event_dispatch(dax_state *d, void *udata) {
         result = dax_event_get_data(ds, script->event_buff, script->event_handle.size);
         if(result > 0) {
             daxlua_dax_to_lua(script->L, script->event_handle, script->event_buff);
-            lua_setglobal(script->L, "_eventdata");
+            lua_setglobal(script->L, "_trigger_data");
         }
     }
 
