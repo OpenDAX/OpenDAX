@@ -61,8 +61,13 @@ get_new_script(void)
     scripts[n].L = luaL_newstate();
     scripts[n].name =  "";
     scripts[n].globals = NULL;
-    scripts[n].event_buff = NULL;
     scripts[n].firstrun = 1;
+    scripts[n].executions = 0;
+    scripts[n].running = 0;
+    scripts[n].command = 0;
+    scripts[n].script_trigger = NULL;
+    scripts[n].enable_trigger = NULL;
+    scripts[n].disable_trigger = NULL;
     scripts[n].name = NULL;
     scripts[n].failed = 0;
     return &scripts[n];
@@ -139,7 +144,6 @@ add_static(script_t *script, lua_State *L, char* varname) {
 }
 
 
-
 /* Looks into the list of tags in the script and reads those tags
  * from the server.  Then makes these tags global Lua variables
  * to the script */
@@ -174,26 +178,6 @@ _receive_globals(script_t *s) {
         lua_setglobal(s->L, this->name);
         this = this->next;
     }
-
-    /* Now we set the daxlua system values as global variables */
-    lua_pushstring(s->L, s->name);
-    lua_setglobal(s->L, "_name");
-
-    /* This may be of liimited usefulness */
-    lua_pushstring(s->L, s->filename);
-    lua_setglobal(s->L, "_filename");
-
-    lua_pushinteger(s->L, (lua_Integer)s->lastscan);
-    lua_setglobal(s->L, "_lastscan");
-
-    lua_pushinteger(s->L, (lua_Integer)s->thisscan);
-    lua_setglobal(s->L, "_thisscan");
-
-    lua_pushinteger(s->L, (lua_Integer)s->interval);
-    lua_setglobal(s->L, "_interval");
-
-    lua_pushinteger(s->L, (lua_Integer)s->executions);
-    lua_setglobal(s->L, "_executions");
 
     lua_pushboolean(s->L, s->firstrun);
     lua_setglobal(s->L, "_firstrun");
@@ -232,13 +216,22 @@ void
 run_script(script_t *s) {
     struct timespec start;
 
+    /* this is to avoid a race condition where another script could set the
+       enabled flag while the script was running and then the script would
+       disable itself afterward. */
+    if(s->command) {
+        if(s->command == COMMAND_ENABLE) {
+            s->enabled = 1;
+        } else if(s->command == COMMAND_DISABLE) {
+            s->enabled = 0;
+        }
+        s->command = 0x00;
+    }
     /* In this case do nothing */
-    if(s->failed || s->enable == 0) {
+    if(s->failed || s->enabled == 0) {
         return;
     }
 
-    /* Set the lastscan value in uSec */
-    s->lastscan = s->thisscan;
     /* Get the time since system startup (in Linux) */
     clock_gettime(CLOCK_MONOTONIC, &start);
     /* This is the time that we are running the script now in mSec since system startup */
@@ -251,11 +244,15 @@ run_script(script_t *s) {
     if(_receive_globals(s)) {
         dax_log(LOG_ERROR, "Unable to find all the global tags\n");
     } else {
+        s->running = 1;
         /* Run the script that is on the top of the stack */
         if( lua_pcall(s->L, 0, 0, 0) ) {
             dax_log(LOG_ERROR, "Error Running Script %s - %s",s->name, lua_tostring(s->L, -1));
             s->failed = 1;
         }
+        s->running = 0;
+        /* Set the lastscan value in uSec */
+        s->lastscan = s->thisscan;
         /* Write the configured global tags out to the server */
         /* TODO: Should we do something if this fails, if register globals
            works then this should too */
@@ -263,6 +260,242 @@ run_script(script_t *s) {
         s->executions++;
         s->firstrun = 0;
     }
+}
+
+/* These are the custom functions that we will give our scripts */
+/* This function causes the script to disable itself */
+/* No arguments and no return value */
+static int
+_disable_self(lua_State *L) {
+    script_t *s;
+
+    s = lua_touserdata(L, lua_upvalueindex(1));
+    s->enabled = 0;
+    return 0;
+}
+
+/* These functions just retrieve script information */
+static int
+_get_name(lua_State *L) {
+    script_t *s;
+
+    s = lua_touserdata(L, lua_upvalueindex(1));
+    lua_pushstring(L, s->name);
+    return 1;
+}
+
+static int
+_get_filename(lua_State *L) {
+    script_t *s;
+
+    s = lua_touserdata(L, lua_upvalueindex(1));
+    lua_pushstring(L, s->filename);
+    return 1;
+}
+
+static int
+_get_executions(lua_State *L) {
+    script_t *s;
+
+    s = lua_touserdata(L, lua_upvalueindex(1));
+    lua_pushinteger(L, s->executions);
+    return 1;
+}
+
+static int
+_get_lastscan(lua_State *L) {
+    script_t *s;
+
+    s = lua_touserdata(L, lua_upvalueindex(1));
+    lua_pushinteger(L, s->lastscan);
+    return 1;
+}
+
+static int
+_get_thisscan(lua_State *L) {
+    script_t *s;
+
+    s = lua_touserdata(L, lua_upvalueindex(1));
+    lua_pushinteger(L, s->thisscan);
+    return 1;
+}
+
+static int
+_get_interval(lua_State *L) {
+    script_t *s;
+
+    s = lua_touserdata(L, lua_upvalueindex(1));
+    if(s->firstrun) {
+        lua_pushinteger(L, 0);
+    } else {
+        lua_pushinteger(L, s->thisscan - s->lastscan);
+    }
+
+    return 1;
+}
+
+
+/* Get the id of a scirpt (array index) by name.
+   Takes a single string that should be a script name.
+   Returns an integer that represents the script or nil if not found */
+static int
+_get_script_id(lua_State *L) {
+    const char *name;
+
+    name = lua_tostring(L, 1);
+    if(name == NULL) {
+        luaL_error(L, "string required for get_script_id() function");
+    }
+
+    for(int n=0;n<scriptcount;n++) {
+        if(strcmp(name, scripts[n].name) == 0) {
+            lua_pushinteger(L, n);
+            return 1;
+        }
+    }
+    /* If we get here then we didn't find the script */
+    lua_pushnil(L);
+    return 1;
+}
+
+/* Get the id of a scirpt (array index) by name.
+   Takes a single string that should be a script name.
+   Returns the script name or nil if index is bad */
+static int
+_get_script_name(lua_State *L) {
+    int idx, result;
+
+    idx = lua_tointegerx(L, 1, &result);
+    if(result && idx < scriptcount) {
+        lua_pushstring(L, scripts[idx].name);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+/* Disables the given script.  This should not be used to disable self
+   to avoid a race condition.  The argument can either be an integer
+   that represents the id of the script or a string that represents the
+   name of the script.  If successful it returns the id of the script
+   that it disabled and nil if failed */
+static int
+_disable_script(lua_State *L) {
+    const char *name;
+    int idx;
+    int type;
+
+    idx = -1;  /* In case we don't find it */
+    type = lua_type(L, 1);
+    if(type == LUA_TNUMBER) {
+        idx = lua_tointeger(L, 1);
+    } else if(type == LUA_TSTRING) {
+        name = lua_tostring(L, 1);
+
+        for(int n=0;n<scriptcount;n++) {
+            if(strcmp(name, scripts[n].name) == 0) {
+                idx = n;
+                break;
+            }
+        }
+    }
+    if(idx >= 0 && idx < scriptcount) {
+        scripts[idx].command = COMMAND_DISABLE;
+        lua_pushinteger(L, idx);
+    } else {
+        lua_pushnil(L);
+    }
+
+    return 1;
+}
+
+/* Same as the above function except it enables the given script */
+static int
+_enable_script(lua_State *L) {
+    const char *name;
+    int idx;
+    int type;
+
+    idx = -1;  /* In case we don't find it */
+    type = lua_type(L, 1);
+    if(type == LUA_TNUMBER) {
+        idx = lua_tointeger(L, 1);
+    } else if(type == LUA_TSTRING) {
+        name = lua_tostring(L, 1);
+
+        for(int n=0;n<scriptcount;n++) {
+            if(strcmp(name, scripts[n].name) == 0) {
+                idx = n;
+                break;
+            }
+        }
+    }
+    if(idx >= 0 && idx < scriptcount) {
+        scripts[idx].command = COMMAND_ENABLE;
+        lua_pushinteger(L, idx);
+    } else {
+        lua_pushnil(L);
+    }
+
+    return 1;
+}
+
+
+/* This sets up the interpreter with the functions and globals
+   and reads the file from the filesystem and stores the chunk
+   in the registry. */
+static void
+_initialize_script(script_t *s) {
+    /* Create a lua interpreter object */
+    setup_interpreter(s->L);
+    /* load and compile the file */
+    if(luaL_loadfile(s->L, s->filename) ) {
+        dax_log(LOG_ERROR, "Error Loading Main Script - %s", lua_tostring(s->L, -1));
+        s->failed = 1;
+    } else {
+        /* Basicaly stores the Lua script */
+        s->func_ref = luaL_ref(s->L, LUA_REGISTRYINDEX);
+    }
+
+    lua_pushlightuserdata(s->L, s);
+    lua_pushcclosure(s->L, _disable_self, 1);
+    lua_setglobal(s->L, "disable_self");
+
+    lua_pushlightuserdata(s->L, s);
+    lua_pushcclosure(s->L, _get_executions, 1);
+    lua_setglobal(s->L, "get_executions");
+
+    lua_pushlightuserdata(s->L, s);
+    lua_pushcclosure(s->L, _get_name, 1);
+    lua_setglobal(s->L, "get_name");
+
+    lua_pushlightuserdata(s->L, s);
+    lua_pushcclosure(s->L, _get_filename, 1);
+    lua_setglobal(s->L, "get_filename");
+
+    lua_pushlightuserdata(s->L, s);
+    lua_pushcclosure(s->L, _get_lastscan, 1);
+    lua_setglobal(s->L, "get_lastscan");
+
+    lua_pushlightuserdata(s->L, s);
+    lua_pushcclosure(s->L, _get_thisscan, 1);
+    lua_setglobal(s->L, "get_thisscan");
+
+    lua_pushlightuserdata(s->L, s);
+    lua_pushcclosure(s->L, _get_interval, 1);
+    lua_setglobal(s->L, "get_interval");
+
+    lua_pushcfunction(s->L, _get_script_id);
+    lua_setglobal(s->L, "get_script_id");
+
+    lua_pushcfunction(s->L, _get_script_name);
+    lua_setglobal(s->L, "get_script_name");
+
+    lua_pushcfunction(s->L, _disable_script);
+    lua_setglobal(s->L, "disable_script");
+
+    lua_pushcfunction(s->L, _enable_script);
+    lua_setglobal(s->L, "enable_script");
 
 }
 
@@ -271,14 +504,15 @@ start_all_scripts(void)
 {
     int n;
 
+    for(n = 0; n < scriptcount; n++) {
+        _initialize_script(&scripts[n]);
+    }
+
     thread_start_all();
 
-    if(scriptcount) {
-        for(n = 0; n < scriptcount; n++) {
-            if(scripts[n].L == NULL) {
-                dax_log(LOG_WARN, "Script '%s' is not assigned to a thread so it will never run!", scripts[n].name);
-            }
-
+    for(n = 0; n < scriptcount; n++) {
+        if(scripts[n].L == NULL) {
+            dax_log(LOG_WARN, "Script '%s' is not assigned to a thread so it will never run!", scripts[n].name);
         }
     }
 

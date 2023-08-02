@@ -244,35 +244,30 @@ typedef dax_udint tag_type;
  * This structure is used to define a specific tag or a part of the tag for
  * reading and writing.
  */
-struct tag_handle {
+typedef struct tag_handle {
     tag_index index;     /*!< The Database Index of the Tag */
-    uint32_t byte;      /*!< The byte offset where the data block starts */
+    uint32_t byte;       /*!< The byte offset where the data block starts */
     unsigned char bit;   /*!< The bit offset */
-    uint32_t count;     /*!< The number of items represented by the handle */
-    uint32_t size;      /*!< The total size of the data block in bytes */
+    uint32_t count;      /*!< The number of items represented by the handle */
+    uint32_t size;       /*!< The total size of the data block in bytes */
     tag_type type;       /*!< The data type of the block */
-};
-
-typedef struct tag_handle tag_handle;
+} tag_handle;
 
 /* This is a generic representation of a tag, it may or may
  * not actually represent how tags are stored. */
-struct dax_tag {
+typedef struct dax_tag {
     tag_index idx;        /* Unique tag index */
     tag_type type;        /* Tags data type */
     unsigned int count;   /* The number of items in the tag array */
     uint16_t attr;
     char name[DAX_TAGNAME_SIZE + 1];
-};
-
-typedef struct dax_tag dax_tag;
+} dax_tag;
 
 /*!
  * Identifier that is passed back and forth from modules to the server to
  * uniquely identify events or mappings in the system.
  */
-typedef struct dax_id
-{
+typedef struct dax_id {
     tag_index index;     /* The Index of the Tag */
     int id;              /* The byte offset where the data block starts */
 } dax_id;

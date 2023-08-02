@@ -37,6 +37,9 @@
 #define MODE_STATIC   0x04  /* Static global value (mutulally exclusive from read / wrtite */
 #define MODE_INIT     0x80  /* Flag set after then handle has been initialized */
 
+#define COMMAND_ENABLE 0x01
+#define COMMAND_DISABLE 0x02
+
 /* This is the representation of a custom Lua global
    if the mode is static then the tagname will be written
    to the Lua registry otherwise it's either read, written
@@ -50,23 +53,32 @@ typedef struct Global_t {
     struct Global_t *next;
 } global_t;
 
+typedef struct Trigger_t {
+    char *tagname;
+    int count;
+    int type;
+    lua_Number value;
+    tag_handle handle;
+    uint8_t *buff;
+    dax_id id;
+} trigger_t;
+
 /* Contains all the information to identify a script */
 typedef struct Script_t {
     lua_State *L;
-    char enable;
-    char failed;
-    char trigger;
+    unsigned char enabled;
+    unsigned char failed;
+    //unsigned char trigger;
+    unsigned char command;
     char *name;
     char *filename;
     char *threadname;
     int func_ref;
-    char *event_tagname;
-    int event_count;
-    int event_type;
-    lua_Number event_value;
-    tag_handle event_handle;
-    uint8_t *event_buff;
+    trigger_t *script_trigger;
+    trigger_t *enable_trigger;
+    trigger_t *disable_trigger;
     unsigned char firstrun;
+    unsigned char running;
     uint64_t lastscan;
     uint64_t thisscan;
     long executions;
@@ -90,7 +102,6 @@ typedef struct Interval_thread_t {
 
 /* luaopt.c - Configuration functions */
 int configure(int argc, char *argv[]);
-// char *get_init(void);
 
 /* scripts.c - Script handling functions */
 script_t *get_new_script(void);
@@ -105,12 +116,9 @@ int add_static(script_t *script, lua_State *L, char* varname);
 
 
 /* luaif.c - Lua Interface functions */
-int daxlua_init(void);
 int setup_interpreter(lua_State *L);
 int fetch_tag(lua_State *L, tag_handle h);
 int send_tag(lua_State *L, tag_handle h);
-void tag_dax_to_lua(lua_State *L, tag_handle h, void* data);
-int tag_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask);
 
 /* thread.c - Thread handling functions */
 void thread_set_qthreadcount(unsigned int count);

@@ -845,7 +845,7 @@ _tag_write(lua_State *L) {
 
     free(data);
     free(mask);
-    return 1;
+    return 0;
 }
 
 
@@ -1159,7 +1159,7 @@ _log(lua_State *L) {
         if(str!= NULL) {
             dax_log(log_topics, str);
         } else {
-            luaL_error(L, "Problem with string passed to log()");    
+            luaL_error(L, "Problem with string passed to log()");
         }
     } else {
         luaL_error(L, "First argument to log() should be topic integer");

@@ -150,22 +150,6 @@ _interval_thread(void* thread_def) {
     return NULL;
 }
 
-/* This sets up the interpreter with the functions and globals
-   and reads the file from the filesystem and stores the chunk
-   in the registry. */
-void
-_initialize_script(script_t *s) {
-    /* Create a lua interpreter object */
-    setup_interpreter(s->L);
-    /* load and compile the file */
-    if(luaL_loadfile(s->L, s->filename) ) {
-        dax_log(LOG_ERROR, "Error Loading Main Script - %s", lua_tostring(s->L, -1));
-        s->failed = 1;
-    } else {
-        /* Basicaly stores the Lua script */
-        s->func_ref = luaL_ref(s->L, LUA_REGISTRYINDEX);
-    }
-}
 
 static int
 _start_interval_thread(interval_thread_t *t) {
@@ -199,7 +183,6 @@ _start_interval_thread(interval_thread_t *t) {
         s = get_script(n);
         if(s->threadname != NULL && strcmp(t->name, s->threadname) == 0) {
             t->scripts[x++] = s;
-            _initialize_script(s);
             s->interval = t->interval;
         }
     }
@@ -245,14 +228,12 @@ int
 _start_queue_threads(void) {
     int n;
 
-    DF("Starting %d queue threads", q_threadcount);
     q_threads = malloc(sizeof(pthread_t) * q_threadcount);
     q_thread_ids = malloc(sizeof(int) * q_threadcount);
 
     pthread_attr_init(&attr);
 
     for(n=0;n<q_threadcount;n++) {
-        DF("Starting queue thread %d", n);
         q_thread_ids[n] = n;
         pthread_create(&q_threads[n], NULL, __queue_thread, &q_thread_ids[n]);
     }
@@ -273,17 +254,14 @@ _run_queue_scripts(void) {
     while(n<count) {
         script = get_script(n);
 
-        if(script->trigger) {
-            _initialize_script(script);
+        if(script->script_trigger != NULL) {
             pthread_mutex_lock(&q_lock);
             if( ! q_full) {
-                DF("Pushing script %s onto the queue", script->name);
                 _q_push(script);
                 pthread_cond_signal(&q_cond);
                 pthread_mutex_unlock(&q_lock);
                 n++;
             } else { /* If the queue is full */
-                DF("Queue full...waiting");
                 usleep(50000);
             }
         } else { /* Not an event script */
@@ -297,20 +275,39 @@ _run_queue_scripts(void) {
 static void
 _script_event_dispatch(dax_state *d, void *udata) {
     script_t *script;
+    trigger_t *t;
     int result;
 
     script = (script_t *)udata;
+    t = script->script_trigger; /* Just to make life easier */
 
-    if(script->event_buff != NULL) {
-        result = dax_event_get_data(ds, script->event_buff, script->event_handle.size);
+    if(t->buff != NULL) {
+        result = dax_event_get_data(ds, t->buff, t->handle.size);
         if(result > 0) {
-            daxlua_dax_to_lua(script->L, script->event_handle, script->event_buff);
+            daxlua_dax_to_lua(script->L, t->handle, t->buff);
             lua_setglobal(script->L, "_trigger_data");
         }
     }
 
     run_script(script);
 }
+
+static void
+_script_enable_dispatch(dax_state *d, void *udata) {
+    script_t *script;
+
+    script = (script_t *)udata;
+    script->command = COMMAND_ENABLE;
+}
+
+static void
+_script_disable_dispatch(dax_state *d, void *udata) {
+    script_t *script;
+
+    script = (script_t *)udata;
+    script->command = COMMAND_DISABLE;
+}
+
 
 /* Converts the lua_Number that we would get off of the Lua stack into
  * the proper form and assigns it to the write member of the union 'dest'
@@ -369,8 +366,8 @@ _convert_lua_number(tag_type datatype, dax_type_union *dest, lua_Number x) {
 void
 _set_trigger_events(void *x) {
     script_t *s;
+    trigger_t *t;
     dax_type_union u;
-    dax_id id;
     int count;
     int fails;
     int result;
@@ -382,21 +379,54 @@ _set_trigger_events(void *x) {
         fails = 0; /* It'll get set to true later */
         for(int n=0;n<count;n++) {
             s = get_script(n);
-            if(s->trigger == 1) { /* 1 means we have a trigger but not setup yet */
-                result = dax_tag_handle(ds, &s->event_handle, s->event_tagname, s->event_count);
+            /* If the pointer is not NULL but the size is still zero then we have not
+               configured this event yet */
+            if(s->script_trigger != NULL && s->script_trigger->handle.size == 0) {
+                t = s->script_trigger;
+                result = dax_tag_handle(ds, &t->handle, t->tagname, t->count);
                 if(result) {
                     fails++;
                 } else {
-                    _convert_lua_number(s->event_handle.type, &u, s->event_value);
-                    result = dax_event_add(ds, &s->event_handle, s->event_type, (void *)&u,
-                                           &id, _script_event_dispatch, s, NULL);
+                    _convert_lua_number(t->handle.type, &u, t->value);
+                    result = dax_event_add(ds, &t->handle, t->type, (void *)&u,
+                                           &t->id, _script_event_dispatch, s, NULL);
                     if(result) {
                         fails++;
                     } else {
-                        result = dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
+                        result = dax_event_options(ds, t->id, EVENT_OPT_SEND_DATA);
                         /* If this is NULL we won't mess with the data in the dispatch function*/
-                        s->event_buff = malloc(s->event_handle.size);
-                        s->trigger = 2; /* two means we are good to go */
+                        t->buff = malloc(t->handle.size);
+                    }
+                }
+            }
+            /* Repeat for the enable and disable triggers.  These don't set the data
+               return option for the event since that doesn't make any sense for a
+               trigger that only sets a flag in the script definition */
+            if(s->enable_trigger != NULL && s->enable_trigger->handle.size == 0) {
+                t = s->enable_trigger;
+                result = dax_tag_handle(ds, &t->handle, t->tagname, t->count);
+                if(result) {
+                    fails++;
+                } else {
+                    _convert_lua_number(t->handle.type, &u, t->value);
+                    result = dax_event_add(ds, &t->handle, t->type, (void *)&u,
+                                           &t->id, _script_enable_dispatch, s, NULL);
+                    if(result) {
+                        fails++;
+                    }
+                }
+            }
+            if(s->disable_trigger != NULL && s->disable_trigger->handle.size == 0) {
+                t = s->disable_trigger;
+                result = dax_tag_handle(ds, &t->handle, t->tagname, t->count);
+                if(result) {
+                    fails++;
+                } else {
+                    _convert_lua_number(t->handle.type, &u, t->value);
+                    result = dax_event_add(ds, &t->handle, t->type, (void *)&u,
+                                           &t->id, _script_disable_dispatch, s, NULL);
+                    if(result) {
+                        fails++;
                     }
                 }
             }

@@ -32,36 +32,38 @@ extern dax_state *ds;
 /* When this function is called it is expected that there
  * is a table on the top of the Lua stack that represents
  * the trigger */
-static int
-_set_trigger(lua_State *L, script_t *s) {
+static const char *
+_set_trigger(lua_State *L, trigger_t *t) {
     char *string;
 
     lua_getfield(L, -1, "tag");
-    s->event_tagname = strdup((char *)lua_tostring(L, -1));
-    if(s->event_tagname == NULL) {
-        luaL_error(L, "'tagname' is required for an event trigger");
-        s->trigger = 0;
+
+    t->buff = NULL;
+    /* This indicates to the starting func that we are not configured */
+    t->handle.size = 0;
+    t->tagname = strdup((char *)lua_tostring(L, -1));
+    if(t->tagname == NULL) {
+        return "'tagname' is required for an event trigger";
     }
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "type");
     string = (char *)lua_tostring(L, -1);
-    s->event_type = dax_event_string_to_type(string);
-    if(s->event_type == 0) {
-        luaL_error(L, "'type' event type is required for an event trigger");
+    t->type = dax_event_string_to_type(string);
+    if(t->type == 0) {
+        return "'type' event type is required for an event trigger";
     }
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "count");
-    s->event_count = lua_tointeger(L, -1);
+    t->count = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "value");
-    s->event_value = lua_tonumber(L, -1);
+    t->value = lua_tonumber(L, -1);
     lua_pop(L, 1);
 
-    s->trigger = 1;
-    return 0;
+    return NULL;
 }
 
 static int
@@ -69,6 +71,7 @@ _add_script(lua_State *L)
 {
     script_t *si;
     char *string;
+    const char* errstr;
 
     if(! lua_istable(L, 1) ) {
         luaL_error(L, "Table needed to add script");
@@ -83,9 +86,9 @@ _add_script(lua_State *L)
 
     lua_getfield(L, 1, "enable");
     if(lua_isnil(L, -1)) {
-        si->enable = 1;
+        si->enabled = 1;
     } else {
-        si->enable = lua_toboolean(L, -1);
+        si->enabled = lua_toboolean(L, -1);
     }
     lua_pop(L, 1);
 
@@ -114,13 +117,62 @@ _add_script(lua_State *L)
     }
     lua_pop(L, 1);
 
+
+    /* Allocate and set the triggers if they are configured */
     lua_getfield(L, 1, "trigger");
     if(lua_istable(L, -1)) {
-        _set_trigger(L, si);
-    } else {
-        si->trigger = 0;
+        si->script_trigger = malloc(sizeof(trigger_t));
+        if(si->script_trigger == NULL) {
+            dax_log(LOG_ERROR, "Unable to allocate memory for script trigger event");
+            return ERR_ALLOC;
+        }
+        errstr = _set_trigger(L, si->script_trigger);
+        if(errstr != NULL) {
+            free(si->script_trigger);
+            si->script_trigger = NULL;
+            luaL_error(L, errstr);
+        }
+    } else if(!lua_isnil(L, -1)) { /* If nil we ignore it otherwise error */
+        luaL_error(L, "script trigger description must be a table");
     }
     lua_pop(L, 1);
+
+    lua_getfield(L, 1, "enable_trigger");
+    if(lua_istable(L, -1)) {
+        si->enable_trigger = malloc(sizeof(trigger_t));
+        if(si->enable_trigger == NULL) {
+            dax_log(LOG_ERROR, "Unable to allocate memory for script trigger event");
+            return ERR_ALLOC;
+        }
+        errstr = _set_trigger(L, si->enable_trigger);
+        if(errstr != NULL) {
+            free(si->enable_trigger);
+            si->enable_trigger = NULL;
+            luaL_error(L, errstr);
+        }
+    } else if(!lua_isnil(L, -1)) { /* If nil we ignore it otherwise error */
+        luaL_error(L, "enable trigger description must be a table");
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "disable_trigger");
+    if(lua_istable(L, -1)) {
+        si->disable_trigger = malloc(sizeof(trigger_t));
+        if(si->disable_trigger == NULL) {
+            dax_log(LOG_ERROR, "Unable to allocate memory for script trigger event");
+            return ERR_ALLOC;
+        }
+        errstr = _set_trigger(L, si->disable_trigger);
+        if(errstr != NULL) {
+            free(si->disable_trigger);
+            si->disable_trigger = NULL;
+            luaL_error(L, errstr);
+        }
+    } else if(!lua_isnil(L, -1)) { /* If nil we ignore it otherwise error */
+        luaL_error(L, "enable trigger description must be a table");
+    }
+    lua_pop(L, 1);
+
 
     lua_getfield(L, 1, "filename");
     string = (char *)lua_tostring(L, -1);
@@ -128,11 +180,11 @@ _add_script(lua_State *L)
         si->filename = strdup(string);
     } else {
         si->filename = NULL;
-        si->enable = 0;
+        si->enabled = 0;
     }
     lua_pop(L, 1);
 
-    if(si->threadname != NULL && si->trigger !=0) {
+    if(si->threadname != NULL && si->script_trigger != NULL) {
         dax_log(LOG_WARN, "Script '%s' is assigned to a trigger as well as an interval.", si->name);
     }
 
