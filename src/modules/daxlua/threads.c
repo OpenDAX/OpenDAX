@@ -33,6 +33,7 @@ static unsigned int q_threadcount;
 static unsigned int queue_size;
 static pthread_t *q_threads;
 static int *q_thread_ids;
+static int q_overruns;
 
 static pthread_mutex_t q_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t q_cond = PTHREAD_COND_INITIALIZER;
@@ -67,7 +68,7 @@ thread_set_queue_size(unsigned int size) {
 static int
 _q_push(script_t *script) {
     if(q_full) return -1;
-    //DF("pushing %d, q_first = %d, q_last = %d\n",script, q_first, q_last);
+    //DF("pushing %s, q_first = %d, q_last = %d",script->name, q_first, q_last);
     script_queue[q_last] = script;
     q_last++;
     if(q_last == q_first) q_full = 1;
@@ -84,7 +85,7 @@ _q_pop(void) {
     script_t *x;
     if(q_empty) return NULL;
     x = script_queue[q_first];
-    //DF("poping %d, q_first = %d, q_last = %d\n",x, q_first, q_last);
+    //DF("poping %s, q_first = %d, q_last = %d",((script_t *)x)->name, q_first, q_last);
     q_first++;
     if(q_first >= queue_size) q_first = 0;
     if(q_first == q_last) q_empty = 1;
@@ -210,6 +211,7 @@ __queue_thread(void *num) {
     while(1) {
         if(q_exit) break;
         pthread_cond_wait(&q_cond, &q_lock);
+
         while(! q_empty) {
             script = _q_pop(); // Get the job off of the queue <<sorta>>
             pthread_mutex_unlock(&q_lock); // play nice
@@ -218,7 +220,6 @@ __queue_thread(void *num) {
         }
     }
     pthread_mutex_unlock(&q_lock); // Give it up when we are done
-    DF("Thread %d Exiting\n", *(int *)num);
 
     return NULL;
 }
@@ -241,7 +242,7 @@ _start_queue_threads(void) {
 }
 
 /* This function loops through all of the scripts that have
-   .trigger set and initializes them and then pushes them onto
+   triggers set and initializes them and then pushes them onto
    the queue so that the worker thread will run them. */
 void
 _run_queue_scripts(void) {
@@ -254,7 +255,7 @@ _run_queue_scripts(void) {
     while(n<count) {
         script = get_script(n);
 
-        if(script->script_trigger != NULL) {
+        if(script->script_trigger != NULL && (script->flags & CONFIG_AUTO_RUN)) {
             pthread_mutex_lock(&q_lock);
             if( ! q_full) {
                 _q_push(script);
@@ -282,14 +283,24 @@ _script_event_dispatch(dax_state *d, void *udata) {
     t = script->script_trigger; /* Just to make life easier */
 
     if(t->buff != NULL) {
+        /* We have to retrieve the data here but we cannot write it to the Lua
+           state yet because of race conditions. */
         result = dax_event_get_data(ds, t->buff, t->handle.size);
         if(result > 0) {
-            daxlua_dax_to_lua(script->L, t->handle, t->buff);
-            lua_setglobal(script->L, "_trigger_data");
+            t->new_data = 1; /* This flag tells run_script() that we have new data */
         }
     }
 
-    run_script(script);
+    pthread_mutex_lock(&q_lock);
+    if(q_full) {
+        q_overruns++;
+        pthread_mutex_unlock(&q_lock);
+        dax_log(LOG_ERROR, "Script Queue is Full");
+    } else {
+        _q_push(script);
+        pthread_cond_signal(&q_cond);
+        pthread_mutex_unlock(&q_lock);
+    }
 }
 
 static void

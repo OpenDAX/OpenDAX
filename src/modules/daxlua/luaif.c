@@ -129,6 +129,7 @@ setup_interpreter(lua_State *L)
     daxlua_register_function(L, "cdt_create");
     daxlua_register_function(L, "tag_add");
     daxlua_register_function(L, "tag_get");
+    daxlua_register_function(L, "tag_handle");
     daxlua_register_function(L, "tag_read");
     daxlua_register_function(L, "tag_write");
     daxlua_register_function(L, "log");

@@ -40,6 +40,10 @@
 #define COMMAND_ENABLE 0x01
 #define COMMAND_DISABLE 0x02
 
+#define CONFIG_FAIL_ON_ERROR 0x01
+#define CONFIG_AUTO_RUN      0x02
+
+
 /* This is the representation of a custom Lua global
    if the mode is static then the tagname will be written
    to the Lua registry otherwise it's either read, written
@@ -60,16 +64,18 @@ typedef struct Trigger_t {
     lua_Number value;
     tag_handle handle;
     uint8_t *buff;
+    uint8_t new_data;
     dax_id id;
 } trigger_t;
 
 /* Contains all the information to identify a script */
 typedef struct Script_t {
     lua_State *L;
+    pthread_mutex_t lock;
     unsigned char enabled;
     unsigned char failed;
-    //unsigned char trigger;
     unsigned char command;
+    unsigned char flags;
     char *name;
     char *filename;
     char *threadname;

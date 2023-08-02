@@ -79,6 +79,7 @@ s = {}
 s.name = "demo1"    -- Unique name for the script
 s.filename = root.."demo1.lua"  -- The path to the script
 s.enable = false    -- If false the script will not run
+s.fail_on_error = true
 s.thread = "fast"   -- The name of the interval thread
                     -- that we wish to be assigned to
 s.enable_trigger = {tag="s_enable", count=0, type="SET", value=0}
@@ -108,6 +109,11 @@ appropriate.
 If \texttt{enable} is set to \texttt{false} then the script will be assigned to the proper script but
 it will not be executed until it is enabled my some mechanism.  Either by another script or a trigger.
 
+If \texttt{fail\_on\_error} is set to true the script will fail (no longer be executed) if
+an error is raised by the script.  Errors that are caught in the scipr (by pcall() or similar)
+will not cause the failure.  To allow a script to continue to run after an error is caught
+this will need to be set to false.  The default is true.
+
 \texttt{thread} is the name of the interval thread, that we wish to assign the script to.  Each
 script can only be assigned to one thread.
 
@@ -122,6 +128,7 @@ from the tag server the script is placed on the queue to be executed.
 
 \begin{verbatim}
 	s.trigger = {tag="triggerdemo", count=0, type="CHANGE", value=0}
+    s.auto_run = false
 \end{verbatim}
 
 The \textit{trigger} attribute and the \textit{thread} attribute can be set for each script and this
@@ -135,6 +142,11 @@ been tested so you are on your own here.
 Any data that is associated with the trigger event will be stored in the global variable
 \texttt{\_trigger\_data} so the Lua script will have access to that data without having to query
 the tagserver.
+
+If \texttt{auto\_run} is set to true the triggered script will be run at least once during
+module startup.  This initial run will not be the result of the trigger event being received
+from the server so the \texttt{\_trigger\_data} varialbe will be \texttit{nil}.  The default
+is false.
 
 Once we have all the data in the script table we can pass it to the \texttt{add\_script()} configuration
 function to actually create the script.
@@ -454,12 +466,25 @@ the global data each time the script is executed.
 
 \subsubsection*{Notes}
 
-Any errors that are allowed to propagate up the the calling module code
-will be marked as \textit{failed} and will never be executed again.  Any
+Any errors that are allowed to propagate up to the calling module
+will be marked as \textit{failed} and will never be executed again. Any
 code within the scripts that could cause failures that may not be permanent,
 (like trying to read from tags that don't yet exist) will have to be caught
 or the script will be permanently disabled.
+This behavior can be changed by setting the \texttt{.fail\_on\_error}
+entry in the script table to false.  If this set to false the script
+will continue to execute and fail.  Entries will be put in the error
+log for each occurance in this case.
 
 A future feature addition will be the ability to reload scripts from disk
 while the module is running.  Once this feature is added the \textit{failed}
-flag will be reset.  Until then, be careful.
+flag will be reset when a new script is loaded.
+
+Be careful with triggered scripts that execute very frequently.  If several
+event triggered scripts are overlapping because events are coming in faster
+than the scripts can be run then the \texttt{\_trigger\_data} value may
+not be reliable.  There are protections to keep the same script from running
+at the same time but there are no protections for this data.  If the
+script is in the queue multiple times then all of the scripts will run
+with the latest \texttt{\_trigger\_data} and scripts that were waiting in
+the queue when subsequent events arrived will lose their data.

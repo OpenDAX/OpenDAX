@@ -59,6 +59,7 @@ get_new_script(void)
     scriptcount++;
     /* Initialize the script structure */
     scripts[n].L = luaL_newstate();
+    pthread_mutex_init(&scripts[n].lock, NULL);
     scripts[n].name =  "";
     scripts[n].globals = NULL;
     scripts[n].firstrun = 1;
@@ -70,6 +71,7 @@ get_new_script(void)
     scripts[n].disable_trigger = NULL;
     scripts[n].name = NULL;
     scripts[n].failed = 0;
+    scripts[n].flags = CONFIG_FAIL_ON_ERROR | CONFIG_AUTO_RUN;
     return &scripts[n];
 }
 
@@ -237,18 +239,25 @@ run_script(script_t *s) {
     /* This is the time that we are running the script now in mSec since system startup */
     s->thisscan = start.tv_sec*1e6 + start.tv_nsec / 1000;
 
-    /* retrieve the funciton and put it on the stack */
-    lua_rawgeti(s->L, LUA_REGISTRYINDEX, s->func_ref);
+    pthread_mutex_lock(&s->lock); /* Make sure we only run one at a time. */
+    if(s->script_trigger->new_data) {
+        daxlua_dax_to_lua(s->L, s->script_trigger->handle, s->script_trigger->buff);
+        lua_setglobal(s->L, "_trigger_data");
+        s->script_trigger->new_data = 0;
+    }
 
     /* Get the configured tags and set the globals for the script */
     if(_receive_globals(s)) {
         dax_log(LOG_ERROR, "Unable to find all the global tags\n");
     } else {
+        /* retrieve the funciton and put it on the stack */
+        lua_rawgeti(s->L, LUA_REGISTRYINDEX, s->func_ref);
+
         s->running = 1;
         /* Run the script that is on the top of the stack */
         if( lua_pcall(s->L, 0, 0, 0) ) {
             dax_log(LOG_ERROR, "Error Running Script %s - %s",s->name, lua_tostring(s->L, -1));
-            s->failed = 1;
+            if(s->flags & CONFIG_FAIL_ON_ERROR)s->failed = 1;
         }
         s->running = 0;
         /* Set the lastscan value in uSec */
@@ -260,6 +269,7 @@ run_script(script_t *s) {
         s->executions++;
         s->firstrun = 0;
     }
+    pthread_mutex_unlock(&s->lock); /* Make sure we only run one at a time. */
 }
 
 /* These are the custom functions that we will give our scripts */

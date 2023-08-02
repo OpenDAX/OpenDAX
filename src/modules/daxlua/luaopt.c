@@ -42,6 +42,7 @@ _set_trigger(lua_State *L, trigger_t *t) {
     /* This indicates to the starting func that we are not configured */
     t->handle.size = 0;
     t->tagname = strdup((char *)lua_tostring(L, -1));
+    t->new_data = 0;
     if(t->tagname == NULL) {
         return "'tagname' is required for an event trigger";
     }
@@ -67,8 +68,7 @@ _set_trigger(lua_State *L, trigger_t *t) {
 }
 
 static int
-_add_script(lua_State *L)
-{
+_add_script(lua_State *L) {
     script_t *si;
     char *string;
     const char* errstr;
@@ -116,7 +116,6 @@ _add_script(lua_State *L)
         si->name = NULL;
     }
     lua_pop(L, 1);
-
 
     /* Allocate and set the triggers if they are configured */
     lua_getfield(L, 1, "trigger");
@@ -173,7 +172,6 @@ _add_script(lua_State *L)
     }
     lua_pop(L, 1);
 
-
     lua_getfield(L, 1, "filename");
     string = (char *)lua_tostring(L, -1);
     if(string) {
@@ -183,6 +181,25 @@ _add_script(lua_State *L)
         si->enabled = 0;
     }
     lua_pop(L, 1);
+
+    if(lua_getfield(L, 1, "fail_on_error")) {
+        if(lua_toboolean(L, -1)) {
+            si->flags |= CONFIG_FAIL_ON_ERROR;
+        } else {
+            si->flags &= ~CONFIG_FAIL_ON_ERROR;
+        }
+    }
+    lua_pop(L, 1);
+
+    if(lua_getfield(L, 1, "auto_run")) {
+        if(lua_toboolean(L, -1)) {
+            si->flags |= CONFIG_AUTO_RUN;
+        } else {
+            si->flags &= ~CONFIG_AUTO_RUN;
+        }
+    }
+    lua_pop(L, 1);
+
 
     if(si->threadname != NULL && si->script_trigger != NULL) {
         dax_log(LOG_WARN, "Script '%s' is assigned to a trigger as well as an interval.", si->name);
