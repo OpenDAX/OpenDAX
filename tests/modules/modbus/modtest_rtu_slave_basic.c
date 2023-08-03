@@ -231,7 +231,10 @@ main(int argc, char *argv[])
         fprintf(stderr, "Error killing socat\n");
     if( waitpid(server_pid, &status, 0) != server_pid )
         fprintf(stderr, "Error killing tag server\n");
-
+    if(exit_status == 0)
+        fprintf(stderr, "TEST PASSED\n");
+    else
+        fprintf(stderr, "***TEST FAILED***\n");
     exit(exit_status);
 }
 

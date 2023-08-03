@@ -202,14 +202,22 @@ module_register(char *name, uint32_t timeout, int fd)
         _get_host(fd, &(mod->host));
         mod->state |= MSTATE_STARTED;
         mod->state |= MSTATE_REGISTERED;
+        /* The tagname for the module tag.  It will be the module name with _m
+           prepended.  If there is a duplicate (multiple modules of the same
+           name) then a number will be added to the end of the name and a
+           warning generated */
         strcpy(tagname, "_m");
         strncat(tagname, name, DAX_TAGNAME_SIZE - 2);
-        if(_mod_uuid < 1000) {
-            x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -3);
-            sprintf(&tagname[x], "%03d", _mod_uuid++);
-        } else {
-            x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -5);
-            sprintf(&tagname[x], "%05d", _mod_uuid++);
+        result = tag_get_name(tagname, NULL);
+        if(result==0) {
+            if(_mod_uuid < 1000) {
+                x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -3);
+                sprintf(&tagname[x], "%03d", _mod_uuid++);
+            } else {
+                x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -5);
+                sprintf(&tagname[x], "%05d", _mod_uuid++);
+            }
+            dax_log(LOG_WARN, "Duplicate module name.  Module tag being modified - %s", tagname);
         }
         result = tag_add(tagname, cdt_get_type("_module"), 1, TAG_ATTR_READONLY);
         if(result < 0) {
@@ -218,6 +226,7 @@ module_register(char *name, uint32_t timeout, int fd)
             mod->tagindex = result;
         }
         tag_write(INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
+
         starttime = xtime();
         tag_write(result, 0, &starttime, sizeof(dax_time));
         tag_write(result, sizeof(dax_time), &mod->state, sizeof(dax_uint));

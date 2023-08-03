@@ -114,7 +114,10 @@ main(int argc, char *argv[])
         fprintf(stderr, "Error killing modbus module\n");
     if( waitpid(server_pid, &status, 0) != server_pid )
         fprintf(stderr, "Error killing tag server\n");
-
+    if(result == 0) 
+        fprintf(stderr, "TEST PASSED\n");
+    else
+        fprintf(stderr, "***TEST FAILED***\n");
     exit(result);
 }
 

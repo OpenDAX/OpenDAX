@@ -540,14 +540,14 @@ tag_add(char *name, tag_type type, uint32_t count, uint32_t attr)
     return n;
 }
 
-/* Deletes the tag given my index.  The tags position in the _db array is not 
+/* Deletes the tag given my index.  The tags position in the _db array is not
  * moved.  The name and data fields are freed and set to NULL.  The events
  * and the mappings are also freed and removed.  The item in the index is also
  * removed.  After a tag is deleted the index will always be smaller than the
- * database.  We cannot remove the items from the database and reuse them 
+ * database.  We cannot remove the items from the database and reuse them
  * because some modules may have stored an index to that tag and may try to
  * access it in the future.  If the tag is now different then bad things could
- * happen. 
+ * happen.
  */
 int
 tag_del(tag_index idx)
@@ -594,11 +594,13 @@ tag_get_name(char *name, dax_tag *tag)
     if(_db[i].data == NULL) {
         return ERR_DELETED;
     } else {
-        tag->idx = i;
-        tag->type = _db[i].type;
-        tag->count = _db[i].count;
-        tag->attr = _db[i].attr;
-        strcpy(tag->name, _db[i].name);
+        if(tag != NULL) { /* Sometimes we just want to know if the tag exists */
+            tag->idx = i;
+            tag->type = _db[i].type;
+            tag->count = _db[i].count;
+            tag->attr = _db[i].attr;
+            strcpy(tag->name, _db[i].name);
+        }
         return 0;
     }
 }
@@ -654,7 +656,7 @@ is_tag_queue(tag_index idx) {
  * This function reads the data from the tag given by handle at
  * the byte offset.  It will write size bytes into data and will
  * return 0 on success and some negative number on failure.
- * 
+ *
  * The writing functions bypass the read only attribute of the tag
  */
 int
@@ -1057,7 +1059,7 @@ cdt_get_name(tag_type type)
 datatype *
 cdt_get_entry(tag_type type) {
     int index;
-    
+
     index = CDT_TO_INDEX(type);
     if(IS_CUSTOM(type) && index > 0 && index < _datatype_size) {
         return &_datatypes[index];
@@ -1178,7 +1180,7 @@ override_del(tag_index idx, int offset, void *mask, int size) {
         _db[idx].odata[n+offset] &= ~((uint8_t *)mask)[n];
     }
     /* Remove both of the flags that indicate we have an override installed or set */
-    _db[idx].attr &= ~(TAG_ATTR_OVERRIDE | TAG_ATTR_OVR_SET); 
+    _db[idx].attr &= ~(TAG_ATTR_OVERRIDE | TAG_ATTR_OVR_SET);
     tag_size = _db[idx].count * type_size(_db[idx].type);
     for(n=0;n<tag_size;n++) {
         if(_db[idx].omask[n])  return 0;
