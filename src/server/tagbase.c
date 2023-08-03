@@ -354,7 +354,6 @@ void
 initialize_tagbase(void)
 {
     tag_type type;
-    char *str;
     uint64_t starttime;
 
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
@@ -383,15 +382,12 @@ initialize_tagbase(void)
     _datatype_index = 0;
     _datatype_size = DAX_DATATYPE_SIZE;
 
-/*  Create the default datatypes */
-    str = strdup("_module:StartTime,TIME,1:Status,UINT,1");
-    assert(str != NULL);
-    type = cdt_create(str, NULL);
+    /*  Create the default datatypes */
+    type = cdt_create("_module:StartTime,TIME,1:Status,UINT,1", NULL);
     if(type == 0) {
         dax_log(LOG_FATAL, "Unable to create default datatypes");
         kill(getpid(), SIGQUIT);
     }
-    free(str);
 
     /* TODO: instead of using all these constants we should probably just add
      * the tags and store the indexes for the ones that we need. */
@@ -890,7 +886,7 @@ cdt_create(char *str, int *error) {
     /* This messes with *str.  It puts a '\0' everywhere there is a ':'
      * and that is okay because the calling function doesn't need it anymore
      * except for printing the name so this works out okay. */
-    name = strtok_r(str, ":", &last);
+    name = strtok_r(tmp, ":", &last);
     /* Check that the name is okay */
     if( (result = _validate_name(name)) ) {
         if(error != NULL) *error = result;
@@ -899,16 +895,15 @@ cdt_create(char *str, int *error) {
     }
     if((type = cdt_get_type(name))) {
         serialize_datatype(type, &serial);
-        if(strcmp(serial, tmp)) { /* This means the two CDT's are not equal */
+        if(strcmp(serial, str)) { /* This means the two CDT's are not equal */
             if(error != NULL) *error = ERR_DUPL;
             free(tmp);
             return 0;
-        } else {
-            free(tmp);
+        } else { /* If it's the same then just return it */
+            free(tmp); 
             return type;
         }
     }
-    free(tmp); /* We don't need this anymore. */
     /* Initialize the new datatype */
     cdt.name = strdup(name);
     if(cdt.name == NULL) {
@@ -922,9 +917,11 @@ cdt_create(char *str, int *error) {
         if(result) {
             _cdt_destroy(&cdt);
             if(error != NULL) *error = result;
+            free(tmp);
             return 0;
         }
     }
+    free(tmp);
 
     /* Do we have space in the array */
     if(_datatype_index == _datatype_size) {
