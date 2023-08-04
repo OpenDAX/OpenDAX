@@ -447,6 +447,14 @@ int dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int in
 
 /* Convenience functions for common tasks*/
 int dax_set_running(dax_state *ds, uint8_t val);
+int dax_set_faulted(dax_state *ds, uint8_t val);
+void dax_default_run(dax_state *ds, void *ud);
+void dax_default_stop(dax_state *ds, void *ud);
+void dax_default_kill(dax_state *ds, void *ud);
+int dax_set_default_callbacks(dax_state *ds);
+int dax_set_run_callback(dax_state *ds, void f(dax_state *, void *));
+int dax_set_stop_callback(dax_state *ds, void f(dax_state *, void *));
+int dax_set_kill_callback(dax_state *ds, void f(dax_state *, void *));
 
 #ifdef __cplusplus
 }

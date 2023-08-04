@@ -128,6 +128,7 @@ int main(int argc,char *argv[]) {
     }
 
     dax_set_running(ds, 1);
+    dax_set_default_callbacks(ds);
     dax_log(LOG_MINOR, "Skeleton Module Starting");
     while(1) {
     	/* Check to see if the quit flag is set.  If it is then bail */

@@ -26,8 +26,28 @@
 
 static int quitsig = 0;
 dax_state *ds;
+int runsignal = 1;
 
 void quit_signal(int sig);
+
+static void
+run_function(dax_state *ds, void *ud) {
+    runsignal = 1;
+    dax_default_run(ds, ud);
+}
+
+static void
+stop_function(dax_state *ds, void *ud) {
+    runsignal = 0;
+    dax_default_stop(ds, ud);
+}
+
+static void
+kill_function(dax_state *ds, void *ud) {
+    dax_log(LOG_MAJOR, "Recieved kill signal from tagserver");
+    quitsig = 1;
+    dax_default_kill(ds, ud);
+}
 
 
 int
@@ -65,6 +85,9 @@ main(int argc, char *argv[])
     sigaction (SIGTERM, &sa, NULL);
 
     dax_set_running(ds, 1);
+    dax_set_run_callback(ds, run_function);
+    dax_set_stop_callback(ds, stop_function);
+    dax_set_kill_callback(ds, kill_function);
 
     while(1) {
         dax_event_wait(ds, 1000, NULL);

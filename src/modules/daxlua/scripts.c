@@ -29,6 +29,7 @@ static script_t *scripts = NULL;
 static int scripts_size = 0;
 static int scriptcount = 0;
 extern dax_state *ds;
+extern int runsignal;
 
 /* This function returns an index into the scripts[] array for
    the next unassigned script */
@@ -230,7 +231,7 @@ run_script(script_t *s) {
         s->command = 0x00;
     }
     /* In this case do nothing */
-    if(s->failed || s->enabled == 0) {
+    if(s->failed || s->enabled == 0 || runsignal == 0) {
         return;
     }
 
@@ -240,7 +241,7 @@ run_script(script_t *s) {
     s->thisscan = start.tv_sec*1e6 + start.tv_nsec / 1000;
 
     pthread_mutex_lock(&s->lock); /* Make sure we only run one at a time. */
-    if(s->script_trigger->new_data) {
+    if(s->script_trigger && s->script_trigger->new_data) {
         daxlua_dax_to_lua(s->L, s->script_trigger->handle, s->script_trigger->buff);
         lua_setglobal(s->L, "_trigger_data");
         s->script_trigger->new_data = 0;

@@ -115,6 +115,8 @@ int main(int argc,char *argv[]) {
     }
     /* No setup work to do here.  We'll go straight to running */
     dax_set_running(ds, 1);
+    /* We don't mess with the run/stop/kill callbacks */
+    dax_set_default_callbacks(ds);
     if(dax_get_attr(ds, "quiet")) {
         quiet_mode = 1;
     }

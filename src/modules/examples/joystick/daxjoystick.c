@@ -132,6 +132,10 @@ int main(int argc,char *argv[]) {
     }
 
     dax_set_running(ds, 1);
+    dax_set_run_callback(ds, run_function);
+    dax_set_stop_callback(ds, stop_function);
+    dax_set_kill_callback(ds, kill_function);
+
     dax_log(LOG_MAJOR,"Joystick Module Starting");
 
     while(1) { /* device file open loop */
