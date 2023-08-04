@@ -89,9 +89,9 @@ int main(int argc,char *argv[]) {
  /* Set up the signal handlers */
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
-    sigaction (SIGQUIT, &sa, NULL);
-    sigaction (SIGINT, &sa, NULL);
-    sigaction (SIGTERM, &sa, NULL);
+    //sigaction (SIGQUIT, &sa, NULL);
+    //sigaction (SIGINT, &sa, NULL);
+    //sigaction (SIGTERM, &sa, NULL);
 
     ds = dax_init("daxc");
     if(ds == NULL) {
@@ -117,6 +117,7 @@ int main(int argc,char *argv[]) {
     dax_set_running(ds, 1);
     /* We don't mess with the run/stop/kill callbacks */
     dax_set_default_callbacks(ds);
+    dax_set_status(ds, "OK");
     if(dax_get_attr(ds, "quiet")) {
         quiet_mode = 1;
     }
@@ -312,7 +313,7 @@ runcmd(char *instr)
 
     } else if( !strncasecmp(tokens[0], "read", 1)) {
         result = tag_read(&tokens[1]);
-    } else if( !strncasecmp(tokens[0], "write", 1)) {
+    } else if( !strncasecmp(tokens[0], "write", 2)) {
         result = tag_write(&tokens[1], tcount-1);
     } else if( !strncasecmp(tokens[0], "wait", 4)) {
         result = event_wait(&tokens[1]);

@@ -130,7 +130,7 @@ tag_del(char **tokens)
 {
     dax_tag temp_tag;
     int result;
-    
+
     if(isdigit(tokens[0][0])) {
         result = dax_tag_byindex(ds, &temp_tag, atoi(tokens[0]));
     } else {
@@ -256,6 +256,60 @@ list_tags(char **tokens)
     return 0;
 }
 
+static void _print_compound_tag(tag_type type, void *buff);
+
+static int indent;
+
+static void
+_read_cdt_callback(cdt_iter iter, void *buff)
+{
+    char str[32];
+    char *s;
+    uint8_t *x;
+    int n;
+
+    for(n=0;n<indent;n++) fprintf(stdout, " ");
+
+    fprintf(stdout, "%s ", iter.name);
+    if(IS_CUSTOM(iter.type)) {
+        indent += 2;
+        fprintf(stdout, "\n");
+        _print_compound_tag(iter.type, buff+iter.byte);
+    } else if(iter.type == DAX_CHAR) {
+        s = (char *)(buff+iter.byte);
+        for(n=0;n<iter.count;n++) {
+            if(s[n] == 0x00) {
+                fprintf(stdout, " ");
+            }
+            fprintf(stdout, "%c", s[n]);
+        }
+        fprintf(stdout, "\n");
+    } else if(iter.type == DAX_BOOL) {
+        x = buff + iter.byte;
+        for(n=0;n<iter.count;n++) {
+            if(0x01 <<((iter.bit+n) % 8) & (x[(iter.bit+n) / 8])) {
+                fprintf(stdout, "true ");
+            } else {
+                fprintf(stdout, "false ");
+            }
+        }
+        fprintf(stdout, "\n");
+    } else {
+        for(n = 0; n < iter.count; n++) {
+            x = buff + iter.byte;
+            dax_val_to_string(str, 32, iter.type, x, n);
+            fprintf(stdout, "%s ", str);
+        }
+        fprintf(stdout,"\n");
+    }
+
+}
+
+
+static void
+_print_compound_tag(tag_type type, void *buff) {
+    dax_cdt_iter(ds, type, buff, _read_cdt_callback);
+}
 
 /* This is the tag read function.  One or two parameters can be given. The
  * first parameter is the tagname and the second if given is the number of
@@ -296,7 +350,10 @@ tag_read(char **tokens)
     if(result == 0) {
         if(IS_CUSTOM(handle.type)) {
             /* Print Custom Stuff Here */
-            fprintf(stderr, "ERROR: Given Tagname is a compound data type\n");
+            for(n=0; n<handle.count; n++) {
+                indent = 0;
+                _print_compound_tag(handle.type, buff+dax_get_typesize(ds, handle.type)*n);
+            }
         } else if(handle.type == DAX_CHAR) {
             ((char *)buff)[handle.size] = 0x00;
             for(n=0;n<handle.size;n++) {
@@ -315,7 +372,7 @@ tag_read(char **tokens)
     } else if(result == ERR_DELETED) {
         fprintf(stderr, "ERROR: Tag '%s' has been deleted\n", tokens[0]);
     } else if(result == ERR_NOTFOUND) {
-        fprintf(stderr, "ERROR: Tag '%s' could not be found\n", tokens[0]);        
+        fprintf(stderr, "ERROR: Tag '%s' could not be found\n", tokens[0]);
     } else {
         fprintf(stderr, "ERROR: Unable to Read Tag %s\n", tokens[0]);
     }

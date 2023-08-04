@@ -408,7 +408,7 @@ event_check(tag_index idx, int offset, int size) {
     this = _db[idx].events;
 
     while(this != NULL) {
-        /* This is to check whether the the data rages intersect.  If this
+        /* This is to check whether the the data ranges intersect.  If this
          * test passes then we have manipulated the data associated with
          * this event. */
         if(offset <= (this->byte + this->size - 1) && (offset + size -1 ) >= this->byte) {
