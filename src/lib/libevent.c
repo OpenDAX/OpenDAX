@@ -219,12 +219,17 @@ dax_event_wait(dax_state *ds, int timeout, dax_id *id)
             ts.tv_sec++;
             ts.tv_nsec -= 1e9;
         }
-        result = pthread_cond_timedwait(&ds->event_cond, &ds->event_lock, &ts);
+        if(timeout) {
+            result = pthread_cond_timedwait(&ds->event_cond, &ds->event_lock, &ts);
+        } else {
+            result = pthread_cond_wait(&ds->event_cond, &ds->event_lock);
+        }
         if(result == ETIMEDOUT) {
             pthread_mutex_unlock(&ds->event_lock);
             return ERR_TIMEOUT;
         }
         assert(result == 0);
+
     }
     /* We should have a message once we get here */
     /* Pop the message off of the event queue before we dispatch

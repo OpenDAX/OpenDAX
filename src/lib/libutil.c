@@ -65,6 +65,40 @@ dax_set_running(dax_state *ds, uint8_t val) {
 }
 
 /*!
+ * Writes to the modules .status tag
+ * @param ds Pointer to the dax state object
+ * @param val Value to write to .status tag
+ * @returns zero on success or other error codes if appropriate.
+ */
+int
+dax_set_status(dax_state *ds, char *val) {
+    tag_handle h;
+    char tagname[DAX_TAGNAME_SIZE+1];
+    char runtag[DAX_TAGNAME_SIZE+32];
+    int result;
+    char *buff;
+
+    /* Get a handle to our module tagname */
+    result = dax_tag_handle(ds, &h, _MY_TAGNAME, 0);
+    if(result) return result;
+    if(h.size > 255) return ERR_2BIG;
+    /* Read the tagname */
+    result = dax_read_tag(ds, h, tagname);
+    if(result) return result;
+    snprintf(runtag, 256, "%s.status", tagname);
+    result = dax_tag_handle(ds, &h, runtag, 0);
+    if(result) return result;
+    buff = malloc(h.size);
+    if(buff == NULL) return ERR_ALLOC;
+    bzero(buff, h.size);
+    strncpy(buff, val, h.size);
+    result = dax_write_tag(ds, h, buff);
+    free(buff);
+    return result;
+}
+
+
+/*!
  * Finds the module tags .faulted bit and sets or clears it depending
  * on the boolean state of val.  If val is zero then we will clear
  * the faulted bit, otherwise we will set it.

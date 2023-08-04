@@ -418,15 +418,14 @@ int dax_cdt_create(dax_state *ds, dax_cdt *cdt, tag_type *type);
 void dax_cdt_free(dax_cdt *cdt);
 
 /* Custom Datatype Iterator */
-struct cdt_iter {
+typedef struct cdt_iter {
     const char *name;
     tag_type type;
     int count;
     int byte;
     int bit;
-};
+} cdt_iter;
 
-typedef struct cdt_iter cdt_iter;
 
 /* Iterate over the members of a CDT */
 int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
@@ -447,6 +446,7 @@ int dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int in
 
 /* Convenience functions for common tasks*/
 int dax_set_running(dax_state *ds, uint8_t val);
+int dax_set_status(dax_state *ds, char *val);
 int dax_set_faulted(dax_state *ds, uint8_t val);
 void dax_default_run(dax_state *ds, void *ud);
 void dax_default_stop(dax_state *ds, void *ud);
