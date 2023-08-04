@@ -24,6 +24,7 @@ add_library(dax libcdt.c
                 libinit.c
                 libmsg.c
                 libopt.c
+                libutil.c
                 lua/libdaxlua.c
 )
 

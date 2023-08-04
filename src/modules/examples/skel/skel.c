@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2007 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
  *  Main source code file for the OpenDAX example module
  */
 
-/* NOTES: This is the skeleton module for OpenDAX.  It is the bare 
+/* NOTES: This is the skeleton module for OpenDAX.  It is the bare
  * minimum module that shows the functionality of the library and
  * how to call the API function.  There is some error checking
  * that is not included in this file for simplicity.  You should
@@ -48,7 +48,7 @@ int main(int argc,char *argv[]) {
     char *str, *tagname, *event_tag, *event_type;
     tag_handle h_full, h_part;
     dax_dint data[5];
-    
+
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -59,7 +59,7 @@ int main(int argc,char *argv[]) {
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("skel"); /* Replace 'skel' with your module name */
     if(ds == NULL) {
-        /* dax_fatal() logs an errlr and causes a quit 
+        /* dax_fatal() logs an errlr and causes a quit
          * signal to be sent to the module */
         dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
     }
@@ -96,7 +96,7 @@ int main(int argc,char *argv[]) {
      * would no longer exist but the configuration can be freed at
      * any time or never freed if that makes sense for the module. We
      * did it this way in the skel module for simplicity */
-    
+
     /* Free the configuration data */
     dax_free_config (ds);
 
@@ -104,7 +104,7 @@ int main(int argc,char *argv[]) {
     if( dax_connect(ds) ) {
         dax_log(LOG_FATAL, "Unable to find OpenDAX");
     }
-    
+
     /* The only thing that skel does right now is manipulate this single
      * five element array of DINT's.  This line creates the tag. h_full is
      * a handle that we can use to read and write the entire array. */
@@ -127,7 +127,7 @@ int main(int argc,char *argv[]) {
         dax_log(LOG_FATAL, "Unable to retrive Handle for tag - %s", tagname);
     }
 
-    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+    dax_set_running(ds, 1);
     dax_log(LOG_MINOR, "Skeleton Module Starting");
     while(1) {
     	/* Check to see if the quit flag is set.  If it is then bail */
@@ -151,7 +151,7 @@ int main(int argc,char *argv[]) {
         result = dax_write_tag(ds, h_part, &data[2]);
         sleep(1);
     }
-    
+
  /* This is just to make the compiler happy */
     return(0);
 }

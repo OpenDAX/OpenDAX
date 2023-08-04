@@ -324,9 +324,6 @@ void dax_log(uint32_t topic, const char *format, ...);
 int dax_connect(dax_state *ds);      /* Connect to the server */
 int dax_disconnect(dax_state *ds);   /* Disconnect from the server */
 
-int dax_mod_get(dax_state *ds, char *modname);  /* Not implemented yet */
-int dax_mod_set(dax_state *ds, uint8_t cmd, void *param);  /* Set module parameters in the server */
-
 /* Adds a tag to the opendax server database. */
 int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, uint32_t attr);
 
@@ -447,6 +444,9 @@ int dax_group_del(dax_state *ds, tag_group_id *id);
 /* Convenience functions for converting strings to basic DAX values and back */
 int dax_val_to_string(char *buff, int size, tag_type type, void *val, int index);
 int dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index);
+
+/* Convenience functions for common tasks*/
+int dax_set_running(dax_state *ds, uint8_t val);
 
 #ifdef __cplusplus
 }

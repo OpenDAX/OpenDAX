@@ -47,7 +47,6 @@ typedef struct dax_Module {
     char *name;
     in_addr_t host;     /* the modules host id */
     unsigned int flags; /* Configuration Flags for the module */
-    dax_uint state;     /* Modules Current Running State */
     int fd;             /* The socket file descriptor for this module */
     tag_index tagindex; /* The index of the tag that represents this module */
     uint32_t timeout;  /* Module communication timeout. */

@@ -23,14 +23,6 @@
 #include <common.h>
 #include "daxtypes.h"
 
-//TODO: We don't really need all this since we aren't starting the
-//      modules any more.
-#define MSTATE_STARTED      0x01 /* Module has been started */
-#define MSTATE_WAITING      0x02 /* Waiting for restart */
-#define MSTATE_CHILD        0x04 /* Module was started by this program  <Deprecated>*/
-#define MSTATE_REGISTERED   0x08 /* Is the module registered */
-#define MSTATE_RUNNING      0x10 /* Module is running */
-
 
 /* Module List Handling Functions */
 dax_module *module_add(char *name, unsigned int flags);

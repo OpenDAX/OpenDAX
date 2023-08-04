@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 1997 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- 
+
  * This header contains all of the type definitions that are common between the
  * opendax server and the library.  For definitions that are private to the server
  * see daxtypes.h.  For definitions that are private to the library see libdax.h.
@@ -34,31 +34,29 @@
 #define MSG_TAG_READ    0x0006 /* Read the value of a tag */
 #define MSG_TAG_WRITE   0x0007 /* Write the value to a tag */
 #define MSG_TAG_MWRITE  0x0008 /* Masked Write */
-#define MSG_MOD_GET     0x0009 /* Get the module parameters */
-#define MSG_MOD_SET     0x000A /* set the module parameters */
-#define MSG_EVNT_ADD    0x000B /* Add an event to the taglist */
-#define MSG_EVNT_DEL    0x000C /* Delete an event */
-#define MSG_EVNT_GET    0x000D /* Get an event definition */
-#define MSG_EVNT_OPT    0x000E /* Set event options */
-#define MSG_CDT_CREATE  0x000F /* Create a Custom Datatype */
-#define MSG_CDT_GET     0x0010 /* Get the definition of a Custom Datatype */
-#define MSG_MAP_ADD     0x0011 /* Add a data point mapping */
-#define MSG_MAP_DEL     0x0012 /* Delete a data point mapping */
-#define MSG_MAP_GET     0x0013 /* Retrieve a data point mapping for a given tag */
-#define MSG_GRP_ADD     0x0014 /* Add a tag group to the server */
-#define MSG_GRP_DEL     0x0015 /* Delete an entire tag group from the server */
-#define MSG_GRP_READ    0x0016 /* Read the data in a tag group */
-#define MSG_GRP_WRITE   0x0017 /* Write the data to a tag group */
-#define MSG_GRP_MWRITE  0x0018 /* Masked write of the data to a tag group */
-#define MSG_ATOMIC_OP   0x0019 /* Perform atomic operations on tags */
-#define MSG_ADD_OVRD    0x001A /* Add override data and mask */
-#define MSG_DEL_OVRD    0x001B /* Delete override */
-#define MSG_GET_OVRD    0x001C /* Read the current override mask and raw value for the given tag */
-#define MSG_SET_OVRD    0x001D /* Set or clear tag override flag */
+#define MSG_EVNT_ADD    0x0009 /* Add an event to the taglist */
+#define MSG_EVNT_DEL    0x000A /* Delete an event */
+#define MSG_EVNT_GET    0x000B /* Get an event definition */
+#define MSG_EVNT_OPT    0x000C /* Set event options */
+#define MSG_CDT_CREATE  0x000D /* Create a Custom Datatype */
+#define MSG_CDT_GET     0x000E /* Get the definition of a Custom Datatype */
+#define MSG_MAP_ADD     0x000F /* Add a data point mapping */
+#define MSG_MAP_DEL     0x0010 /* Delete a data point mapping */
+#define MSG_MAP_GET     0x0011 /* Retrieve a data point mapping for a given tag */
+#define MSG_GRP_ADD     0x0012 /* Add a tag group to the server */
+#define MSG_GRP_DEL     0x0013 /* Delete an entire tag group from the server */
+#define MSG_GRP_READ    0x0014 /* Read the data in a tag group */
+#define MSG_GRP_WRITE   0x0015 /* Write the data to a tag group */
+#define MSG_GRP_MWRITE  0x0016 /* Masked write of the data to a tag group */
+#define MSG_ATOMIC_OP   0x0017 /* Perform atomic operations on tags */
+#define MSG_ADD_OVRD    0x0018 /* Add override data and mask */
+#define MSG_DEL_OVRD    0x0019 /* Delete override */
+#define MSG_GET_OVRD    0x001A /* Read the current override mask and raw value for the given tag */
+#define MSG_SET_OVRD    0x001B /* Set or clear tag override flag */
 
 /* More to come */
 
-#define NUM_COMMANDS 29
+#define NUM_COMMANDS 27
 
 #define MSG_RESPONSE  0x01000000LL /* Flag for defining a response message */
 #define MSG_ERROR     0x02000000LL /* Flag for defining an error message */
@@ -67,7 +65,7 @@
 /* These are flags for the registration command */
 #define CONNECT_SYNC  0x01 /* Used to identify the synchronous socket during registration */
 
-/* These are the values that the registration system uses to 
+/* These are the values that the registration system uses to
    determine whether or not the module will have to reformat
    the data because of different machine architectures. */
 /* TODO: I need to spend some time on these so that I know that

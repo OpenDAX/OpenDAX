@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
+ *
  * This is the main starting point for the OpenDAX Modbus Module
  */
 
@@ -500,7 +500,7 @@ main (int argc, const char * argv[]) {
         }
     }
 
-    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+    dax_set_running(ds, 1);
 
     while(1) {
         /* for the first minute or until we have all the errors clear in the event
@@ -517,7 +517,7 @@ main (int argc, const char * argv[]) {
                 dax_log(LOG_MINOR, "Should be Reconfiguring Now");
                 //--reconfigure();
                 _caught_signal = 0;
-            } else if(_caught_signal == SIGTERM || _caught_signal == SIGINT || 
+            } else if(_caught_signal == SIGTERM || _caught_signal == SIGINT ||
                       _caught_signal == SIGQUIT) {
                 dax_log(LOG_FATAL, "Exiting with signal %d", _caught_signal);
                 getout(0);

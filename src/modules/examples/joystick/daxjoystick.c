@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2021 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@ static void getout(int exitstatus);
 
 dax_state *ds;
 static int _quitsignal;
+static int _stopsignal;
 
 axis_t axis_list[256];
 button_t button_list[256];
@@ -56,6 +57,22 @@ read_event(int fd, struct js_event *event)
     /* Error, could not read full event. */
     return -1;
 }
+
+static void
+stop_function(dax_state *ds, void *ud) {
+    _stopsignal = 1;
+}
+
+static void
+run_function(dax_state *ds, void *ud) {
+    _stopsignal = 0;
+}
+
+static void
+kill_function(dax_state *ds, void *ud) {
+    _quitsignal = 1;
+}
+
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -114,33 +131,37 @@ int main(int argc,char *argv[]) {
         }
     }
 
-    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+    dax_set_running(ds, 1);
     dax_log(LOG_MAJOR,"Joystick Module Starting");
 
     while(1) { /* device file open loop */
-        fd = _open_device();
-        if(fd > 0) {
-            dax_log(LOG_MINOR, "Connected to joystick at fd = %d", fd);
-            while(read_event(fd, &event) == 0) {
-                switch (event.type)
-                {
-                    case JS_EVENT_BUTTON:
-                        if(button_list[event.number].handle.index) {
-                            dax_write_tag(ds, button_list[event.number].handle, &event.value);
-                        }
-                        break;
-                    case JS_EVENT_AXIS:
-                        if(axis_list[event.number].handle.index) {
-                            /* Transfer function (axis + offset) * scale */
-                            val = (event.value + axis_list[event.number].offset) + axis_list[event.number].scale;
-                            dax_write_tag(ds, axis_list[event.number].handle, &val);
-                        }
-                        break;
-                    default:
-                        /* Ignore init events. */
-                        break;
+        if(! _stopsignal) {
+            fd = _open_device();
+            if(fd > 0) {
+                dax_log(LOG_MINOR, "Connected to joystick at fd = %d", fd);
+                while(! _stopsignal && read_event(fd, &event) == 0) {
+                    switch (event.type)
+                    {
+                        case JS_EVENT_BUTTON:
+                            if(button_list[event.number].handle.index) {
+                                dax_write_tag(ds, button_list[event.number].handle, &event.value);
+                            }
+                            break;
+                        case JS_EVENT_AXIS:
+                            if(axis_list[event.number].handle.index) {
+                                /* Transfer function (axis + offset) * scale */
+                                val = (event.value + axis_list[event.number].offset) + axis_list[event.number].scale;
+                                dax_write_tag(ds, axis_list[event.number].handle, &val);
+                            }
+                            break;
+                        default:
+                            /* Ignore init events. */
+                            break;
+                    }
                 }
             }
+            dax_log(LOG_MINOR, "Disconnecting from joystick at fd = %d", fd);
+            close(fd);
         }
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {

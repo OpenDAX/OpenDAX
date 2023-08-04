@@ -44,7 +44,7 @@ void delivered(void *context, MQTTClient_deliveryToken dt)
 }
 
 /* This callback function is called by the PAHO MQTT library whenever a message arrives on
- * a topic that we have subscribed to. */ 
+ * a topic that we have subscribed to. */
 int
 msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *message)
 {
@@ -125,7 +125,7 @@ connlost(void *context, char *cause)
 }
 
 /* Setup one subscriber and subscribe.  Returns a 1 if we are still not
- * properly initialized.  The parent counts these and will continue to 
+ * properly initialized.  The parent counts these and will continue to
  * try these until they either all work or some kind of permanent failure
  * keeps them from ever working */
 static int
@@ -193,13 +193,13 @@ static int
 setup_subscribers() {
     subscriber_t *sub;
     int bad_subs = 0;
-    
+
     while((sub = get_sub_iter()) != NULL) {
         if(sub->enabled == ENABLE_UNINIT) {
             bad_subs += subscribe(sub);
         }
     }
-    
+
     return bad_subs;
 }
 
@@ -281,7 +281,7 @@ publish(publisher_t *pub) {
     int result;
     dax_type_union val;
     tag_handle h;
-    
+
     /* We'll set this for now in case we have an error in here somewhere */
     pub->enabled = ENABLE_FAIL;
 
@@ -352,7 +352,7 @@ publish(publisher_t *pub) {
         dax_log(LOG_WARN, "Problem adding event for topic %s", pub->topic);
         return 1;
     }
- 
+
     dax_log(LOG_DEBUG, "Set to publish to %s", pub->topic);
     pub->enabled = ENABLE_GOOD; /* We're rolling now */
     return 0;
@@ -363,13 +363,13 @@ static int
 setup_publishers() {
     publisher_t *pub;
     int bad_pubs = 0;
-    
+
     while((pub = get_pub_iter()) != NULL) {
         if(pub->enabled == ENABLE_UNINIT) {
             bad_pubs += publish(pub);
         }
     }
-    
+
     return bad_pubs;
 }
 
@@ -383,7 +383,7 @@ client_loop(void) {
     char conn_str[64];
     int bad_subs = 1;
     int bad_pubs = 1;
-    
+
     snprintf(conn_str, 64, "tcp://%s:%s", dax_get_attr(ds, "broker_ip"), dax_get_attr(ds, "broker_port"));
     MQTTClient_create(&client, conn_str, dax_get_attr(ds, "clientid"), MQTTCLIENT_PERSISTENCE_NONE, NULL);
     conn_opts.keepAliveInterval = 20;
@@ -391,7 +391,7 @@ client_loop(void) {
     conn_opts.connectTimeout = atoi(attr);
     conn_opts.cleansession = 1;
     MQTTClient_setCallbacks(client, NULL, connlost, msgarrived, delivered);
-    
+
     while(1) {
         if(!_connected && cycle_count >= connect_cycle) {
             dax_log(LOG_COMM, "Attempting to connect to broker at %s", conn_str);
@@ -433,7 +433,7 @@ int
 main(int argc,char *argv[]) {
     struct sigaction sa;
     int result = 0;
-    
+
     /* Set up the signal handlers for controlled exit*/
     memset (&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = &quit_signal;
@@ -454,17 +454,17 @@ main(int argc,char *argv[]) {
         exit(result);
     }
 
-    
+
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
         dax_log(LOG_FATAL, "Unable to find OpenDAX");
         exit(-1);
     }
 
-    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+    dax_set_running(ds, 1);
     dax_log(LOG_MINOR, "MQTT Module Starting");
     client_loop();
-    
+
  /* This is just to make the compiler happy */
     return(0);
 }

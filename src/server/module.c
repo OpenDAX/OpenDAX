@@ -163,17 +163,6 @@ module_del(dax_module *mod)
     return ERR_ARG;
 }
 
-int
-module_set_running(int fd)
-{
-    dax_module *mod;
-
-    mod = _get_module_fd(fd);
-    if(mod == NULL) return ERR_NOTFOUND;
-    mod->state |= MSTATE_RUNNING;
-    tag_write(mod->tagindex, sizeof(dax_time), &mod->state, sizeof(dax_uint));
-    return 0;
-}
 
 /* The dax server will not send messages to modules that are not registered.
  * Also modules that are not started by the core need a way to announce
@@ -200,8 +189,6 @@ module_register(char *name, uint32_t timeout, int fd)
         mod->fd = fd;
         mod->timeout = timeout;
         _get_host(fd, &(mod->host));
-        mod->state |= MSTATE_STARTED;
-        mod->state |= MSTATE_REGISTERED;
         /* The tagname for the module tag.  It will be the module name with _m
            prepended.  If there is a duplicate (multiple modules of the same
            name) then a number will be added to the end of the name and a
@@ -227,7 +214,6 @@ module_register(char *name, uint32_t timeout, int fd)
         }
         starttime = xtime();
         tag_write(result, 0, &starttime, sizeof(dax_time));
-        tag_write(result, sizeof(dax_time), &mod->state, sizeof(dax_uint));
         /* We wait until after we have written what we want to set the special flag.
            From now on we'll let the special functions handle the tag */
         tag_set_attribute(result, TAG_ATTR_SPECIAL);

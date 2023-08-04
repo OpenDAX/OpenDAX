@@ -67,8 +67,6 @@ int msg_tag_list(dax_message *msg);
 int msg_tag_read(dax_message *msg);
 int msg_tag_write(dax_message *msg);
 int msg_tag_mask_write(dax_message *msg);
-int msg_mod_get(dax_message *msg);
-int msg_mod_set(dax_message *msg);
 int msg_evnt_add(dax_message *msg);
 int msg_evnt_del(dax_message *msg);
 int msg_evnt_get(dax_message *msg);
@@ -223,8 +221,6 @@ msg_setup(void)
     cmd_arr[MSG_TAG_READ]   = &msg_tag_read;
     cmd_arr[MSG_TAG_WRITE]  = &msg_tag_write;
     cmd_arr[MSG_TAG_MWRITE] = &msg_tag_mask_write;
-    cmd_arr[MSG_MOD_GET]    = &msg_mod_get;
-    cmd_arr[MSG_MOD_SET]    = &msg_mod_set;
     cmd_arr[MSG_EVNT_ADD]   = &msg_evnt_add;
     cmd_arr[MSG_EVNT_DEL]   = &msg_evnt_del;
     cmd_arr[MSG_EVNT_GET]   = &msg_evnt_get;
@@ -437,7 +433,7 @@ msg_tag_add(dax_message *msg)
     attr = *((uint32_t *)&msg->data[8]);
 
     dax_log(LOG_MSG, "Tag Add Message for '%s' from module %d, type 0x%X, count %d", &msg->data[12], msg->fd, type, count);
-    
+
     if(msg->data[12] == '_') {
         idx = ERR_ILLEGAL;
     } else {
@@ -459,9 +455,9 @@ msg_tag_del(dax_message *msg)
     int result;
     tag_index idx;
     dax_tag tag;
-    
+
     idx = *((tag_index *)&msg->data[0]);
-    
+
     dax_log(LOG_MSG, "Tag Delete Message for index '%d' from module %d", idx, msg->fd);
     result = tag_get_index(idx, &tag);
     if(result) {
@@ -612,40 +608,6 @@ msg_tag_mask_write(dax_message *msg)
     return 0;
 }
 
-/* TODO: Make this do something */
-int
-msg_mod_get(dax_message *msg)
-{
-    dax_log(LOG_MSG, "Get Module Parameter Message from %d", msg->fd);
-    return 0;
-}
-
-int
-msg_mod_set(dax_message *msg)
-{
-    int result;
-    uint8_t cmd;
-
-    dax_log(LOG_MSG, "Set Module Parameter Message from %d", msg->fd);
-
-    cmd = msg->data[0];
-
-    if(cmd == MOD_CMD_RUNNING) {
-        dax_log(LOG_MSG, "Set Module Running Flag from %d", msg->fd);
-        /* Set the flag */
-        result = module_set_running(msg->fd);;
-    } else {
-        result = ERR_ARG;
-    }
-
-    if(result) {
-        _message_send(msg->fd, MSG_MOD_SET, &result, sizeof(result), ERROR);
-        dax_log(LOG_ERROR, "Stupid Error - %d", result);
-    } else {
-        _message_send(msg->fd, MSG_MOD_SET, NULL, 0, RESPONSE);
-    }
-    return 0;
-}
 
 int
 msg_evnt_add(dax_message *msg)
@@ -857,7 +819,7 @@ msg_group_add(dax_message *msg) {
 
     if(id < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), ERROR);
-        dax_log(LOG_MSGERR, "Group Add Message for %s Returning Error %d",mod->name, id); 
+        dax_log(LOG_MSGERR, "Group Add Message for %s Returning Error %d",mod->name, id);
     } else {
         _message_send(msg->fd, MSG_GRP_ADD, &id, sizeof(int), RESPONSE);
         dax_log(LOG_MSG, "Group Add Message for %s", mod->name);
@@ -876,7 +838,7 @@ msg_group_del(dax_message *msg) {
     result = group_del(mod, index);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_DEL, &result, sizeof(int), ERROR);
-        dax_log(LOG_MSGERR, "Group Delete Message for %s Returning Error %d",mod->name, result); 
+        dax_log(LOG_MSGERR, "Group Delete Message for %s Returning Error %d",mod->name, result);
      } else {
         _message_send(msg->fd, MSG_GRP_DEL, &result, sizeof(int), RESPONSE);
         dax_log(LOG_MSG, "Group Delete Message for %s", mod->name);
@@ -896,7 +858,7 @@ msg_group_read(dax_message *msg) {
     result = group_read(mod, index, buff, MSG_TAG_GROUP_DATA_SIZE);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_READ, &result, sizeof(int), ERROR);
-        dax_log(LOG_MSGERR, "Group Read Message for %s Returning Error %d",mod->name, result); 
+        dax_log(LOG_MSGERR, "Group Read Message for %s Returning Error %d",mod->name, result);
     } else {
         _message_send(msg->fd, MSG_GRP_READ, buff, result, RESPONSE);
         dax_log(LOG_MSG, "Group Read Message for %s", mod->name);
@@ -916,7 +878,7 @@ msg_group_write(dax_message *msg) {
     result = group_write(mod, index, (uint8_t *)&msg->data[4]);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_WRITE, &result, sizeof(int), ERROR);
-        dax_log(LOG_MSGERR, "Group Write Message for %s Returning Error %d",mod->name, result); 
+        dax_log(LOG_MSGERR, "Group Write Message for %s Returning Error %d",mod->name, result);
     } else {
         _message_send(msg->fd, MSG_GRP_WRITE, NULL, 0, RESPONSE);
         dax_log(LOG_MSG, "Group Write Message for %s", mod->name);
@@ -931,7 +893,7 @@ msg_group_mask_write(dax_message *msg) {
     result = ERR_NOTIMPLEMENTED;
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_GRP_MWRITE, &result, sizeof(int), ERROR);
-        //dax_log(LOG_MSGERR, "Group Masked Write Message for %s Returning Error %d",mod->name, result); 
+        //dax_log(LOG_MSGERR, "Group Masked Write Message for %s Returning Error %d",mod->name, result);
     } else {
         _message_send(msg->fd, MSG_GRP_MWRITE, NULL, 0, RESPONSE);
         //dax_log(LOG_MSG, "Group Masked Write Message for %s", mod->name);

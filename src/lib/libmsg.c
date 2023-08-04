@@ -443,51 +443,7 @@ dax_disconnect(dax_state *ds)
 }
 
 /* Not yet implemented */
-int
-dax_mod_get(dax_state *ds, char *modname)
-{
-    return ERR_NOTIMPLEMENTED;
-}
 
-/*!
- * This is a generic function for setting module parameters.
- * @param ds The pointer to the dax state object
- * @param cmd The function to be called
- * @param param The arguments to send with the command can be NULL
- *
- * @returns Zero on success or an error code otherwise
- */
-int
-dax_mod_set(dax_state *ds, uint8_t cmd, void *param)
-{
-    int result;
-    size_t size;
-    char buff[1];  /* So far this is as big as we need */
-
-    pthread_mutex_lock(&ds->lock);
-    buff[0] = cmd;
-    if(cmd == MOD_CMD_RUNNING) {
-        size = 1;
-    } else {
-        return ERR_ARG;
-    }
-        /* Send the message to the server.  Add 2 to the size for the subcommand and the NULL */
-    result = _message_send(ds, MSG_MOD_SET, buff, size);
-    if(result) {
-        dax_log(LOG_ERROR, "Can't send MSG_MOD_SET message");
-        pthread_mutex_unlock(&ds->lock);
-        return result;
-    }
-    size = 0;
-    result = _message_recv(ds, MSG_MOD_SET, buff, &size, 1);
-    if(result) {
-        dax_log(LOG_ERROR, "Problem receiving message MSG_MOD_SET : result = %d", result);
-        pthread_mutex_unlock(&ds->lock);
-        return result;
-    }
-    pthread_mutex_unlock(&ds->lock);
-    return 0;
-}
 
 /*!
  * Adds a tag to the tag server.

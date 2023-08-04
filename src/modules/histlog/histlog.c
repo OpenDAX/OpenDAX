@@ -259,7 +259,7 @@ main(int argc,char *argv[]) {
     }
 
     /* Let's say we're running */
-    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
+    //dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
     lasttime = 0;
 
     while(1) {

@@ -114,8 +114,7 @@ int main(int argc,char *argv[]) {
         getout(-1);
     }
     /* No setup work to do here.  We'll go straight to running */
-    dax_mod_set(ds, MOD_CMD_RUNNING, NULL);
-
+    dax_set_running(ds, 1);
     if(dax_get_attr(ds, "quiet")) {
         quiet_mode = 1;
     }
