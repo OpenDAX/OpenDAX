@@ -43,11 +43,19 @@
  * dealing with.  There is probably a better way to do this but this works
  * for now. */
 static int _current_fd;
+static tag_type _module_tag_type;
+
+extern _dax_tag_db *_db;
 
 
 void
 virt_set_fd(int fd) {
     _current_fd = fd;
+}
+
+void
+special_set_module_type(tag_type t) {
+    _module_tag_type = t;
 }
 
 int
@@ -128,6 +136,51 @@ read_queue(tag_index idx, int offset, void *data, int size, void *userdata) {
         q->qread = 0;
     }
     q->qcount--;
+    return 0;
+}
+
+/* Special tag handling functions.  The idea behind "special" tags is that
+   they have a hook that is called right before the actual data is read
+   or written.  This hook can interrupt the process by returning an error,
+   call other functions and even manipulate the data before it moves on. */
+
+int
+special_tag_read(tag_index index, int offset, void *data, int size) {
+    /* So far reading is always successful */
+    return 0;
+}
+
+int
+special_tag_write(tag_index index, int offset, void *data, int size) {
+    dax_module *mod;
+
+    /* If the tag is the module tag of the calling module then it can
+       be written.  Otherwise it is read only */
+    if(_db[index].type == _module_tag_type) {
+        mod = module_find_fd(_current_fd);
+        if(mod == NULL) return ERR_NOTFOUND;
+        if(mod->tagindex != index) {
+            return ERR_READONLY;
+        }
+        if(offset < 8) return ERR_READONLY; /* This is the start time.  Always read only. */
+    }
+    return 0;
+}
+
+int
+special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int size) {
+    dax_module *mod;
+
+    /* If the tag is the module tag of the calling module then it can
+       be written.  Otherwise it is read only */
+    if(_db[index].type == _module_tag_type) {
+        mod = module_find_fd(_current_fd);
+        if(mod == NULL) return ERR_NOTFOUND;
+        if(mod->tagindex != index) {
+            return ERR_READONLY;
+        }
+        if(offset < 8) return ERR_READONLY; /* This is the start time.  Always read only. */
+    }
     return 0;
 }
 

@@ -114,6 +114,9 @@ typedef struct {
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
 tag_index tag_add(char *name, tag_type type, uint32_t count, uint32_t attr);
+int tag_set_attribute(tag_index index, uint32_t attr);
+int tag_clr_attribute(tag_index index, uint32_t attr);
+
 tag_index virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vfunction *wf);
 int tag_del(tag_index idx);
 int tag_get_name(char *, dax_tag *);

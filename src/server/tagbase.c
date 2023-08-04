@@ -388,6 +388,7 @@ initialize_tagbase(void)
         dax_log(LOG_FATAL, "Unable to create default datatypes");
         kill(getpid(), SIGQUIT);
     }
+    special_set_module_type(type);
 
     /* TODO: instead of using all these constants we should probably just add
      * the tags and store the indexes for the ones that we need. */
@@ -417,7 +418,6 @@ _set_attribute(tag_index idx, uint32_t attr) {
         ret_add_tag(idx);
         _db[idx].attr |= TAG_ATTR_RETAIN;
     }
-
 }
 
 /* This adds a tag to the database. It takes a string for the name
@@ -535,6 +535,19 @@ tag_add(char *name, tag_type type, uint32_t count, uint32_t attr)
 
     return n;
 }
+
+int
+tag_set_attribute(tag_index index, uint32_t attr) {
+    _db[index].attr |= attr;
+    return 0;
+}
+
+int
+tag_clr_attribute(tag_index index, uint32_t attr) {
+    _db[index].attr &= ~attr;
+    return 0;
+}
+
 
 /* Deletes the tag given my index.  The tags position in the _db array is not
  * moved.  The name and data fields are freed and set to NULL.  The events
@@ -659,7 +672,7 @@ int
 tag_read(tag_index idx, int offset, void *data, int size)
 {
     virt_functions *vf;
-    int n;
+    int n, result;
     uint8_t x, y;
 
     /* Bounds check handle */
@@ -683,6 +696,12 @@ tag_read(tag_index idx, int offset, void *data, int size)
         }
         /* Copy the data into the right place. */
         memcpy(data, &(_db[idx].data[offset]), size);
+        /* If the tag is special then all the hook */
+        /* NOTE: Not sure this should be before the override */
+        if(_db[idx].attr & TAG_ATTR_SPECIAL) {
+            result = special_tag_read(idx, offset, data, size);
+            if(result) return result;
+        }
         if(_db[idx].attr & TAG_ATTR_OVR_SET) {
             for(n=0; n<size; n++) {
                  x = _db[idx].odata[n+offset] & _db[idx].omask[n+offset];
@@ -703,6 +722,7 @@ int
 tag_write(tag_index idx, int offset, void *data, int size)
 {
     virt_functions *vf;
+    int result;
 
     /* Bounds check handle */
     if(idx < 0 || idx >= _tagnextindex) {
@@ -723,6 +743,10 @@ tag_write(tag_index idx, int offset, void *data, int size)
         if(_db[idx].data == NULL) {
             return ERR_DELETED;
         }
+        if(_db[idx].attr & TAG_ATTR_SPECIAL) {
+            result = special_tag_write(idx, offset, data, size);
+            if(result) return result;
+        }
         /* Copy the data into the right place. */
         memcpy(&(_db[idx].data[offset]), data, size);
         event_check(idx, offset, size);
@@ -741,7 +765,7 @@ int
 tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
 {
     uint8_t *db, *newdata, *newmask;
-    int n;
+    int n, result;
 
     /* We don't allow masked writes to virtual tags.  This would be
      * too ambiguous */
@@ -757,6 +781,11 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
     if(_db[idx].data == NULL) {
         return ERR_DELETED;
     }
+    if(_db[idx].attr & TAG_ATTR_SPECIAL) {
+        result = special_tag_mask_write(idx, offset, data, mask, size);
+        if(result) return result;
+    }
+
     /* Just to make it easier */
     db = &_db[idx].data[offset];
     newdata = (uint8_t *)data;

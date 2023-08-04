@@ -219,17 +219,19 @@ module_register(char *name, uint32_t timeout, int fd)
             }
             dax_log(LOG_WARN, "Duplicate module name.  Module tag being modified - %s", tagname);
         }
-        result = tag_add(tagname, cdt_get_type("_module"), 1, TAG_ATTR_READONLY);
+        result = tag_add(tagname, cdt_get_type("_module"), 1, 0);
         if(result < 0) {
             dax_log(LOG_ERROR, "Unable to add module tag- %s", tagname);
         } else {
             mod->tagindex = result;
         }
-        tag_write(INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
-
         starttime = xtime();
         tag_write(result, 0, &starttime, sizeof(dax_time));
         tag_write(result, sizeof(dax_time), &mod->state, sizeof(dax_uint));
+        /* We wait until after we have written what we want to set the special flag.
+           From now on we'll let the special functions handle the tag */
+        tag_set_attribute(result, TAG_ATTR_SPECIAL);
+        tag_write(INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
     } else {
         dax_log(LOG_ERROR, "Major problem registering module - %s:%d", name, fd);
         return NULL;
