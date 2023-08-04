@@ -24,9 +24,9 @@
  * is normally a pointer to the allocated data, is used as a pointer to
  * one of these functions.  They should all have the same prototype and
  * that prototype is...
- * 
+ *
  * int vfunction(tag_index idx, int offset, void *data, int size, void *userdata);
- * 
+ *
  * the functions should check that size is correct and then write the
  * information into the memory pointed to by *data.  offset may be
  * used as a parameter which would allow these tags to appear to be
@@ -157,6 +157,10 @@ special_tag_write(tag_index index, int offset, void *data, int size) {
     /* If the tag is the module tag of the calling module then it can
        be written.  Otherwise it is read only */
     if(_db[index].type == _module_tag_type) {
+        /* Anybody can write to the command bits */
+        if(offset == MOD_STAT_COMMAND_OFFSET && size == 1) {
+            return 0;
+        }
         mod = module_find_fd(_current_fd);
         if(mod == NULL) return ERR_NOTFOUND;
         if(mod->tagindex != index) {
@@ -174,6 +178,10 @@ special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int 
     /* If the tag is the module tag of the calling module then it can
        be written.  Otherwise it is read only */
     if(_db[index].type == _module_tag_type) {
+        /* Anybody can write to the command bits */
+        if(offset == MOD_STAT_COMMAND_OFFSET && size == 1) {
+            return 0;
+        }
         mod = module_find_fd(_current_fd);
         if(mod == NULL) return ERR_NOTFOUND;
         if(mod->tagindex != index) {
