@@ -42,7 +42,7 @@ set(test_list server_responses
               server_large_holding
               server_large_inputs
               rtu_slave_basic
-   )
+  )
 
 foreach(test IN LISTS test_list)
     add_executable(module_${test}  modtest_${test}.c ../../modtest_common.c modbus_common.c)

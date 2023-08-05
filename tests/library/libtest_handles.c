@@ -52,10 +52,10 @@ _create_types(dax_state *ds) {
 
     cdt = dax_cdt_new("Test1", NULL);
     if(cdt == NULL) return 1;
-    result += dax_cdt_member(ds, cdt, "Int5", DAX_INT, 5);
-    result += dax_cdt_member(ds, cdt, "Bool10", DAX_BOOL, 10);
-    result += dax_cdt_member(ds, cdt, "Dint1", DAX_DINT, 1);
-    result += dax_cdt_member(ds, cdt, "Dint3", DAX_DINT, 3);
+    result += dax_cdt_member(ds, cdt, "Int5", DAX_INT, 5);     // 10
+    result += dax_cdt_member(ds, cdt, "Bool10", DAX_BOOL, 10); // 2
+    result += dax_cdt_member(ds, cdt, "Dint1", DAX_DINT, 1);   // 4
+    result += dax_cdt_member(ds, cdt, "Dint3", DAX_DINT, 3);   // 12
     result += dax_cdt_create(ds, cdt, &test1);
     if(result) return result;
 
@@ -171,10 +171,17 @@ do_test(int argc, char *argv[])
             {"HandleTest2[0].Test1[1]", 2, 34, 0, 2, 56, "Test1"},
             {"HandleTest2[0].Test1[4]", 1, 118, 0, 1, 28, "Test1"},
             {"HandleTest2[1].Test1", 0, 152, 0, 5, 140, "Test1"},
+            {"HandleTest2[4].Int3", 3, 584, 0, 3, 6, "INT"},
+            {"HandleTest2[4].Int3", 0, 584, 0, 3, 6, "INT"},
+
             {"HandleTest2[0].Test1[0].Bool10[4]", 1, 16, 4, 1, 1, "BOOL"},
             {"HandleTest2[0].Test1[0].Bool10", 0, 16, 0, 10, 2, "BOOL"},
             {"HandleTest2[0].Test1[1].Bool10", 0, 44, 0, 10, 2, "BOOL"},
             {"HandleTest2[4].Test1[0].Bool10", 0, 600, 0, 10, 2, "BOOL"},
+
+            {"HandleTest4[2].Test1.Bool10", 0, 1580, 0, 10, 2, "BOOL"},
+            {"HandleTest4[2].Test1.Bool10", 10, 1580, 0, 10, 2, "BOOL"},
+
             {"HandleTestIV.Bool", 0, 2, 0, 1, 1, "BOOL"},
             {"HandleTestIV.reBool", 0, 2, 1, 1, 1, "BOOL"},
             {"HandleTestIV.triBool", 0, 2, 2, 1, 1, "BOOL"},

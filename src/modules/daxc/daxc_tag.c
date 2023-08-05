@@ -275,6 +275,7 @@ _read_cdt_callback(cdt_iter iter, void *buff)
         indent += 2;
         fprintf(stdout, "\n");
         _print_compound_tag(iter.type, buff+iter.byte);
+        indent -= 2;
     } else if(iter.type == DAX_CHAR) {
         s = (char *)(buff+iter.byte);
         for(n=0;n<iter.count;n++) {
@@ -335,8 +336,12 @@ tag_read(char **tokens)
 
     result = dax_tag_handle(ds, &handle, name, count);
     if(result) {
-        /* TODO: More descriptive error messages here based on result */
-        fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+        if(result == ERR_2BIG) {
+            fprintf(stderr, "ERROR: %s is too large a request\n", name);
+        } else {
+            /* TODO: More descriptive error messages here based on result */
+            fprintf(stderr, "ERROR: %s Not a Valid Tag\n", name);
+        }
         return ERR_ARG;
     }
 
@@ -418,8 +423,12 @@ tag_write(char **tokens, int tcount) {
         }
         result = dax_tag_handle(ds, &handle, name, 0);
         if(result) {
-            /* TODO: More descriptive error messages here based on result */
-            fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+            if(result == ERR_2BIG) {
+                fprintf(stderr, "ERROR: %s is too large a request\n", name);
+            } else {
+                /* TODO: More descriptive error messages here based on result */
+                fprintf(stderr, "ERROR: %s Not a Valid Tag\n", name);
+            }
             return ERR_ARG;
         }
         if(TYPESIZE(handle.type) != 8) {

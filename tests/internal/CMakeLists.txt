@@ -58,13 +58,17 @@ target_link_libraries(cachetest pthread)
 #target_link_libraries(event_queue pthread)
 #add_test(internal_library_event_queue event_queue)
 
+add_test(internal_library_cache cachetest)
+
+set(test_list tagbasetest_001
+              tagbasetest_002
+              tagbasetest_003
+              tagbasetest_004
+)
 
 # Server Tests
-file(GLOB files "tagbasetest_*.c")
-foreach(file ${files})
-  get_filename_component(FILENAME ${file} NAME)
-  get_filename_component(TESTNAME ${file} NAME_WE)
-  add_executable(${TESTNAME} ${FILENAME} fakefunction.c
+foreach(test IN LISTS test_list)
+  add_executable(${test} ${test}.c fakefunction.c
                                          ${SERVER_SOURCE_DIR}/tagbase.c
                                          ${SERVER_SOURCE_DIR}/func.c
                                          ${SERVER_SOURCE_DIR}/events.c
@@ -74,16 +78,11 @@ foreach(file ${files})
                                          ../testlog.c 
   )
   if(SQLite3_FOUND)
-    target_link_libraries(${TESTNAME} sqlite3)
+    target_link_libraries(${test} sqlite3)
   endif()
+  add_test(${test} ${test})
 
 endforeach()
-
-add_test(internal_library_cache cachetest)
-add_test(internal_tagbase_001 tagbasetest_001)
-add_test(internal_tagbase_002 tagbasetest_002)
-add_test(internal_tagbase_003 tagbasetest_003)
-add_test(internal_tagbase_004 tagbasetest_004)
 
 add_executable(groups_test groups_test.c fakefunction.c
                                          ${SERVER_SOURCE_DIR}/groups.c

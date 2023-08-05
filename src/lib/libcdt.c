@@ -498,7 +498,6 @@ static inline int
 _get_index(char *str)
 {
     int i, k, len, index;
-
     len = strlen(str);
     for(i = 0; i < len && str[i] != '['; i++);
     if(i < len) {
@@ -693,8 +692,6 @@ _dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int strlen, int count)
         result = _parse_next_member(ds, tag.type, h, membername, count);
         if(result) return result;
         if(index != ERR_NOTFOUND) {
-            if(count == 0) count = 1;
-            if((index + count) > tag.count) return ERR_2BIG;
             h->byte += dax_get_typesize(ds, tag.type) * index;
         }
     } else {
