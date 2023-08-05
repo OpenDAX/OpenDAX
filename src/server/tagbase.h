@@ -63,7 +63,8 @@
 #define INDEX_LASTMODULE 4
 
 /* Offset for the Module tag */
-#define MOD_STAT_COMMAND_OFFSET 73  /* _module.xxx where xxx are the commands */
+#define MOD_ID_OFFSET 8
+#define MOD_STAT_COMMAND_OFFSET 77  /* _module.xxx where xxx are the commands */
 
 #define CDT_FLAGS_RETAINED 0x80;
 

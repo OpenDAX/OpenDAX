@@ -214,6 +214,7 @@ module_register(char *name, uint32_t timeout, int fd)
         }
         starttime = xtime();
         tag_write(result, 0, &starttime, sizeof(dax_time));
+        tag_write(result, MOD_ID_OFFSET, &fd, sizeof(int));
         /* We wait until after we have written what we want to set the special flag.
            From now on we'll let the special functions handle the tag */
         tag_set_attribute(result, TAG_ATTR_SPECIAL);

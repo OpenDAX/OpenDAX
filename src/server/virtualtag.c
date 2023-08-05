@@ -166,7 +166,7 @@ special_tag_write(tag_index index, int offset, void *data, int size) {
         if(mod->tagindex != index) {
             return ERR_READONLY;
         }
-        if(offset < 8) return ERR_READONLY; /* This is the start time.  Always read only. */
+        if(offset < 12) return ERR_READONLY; /* This is the start time and id.  Always read only. */
     }
     return 0;
 }
@@ -187,7 +187,7 @@ special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int 
         if(mod->tagindex != index) {
             return ERR_READONLY;
         }
-        if(offset < 8) return ERR_READONLY; /* This is the start time.  Always read only. */
+        if(offset < 12) return ERR_READONLY; /* This is the start time and id.  Always read only. */
     }
     return 0;
 }

@@ -383,7 +383,7 @@ initialize_tagbase(void)
     _datatype_size = DAX_DATATYPE_SIZE;
 
     /*  Create the default datatypes */
-    char *_mod_cdt = "_module:starttime,TIME,1:running,BOOL,1:faulted,BOOL,1:status,CHAR,64:stop,BOOL,1:run,BOOL,1:reload,BOOL,1:kill,BOOL,1";
+    char *_mod_cdt = "_module:starttime,TIME,1:id,DINT,1:running,BOOL,1:faulted,BOOL,1:status,CHAR,64:stop,BOOL,1:run,BOOL,1:reload,BOOL,1:kill,BOOL,1";
     type = cdt_create(_mod_cdt, NULL);
     if(type == 0) {
         dax_log(LOG_FATAL, "Unable to create default datatypes");

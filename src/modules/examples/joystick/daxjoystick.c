@@ -29,7 +29,7 @@ static void getout(int exitstatus);
 
 dax_state *ds;
 static int _quitsignal;
-static int _stopsignal;
+static int _runsignal;
 
 axis_t axis_list[256];
 button_t button_list[256];
@@ -58,19 +58,26 @@ read_event(int fd, struct js_event *event)
     return -1;
 }
 
-static void
-stop_function(dax_state *ds, void *ud) {
-    _stopsignal = 1;
+
+void
+_run_function(dax_state *ds, void *ud) {
+    _runsignal = 1;
+    dax_log(LOG_DEBUG, "Run signal received from tagserver");
+    dax_default_run(ds, ud);
 }
 
-static void
-run_function(dax_state *ds, void *ud) {
-    _stopsignal = 0;
+void
+_stop_function(dax_state *ds, void *ud) {
+    _runsignal = 0;
+    dax_log(LOG_DEBUG, "Stop signal received from tagserver");
+    dax_default_stop(ds, ud);
 }
 
-static void
-kill_function(dax_state *ds, void *ud) {
+void
+_kill_function(dax_state *ds, void *ud) {
     _quitsignal = 1;
+    dax_log(LOG_MINOR, "Kill signal received from tagserver");
+    dax_default_kill(ds, ud);
 }
 
 
@@ -132,18 +139,20 @@ int main(int argc,char *argv[]) {
     }
 
     dax_set_running(ds, 1);
-    dax_set_run_callback(ds, run_function);
-    dax_set_stop_callback(ds, stop_function);
-    dax_set_kill_callback(ds, kill_function);
-
-    dax_log(LOG_MAJOR,"Joystick Module Starting");
+    _runsignal = 1;
+    dax_set_run_callback(ds, _run_function);
+    dax_set_stop_callback(ds, _stop_function);
+    dax_set_kill_callback(ds, _kill_function);
+    dax_set_status(ds, "OK");
+    
+    dax_log(LOG_MAJOR,"Joystick Module Starting?????");
 
     while(1) { /* device file open loop */
-        if(! _stopsignal) {
+        if(_runsignal) {
             fd = _open_device();
             if(fd > 0) {
                 dax_log(LOG_MINOR, "Connected to joystick at fd = %d", fd);
-                while(! _stopsignal && read_event(fd, &event) == 0) {
+                while(_runsignal && read_event(fd, &event) == 0 && ! _quitsignal) {
                     switch (event.type)
                     {
                         case JS_EVENT_BUTTON:
@@ -162,6 +171,10 @@ int main(int argc,char *argv[]) {
                             /* Ignore init events. */
                             break;
                     }
+                /* This is so that our stop/run/kill events will get to us.
+                   A better way to do this would be to have a thread of it's own
+                   but since this is just an example we'll do it here */
+                dax_event_poll(ds, NULL);
                 }
             }
             dax_log(LOG_MINOR, "Disconnecting from joystick at fd = %d", fd);
@@ -172,7 +185,7 @@ int main(int argc,char *argv[]) {
             dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
-        sleep(1);
+        dax_event_wait(ds, 1000, NULL);
     }
     getout(-1);
     return(0);
