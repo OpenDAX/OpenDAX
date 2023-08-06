@@ -67,9 +67,6 @@ histlog_configure(int argc,char *argv[]) {
     int result = 0;
     lua_State *L;
 
-    /* Create and initialize the configuration subsystem in the library */
-    dax_init_config(ds, "histlog");
-
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "plugin","plugin", 'p', flags, NULL);
     result += dax_add_attribute(ds, "flush_interval","flush", 'f', flags, NULL);

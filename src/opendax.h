@@ -299,7 +299,7 @@ typedef union dax_type_union {
 
 /* These functions are for module configuration */
 dax_state *dax_init(char *name);
-int dax_init_config(dax_state *ds, char *name);
+int dax_init_config(dax_state *ds, char *name); /* This function is deprecated and curently does nothing */
 int dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name);
 int dax_clear_luafunction(dax_state *ds, char *name);
 lua_State *dax_get_luastate(dax_state *ds);

@@ -27,13 +27,25 @@
 
 
 /*!
+ * This function was redundant and has been deprecated.  It should not be used
+ * in new code and should be removed from old code.
+ */
+int
+dax_init_config(dax_state *ds, char *name) {
+    DF("dax_init_config is deprecated and should be removed");
+    return 0;
+}
+
+/*
  * Initialize the module configuration
  *
  * @param ds Pointer to DAX State object
  * @param name Name of the module.
+ *
+ * @return Returns zero on success and error code otherwise
  */
 int
-dax_init_config(dax_state *ds, char *name)
+init_config(dax_state *ds)
 {
     int result = 0;
     int flags;
@@ -49,7 +61,7 @@ dax_init_config(dax_state *ds, char *name)
     result += dax_add_attribute(ds, "serverip", "serverip", 'I', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "serverport", "serverport", 'P', flags, "7777");
     result += dax_add_attribute(ds, "server", "server", 'S', flags, "LOCAL");
-    result += dax_add_attribute(ds, "name", "name", 'N', flags, name);
+    result += dax_add_attribute(ds, "name", "name", 'N', flags, ds->modulename);
     result += dax_add_attribute(ds, "cachesize", "cachesize", 'Z', flags, "8");
     result += dax_add_attribute(ds, "msgtimeout", "msgtimeout", 'O', flags, DEFAULT_TIMEOUT);
 

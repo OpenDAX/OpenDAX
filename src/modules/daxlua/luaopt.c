@@ -319,7 +319,6 @@ configure(int argc, char *argv[])
     char *s;
     lua_State *L;
 
-    dax_init_config(ds, "daxlua");
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "event_thread_count", "event_thread_count", 'n', flags, "8");
     if(result) {

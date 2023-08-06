@@ -99,7 +99,6 @@ int main(int argc,char *argv[]) {
         return ERR_ALLOC;
     }
 
-    dax_init_config(ds, "daxc");
     flags = CFG_CMDLINE | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "execute","execute", 'x', flags, NULL);
     flags = CFG_CMDLINE;

@@ -77,7 +77,7 @@ _add_sub(lua_State *L) {
     int  idx;
     int i, len;
     const char *s;
-    
+
     if(! lua_istable(L, 1) ) {
         luaL_error(L, "add_sub() argument is not a table");
     }
@@ -105,7 +105,7 @@ _add_sub(lua_State *L) {
             if(subscribers[idx].tagnames == NULL) {
                 luaL_error(L, "Unable to allocate space for tagnames");
             }
-        
+
             for(i = 0; i < len; i++) {
                 lua_geti(L, -1, i+1);
                 s = lua_tostring(L, -1);
@@ -126,7 +126,7 @@ _add_sub(lua_State *L) {
         }
     }
     lua_pop(L, 1); /* Pop off tags */
-    
+
     if(lua_getfield(L, 1, "filter") != LUA_TNIL) {
         if(! lua_isfunction(L, -1)) {
             luaL_error(L, "filter should be a function ");
@@ -136,13 +136,13 @@ _add_sub(lua_State *L) {
         subscribers[idx].filter = luaL_ref(L, LUA_REGISTRYINDEX);
     } else {
         lua_pop(L, 1); /* Pop nil */
-    }   
- 
+    }
+
     if(lua_getfield(L, 1, "qos") != LUA_TNIL) {
         subscribers[idx].qos = lua_tointeger(L, -1);
     }
     lua_pop(L, 1); /* Pop off QOS */
-    
+
     return 0;
 }
 
@@ -198,7 +198,7 @@ _add_pub(lua_State *L)
     int  idx;
     int i, len;
     const char *s;
-    
+
     if(! lua_istable(L, 1) ) {
         luaL_error(L, "add_pub() argument is not a table");
     }
@@ -233,7 +233,7 @@ _add_pub(lua_State *L)
             if(publishers[idx].tagnames == NULL) {
                 luaL_error(L, "Unable to allocate space for tagnames");
             }
-        
+
             for(i = 0; i < len; i++) {
                 lua_geti(L, -1, i+1);
                 s = lua_tostring(L, -1);
@@ -264,14 +264,14 @@ _add_pub(lua_State *L)
         publishers[idx].filter = luaL_ref(L, LUA_REGISTRYINDEX);
     } else {
         lua_pop(L, 1); /* Pop nil */
-    }   
- 
+    }
+
     if(lua_getfield(L, 1, "qos") != LUA_TNIL) {
         publishers[idx].qos = lua_tointeger(L, -1);
     }
     lua_pop(L, 1); /* Pop off QOS */
 
-    lua_getfield(L, 1, "trigger_tag");    
+    lua_getfield(L, 1, "trigger_tag");
     if(! lua_isnil(L, -1)) {
         s = lua_tostring(L, -1);
         publishers[idx].trigger_tag = strdup(s);
@@ -282,14 +282,14 @@ _add_pub(lua_State *L)
         if(publishers[idx].tag_count > 0) {
             /* If we don't have a trigger tag then we'll use the first
              * tagname given */
-            publishers[idx].trigger_tag = publishers[idx].tagnames[0]; 
+            publishers[idx].trigger_tag = publishers[idx].tagnames[0];
         } else {
             luaL_error(L, "A trigger tag must be set");
         }
     }
     lua_pop(L, 1);
 
-    lua_getfield(L, 1, "trigger_type");    
+    lua_getfield(L, 1, "trigger_type");
     if(! lua_isnil(L, -1)) {
          publishers[idx].trigger_type = lua_tointeger(L, -1);
     }
@@ -297,19 +297,19 @@ _add_pub(lua_State *L)
 
 
 
-    lua_getfield(L, 1, "trigger_value");    
+    lua_getfield(L, 1, "trigger_value");
     if(! lua_isnil(L, -1)) {
         publishers[idx].trigger_value = strdup(lua_tostring(L, -1));
-    
+
     }
     lua_pop(L, 1);
-    
+
     lua_getfield(L, 1, "qos");
     if(! lua_isnil(L, -1)) {
         publishers[idx].qos = lua_tointeger(L, -1);
     }
     lua_pop(L, 1); /* Pop off tagnmaes */
-    
+
     return 0;
 }
 
@@ -321,7 +321,6 @@ configure(int argc, char *argv[])
     int flags, result = 0;
     lua_State *L;
 
-    dax_init_config(ds, "daxmqtt");
     /* Set some globals for the  configuration script to use. */
     /* Minor problem here is that the script could change these */
     L = dax_get_luastate(ds);
@@ -341,8 +340,8 @@ configure(int argc, char *argv[])
     lua_setglobal(L, "LESS");
     lua_pushinteger(L, EVENT_DEADBAND);
     lua_setglobal(L, "DEADBAND");
-    
-    
+
+
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "broker_ip", "broker-ip", 'b', flags, "127.0.0.1");
     result += dax_add_attribute(ds, "broker_port", "broker-port", 'p', flags, "1883");
@@ -353,7 +352,7 @@ configure(int argc, char *argv[])
     if(result) {
         dax_log(LOG_FATAL, "Problem setting attributes");
     }
-        
+
     dax_set_luafunction(ds, (void *)_add_pub, "add_pub");
     dax_set_luafunction(ds, (void *)_add_sub, "add_sub");
 
@@ -420,7 +419,7 @@ get_sub(char *topic) {
     for(n=0;n<subscriber_count;n++) {
         if(subscribers[n].enabled == ENABLE_GOOD) { /* We only care if this sub is good */
             if(_topic_compare(subscribers[n].topic, topic) == 0) {
-                return &subscribers[n]; 
+                return &subscribers[n];
             }
         }
     }

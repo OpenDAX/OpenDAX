@@ -21,7 +21,7 @@
  */
 
 #ifndef __LIBDAX_H
-#define __LIBDAX_H  
+#define __LIBDAX_H
 
 #include <common.h>
 #include <opendax.h>
@@ -58,7 +58,7 @@ typedef struct tag_cnode {
     char name[DAX_TAGNAME_SIZE + 1];
 } tag_cnode;
 
-/* This is the compound datatype member definition.  The 
+/* This is the compound datatype member definition.  The
  * members are represented as a linked list */
 struct cdt_member {
     char *name;
@@ -181,6 +181,8 @@ dax_lreal stom_lreal(dax_lreal);
 int mtos_generic(tag_type type, void *dst, void *src);
 int stom_generic(tag_type type, void *dst, void *src);
 
+/* Initialize the configuration */
+int init_config(dax_state *ds);
 /* These functions handle the tag cache */
 int init_tag_cache(dax_state *ds);
 void free_tag_cache(dax_state *ds);

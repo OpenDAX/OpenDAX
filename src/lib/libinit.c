@@ -26,10 +26,10 @@
  *  Allocate and initialize the state of the dax_state connection
  *  object.  The returned object will need to be passed to
  *  dax_free() when finished.
- * 
+ *
  *  @param name Pointer to a string that represents the name that will
  *              identify our module to the rest of the sytem.
- * 
+ *
  *  @return An opaque pointer that represents the Dax State Object.  This
  *          pointer is sent to the vast majority of the functiosn in this
  *          library.  It represents everything about the connection to the
@@ -48,7 +48,7 @@ dax_init(char *name)
     ds->L = NULL;
     ds->modulename = strdup(name);
     if(ds->modulename == NULL) return NULL;
-    
+
     ds->msgtimeout = 0;
     ds->sfd = -1;       /* Server's File Descriptor */
     ds->reformat = 0;  /* Flags to show how to reformat the incoming data */
@@ -81,16 +81,21 @@ dax_init(char *name)
     pthread_cond_init(&ds->event_cond, NULL);
     pthread_cond_init(&ds->msg_cond, NULL);
 
+    init_config(ds);
+
     return ds;
 }
 
 
 /*!
  * Deallocate and free the given dax_state object
- * 
+ *
  * @param ds The Dax State object that is to be deallocated
  *           and freed.  This would be the same pointer that
  *           would have been returned from the dax_init() function.
+ *
+ *  @return Returns zero but may return error numbers on failure
+ *          In the future
  */
 int
 dax_free(dax_state *ds)

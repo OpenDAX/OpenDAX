@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
+ *
  * Source file containing the configuration options
  */
 
@@ -111,7 +111,7 @@ _get_serial_config(lua_State *L, mb_port *p)
         }
     }
     result = mb_set_serial_port(p, device, baudrate, databits, parity, stopbits);
-    lua_pop(L, 5);    
+    lua_pop(L, 5);
     return result;
 }
 
@@ -127,12 +127,12 @@ _get_network_config(lua_State *L, mb_port *p)
     lua_getfield(L, -1, "ipaddress");
     ipaddress = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
-    
+
     lua_getfield(L, -1, "bindport");
     bindport = (unsigned int)lua_tonumber(L, -1);
     if(bindport == 0) bindport = 502;
     lua_pop(L, 1);
-    
+
     lua_getfield(L, -1, "socket");
     string = (char *)lua_tostring(L, -1);
     if(string) {
@@ -150,7 +150,7 @@ _get_network_config(lua_State *L, mb_port *p)
     if(ipaddress != NULL) {
         result = mb_set_network_port(p, ipaddress, bindport, socket);
     } else {
-        result = mb_set_network_port(p, "0.0.0.0", bindport, socket);        
+        result = mb_set_network_port(p, "0.0.0.0", bindport, socket);
     }
     return result;
 }
@@ -224,11 +224,11 @@ _add_port(lua_State *L)
     char *string, *name;
     int slaveid, tmp, maxfailures, inhibit;
     unsigned char devtype, protocol, type;
-    
+
     if(!lua_istable(L, -1)) {
         luaL_error(L, "add_port() received an argument that is not a table");
     }
-    
+
     /* This logic allocates the port array if it does not already exist */
     if(config.ports == NULL) {
         config.ports = malloc(sizeof(mb_port *) * DEFAULT_PORTS);
@@ -250,13 +250,13 @@ _add_port(lua_State *L)
             kill(getpid(), SIGQUIT);
         }
     }
-    
+
     dax_log(LOG_MINOR, "Adding a port at index = %d", config.portcount);
-    
+
     lua_getfield(L, -1, "name");
     name = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
-    
+
     config.ports[config.portcount] = mb_new_port(name, 0x0000);
     /* Assign the pointer to p to make things simpler */
     p = config.ports[config.portcount];
@@ -265,11 +265,11 @@ _add_port(lua_State *L)
         kill(getpid(), SIGQUIT);
     }
     config.portcount++;
-    
+
     lua_getfield(L, -1, "enable");
     p->enable = (char)lua_toboolean(L, -1);
     lua_pop(L, 1);
-    
+
 
     /* What Modbus protocol are we going to talk on this port */
     lua_getfield(L, -1, "protocol");
@@ -327,7 +327,7 @@ _add_port(lua_State *L)
     }
 
     mb_set_protocol(p, type, protocol, slaveid);
-    
+
     /* Have to decide how much of this will really be needed */
     lua_getfield(L, -1, "delay");
     p->delay = (unsigned int)lua_tonumber(L, -1);
@@ -373,12 +373,12 @@ _add_port(lua_State *L)
 
     /* The lua script gets the index +1 */
     lua_pushnumber(L, config.portcount);
-    
+
     return 1;
 }
 
 
-/* Lua interface function for adding a modbus command to a port.  
+/* Lua interface function for adding a modbus command to a port.
    Accepts two arguments.  The first is the port to assign the command
    too, and the second is a table describing the command. */
 static int
@@ -391,7 +391,7 @@ _add_command(lua_State *L)
     uint16_t reg, length;
     int p; /* Port ID */
     mb_port *port;
-    
+
     p = (int)lua_tonumber(L, 1);
     p--; /* Lua has indexes that are 1+ our actual array indexes */
     if(p < 0 || p >= config.portcount) {
@@ -406,7 +406,7 @@ _add_command(lua_State *L)
         return 0;
     }
     dax_log(LOG_DEBUG, "Adding a command to port %d", p);
-    
+
     /* Allocate the new command and add it to the port */
     c = mb_new_cmd(config.ports[p]);
     if(c == NULL) {
@@ -461,7 +461,7 @@ _add_command(lua_State *L)
         c->mode = MB_CONTINUOUS;
     }
     lua_pop(L, 1);
-    
+
     lua_getfield(L, -1, "enable");
     if(lua_toboolean(L, -1)) {
         c->enable = 1;
@@ -533,22 +533,21 @@ int
 modbus_configure(int argc, const char *argv[])
 {
     int flags, result = 0;
-    
+
     _init_config();
-    dax_init_config(ds, "modbus");
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagname","tagname", 't', flags, "modbus");
-    
+
     dax_set_luafunction(ds, (void *)_add_port, "add_port");
     dax_set_luafunction(ds, (void *)_add_command, "add_command");
-    
+
     result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
     dax_clear_luafunction(ds, "add_port");
     dax_clear_luafunction(ds, "add_command");
 
     dax_free_config(ds);
-    
+
     printconfig();
 
     return result;
@@ -565,5 +564,5 @@ printconfig(void)
     for(n=0; n<config.portcount; n++) {
         mb_print_portconfig(stderr, config.ports[n]);
     }
-        
+
 }

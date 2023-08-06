@@ -519,9 +519,6 @@ _dax_init(lua_State *L)
         luaL_error(L, "Unable to allocate memory for dax_state object");
     }
 
-    /* Create and initialize the configuration subsystem in the library */
-    dax_init_config(ds, modulename);
-
     /* If we have been given a second argument which is a table to configuration
      * attributes that we want to set */
     if(lua_gettop(L) > 1) {

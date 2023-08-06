@@ -64,8 +64,6 @@ int main(int argc,char *argv[]) {
         dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
     }
 
-    /* Create and initialize the configuration subsystem in the library */
-    dax_init_config(ds, "skel");
     /* These flags will be passed to the dax_add_attribute() function.  They
      * basically mean that the following attributes can be set from either the
      * command line or the skel.conf module configuration file and that an

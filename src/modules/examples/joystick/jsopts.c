@@ -89,9 +89,6 @@ int
 configure(int argc, char *argv[]) {
     int flags, result=0;
 
-    /* Create and initialize the configuration subsystem in the library */
-    dax_init_config(ds, "joystick");
-
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "device","device", 'd', flags, "/dev/input/js0");
 /* We might use this to setup some default tags for the axis' and buttons if no config file is present
