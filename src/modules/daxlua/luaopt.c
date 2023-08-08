@@ -302,7 +302,7 @@ _add_global_static(lua_State *L) {
 
     script = get_script_name(name);
     if(script == NULL) {
-        luaL_error(L, "no script named %$", name);
+        luaL_error(L, "no script named %s", name);
     } else {
         /* Make sure that the value that we want to store is at the top of the stack */
         add_static(script, L, varname);

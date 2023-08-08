@@ -154,6 +154,7 @@ static inline int
 _receive_globals(script_t *s) {
     int result;
     global_t *this;
+    void *data;
 
     this = s->globals;
 
@@ -164,24 +165,35 @@ _receive_globals(script_t *s) {
             if(result == 0) {
                 /* If successfull then set the INIT flag */
                 this->mode = this->mode | MODE_INIT;
+                /* Then if we are not a READ tag or STATIC then set it to
+                   all zeroes once */
+                if(!(this->mode & MODE_READ) && !(this->mode & MODE_STATIC)) {
+                    /* Create a data block and fill it with zeros */
+                    data = malloc(this->handle.size);
+                    if(data == NULL) {
+                        return ERR_ALLOC;
+                    }
+                    bzero(data, this->handle.size);
+                    daxlua_dax_to_lua(s->L, this->handle, data);
+                    lua_setglobal(s->L, this->name);
+                    free(data);
+                }
             } else {
                 dax_log(LOG_DEBUG, "Failed to get tag %s.  Will retry.", this->tagname);
             }
+        } else if((this->mode & MODE_STATIC) && this->ref != LUA_NOREF) {
+            lua_rawgeti(s->L, LUA_REGISTRYINDEX, this->ref);
+            lua_setglobal(s->L, this->name);
         }
         if(this->mode & MODE_READ && this->mode & MODE_INIT) {
             if(fetch_tag(s->L, this->handle)) {
                 // TODO we might should unitialize this tag if it has been deleted
                 lua_pushnil(s->L);
             }
-        } else if((this->mode & MODE_STATIC) && this->ref != LUA_NOREF) {
-            lua_rawgeti(s->L, LUA_REGISTRYINDEX, this->ref);
-        } else {
-            lua_pushnil(s->L);
+            lua_setglobal(s->L, this->name);
         }
-        lua_setglobal(s->L, this->name);
         this = this->next;
     }
-
     lua_pushboolean(s->L, s->firstrun);
     lua_setglobal(s->L, "_firstrun");
 
@@ -211,7 +223,6 @@ _send_globals(script_t *s)
 
         this = this->next;
     }
-
     return 0;
 }
 
@@ -369,7 +380,7 @@ _get_script_id(lua_State *L) {
     return 1;
 }
 
-/* Get the id of a scirpt (array index) by name.
+/* Get the name of a scirpt by index.
    Takes a single string that should be a script name.
    Returns the script name or nil if index is bad */
 static int
