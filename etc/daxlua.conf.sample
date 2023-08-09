@@ -1,83 +1,92 @@
 --This is the configuration file for the OpenDAX Lua interpreter module
 --It is basically a Lua script itself
 
-
--- We can run configuration files that are common for all modules
--- configdir = the location where this file was found
-dofile(configdir .. "/log.conf")
---dofile(configdir .. "/common.conf")
-
--- The init_hook function will be run right after the connection
--- to the tag server is made and before the module is started.
+-- The init_hook() function is run once right after the connection is
+-- made to the tag server.  Should be used for configuration
 function init_hook()
-    tag_add("tag_1", "DINT", 1)
-    tag_add("tag_2", "DINT", 1)
-    tag_add("tag_3", "DINT", 1)
-    tag_add("tag_4", "DINT", 1)
+    tag_add("lua_enable", "BOOL", 1)
+    tag_add("lua_disable", "BOOL", 1)
+    tag_add("demotag1", "DINT", 1)
+    tag_add("demotag10", "DINT", 10)
+    tag_add("demotag2", "DINT", 1)
+    tag_add("demotag3", "DINT", 1)
+    tag_add("demotag3a", "DINT", 1)
 end
 
--- Variables can be used in the configuration to remove duplication.  This
--- is being used as the location of all of our .lua scripts
-root="./"
+dofile("log.conf")
 
--- Number of worker threads for handling event trigger scripts
-event_thread_count = 8
--- Size of the event queue.  This is the number of event triggered scripts that can
--- be waiting for a worker thread to deal with them.
-event_queue_size = 128
+-- Assign a variable to represent the directory where our scripts are
+-- This is not requried but is a convenience
+root = "lua/"
 
--- Adds an interval thread.  These threads will run all of
--- the scripts that are assigned to them every time
--- the given interval has elapsed
-
+-- These are the interval threads.  The first argument is the name
+-- which will be used to identify this thread. The second argument
+-- is the period that the thread will call the scripts assigned
 add_interval_thread("fast", 500)
 add_interval_thread("1sec", 1000)
-add_interval_thread("slow", 5000)
+add_interval_thread("slow", 2000)
 
 -- Scripts are configured in a table.
 s = {}
-
-s.name = "demo1"  --Unique name for the script
-s.enable = true   --If false the script will not run
-s.filename = root.."demo1.lua"  --The path to the script
-s.thread = "fast"      --The name of the interval thread that we wish to be assigned to
+s.name = "demo1"                 --Unique name for the script
+s.enable = false                 --If false the script will not run
+s.filename = root.."demo1.lua"   --The path to the script
+s.thread = "fast"                --The interval thread that we will run in
+s.enable_trigger = {tag = "lua_enable", count = 0, type = "SET", value = 0}
+s.disable_trigger = {tag = "lua_disable", count = 0, type = "SET", value = 0}
+-- Another way to do this would be with a single tag
+-- More convenient but not as robust
+--s.enable_trigger = {tag = "lua_enable", count = 0, type = "SET", value = 0}
+--s.disable_trigger = {tag = "lua_enable", count = 0, type = "RESET", value = 0}
 
 -- Once the table has been configured, pass it to 'add_script()'
 add_script(s)
 
 -- Repeat as needed
+s = {}
 s.name = "demo2"
 s.filename = root.."demo2.lua"
+s.thread = "fast"
+add_script(s)
+
+-- demoflag is a variable that will always be true when the script starts
+add_global_static(s.name, "demoflag", true)
+
+s={}
+s.name = "demo3"
+s.enable = true
+s.filename = root.."demo3.lua"
+s.thread = "1sec"
+add_script(s)
+-- Add the demotag global variable and attach to the demotag3 tag
+add_global_tag(s.name, "demovar", "demotag3", READ + WRITE)
+add_global_tag(s.name, "demoarr", "demotag10", WRITE)
+
+-- We can use the same file more than once
+s={}
+s.name = "demo3a"
+s.enable = true
+s.filename = root.."demo3.lua"
 s.thread = "slow"
 add_script(s)
+-- We can set the same variable in the script to a different tag
+add_global_tag(s.name, "demovar", "demotag3a", READ + WRITE)
+add_global_tag(s.name, "demoarr", "demotag10", READ)
 
--- Adds a global variable that will represent a tag in the tagserver.  The arguments are...
--- (scriptname, script variable name, dax tagname, mode)
-
--- If the mode is READ then the tag will be read from the server and assigned to the script
--- as global variable, "SCRIPTTAG".  If the WRITE flag is set then "SCRIPTTAG" will be read
--- from the script after it runs and written to the tagserver.  If both are set then it will
--- do both.
-
--- The same Lua file can be used multiple times and this mechanism allows each instance of that
--- script to have different tags from the tagserver assigned to the same variable in each script.
-add_global_tag(s.name, "SCRIPTTAG", "DAXTAG", READ + WRITE)
-
--- Static globals are simply global variables that will be assigned to the script just before it is run
--- The arguments are...
--- (script name, script variable name, value)
-
--- This can be thought of as a way of passing arguments to the script and differentiating between
--- different scripts that use the same file.  Only booleans, numbers and strings are allowed.  Any other
--- type of value will be converted to nil
-add_global_static(s.name, "VARNAME1", true)
-add_global_static(s.name, "VARNAME2", 123.2)
-
-
--- This script is not periodic but is triggered by an event.
-s.name = "triggerdemo"
-s.enable = true
--- The trigger is defined in a table.
-s.trigger = {tag = "LuaTriggerTest", count = 0, type = "CHANGE", value = 0}
-s.filename = root.."triggerdemo.lua"
-add_script(s)
+-- These scripts are not periodic but are triggered by an event.
+-- This shows that scripts can be created in a loop using
+-- the same Lua file but with different configuraations.
+for n=1,10 do
+    s={}
+    s.name = "triggerdemo"..n
+    s.enable = true
+    -- when auto_run is true the script will be called once at initialization
+    -- regardless of the event.  _trigger_data will be nill on this run
+    -- since there was no trigger event.  Defaults to true.
+    -- s.auto_run = false
+    s.fail_on_error = false
+    -- The trigger is defined in a table.
+    s.trigger = {tag = "triggerdemo"..n, count = 0, type = "CHANGE", value = 0}
+    s.filename = root.."triggerdemo.lua"
+    add_script(s)
+end

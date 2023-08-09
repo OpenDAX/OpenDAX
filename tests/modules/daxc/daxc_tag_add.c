@@ -130,7 +130,6 @@ _server_connect(int argc, char *argv[]) {
         dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
         kill(getpid(), SIGQUIT);
     }
-    dax_init_config(ds, "test");
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
     return result;

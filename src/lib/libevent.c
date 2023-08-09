@@ -281,8 +281,7 @@ dax_event_poll(dax_state *ds, dax_id *id)
  *
  * @param ds   Pointer to the dax state object
  * @param buff Pointer to the buffer where the event data is to be written
- * @param len  Pointer to the length of the buffer that is passed.  This will
- *             be changed by the function if
+ * @param len  Maximum size of buff that can be written
  * @returns    number of bytes written on success or a negative error code otherwise.
  */
 int

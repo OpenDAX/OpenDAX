@@ -375,9 +375,13 @@ int dax_mask(dax_state *ds, tag_index idx, uint32_t offset, void *data,
  * other query function. *data is a pointer to the buffer of memory
  * that will be written or read. The mask is a binary mask that only
  * allows data through where bits are high. */
-int dax_read_tag(dax_state *ds, tag_handle handle, void *data);
-int dax_write_tag(dax_state *ds, tag_handle handle, void *data);
-int dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask);
+int dax_tag_read(dax_state *ds, tag_handle handle, void *data);
+int dax_tag_write(dax_state *ds, tag_handle handle, void *data);
+int dax_tag_mask(dax_state *ds, tag_handle handle, void *data, void *mask);
+#define dax_read_tag dax_tag_read
+#define dax_write_tag dax_tag_write
+#define dax_mask_tag dax_tag_mask
+
 
 /* These functions handle the tag value override feature */
 int dax_tag_add_override(dax_state *ds, tag_handle handle, void *data);

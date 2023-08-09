@@ -21,9 +21,9 @@ Tags can be one of 15 different data types in OpenDax.  These are given in the f
 \hline ULINT & Unsigned Long Integer & 64 & 0 & $2^{64}$ \\
 \hline TIME & Unix Timestamp in mSec & 64 &  &  \\
 \hline LREAL & IEC 754 Double Floating Point & 64 &  &  \\
-\hline 
+\hline
 \end{tabular}
- 
+
 The opendax.h header file contains the definitions for these data types.  These definitions are the name of the data type in the above table prefixed with "\texttt{DAX\_}".  So to represent a Boolean data type to the OpenDAX library you would use the definition \texttt{DAX\_BOOL}.  These definitions are used anytime your module needs to communicate a data type to the OpenDAX library.  For example, when creating a tag the module has to specify the data type.  You could create an INT tag with a call like this...
 
 \begin{verbatim}
@@ -39,7 +39,7 @@ dax_int myInt;
 myInt = 13000;
 \end{verbatim}
 
-Each Tag in OpenDAX can be a single value of any of these base data types or it can be an array of these.  
+Each Tag in OpenDAX can be a single value of any of these base data types or it can be an array of these.
 
 \begin{verbatim}
 dax_add_tag("MyInt", DAX_INT, 10);
@@ -70,7 +70,17 @@ Once you have the object you add members to the CDT one at a time.  These member
 
 Once all of the members have been added the module the \verb|dax_cdt_create()|\index{dax\_cdt\_create() function} function is used to send the data type definition to the server and actually create the data type.  The \textit{type} argument to \verb|dax_cdt_create()| will contain the new type identifier of the created compound data type.  This identifier can be used anywhere another data type definition (such as DAX\_DINT) could be used.
 
-The \verb|dax_cdt_free()|\index{dax\_cdt\_free() function} function simply frees the memory associated with the new data type.  Don't try to free the memory yourself because there are other data structures in the \verb|dax_cdt| object that have to be freed.  Simply passing the pointer to \verb|free()| for example will result in a memory leak.  Once the data type has been created it can be freed.  Obviously failure to do this will also result in a memory leak.  Don't try to reuse a \verb|dax_cdt| object either.  You can reuse the pointer but you need to free the old one with \verb|dax_cdt_free()| and then reallocate a new one with \verb|dax_cdt_new()|.
+The \verb|dax_cdt_free()|\index{dax\_cdt\_free() function} function simply
+frees the memory associated with the new data type.  If the
+\verb|dax_cdt_crete()| function is used it will free the object so this
+function is only necessary when errors happen and the construction of the
+data type is being aborted.  Do Not try to free the memory yourself because
+there are other data structures in the \verb|dax_cdt| object that have to be
+freed.  Simply passing the pointer to \verb|free()| for example will result
+in a memory leak.  The \verb|dax_cdt| object should
+not be reused.  You can reuse the pointer but old object needs to be
+freed with \verb|dax_cdt_free()| or \verb|dax_cdt_crete()| first, and then
+reallocate a new one with  \verb|dax_cdt_new()|.
 
 Perhaps it's time for an example.  Let's build a CDT that has the following structure...
 
@@ -99,12 +109,12 @@ if(dc == NULL) {
 
     error = dax_cdt_create(ds, dc, &type);
     if(error) {
+        dax_cdt_free(dc);
         printf("Error from dax_cdt_member() is %d\n", error);
 	    //handle error
     } else {
         printf("CDT created!  Data Type = 0x%X\n", type);
     }
-    dax_cdt_free(dc);
 }
 
 \end{verbatim}
@@ -162,13 +172,13 @@ Let's say we create a tag that is a 10 item array of this type, named \emph{MyTa
 
 \begin{tabular}{lll}
 \textbf{str} & \textbf{cnt} & \textbf{Handle represents \ldots} \\
-\verb|"MyTag"| & 1 & the entire tag \\ 
-\verb|"MyTag[0]"| & 1 & the entire first element \\ 
-\verb|"MyTag[0]"| & 2 & all of the first two elements \\ 
-\verb|"MyTag[1].MyInteger"| & n/a & the MyInteger member of the 2nd element \\ 
-\verb|"MyTag[1].MyBools"| & n/a & the entire MyBools array of the 2nd element \\ 
-\verb|"MyTag[2].MyReals[1]"| & 2 & two MyReals starting with the 2nd one \\ 
-\end{tabular} 
+\verb|"MyTag"| & 1 & the entire tag \\
+\verb|"MyTag[0]"| & 1 & the entire first element \\
+\verb|"MyTag[0]"| & 2 & all of the first two elements \\
+\verb|"MyTag[1].MyInteger"| & n/a & the MyInteger member of the 2nd element \\
+\verb|"MyTag[1].MyBools"| & n/a & the entire MyBools array of the 2nd element \\
+\verb|"MyTag[2].MyReals[1]"| & 2 & two MyReals starting with the 2nd one \\
+\end{tabular}
 
 This is the way that tags and parts of tags should be represented within your module as well.  This representation should be pretty familiar to a C programmer.  Square brackets and numbers are used to index the arrays and '.'s are used to dereference parts of a tag that have a compound data type.  Arrays are zero indexed.
 
@@ -188,7 +198,7 @@ typedef struct tag_handle {
 \end{verbatim}
 
 The tagserver is actually pretty dumb when it comes to retrieving data from the tag database.  The
-tagserver only needs the index, the byte offset and the number of bytes.  It's really up to the 
+tagserver only needs the index, the byte offset and the number of bytes.  It's really up to the
 module to figure out what to do with that data.  The libdax library hides most of this complexity
 from the module programmer.
 

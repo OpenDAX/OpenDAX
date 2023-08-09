@@ -829,9 +829,9 @@ _tag_write(lua_State *L) {
         }
     }
     if(q) {
-        result = dax_mask_tag(ds, *hp, data, mask);
+        result = dax_tag_mask(ds, *hp, data, mask);
     } else {
-        result = dax_write_tag(ds, *hp, data);
+        result = dax_tag_write(ds, *hp, data);
     }
 
     if(result) {

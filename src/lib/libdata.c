@@ -348,7 +348,7 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
  * @returns Zero on success or an error code otherwise
  */
 int
-dax_read_tag(dax_state *ds, tag_handle handle, void *data)
+dax_tag_read(dax_state *ds, tag_handle handle, void *data)
 {
     int result, n, i;
     uint8_t *newdata;
@@ -487,7 +487,7 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
  * @returns Zero on success or an error code otherwise
  */
 int
-dax_write_tag(dax_state *ds, tag_handle handle, void *data)
+dax_tag_write(dax_state *ds, tag_handle handle, void *data)
 {
     int i, n, result = 0, size;
     uint8_t *mask, *newdata;
@@ -548,7 +548,7 @@ dax_write_tag(dax_state *ds, tag_handle handle, void *data)
  * @returns Zero on success or an error code otherwise
  */
 int
-dax_mask_tag(dax_state *ds, tag_handle handle, void *data, void *mask)
+dax_tag_mask(dax_state *ds, tag_handle handle, void *data, void *mask)
 {
     int i, n, result = 0, size;
     uint8_t *newmask = NULL, *newdata;

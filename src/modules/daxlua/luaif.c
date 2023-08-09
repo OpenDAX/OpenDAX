@@ -48,10 +48,7 @@ fetch_tag(lua_State *L, tag_handle h)
         free(data);
         return result;
     }
-    /* This function figures all the tag data out and pushes the right
-     * thing onto the top of the Lua stack */
-    // TODO: We should be able to convert this to use the libdaxlua library functions instead
-    //       and get all this duplication out of here
+
     daxlua_dax_to_lua(L, h, data);
 
     free(data);
