@@ -289,14 +289,14 @@ _pop_base_datatype(lua_State *L, cdt_iter tag, void *data, void *mask)
     const char *s;
 
     if(tag.count > 1) { /* The tag is an array */
-        if(lua_isstring(L, -1)) {
+        if(lua_type(L, -1) == LUA_TSTRING) {
             s = lua_tolstring(L, -1, &len);
             memcpy(data, s, tag.count<len ? tag.count : len);
             memset(mask, 0xFF, tag.count); /* Change it all */
         } else {
             /* Check that the second parameter is a table */
             if( ! lua_istable(L, -1) ) {
-                lua_pushfstring(L, "Table needed to set - %s", tag.name);
+                lua_pushfstring(L, "Table needed to set tag");
                 return -1;
             }
             /* We're just searching for indexes in the table.  Anything
