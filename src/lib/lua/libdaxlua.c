@@ -654,7 +654,6 @@ _tag_add(lua_State *L)
     }
     if(lua_gettop(L) == 4) { /* Attributes included */
         attr = lua_tointeger(L, 4);
-        DF("Setting attr = %x", attr);
     }
     if(lua_isnumber(L, 2)) {
         type = lua_tointeger(L, 2);
@@ -1224,6 +1223,47 @@ _map_add(lua_State *L) {
 }
 
 static int
+_map_get(lua_State *L) {
+    dax_id id;
+    tag_handle *src, *dest;
+    int result;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) != 1 ) {
+        luaL_error(L, "Wrong number of arguments passed to map_get()");
+    }
+    if(!lua_istable(L,1)) {
+        luaL_error(L, "Table required as argument to map_get()");
+    }
+    lua_rawgeti(L, 1, 1);
+    id.index = lua_tointeger(L, -1);
+    lua_rawgeti(L, 1, 2);
+    id.id = lua_tointeger(L, -1);
+
+    src = (tag_handle *)lua_newuserdata(L, sizeof(tag_handle));
+    luaL_getmetatable(L, "OpenDAX.handle");
+    lua_setmetatable(L, -2);
+    dest = (tag_handle *)lua_newuserdata(L, sizeof(tag_handle));
+    luaL_getmetatable(L, "OpenDAX.handle");
+    lua_setmetatable(L, -2);
+
+    result = dax_map_get(ds, src, dest, id);
+    if(result == ERR_NOTFOUND) {
+        lua_pushnil(L);
+        lua_pushnil(L);
+        return 2;
+    }
+    if(result) {
+        luaL_error(L, "dax_map_get() returned %d", result);
+    }
+
+    return 2;
+}
+
+
+static int
 _map_del(lua_State *L) {
     dax_id id;
     int result;
@@ -1332,6 +1372,7 @@ static const struct luaL_Reg daxlib[] = {
     {"event_poll", _event_poll},
     {"atomic_op", _atomic_op},
     {"map_add", _map_add},
+    {"map_get", _map_get},
     {"map_del", _map_del},
     {"sleep", _sleep},
     {"log", _log},
@@ -1469,6 +1510,57 @@ daxlua_set_constants(lua_State *L) {
     _set_atomic_constants(L);
 }
 
+static int
+_handle_index(lua_State *L) {
+    tag_handle *h;
+    const char *name;
+
+    if(lua_isuserdata(L, 1)) {
+        h = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        luaL_error(L, "How did we get here???");
+    }
+    name = lua_tostring(L, 2);
+
+    if(strcmp(name, "index") == 0) {
+        lua_pushinteger(L, h->index);
+    } else if(strcmp(name, "byte") == 0) {
+        lua_pushinteger(L, h->byte);
+    } else if(strcmp(name, "bit") == 0) {
+        lua_pushinteger(L, h->bit);
+    } else if(strcmp(name, "count") == 0) {
+        lua_pushinteger(L, h->count);
+    } else if(strcmp(name, "size") == 0) {
+        lua_pushinteger(L, h->size);
+    } else if(strcmp(name, "type") == 0) {
+        lua_pushinteger(L, h->type);
+    } else {
+        lua_pushnil(L);
+    }
+
+    return 1;
+}
+
+static int
+_handle_tostring(lua_State *L) {
+    tag_handle *h;
+
+    if(lua_isuserdata(L, 1)) {
+        h = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        luaL_error(L, "How did we get here???");
+    }
+    lua_pushfstring(L, "OpenDAX.handle %p", h);
+    return 1;
+}
+
+
+static const struct luaL_Reg handle_m [] = {
+    {"__index", _handle_index},
+    {"__tostring", _handle_tostring},
+    {NULL, NULL}
+};
+
 /* This registers all of the functions that are defined in the above array
  * to the Lua script given by L.  It places them in a table named 'dax' and
  * leaves this table on the top of the stack.  This is the function that you
@@ -1480,6 +1572,7 @@ int
 luaopen_dax(lua_State *L)
 {
     luaL_newmetatable(L, "OpenDAX.handle");
+    luaL_setfuncs(L, handle_m, 0);
     _set_log_constants(L);
     _set_attr_constants(L);
     _set_atomic_constants(L);

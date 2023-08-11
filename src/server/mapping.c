@@ -176,6 +176,27 @@ map_del(tag_index index, int id) {
     return ERR_NOTFOUND;
 }
 
+int
+map_get(tag_handle *src, tag_handle *dest, tag_index index, int id) {
+    _dax_datamap *this;
+
+    if(index < 0 || index >= get_tagindex()) {
+        return ERR_ARG;
+    }
+
+    this = _db[index].mappings;
+    while(this != NULL) {
+        if(this->id == id) {  /* Found it */
+            memcpy(src, &this->source, sizeof(tag_handle));
+            memcpy(dest, &this->dest, sizeof(tag_handle));
+            return 0;
+        }
+        this = this->next;
+    }
+    return ERR_NOTFOUND;
+}
+
+
 /* Traverse the linked list of maps and delete them all */
 int
 map_del_all(_dax_datamap *head) {

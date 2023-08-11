@@ -816,8 +816,37 @@ msg_map_del(dax_message *msg)
 
 int msg_map_get(dax_message *msg)
 {
-    DF("Message Map Get\n");
-    return 0;
+    int result;
+    dax_id id;
+    tag_handle src, dest;
+    uint8_t buff[sizeof(tag_handle) * 2];
+
+    id.index = *(dax_dint *)msg->data;
+    id.id = *(dax_dint *)&msg->data[4];
+
+    dax_log(LOG_MSG, "Map Get Message received index=%d, id=%d", id.index, id.id);
+
+    result = map_get(&src, &dest, id.index, id.id);
+
+    *(dax_dint *)buff = src.index;
+    *(dax_dint *)&buff[4] = src.byte;
+    buff[8] = src.bit;
+    *(dax_dint *)&buff[9] = src.count;
+    *(dax_udint *)&buff[13] = src.size;
+    *(dax_dint *)&buff[17] = src.type;
+    *(dax_dint *)&buff[21] = dest.index;
+    *(dax_dint *)&buff[25] = dest.byte;
+    buff[29] = dest.bit;
+    *(dax_dint *)&buff[30] = dest.count;
+    *(dax_udint *)&buff[34] = dest.size;
+    *(dax_dint *)&buff[38] = dest.type;
+
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_MAP_GET, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_MAP_GET, &buff, sizeof(tag_handle) * 2, RESPONSE);
+    }
+    return result;
 }
 
 int

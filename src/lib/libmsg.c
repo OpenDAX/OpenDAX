@@ -1518,6 +1518,57 @@ dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id)
     return result;
 }
 
+/*!
+ * This function deletes a tag mapping
+ *
+ * @param ds Pointer to the dax state object
+ * @param src Pointer to the source handle that will be returned if found
+ * @param dest Pointer to the destination handle that will be returned if found
+ * @param id The id of the mapping that will be deleted.  This would have
+ *           been assigned in the dax_map_add() function
+ * @returns Zero on success or an error code otherwise
+ * */
+int
+dax_map_get(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id id) {
+    int result;
+    dax_dint temp;
+    size_t size;
+
+    char buff[MSG_DATA_SIZE];
+
+    temp = mtos_dint(id.index);    /* Index */
+    memcpy(buff, &temp, 4);
+    temp = mtos_dint(id.id);       /* map id */
+    memcpy(&buff[4], &temp, 4);
+
+    pthread_mutex_lock(&ds->lock);
+    result = _message_send(ds, MSG_MAP_GET, buff, 8);
+    if(result) {
+        pthread_mutex_unlock(&ds->lock);
+        return result;
+    }
+
+    size = MSG_DATA_SIZE;
+    result = _message_recv(ds, MSG_MAP_GET, buff, &size, 1);
+    pthread_mutex_unlock(&ds->lock);
+
+    src->index = *(dax_dint *)buff;
+    src->byte = *(dax_dint *)&buff[4];
+    src->bit = buff[8];
+    src->count = *(dax_dint *)&buff[9];
+    src->size = *(dax_udint *)&buff[13];
+    src->type = *(dax_dint *)&buff[17];
+
+    dest->index = *(dax_dint *)&buff[21];
+    dest->byte = *(dax_dint *)&buff[25];
+    dest->bit = buff[29];
+    dest->count = *(dax_dint *)&buff[30];
+    dest->size = *(dax_udint *)&buff[34];
+    dest->type = *(dax_dint *)&buff[38];
+
+    return result;
+
+}
 
 /*!
  * This function deletes a tag mapping

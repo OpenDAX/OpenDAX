@@ -433,6 +433,7 @@ int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt
 
 /* Add remove and get data table mapping functions */
 int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
+int dax_map_get(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id id);
 int dax_map_del(dax_state *ds, dax_id id);
 
 /* Tag data group functions */

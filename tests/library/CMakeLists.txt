@@ -55,6 +55,7 @@ set(test_list event_wait
               strings
               handles
               mapping_basic
+              mapping_get
    )
 
 foreach(test IN LISTS test_list)

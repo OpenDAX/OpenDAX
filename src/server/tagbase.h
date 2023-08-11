@@ -158,6 +158,7 @@ int events_cleanup(dax_module *module);
 
 int map_add(tag_handle src, tag_handle dest);
 int map_del(tag_index index, int id);
+int map_get(tag_handle *src, tag_handle *dest, tag_index index, int id);
 int map_del_all(_dax_datamap *head);
 int map_check(tag_index idx, int offset, uint8_t *data, int size);
 
