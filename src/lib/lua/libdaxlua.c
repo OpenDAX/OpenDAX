@@ -637,19 +637,24 @@ static int
 _tag_add(lua_State *L)
 {
     int result, count;
+    uint32_t attr = 0;
     tag_type type;
     tag_handle *h;
 
     if(ds == NULL) {
         luaL_error(L, "OpenDAX is not initialized");
     }
-    if(lua_gettop(L) < 2 || lua_gettop(L) > 3) {
+    if(lua_gettop(L) < 2 || lua_gettop(L) > 4) {
         luaL_error(L, "wrong number of arguments to tag_add()");
     }
     if(lua_gettop(L) == 2) { /* Count is missing */
         count = 1;
     } else {
         count = lua_tointeger(L, 3);
+    }
+    if(lua_gettop(L) == 4) { /* Attributes included */
+        attr = lua_tointeger(L, 4);
+        DF("Setting attr = %x", attr);
     }
     if(lua_isnumber(L, 2)) {
         type = lua_tointeger(L, 2);
@@ -662,7 +667,7 @@ _tag_add(lua_State *L)
     h = (tag_handle *)lua_newuserdata(L, sizeof(tag_handle));
     luaL_getmetatable(L, "OpenDAX.handle");
     lua_setmetatable(L, -2);
-    result = dax_tag_add(ds, h, (char *)lua_tostring(L,1), type, count, 0);
+    result = dax_tag_add(ds, h, (char *)lua_tostring(L,1), type, count, attr);
     if(result) luaL_error(L, "Unable to add tag '%s'", (char *)lua_tostring(L,1));
     return 1;
 }
@@ -1336,17 +1341,14 @@ static const struct luaL_Reg daxlib[] = {
 /* TODO: Add the following functions...
  *   cdt_get
  *   cdt_del - Not implemented in server yet
- *   map_add
  *   map_get
- *   map_del
- *   atomic operations
  *   overrides
  *   groups
  */
 
 static void
 _set_log_constants(lua_State *L) {
-    uint32_t log_ints[] = {
+    uint32_t _ints[] = {
         LOG_MINOR,
         LOG_MAJOR,
         LOG_WARN,
@@ -1370,17 +1372,9 @@ _set_log_constants(lua_State *L) {
         LOG_USER6,
         LOG_USER7,
         LOG_USER8,
-        LOG_ALL,
-        ATOMIC_OP_INC,
-        ATOMIC_OP_DEC,
-        ATOMIC_OP_NOT,
-        ATOMIC_OP_OR,
-        ATOMIC_OP_AND,
-        ATOMIC_OP_NOR,
-        ATOMIC_OP_NAND,
-        ATOMIC_OP_XOR
+        LOG_ALL
     };
-    const char *log_str[] = {
+    const char *_str[] = {
         "LOG_MINOR",
         "LOG_MAJOR",
         "LOG_WARN",
@@ -1404,7 +1398,54 @@ _set_log_constants(lua_State *L) {
         "LOG_USER6",
         "LOG_USER7",
         "LOG_USER8",
-        "LOG_ALL",
+        "LOG_ALL"
+    };
+    for(int n=0;n<24;n++) {
+        lua_pushinteger(L, _ints[n]);
+        lua_setglobal(L, _str[n]);
+    }
+}
+
+static void
+_set_attr_constants(lua_State *L) {
+    uint32_t _ints[] = {
+        TAG_ATTR_READONLY,
+        TAG_ATTR_VIRTUAL,
+        TAG_ATTR_RETAIN,
+        TAG_ATTR_OVR_SET,
+        TAG_ATTR_SPECIAL,
+        TAG_ATTR_MAPPING,
+        TAG_ATTR_EVENT,
+        TAG_ATTR_OVERRIDE
+    };
+    const char *_str[] = {
+        "TAG_ATTR_READONLY",
+        "TAG_ATTR_VIRTUAL",
+        "TAG_ATTR_RETAIN",
+        "TAG_ATTR_OVR_SET",
+        "TAG_ATTR_SPECIAL",
+        "TAG_ATTR_MAPPING",
+        "TAG_ATTR_EVENT",
+        "TAG_ATTR_OVERRIDE"
+    };
+    for(int n=0;n<8;n++) {
+        lua_pushinteger(L, _ints[n]);
+        lua_setglobal(L, _str[n]);
+    }
+}
+static void
+_set_atomic_constants(lua_State *L) {
+    uint32_t _ints[] = {
+        ATOMIC_OP_INC,
+        ATOMIC_OP_DEC,
+        ATOMIC_OP_NOT,
+        ATOMIC_OP_OR,
+        ATOMIC_OP_AND,
+        ATOMIC_OP_NOR,
+        ATOMIC_OP_NAND,
+        ATOMIC_OP_XOR
+    };
+    const char *_str[] = {
         "ATOMIC_OP_INC",
         "ATOMIC_OP_DEC",
         "ATOMIC_OP_NOT",
@@ -1414,15 +1455,18 @@ _set_log_constants(lua_State *L) {
         "ATOMIC_OP_NAND",
         "ATOMIC_OP_XOR"
     };
-    for(int n=0;n<32;n++) {
-        lua_pushinteger(L, log_ints[n]);
-        lua_setglobal(L, log_str[n]);
+    for(int n=0;n<8;n++) {
+        lua_pushinteger(L, _ints[n]);
+        lua_setglobal(L, _str[n]);
     }
 }
+
 
 void
 daxlua_set_constants(lua_State *L) {
     _set_log_constants(L);
+    _set_attr_constants(L);
+    _set_atomic_constants(L);
 }
 
 /* This registers all of the functions that are defined in the above array
@@ -1437,6 +1481,8 @@ luaopen_dax(lua_State *L)
 {
     luaL_newmetatable(L, "OpenDAX.handle");
     _set_log_constants(L);
+    _set_attr_constants(L);
+    _set_atomic_constants(L);
 
     luaL_newlib(L, daxlib);
 

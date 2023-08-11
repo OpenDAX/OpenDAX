@@ -150,9 +150,6 @@ extern "C" {
 #define TAG_ATTR_OVERRIDE   0x4000 /* Tag has override installed */
 
 
-/* Module parameters */
-#define MOD_CMD_RUNNING     0x01 /* Set/Clear Modules Running Flag */
-
 /* Event Types */
 #define EVENT_READ     0x01 /* Called before a tag is read - Not implemented */
 #define EVENT_WRITE    0x02 /* When a tag is written whether or not it has changed */
