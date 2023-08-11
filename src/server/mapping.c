@@ -29,7 +29,8 @@ static tag_index _first_tag = -1;
 static int _mapping_hops = 0;
 
 /* Allocates and initializes a data map node */
-static _dax_datamap *_new_map(tag_handle src, tag_handle dest)
+static _dax_datamap *
+_new_map(tag_handle src, tag_handle dest)
 {
     _dax_datamap *new;
 
@@ -43,34 +44,39 @@ static _dax_datamap *_new_map(tag_handle src, tag_handle dest)
     return new;
 }
 
-static void _free_map(_dax_datamap *map) {
+static void
+_free_map(_dax_datamap *map) {
     if(map->mask != NULL) {
         free(map->mask);
     }
     free(map);
 }
 
+static inline int
+_handles_equal(tag_handle h1, tag_handle h2)
+{
+    return(h1.index == h2.index &&
+           h1.type == h2.type &&
+           h1.count == h2.count &&
+           h1.byte == h2.byte &&
+           h1.bit == h2.bit &&
+           h1.size == h2.size );
+}
 
 int
 map_add(tag_handle src, tag_handle dest)
 {
     _dax_datamap *new_map;
+    _dax_datamap *this;
     int bit, offset;
     uint8_t *mask;
-//    printf("map_add() called\n");
-//    printf("src.byte = 0x%X\n", src.byte);
-//    printf("src.bit = 0x%X\n", src.bit);
-//    printf("src.size = %d\n", src.size);
-//    printf("dest.byte = 0x%X\n", dest.byte);
-//    printf("dest.bit = 0x%X\n", dest.bit);
-//    printf("dest.size = %d\n", dest.size);
 
     /* Bounds check handles */
     if(src.index < 0 || src.index >= get_tagindex()) {
        dax_log(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
        return ERR_ARG;
     }
-    
+
     if(dest.index < 0 || dest.index >= get_tagindex()) {
        dax_log(LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
        return ERR_ARG;
@@ -95,13 +101,18 @@ map_add(tag_handle src, tag_handle dest)
         dax_log(LOG_ERROR, "Size of the affected destination data in the new mapping is too large");
         return ERR_2BIG;
     }
-//    if( (dest.byte + src.size) > tag_get_size(dest.index)) {
-//        dax_log(LOG_ERROR, "Size of the source data in the new mapping is too large");
-//        return ERR_2BIG;
-//    }
     if( src.size > dest.size ) {
         dax_log(LOG_ERROR, "Size of the source data in the new mapping is too large");
         return ERR_2BIG;
+    }
+    /* Check for duplicates */
+    this = _db[src.index].mappings;
+    while(this != NULL) {
+        if(_handles_equal(src, this->source) && _handles_equal(dest, this->dest)) {  /* Found a duplicate */
+            dax_log(LOG_WARN, "Duplicate mapping found at index %d, id %d", src.index, this->id);
+            return this->id;
+        }
+        this = this->next;
     }
 
     new_map = _new_map(src, dest);
@@ -155,6 +166,7 @@ map_del(tag_index index, int id) {
                 _free_map(this);
                 return 0;
             }
+            this = this->next;
         }
     }
     /* If there are no more mappings reset the attribute flag */

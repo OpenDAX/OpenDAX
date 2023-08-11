@@ -32,5 +32,6 @@
 pid_t run_server(void);
 pid_t run_module(const char *modpath, const char *modconf);
 pid_t run_module2(const char *modpath, int *fd_stdin, int *fd_stdout, int *fd_stderr, const char *modconf);
+pid_t run_module_wait(const char *modpath, const char *modconf, char *name);
 char *expect(int fd, char *str, int timeout);
 char *before(void);

@@ -36,24 +36,25 @@ set(test_list event_wait
               event_data
               event_deleted
               event_queue_simple
-              # event_queue_overflow1 
+              # event_queue_overflow1
               # event_queue_overflow2
               dax_write_tag_001
               group_add
               group_read
-              group_write 
+              group_write
               queue_test
               atomic_inc
               atomic_dec
               atomic_not
               atomic_or
-              override_basic 
-              override_get 
-              retention_basic 
+              override_basic
+              override_get
+              retention_basic
               blank_tagname
-              del_system_tag 
+              del_system_tag
               strings
-              handles 
+              handles
+              mapping_basic
    )
 
 foreach(test IN LISTS test_list)

@@ -270,7 +270,7 @@ typedef struct dax_tag {
  */
 typedef struct dax_id {
     tag_index index;     /* The Index of the Tag */
-    int id;              /* The byte offset where the data block starts */
+    dax_dint id;         /* The byte offset where the data block starts */
 } dax_id;
 
 /*! Opaque pointer for storing a dax_state object in the library */
@@ -436,6 +436,7 @@ int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt
 
 /* Add remove and get data table mapping functions */
 int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
+int dax_map_del(dax_state *ds, dax_id id);
 
 /* Tag data group functions */
 tag_group_id *dax_group_add(dax_state *ds, int *result, tag_handle *h, int count, uint8_t options);

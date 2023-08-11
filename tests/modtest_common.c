@@ -56,7 +56,6 @@ run_server(void) {
     }
     /* Try to connect to the server multiple times until then exit */
     ds = dax_init("test_loader");
-    dax_init_config(ds, "test_loader");
     dax_configure(ds, 1, (char **)"dummy", 0);
     for(int n=0;n<10;n++) {
         if(dax_connect(ds) == 0) {
@@ -85,6 +84,45 @@ run_module(const char *modpath, const char *modconf) {
     usleep(100000);
     return pid;
 }
+
+/* Waits for the module named 'name' to indicate running by setting
+   it's .running flag in the tagserver */
+pid_t
+run_module_wait(const char *modpath, const char *modconf, char *name) {
+    dax_state *ds;
+    tag_handle h;
+    pid_t pid;
+    char tagname[64];
+    uint8_t byte = 0;
+    int n=0;
+
+    pid = fork();
+
+    if(pid == 0) { // Child
+        execl(modpath, modpath, "-T", "ALL", "-C", modconf, NULL);
+        printf("Failed to launch module\n");
+        exit(-1);
+    } else if(pid < 0) {
+        printf("Forking problem");
+        exit(-1);
+    }
+    ds = dax_init("test_loader");
+    dax_configure(ds, 1, (char **)"dummy", 0);
+    dax_connect(ds) == 0;
+    sprintf(tagname, "_m%s.running", name);
+    dax_tag_handle(ds, &h, tagname, 0);
+    while(byte == 0 && n++ < 100) {
+        dax_read_tag(ds, h, &byte);
+        if(byte == 0) usleep(50000);
+    }
+    if(n==100) {
+        fprintf(stderr, "Timeout waiting for module to run\n");
+        exit(-1);
+    }
+
+    return pid;
+}
+
 
 
 /* Runs the module and redirects the standard i/o streams and return those in the given pointers */

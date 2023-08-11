@@ -794,10 +794,24 @@ int msg_map_add(dax_message *msg)
     return 0;
 }
 
-int msg_map_del(dax_message *msg)
+int
+msg_map_del(dax_message *msg)
 {
-    DF("Message Map Delete\n");
-    return 0;
+    int result;
+    dax_id id;
+
+    id.index = *(dax_dint *)msg->data;
+    id.id = *(dax_dint *)&msg->data[4];
+
+    dax_log(LOG_MSG, "Map Delete Message received index=%d, id=%d", id.index, id.id);
+
+    result = map_del(id.index, id.id);
+    if(result < 0) { /* Send Error */
+        _message_send(msg->fd, MSG_MAP_DEL, &result, sizeof(int), ERROR);
+    } else {
+        _message_send(msg->fd, MSG_MAP_DEL, &result, sizeof(int), RESPONSE);
+    }
+    return result;
 }
 
 int msg_map_get(dax_message *msg)

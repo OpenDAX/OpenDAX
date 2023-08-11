@@ -139,7 +139,7 @@ _atomic_dec(tag_handle h, void *data) {
 static int
 _atomic_not(tag_handle h, void *data) {
     int n;
-    
+
     if(h.type == DAX_REAL || h.type == DAX_LREAL) {
         return ERR_ILLEGAL;
     } else if(h.type == DAX_BOOL) {
@@ -158,7 +158,7 @@ _atomic_not(tag_handle h, void *data) {
         return 0;
     } else {
         for(n=0;n<h.size;n++) {
-            *(dax_byte *)&_db[h.index].data[h.byte+n] = ~*(dax_byte *)&_db[h.index].data[h.byte+n]; 
+            *(dax_byte *)&_db[h.index].data[h.byte+n] = ~*(dax_byte *)&_db[h.index].data[h.byte+n];
         }
         return 0;
     }
@@ -180,7 +180,7 @@ _atomic_or(tag_handle h, void *data) {
         DF("h.bit = %d", h.bit);
         DF("h.byte = %d", h.byte);
 
-        /* This i s a bit mask to clean up the higher order (spare) bits that
+        /* This is a bit mask to clean up the higher order (spare) bits that
          * may be in data */
         mask = ~(0xFF << (h.count%8));
         DF("_data[1] = %X", _data[1]);
@@ -192,17 +192,17 @@ _atomic_or(tag_handle h, void *data) {
             temp = 0;
             if(n != 0) {
                 temp = (_data[n-1] >> (8-h.bit));
-                DF("temp = %X", temp);    
+                DF("temp = %X", temp);
             }
             temp |= (_data[n] << h.bit);
             DF("temp = %X", temp);
-            ((dax_byte *)_db[h.index].data)[h.byte+n] |= temp; 
+            ((dax_byte *)_db[h.index].data)[h.byte+n] |= temp;
         }
         return 0;
     } else {
         DF("Easy way!!!!");
         for(n=0;n<h.size;n++) {
-            *(dax_byte *)&_db[h.index].data[h.byte+n] |= ((dax_byte *)data)[h.byte+n]; 
+            *(dax_byte *)&_db[h.index].data[h.byte+n] |= ((dax_byte *)data)[h.byte+n];
         }
         return 0;
     }

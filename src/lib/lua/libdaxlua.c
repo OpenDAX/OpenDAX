@@ -1114,6 +1114,138 @@ _event_poll(lua_State *L) {
     return 1;
 }
 
+/* Wrapper for dax_event_poll() no argument  It returns 0 on if there are
+ * no events and 1 if it dispatches an event */
+static int
+_atomic_op(lua_State *L) {
+    int result;
+    char *name;
+    tag_handle *hp;
+    tag_handle h;
+    void *data, *mask;
+    uint16_t operation;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) < 1 || lua_gettop(L) > 3) {
+        luaL_error(L, "Wrong number of arguments passed to atomic_op()");
+    }
+    if(lua_isuserdata(L, 1)) {
+        hp = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
+
+        result = dax_tag_handle(ds, &h, name, 0);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp=&h;
+    }
+    data = malloc(hp->size);
+    if(data == NULL) {
+        luaL_error(L, "atomic_op() unable to allocate data area");
+    }
+
+    mask = malloc(hp->size);
+    if(mask == NULL) {
+        free(data);
+        luaL_error(L, "atomic_op() unable to allocate mask memory");
+    }
+    bzero(mask, hp->size);
+    operation = lua_tointeger(L, 3);
+    lua_pop(L, 1);
+
+    result = daxlua_lua_to_dax(L, *hp, data, mask);
+    if(result) {
+        free(data);
+        free(mask);
+        lua_error(L); /* The error message should already be on top of the stack */
+    }
+    result = dax_atomic_op(ds, *hp, data, operation);
+    if(result) {
+        luaL_error(L, "atomic_op returned %d", result);
+    }
+
+    return 0;
+}
+
+static int
+_map_add(lua_State *L) {
+    int result;
+    char *name;
+    tag_handle *hp1, *hp2;
+    tag_handle h1, h2;
+    dax_id id;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) < 1 || lua_gettop(L) > 3) {
+        luaL_error(L, "Wrong number of arguments passed to map_add()");
+    }
+    if(lua_isuserdata(L, 1)) {
+        hp1 = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
+
+        result = dax_tag_handle(ds, &h1, name, 0);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp1=&h1;
+    }
+    if(lua_isuserdata(L, 2)) {
+        hp2 = luaL_checkudata(L, 2, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 2);
+
+        result = dax_tag_handle(ds, &h2, name, 0);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp2=&h2;
+    }
+    result = dax_map_add(ds, hp1, hp2, &id);
+    if(result) {
+        luaL_error(L, "dax_map_add() returned %d", result);
+    }
+    lua_createtable(L, 2, 0);
+    lua_pushinteger(L, id.index);
+    lua_rawseti(L, -2, 1);
+    lua_pushinteger(L, id.id);
+    lua_rawseti(L, -2, 2);
+    return 1;
+}
+
+static int
+_map_del(lua_State *L) {
+    dax_id id;
+    int result;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) != 1 ) {
+        luaL_error(L, "Wrong number of arguments passed to map_del()");
+    }
+    if(!lua_istable(L,1)) {
+        luaL_error(L, "Table required as argument to map_del()");
+    }
+    lua_rawgeti(L, 1, 1);
+    id.index = lua_tointeger(L, -1);
+    lua_rawgeti(L, 1, 2);
+    id.id = lua_tointeger(L, -1);
+    result = dax_map_del(ds, id);
+    if(result) {
+        luaL_error(L, "dax_map_del() returned %d", result);
+    }
+
+    return 0;
+}
+
+
+
 /* Lua lacks a sleep command and it's not uncommon to need to delay
  * so this function fills that gap.  The sleep time in mSec should be
  * passed to the function and it returns 0 on success or the mSec
@@ -1193,6 +1325,9 @@ static const struct luaL_Reg daxlib[] = {
     {"event_del", _event_del},
     {"event_wait", _event_wait},
     {"event_poll", _event_poll},
+    {"atomic_op", _atomic_op},
+    {"map_add", _map_add},
+    {"map_del", _map_del},
     {"sleep", _sleep},
     {"log", _log},
     {NULL, NULL}  /* sentinel */
@@ -1235,7 +1370,15 @@ _set_log_constants(lua_State *L) {
         LOG_USER6,
         LOG_USER7,
         LOG_USER8,
-        LOG_ALL
+        LOG_ALL,
+        ATOMIC_OP_INC,
+        ATOMIC_OP_DEC,
+        ATOMIC_OP_NOT,
+        ATOMIC_OP_OR,
+        ATOMIC_OP_AND,
+        ATOMIC_OP_NOR,
+        ATOMIC_OP_NAND,
+        ATOMIC_OP_XOR
     };
     const char *log_str[] = {
         "LOG_MINOR",
@@ -1261,9 +1404,17 @@ _set_log_constants(lua_State *L) {
         "LOG_USER6",
         "LOG_USER7",
         "LOG_USER8",
-        "LOG_ALL"
+        "LOG_ALL",
+        "ATOMIC_OP_INC",
+        "ATOMIC_OP_DEC",
+        "ATOMIC_OP_NOT",
+        "ATOMIC_OP_OR",
+        "ATOMIC_OP_AND",
+        "ATOMIC_OP_NOR",
+        "ATOMIC_OP_NAND",
+        "ATOMIC_OP_XOR"
     };
-    for(int n=0;n<20;n++) {
+    for(int n=0;n<32;n++) {
         lua_pushinteger(L, log_ints[n]);
         lua_setglobal(L, log_str[n]);
     }
