@@ -50,6 +50,7 @@ set(test_list event_wait
               override_basic
               override_get
               retention_basic
+              retention_cdt
               blank_tagname
               del_system_tag
               strings
