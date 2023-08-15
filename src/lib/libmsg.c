@@ -893,7 +893,6 @@ dax_tag_add_override(dax_state *ds, tag_handle handle, void *data) {
  * Removed an override on the given tag
  * @param ds Pointer to the dax state object.
  * @param handle handle of the tag data to override
- * @param data Pointer to the data that we are using as the override
  *
  * @returns Zero upon success or an error code otherwise
 */
@@ -902,8 +901,8 @@ dax_tag_del_override(dax_state *ds, tag_handle handle) {
     int i, n, result = 0, size, sendsize;
     uint8_t *mask = NULL;
     uint8_t buff[MSG_DATA_SIZE];
-
     size = handle.size;
+
     *((tag_index *)&buff[0]) = mtos_dint(handle.index);
     *((uint32_t *)&buff[4]) = mtos_dint(handle.byte);
 
@@ -930,8 +929,8 @@ dax_tag_del_override(dax_state *ds, tag_handle handle) {
         }
     }
 
-    memcpy(&buff[12 + size], mask, size);
-    sendsize = size + 12;
+    memcpy(&buff[8], mask, size);
+    sendsize = size + 8;
     if(sendsize > MSG_DATA_SIZE) {
         free(mask);
     }

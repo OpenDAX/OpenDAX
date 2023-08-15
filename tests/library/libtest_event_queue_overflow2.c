@@ -92,6 +92,8 @@ do_test(int argc, char *argv[])
         if(validation != 12) return -1;
 
     }
+    dax_disconnect(ds);
+
     return 0;
 }
 

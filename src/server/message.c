@@ -996,14 +996,13 @@ msg_del_override(dax_message *msg) {
 
     index = *((tag_index *)&msg->data[0]);
     byte = *((uint32_t *)&msg->data[4]);
-    size = (msg->size - 12);
-    result = override_del(index, byte, &msg->data[12], size);
+    size = (msg->size - 8);
+    result = override_del(index, byte, &msg->data[8], size);
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_DEL_OVRD, &result, sizeof(int), ERROR);
     } else {
         _message_send(msg->fd, MSG_DEL_OVRD, NULL, 0, RESPONSE);
     }
-    printf("Message Delete Override\n");
     return 0;
 }
 
@@ -1045,6 +1044,5 @@ msg_set_override(dax_message *msg) {
     } else {
         _message_send(msg->fd, MSG_SET_OVRD, NULL, 0, RESPONSE);
     }
-    //printf("Message Set Override = %s\n", flag ? "True" : "False");
     return 0;
 }

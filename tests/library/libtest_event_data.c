@@ -68,6 +68,8 @@ do_test(int argc, char *argv[])
         /* Our Callback will set validation to what we wrote */
         if(validation != x) return -1;
     }
+    dax_disconnect(ds);
+
     return 0;
     /* TODO: Need to test large amounts of data */
 }

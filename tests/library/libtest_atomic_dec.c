@@ -55,6 +55,8 @@ do_test(int argc, char *argv[])
     result = dax_read_tag(ds, h, &temp);
     if(result) return -1;
     if(temp != 10) return -1;
+    dax_disconnect(ds);
+
     return 0;
 }
 

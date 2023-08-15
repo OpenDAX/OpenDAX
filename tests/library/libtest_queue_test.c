@@ -60,6 +60,7 @@ do_test(int argc, char *argv[])
         if(result) return -1;
         if(n != temp) return -1;
     }
+    dax_disconnect(ds);
 
     return 0;
 }

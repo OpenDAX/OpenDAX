@@ -110,6 +110,8 @@ do_test(int argc, char *argv[])
         print_buffer(buff, tag.size);
         if(buff[0] != 0x03 || buff[1] != 0xFC) return -1;
     }
+    dax_disconnect(ds);
+
     return 0;
 }
 

@@ -85,6 +85,7 @@ do_test(int argc, char *argv[])
         DF("Returned tag does not match - %d", temp);
         return -1;
     }
+    dax_disconnect(ds);
 
     return 0;
 }

@@ -83,6 +83,8 @@ do_test(int argc, char *argv[])
         return -1;
     }
     DF("TEST PASSED");
+    dax_disconnect(ds);
+
     return 0;
 }
 

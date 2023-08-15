@@ -97,6 +97,7 @@ do_test(int argc, char *argv[])
         if(result) return result;
         if(validation != 1) return -1;
     }
+    dax_disconnect(ds);
 
     return 0;
 }

@@ -1289,6 +1289,167 @@ _map_del(lua_State *L) {
     return 0;
 }
 
+static int
+_override_add(lua_State *L) {
+    void *data, *mask;
+    char *name;
+    int result;
+    tag_handle h;
+    tag_handle *hp;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) != 2 ) {
+        luaL_error(L, "Wrong number of arguments passed to override_add()");
+    }
+
+    if(lua_isuserdata(L, 1)) {
+        hp = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
+        result = dax_tag_handle(ds, &h, name, 0);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp = &h;
+    }
+
+    data = malloc(hp->size);
+    if(data == NULL) {
+        luaL_error(L, "dax_tag_add_override() unable to allocate data area");
+    }
+
+    mask = malloc(hp->size);
+    if(mask == NULL) {
+        free(data);
+        luaL_error(L, "dax_tag_add_override() unable to allocate mask memory");
+    }
+    bzero(mask, hp->size);
+
+    result = daxlua_lua_to_dax(L, *hp, data, mask);
+    if(result) {
+        free(data);
+        free(mask);
+        lua_error(L); /* The error message should already be on top of the stack */
+    }
+
+    result = dax_tag_add_override(ds, *hp, data);
+
+    if(result) {
+        free(data);
+        free(mask);
+        luaL_error(L, "override_add() returned %d", result);
+    }
+
+    free(data);
+    free(mask);
+    return 0;
+}
+
+static int
+_override_set(lua_State *L) {
+    char *name;
+    int result;
+    tag_handle h;
+    tag_handle *hp;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) != 1 ) {
+        luaL_error(L, "Wrong number of arguments passed to override_set()");
+    }
+
+    if(lua_isuserdata(L, 1)) {
+        hp = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
+        result = dax_tag_handle(ds, &h, name, 0);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp = &h;
+    }
+
+    result = dax_tag_set_override(ds, *hp);
+
+    if(result) {
+        luaL_error(L, "override_set() returned %d", result);
+    }
+
+    return 0;
+}
+
+static int
+_override_del(lua_State *L) {
+    char *name;
+    int result;
+    tag_handle h;
+    tag_handle *hp;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) != 1 ) {
+        luaL_error(L, "Wrong number of arguments passed to override_del()");
+    }
+
+    if(lua_isuserdata(L, 1)) {
+        hp = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
+        result = dax_tag_handle(ds, &h, name, 0);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp = &h;
+    }
+
+    result = dax_tag_del_override(ds, *hp);
+
+    if(result) {
+        luaL_error(L, "override_del() returned %d", result);
+    }
+
+    return 0;
+}
+
+
+static int
+_override_clr(lua_State *L) {
+    char *name;
+    int result;
+    tag_handle h;
+    tag_handle *hp;
+
+    if(ds == NULL) {
+        luaL_error(L, "OpenDAX is not initialized");
+    }
+    if(lua_gettop(L) != 1 ) {
+        luaL_error(L, "Wrong number of arguments passed to override_clr()");
+    }
+
+    if(lua_isuserdata(L, 1)) {
+        hp = luaL_checkudata(L, 1, "OpenDAX.handle");
+    } else {
+        name = (char *)lua_tostring(L, 1);
+        result = dax_tag_handle(ds, &h, name, 0);
+        if(result) {
+            luaL_error(L, "dax_tag_handle() returned %d", result);
+        }
+        hp = &h;
+    }
+
+    result = dax_tag_clr_override(ds, *hp);
+
+    if(result) {
+        luaL_error(L, "override_clr() returned %d", result);
+    }
+
+    return 0;
+}
+
 
 
 /* Lua lacks a sleep command and it's not uncommon to need to delay
@@ -1374,6 +1535,10 @@ static const struct luaL_Reg daxlib[] = {
     {"map_add", _map_add},
     {"map_get", _map_get},
     {"map_del", _map_del},
+    {"override_add", _override_add},
+    {"override_set", _override_set},
+    {"override_clr",_override_clr},
+    {"override_del",_override_del},
     {"sleep", _sleep},
     {"log", _log},
     {NULL, NULL}  /* sentinel */

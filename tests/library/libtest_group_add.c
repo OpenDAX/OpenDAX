@@ -59,6 +59,8 @@ do_test(int argc, char *argv[])
             printf("Test - Added group at id %p\n", idx);
         }
     }
+    dax_disconnect(ds);
+
     return 0;
 }
 

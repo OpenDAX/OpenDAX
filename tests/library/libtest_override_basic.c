@@ -19,6 +19,7 @@
 /*
  *  This does a basic test of the tag override feature
  */
+#define DEBUG 1
 
 #include <common.h>
 #include <opendax.h>
@@ -37,7 +38,6 @@ do_test(int argc, char *argv[])
     dax_dint temp;
 
     ds = dax_init("test");
-    dax_init_config(ds, "test");
 
     dax_configure(ds, argc, argv, CFG_CMDLINE);
     result = dax_connect(ds);
@@ -74,6 +74,7 @@ do_test(int argc, char *argv[])
     result = dax_read_tag(ds, h, &temp);
     if(result) return result;
     if(temp != 12) return -1;
+    dax_disconnect(ds);
 
     return result;
 }

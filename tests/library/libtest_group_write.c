@@ -79,6 +79,8 @@ do_test(int argc, char *argv[])
     if(temp != 0x99AA) result += 1;
     if(result) return -1;
     result = dax_group_del(ds, idx);
+    dax_disconnect(ds);
+
     return result;
 }
 

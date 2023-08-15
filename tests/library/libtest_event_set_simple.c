@@ -95,6 +95,8 @@ do_test(int argc, char *argv[])
         /* validation should not have changed */
         if(validation != 2) return -1;
     }
+    dax_disconnect(ds);
+
     return 0;
 }
 

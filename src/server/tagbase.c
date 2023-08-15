@@ -46,12 +46,12 @@
 
 _dax_tag_db *_db;
 static _dax_tag_index *_index;
-static tag_index  _indexsize = 0; /* Size of the database index */
+static tag_index _indexcount = 0;     /* Number of tags in the index */
 static tag_index _tagnextindex = 0;   /* The next index in the database */
 static tag_index _tagcount = 0;
-static tag_index _dbsize = 0;
+static tag_index _dbsize = 0;         /* Size of the database and the index */
 static datatype *_datatypes;
-static unsigned int _datatype_index; /* Next datatype index */
+static unsigned int _datatype_index;  /* Next datatype index */
 static unsigned int _datatype_size;
 
 
@@ -155,7 +155,7 @@ _get_by_name(char *name)
     int i, min, max, try;
 
     min = 0;
-    max = _indexsize - 1;
+    max = _indexcount - 1;
     while(min <= max) {
         try = min + ((max - min) / 2);
 
@@ -228,11 +228,11 @@ _add_index(char *name, tag_index index)
     if(temp == NULL)
         return ERR_ALLOC;
 
-    if(_indexsize == 0) {
+    if(_indexcount == 0) {
         n = 0;
     } else {
         min = 0;
-        max = _indexsize - 1;
+        max = _indexcount - 1;
 
         while(min <= max) {
             try = min + ((max - min) / 2);
@@ -255,7 +255,7 @@ _add_index(char *name, tag_index index)
     /* The name pointer in the __index and the __db point to the same string */
     _index[n].name = temp;
     _db[index].name = temp;
-    _indexsize++;
+    _indexcount++;
     return 0;
 }
 
@@ -265,7 +265,7 @@ int
 _del_index(char *name) {
     int i, min, max, try, n=-1;
     min = 0;
-    max = _indexsize - 1;
+    max = _indexcount - 1;
 
     while(min <= max) {
         try = min + ((max - min) / 2);
@@ -280,7 +280,7 @@ _del_index(char *name) {
         }
     }
     memmove(&_index[n], &_index[n+1], (_dbsize - n - 1) * sizeof(_dax_tag_index));
-    _indexsize--;
+    _indexcount--;
     return 0;
 }
 
@@ -1173,6 +1173,8 @@ override_add(tag_index idx, int offset, void *data, void *mask, int size) {
         _db[idx].omask = malloc(tag_size);
         if(_db[idx].omask == NULL) {
             xfree(_db[idx].odata);
+            _db[idx].odata = NULL;
+
             return ERR_ALLOC;
         }
         bzero(_db[idx].odata, size);
@@ -1205,16 +1207,18 @@ override_del(tag_index idx, int offset, void *mask, int size) {
         _db[idx].omask[n+offset] &= ~((uint8_t *)mask)[n];
         _db[idx].odata[n+offset] &= ~((uint8_t *)mask)[n];
     }
-    /* Remove both of the flags that indicate we have an override installed or set */
-    _db[idx].attr &= ~(TAG_ATTR_OVERRIDE | TAG_ATTR_OVR_SET);
     tag_size = _db[idx].count * type_size(_db[idx].type);
     for(n=0;n<tag_size;n++) {
         if(_db[idx].omask[n])  return 0;
     }
+    /* Remove both of the flags that indicate we have an override installed or set */
+    _db[idx].attr &= ~(TAG_ATTR_OVERRIDE | TAG_ATTR_OVR_SET);
     /* If we get here then we've deleted the last of the overrides for this
      * tag so we'll free the memory */
     xfree(_db[idx].odata);
+    _db[idx].odata = NULL;
     xfree(_db[idx].omask);
+    _db[idx].omask = NULL;
 
     return 0;
 }

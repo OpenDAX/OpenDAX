@@ -62,6 +62,8 @@ do_test(int argc, char *argv[])
         printf("Looks like we duplicated the error\n");
         return -1;
     }
+    dax_disconnect(ds);
+
     return 0;
 }
 

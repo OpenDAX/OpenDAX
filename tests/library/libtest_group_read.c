@@ -80,6 +80,8 @@ do_test(int argc, char *argv[])
     if(temp_array[3] != 0x7788) return -1;
     if(temp_array[4] != 0x99AA) return -1;
     result = dax_group_del(ds, idx);
+    dax_disconnect(ds);
+
     return result;
 }
 

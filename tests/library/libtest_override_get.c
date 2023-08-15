@@ -59,6 +59,8 @@ do_test(int argc, char *argv[])
     result = dax_tag_get_override(ds, h, &temp, &mask);
     if(mask != 0xFFFFFFFF) return -1;
     if(temp != 12) return -1;
+    dax_disconnect(ds);
+
     return result;
 }
 

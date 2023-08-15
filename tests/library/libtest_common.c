@@ -32,6 +32,7 @@ run_test(int (testfunc(int argc, char **argv)), int argc, char **argv, int opts)
     int status = 0;
     int result;
     pid_t pid;
+    dax_state *ds;
 
     pid = fork();
 
@@ -42,7 +43,18 @@ run_test(int (testfunc(int argc, char **argv)), int argc, char **argv, int opts)
     } else if(pid < 0) {
         exit(-1);
     } else {
-        usleep(100000);
+         /* Try to connect to the server multiple times until then exit */
+        ds = dax_init("test_loader");
+        dax_configure(ds, 1, (char **)"dummy", 0);
+        for(int n=0;n<10;n++) {
+            if(dax_connect(ds) == 0) {
+                break;
+            }
+            usleep(20000);
+        }
+        dax_disconnect(ds);
+
+        usleep(50000);
         result=testfunc(argc, argv);
         kill(pid, SIGINT);
         if( waitpid(pid, &status, 0) != pid ) {

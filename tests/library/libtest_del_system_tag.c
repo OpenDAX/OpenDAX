@@ -44,7 +44,7 @@ do_test(int argc, char *argv[])
     if(result) {
         return -1;
     }
-    
+
     result = dax_tag_handle(ds, &h, "_time", 0);
     if(result) return result;
     /* This should fail */
@@ -53,6 +53,8 @@ do_test(int argc, char *argv[])
         DF("Should not have been able to delete that tag");
         return -1;
     }
+    dax_disconnect(ds);
+
     return 0;
 }
 

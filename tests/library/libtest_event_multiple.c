@@ -85,6 +85,8 @@ do_test(int argc, char *argv[])
         /* Our Callback will set validation to 1 if it runs */
         if(validation != 5) return -1;
     }
+    dax_disconnect(ds);
+
     return 0;
 }
 

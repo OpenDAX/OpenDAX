@@ -51,7 +51,7 @@ _bool_test(dax_state *ds) {
     if(output[0] != 0xFF || output[1] != 0xFF) {
         return -1;
     }
-    
+
     /* No we do a partial subset of the bits */
     result = dax_tag_handle(ds, &h2, "bool_test[3]", 10);
     temp[0] = 0x55; temp[1] = 0x55;
@@ -174,7 +174,7 @@ _real_test(dax_state *ds) {
     if(result) return -1;
     result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
     if(result != ERR_ILLEGAL) return -1;
-    
+
     result = dax_tag_add(ds, &h, "lreal_test", DAX_LREAL, 4, 0);
     if(result) return -1;
     temp2[0] = 3.141592; temp2[1] = -43234.23455; temp2[2] = -1; temp2[3] = 0;
@@ -182,7 +182,7 @@ _real_test(dax_state *ds) {
     if(result) return -1;
     result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
     if(result != ERR_ILLEGAL) return -1;
-    
+
     return 0;
 }
 
@@ -192,7 +192,7 @@ do_test(int argc, char *argv[])
 {
     dax_state *ds;
     int result = 0;
-    
+
 
     ds = dax_init("test");
     dax_init_config(ds, "test");
@@ -207,6 +207,8 @@ do_test(int argc, char *argv[])
     //if(_sint_test(ds)) return -1;
     //if(_dint_test(ds)) return -1;
     //if(_real_test(ds)) return -1;
+    dax_disconnect(ds);
+
     return 0;
 }
 

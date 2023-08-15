@@ -52,6 +52,7 @@ test_one(int argc, char *argv[])
     result += dax_tag_add(ds, &h, "TEST2", DAX_DINT, 1, TAG_ATTR_RETAIN);
     temp = 0xAABBCCDD;
     result = dax_write_tag(ds, h, &temp);
+    dax_disconnect(ds);
 
     return result;
 }
@@ -80,6 +81,7 @@ test_two(int argc, char *argv[])
         printf("ERROR: Tag value does not match\n");
         return -1;
     }
+    dax_disconnect(ds);
 
     return result;
 }
