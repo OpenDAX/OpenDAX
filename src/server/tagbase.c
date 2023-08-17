@@ -49,6 +49,8 @@ static _dax_tag_index *_index;
 static tag_index _indexcount = 0;     /* Number of tags in the index */
 static tag_index _tagnextindex = 0;   /* The next index in the database */
 static tag_index _tagcount = 0;
+static tag_index _ovrdinstalled = 0;  /* Installled overrides */
+static tag_index _ovrdset = 0;        /* Overrides that are set */
 static tag_index _dbsize = 0;         /* Size of the database and the index */
 static datatype *_datatypes;
 static unsigned int _datatype_index;  /* Next datatype index */
@@ -403,6 +405,10 @@ initialize_tagbase(void)
     _db[INDEX_STARTED].attr = TAG_ATTR_READONLY;
     assert(tag_add("_lastmodule", DAX_CHAR, DAX_TAGNAME_SIZE +1, 0) == INDEX_LASTMODULE);
     _db[INDEX_LASTMODULE].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_overrides_installed", DAX_DINT, 1, 0) == INDEX_OVRD_INSTALLED);
+    _db[INDEX_OVRD_INSTALLED].attr = TAG_ATTR_READONLY;
+    assert(tag_add("_overrides_set", DAX_DINT, 1, 0) == INDEX_OVRD_SET);
+    _db[INDEX_OVRD_SET].attr = TAG_ATTR_READONLY;
     virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
     virtual_tag_add("_my_tagname", DAX_CHAR, DAX_TAGNAME_SIZE +1, get_module_tag_name, NULL);
     starttime = xtime();
@@ -1183,6 +1189,15 @@ override_add(tag_index idx, int offset, void *data, void *mask, int size) {
     if((offset + size) > tag_size) return ERR_2BIG;
     memcpy(&_db[idx].odata[offset], data, size);
     memcpy(&_db[idx].omask[offset], mask, size);
+
+    /* If the flag for this tag is not already set then increment the counter */
+    if(! (_db[idx].attr & TAG_ATTR_OVERRIDE )) {
+        _ovrdinstalled++;
+        if(_db[INDEX_OVRD_INSTALLED].data != NULL) {
+            tag_write(INDEX_OVRD_INSTALLED, 0, &_ovrdinstalled, sizeof(tag_index));
+        }
+    }
+
     _db[idx].attr |= TAG_ATTR_OVERRIDE; /* Indicate that we have an override installed */
 
     return 0;
@@ -1215,6 +1230,10 @@ override_del(tag_index idx, int offset, void *mask, int size) {
     _db[idx].attr &= ~(TAG_ATTR_OVERRIDE | TAG_ATTR_OVR_SET);
     /* If we get here then we've deleted the last of the overrides for this
      * tag so we'll free the memory */
+    _ovrdinstalled--;
+    if(_db[INDEX_OVRD_INSTALLED].data != NULL) {
+        tag_write(INDEX_OVRD_INSTALLED, 0, &_ovrdinstalled, sizeof(tag_index));
+    }
     xfree(_db[idx].odata);
     _db[idx].odata = NULL;
     xfree(_db[idx].omask);
@@ -1251,9 +1270,21 @@ override_set(tag_index idx, uint8_t flag) {
     }
     if(flag) {
         if(_db[idx].odata == NULL) return ERR_ILLEGAL;
-        _db[idx].attr |= TAG_ATTR_OVR_SET;
+        if( !(_db[idx].attr & TAG_ATTR_OVR_SET)) {
+            _ovrdset++;
+            if(_db[INDEX_OVRD_SET].data != NULL) {
+                tag_write(INDEX_OVRD_SET, 0, &_ovrdset, sizeof(tag_index));
+            }
+            _db[idx].attr |= TAG_ATTR_OVR_SET;
+        }
     } else {
-        _db[idx].attr &= ~TAG_ATTR_OVR_SET;
+        if(_db[idx].attr & TAG_ATTR_OVR_SET) {
+            _ovrdset--;
+            if(_db[INDEX_OVRD_SET].data != NULL) {
+                tag_write(INDEX_OVRD_SET, 0, &_ovrdset, sizeof(tag_index));
+            }
+            _db[idx].attr &= ~TAG_ATTR_OVR_SET;
+        }
     }
     return 0;
 }

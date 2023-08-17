@@ -285,6 +285,8 @@ runcmd(char *instr)
             result = map_add(&tokens[2], tcount -2);
         } else if( !strncasecmp(tokens[1], "event", 5)) {
             result = event_add(&tokens[2], tcount - 2);
+        } else if( !strncasecmp(tokens[1], "override", 2)) {
+            result = override_add(&tokens[2], tcount - 2);
         }
     } else if( !strncasecmp(tokens[0], "del", 3)) {
         if(tokens[1] == NULL) {
@@ -295,8 +297,9 @@ runcmd(char *instr)
             result = map_del(&tokens[2], tcount-2);
         } else if( !strncasecmp(tokens[1], "event", 5)) {
             event_del(&tokens[2]);
+        } else if( !strncasecmp(tokens[1], "override", 2)) {
+            result = override_del(&tokens[2], tcount - 2);
         }
-
     } else if( !strncasecmp(tokens[0], "list", 4)) {
         if(tokens[1] == NULL) {
             result = list_tags(NULL);
@@ -306,6 +309,8 @@ runcmd(char *instr)
             result = list_types(&tokens[2]);
         } else if(!strncasecmp(tokens[1], "map", 3)) {
             result = map_get(&tokens[2], tcount-2);
+        } else if(!strncasecmp(tokens[1], "override", 3)) {
+            result = override_get(&tokens[2], tcount-2);
         } else {
             fprintf(stderr, "ERROR: Unknown list parameter %s\n", tokens[1]);
         }
@@ -318,7 +323,10 @@ runcmd(char *instr)
         result = event_wait(&tokens[1]);
     } else if( !strncasecmp(tokens[0], "poll", 4)) {
         event_poll();
-
+    } else if( !strncasecmp(tokens[0], "set", 3)) {
+        override_set(&tokens[1], tcount - 1);
+    } else if( !strncasecmp(tokens[0], "clear", 3)) {
+        override_clr(&tokens[1], tcount - 1);
     } else if( !strcasecmp(tokens[0], "help")) {
         get_help(&tokens[1]);
 

@@ -61,6 +61,8 @@
 #define INDEX_DBSIZE     2
 #define INDEX_STARTED    3
 #define INDEX_LASTMODULE 4
+#define INDEX_OVRD_INSTALLED 5
+#define INDEX_OVRD_SET   6
 
 /* Offset for the Module tag */
 #define MOD_ID_OFFSET 8

@@ -62,3 +62,9 @@ int event_poll(void);
 int map_add(char **tokens, int count);
 int map_del(char **tokens, int count);
 int map_get(char **tokens, int count);
+
+int override_add(char **tokens, int count);
+int override_del(char **tokens, int count);
+int override_get(char **tokens, int count);
+int override_set(char **tokens, int count);
+int override_clr(char **tokens, int count);

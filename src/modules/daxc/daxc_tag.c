@@ -610,3 +610,191 @@ map_get(char **tokens, int count)
     printf("Map get is not implemented\n");
     return 0;
 }
+
+int
+override_add(char **tokens, int count)
+{
+    tag_handle handle;
+    int result, n, points;
+    char *name;
+    void *buff, *mask;
+
+    if(count < 2) {
+        fprintf(stderr, "ERROR: Not enough arguments\n");
+        return ERR_ARG;
+    }
+    if(tokens[0]) {
+        name = tokens[0];
+    } else {
+        fprintf(stderr, "ERROR: No Tagname Given\n");
+        return ERR_NOTFOUND;
+    }
+    if(strstr(tokens[1], "\"")) { /* We are assuming this is a string */
+        count = strlen(tokens[1]);
+        if(tokens[1][0] == '\"') { /* remove the leading " */
+            count--;
+            tokens[1]++;
+        }
+        if(tokens[1][count-1] =='\"') { /* remove the trailing " */
+            tokens[1][count-1] = '\0';
+            count--;
+        }
+        if(count <= 0) {
+            fprintf(stderr, "ERROR: Zero length string argument\n");
+            return ERR_ARG;
+        }
+        result = dax_tag_handle(ds, &handle, name, 0);
+        if(result) {
+            if(result == ERR_2BIG) {
+                fprintf(stderr, "ERROR: %s is too large a request\n", name);
+            } else {
+                /* TODO: More descriptive error messages here based on result */
+                fprintf(stderr, "ERROR: %s Not a Valid Tag\n", name);
+            }
+            return ERR_ARG;
+        }
+        if(TYPESIZE(handle.type) != 8) {
+            fprintf(stderr, "ERROR: Strings can only be written to 8 bit data types\n");
+            return ERR_ARG;
+        }
+        buff = malloc(handle.size);
+        bzero(buff, handle.size);
+        memcpy(buff, (void *)tokens[1], MIN(count, handle.size));
+        result = dax_tag_add_override(ds, handle, buff);
+    } else {
+        result = dax_tag_handle(ds, &handle, name, count-1);
+        if(result) {
+            /* TODO: More descriptive error messages here based on result */
+            fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+            return ERR_ARG;
+        }
+
+        buff = malloc(handle.size);
+        mask = malloc(handle.size);
+        if(buff == NULL || mask == NULL) {
+            if(buff) free(buff);
+            if(mask) free(mask);
+            fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
+            return ERR_ALLOC;
+        }
+        bzero(buff, handle.size);
+        bzero(mask, handle.size);
+
+        points = count - 1;
+        if(handle.count < points) {
+            points = handle.count;
+        }
+        for(n = 0; n < points; n++) {
+            if(strncmp(tokens[n+1], "~", 1)) {
+                dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+            }
+        }
+        result = dax_tag_add_override(ds, handle, buff);
+
+        free(buff);
+        free(mask);
+    }
+
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to add override to tag %s code = %d\n", name, result);
+    }
+    return result;
+}
+
+int
+override_get(char **tokens, int count)
+{
+    printf("Get override is not implemented\n");
+    return 0;
+}
+
+int
+override_set(char **tokens, int count)
+{
+    tag_handle handle;
+    int result;
+    char *name;
+
+    if(count < 1) {
+        fprintf(stderr, "ERROR: Not enough arguments\n");
+        return ERR_ARG;
+    }
+    if(tokens[0]) {
+        name = tokens[0];
+    } else {
+        fprintf(stderr, "ERROR: No Tagname Given\n");
+        return ERR_NOTFOUND;
+    }
+    result = dax_tag_handle(ds, &handle, name, 0);
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to retrieve tag %s code = %d\n", name, result);
+    }
+
+    result = dax_tag_set_override(ds, handle);
+
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to set override to tag %s code = %d\n", name, result);
+    }
+    return result;
+}
+
+int
+override_clr(char **tokens, int count)
+{
+    tag_handle handle;
+    int result;
+    char *name;
+
+    if(count < 1) {
+        fprintf(stderr, "ERROR: Not enough arguments\n");
+        return ERR_ARG;
+    }
+    if(tokens[0]) {
+        name = tokens[0];
+    } else {
+        fprintf(stderr, "ERROR: No Tagname Given\n");
+        return ERR_NOTFOUND;
+    }
+    result = dax_tag_handle(ds, &handle, name, 0);
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to retrieve tag %s code = %d\n", name, result);
+    }
+
+    result = dax_tag_clr_override(ds, handle);
+
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to clear override to tag %s code = %d\n", name, result);
+    }
+    return result;
+}
+
+int
+override_del(char **tokens, int count)
+{
+    tag_handle handle;
+    int result;
+    char *name;
+
+    if(count < 1) {
+        fprintf(stderr, "ERROR: Not enough arguments\n");
+        return ERR_ARG;
+    }
+    if(tokens[0]) {
+        name = tokens[0];
+    } else {
+        fprintf(stderr, "ERROR: No Tagname Given\n");
+        return ERR_NOTFOUND;
+    }
+    result = dax_tag_handle(ds, &handle, name, 0);
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to retrieve tag %s code = %d\n", name, result);
+    }
+
+    result = dax_tag_del_override(ds, handle);
+
+    if(result) {
+        fprintf(stderr, "ERROR: Unable to del override to tag %s code = %d\n", name, result);
+    }
+    return result;
+}
+
