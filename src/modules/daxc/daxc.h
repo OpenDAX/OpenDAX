@@ -68,3 +68,5 @@ int override_del(char **tokens, int count);
 int override_get(char **tokens, int count);
 int override_set(char **tokens, int count);
 int override_clr(char **tokens, int count);
+
+int atomic_op(char **tokens, int count);

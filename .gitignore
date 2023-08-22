@@ -42,3 +42,5 @@ doc/*
 doc/doxygen/*
 *.pyc
 build/
+retentive.db
+

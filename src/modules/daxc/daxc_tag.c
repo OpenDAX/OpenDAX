@@ -206,6 +206,7 @@ list_tags(char **tokens)
             if(arg[1]) {
                 count = strtol(arg[1], &end_ptr, 0);
                 nextindex = start;
+                n=0;
                 while( n < count && nextindex <= lastindex) {
                     result = dax_tag_byindex(ds, &temp_tag, nextindex);
                     if(result == 0) {
@@ -798,3 +799,131 @@ override_del(char **tokens, int count)
     return result;
 }
 
+static uint16_t
+_get_atomic_op_type(char *op) {
+    if(!strncasecmp(op, "inc", 3)) return ATOMIC_OP_INC;
+    else if(!strncasecmp(op, "dec", 3)) return ATOMIC_OP_DEC;
+    else if(!strncasecmp(op, "not", 3)) return ATOMIC_OP_NOT;
+    else if(!strncasecmp(op, "or", 2)) return ATOMIC_OP_OR;
+    else if(!strncasecmp(op, "and", 3)) return ATOMIC_OP_AND;
+    else if(!strncasecmp(op, "nor", 3)) return ATOMIC_OP_NOR;
+    else if(!strncasecmp(op, "nand", 4)) return ATOMIC_OP_NAND;
+    else if(!strncasecmp(op, "xor", 3)) return ATOMIC_OP_XOR;
+    else  return 0;
+}
+
+int
+atomic_op(char **tokens, int count)
+{
+    tag_handle handle;
+    int result, n, points;
+    uint16_t operation;
+    char *name;
+    void *buff, *mask;
+
+    if(count < 2) {
+        fprintf(stderr, "ERROR: Not enough arguments\n");
+        return ERR_ARG;
+    }
+    if(tokens[0]) {
+        name = tokens[0];
+    } else {
+        fprintf(stderr, "ERROR: No Tagname Given\n");
+        return ERR_NOTFOUND;
+    }
+    result = dax_tag_handle(ds, &handle, name, count-1);
+    if(result) {
+        /* TODO: More descriptive error messages here based on result */
+        fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+        return ERR_ARG;
+    }
+
+    operation = _get_atomic_op_type(tokens[1]);
+    if(operation == 0) {
+        fprintf(stderr, "ERROR: %s Not a Valid operation\n", tokens[1]);
+        return ERR_ARG;
+    }
+    buff = malloc(handle.size);
+    mask = malloc(handle.size);
+    if(buff == NULL || mask == NULL) {
+        if(buff) free(buff);
+        if(mask) free(mask);
+        fprintf(stderr, "ERROR: Unable to Allocate Memory\n");
+        return ERR_ALLOC;
+    }
+    bzero(buff, handle.size);
+    bzero(mask, handle.size);
+
+    if(tokens[2] == NULL) { /* No value argument given */
+        if(operation == ATOMIC_OP_INC || operation == ATOMIC_OP_DEC) {
+            /* We only operate on one member at a time */
+            switch(handle.type) {
+                case DAX_BYTE:
+                    *(dax_byte *)buff = 1;
+                    return 0;
+                case DAX_SINT:
+                case DAX_CHAR:
+                    *(dax_sint *)buff = 1;
+                    return 0;
+                case DAX_UINT:
+                case DAX_WORD:
+                    *(dax_uint *)buff = 1;
+                    return 0;
+                case DAX_INT:
+                    *(dax_int *)buff = 1;
+                    return 0;
+                case DAX_UDINT:
+                case DAX_DWORD:
+                case DAX_TIME:
+                    *(dax_udint *)buff = 1;
+                    return 0;
+                case DAX_DINT:
+                    *(dax_dint *)buff = 1;
+                    return 0;
+                case DAX_ULINT:
+                case DAX_LWORD:
+                    *(dax_ulint *)buff = 1;
+                    return 0;
+                case DAX_LINT:
+                    *(dax_lint *)buff = 1;
+                    return 0;
+                case DAX_REAL:
+                    *(dax_real *)buff = 1.0;
+                    return 0;
+                case DAX_LREAL:
+                    *(dax_lreal *)buff = 1.0;
+                    return 0;
+                default:
+                    fprintf(stderr, "ERROR: Bad type");
+                    free(buff);
+                    free(mask);
+                    return -1;
+            }
+        } else if(operation != ATOMIC_OP_NOT) {
+            fprintf(stderr,"ERROR: Value required for '%s' operation", tokens[1]);
+            free(buff);
+            free(mask);
+            return -1;
+        }
+    } else {
+        points = count - 1;
+        if(handle.count < points) {
+            points = handle.count;
+        }
+        for(n = 0; n < points; n++) {
+            if(strncmp(tokens[n+1], "~", 1)) {
+                dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+            }
+        }
+    }
+
+    result = dax_atomic_op(ds, handle, buff, operation);
+    free(buff);
+    free(mask);
+
+    if(result) {
+        fprintf(stderr, "ERROR: Atomic operation failed on tag %s code = %d\n", name, result);
+    }
+    return result;
+
+}

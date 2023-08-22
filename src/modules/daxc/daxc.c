@@ -177,12 +177,31 @@ int
 get_help(char **tokens) {
     if(tokens[0] == NULL) {
         printf("Usage: command <args>...\n");
-        printf("Commands: \n ADD\n DEL\n LIST\n READ\n WRITE\n WAIT\n POLL\n EXIT\n");
+        printf("Commands: \n ADD\n DEL\n LIST\n READ\n WRITE\n WAIT\n POLL\n SET\n CLEAR\n EXIT\n");
         printf("For more information type: help <command>\n");
     } else if(!strncasecmp(tokens[0], "add", 3)) {
         if(tokens[1] == NULL) {
-            printf("Usage: ADD [TAG|TYPE|MAP|EVENT] <args>...\n\n");
+            printf("Usage: ADD [TAG|TYPE|MAP|EVENT|OVERRIDE] <args>...\n\n");
             printf("Add the given type of object\n");
+        } else if(!strncasecmp(tokens[1], "tag", 3)) {
+            printf("Usage: ADD TAG tagname type count\n\n");
+            printf("Delete tag given by either the given name or numerical index\n");
+        } else if(!strncasecmp(tokens[1], "type", 3)) {
+            printf("Usage: ADD TYPE name m1_name m1_type m1_count m2_name m2_type m2_count ...\n\n");
+            printf("Adds a compound data type to the server\n");
+            printf("m1_name m1_type m1_count, name type and count if the first member\n");
+            printf("m2_name m2_type m2_count, name type and count if the next member\n");
+            printf("repeat name, type and count for as many members as needed\n");
+        } else if(!strncasecmp(tokens[1], "map", 3)) {
+            printf("Usage: ADD MAP source_tagname source_count dest_tagname dest_count\n\n");
+            printf("Adds a tag data map to the system using\n");
+        } else if(!strncasecmp(tokens[1], "event", 3)) {
+            printf("Usage: ADD EVENT tagname count event_type value\n\n");
+            printf("Adds an event to the system\n");
+        } else if(!strncasecmp(tokens[1], "override", 4)) {
+            printf("Usage: ADD OVERRIDE tagname value\n\n");
+            printf("Adds an override to tagname.\n");
+            printf("'value' is the value that will be returned when the override is set\n");
         }
     } else if(!strncasecmp(tokens[0], "del", 3)) {
         if(tokens[1] == NULL) {
@@ -199,6 +218,9 @@ get_help(char **tokens) {
         } else if(!strncasecmp(tokens[1], "event", 5)) {
             printf("Usage: DEL EVENT index\n\n");
             printf("Deletes the event given by 'index'\n");
+        } else if(!strncasecmp(tokens[1], "override", 5)) {
+            printf("Usage: DEL OVERRIDE tagname\n\n");
+            printf("Deletes the override defined by 'tagname'\n");
         }
     } else if(!strncasecmp(tokens[0], "list", 3)) {
         if(tokens[1] == NULL) {
@@ -219,6 +241,16 @@ get_help(char **tokens) {
     } else if(!strncasecmp(tokens[0], "poll", 3)) {
         if(tokens[1] == NULL) {
             printf("Usage: POLL tags...\n");
+        }
+    } else if(!strncasecmp(tokens[0], "set", 3)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: SET tag...\n\n");
+            printf("Sets the override for the tag\n");
+        }
+    } else if(!strncasecmp(tokens[0], "clear", 5)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: CLEAR tag...\n\n");
+            printf("Clears the override for the tag\n");
         }
     } else if(!strncasecmp(tokens[0], "exit", 3)) {
         printf("Usage: EXIT\n\n");
@@ -327,12 +359,12 @@ runcmd(char *instr)
         override_set(&tokens[1], tcount - 1);
     } else if( !strncasecmp(tokens[0], "clear", 3)) {
         override_clr(&tokens[1], tcount - 1);
+    } else if( !strncasecmp(tokens[0], "op", 2)) {
+        atomic_op(&tokens[1], tcount - 1);
     } else if( !strcasecmp(tokens[0], "help")) {
         get_help(&tokens[1]);
-
     } else if( !strcasecmp(tokens[0],"exit")) {
         getout(0);
-
     } else {
         fprintf(stderr, "Unknown Command - %s\n", tokens[0]);
     }
