@@ -42,6 +42,7 @@
 
 #define CONFIG_FAIL_ON_ERROR 0x01
 #define CONFIG_AUTO_RUN      0x02
+#define CONFIG_AUTO_RELOAD   0x04
 
 
 /* This is the representation of a custom Lua global
@@ -97,10 +98,12 @@ typedef struct Script_t {
    time the given 'interval' elapses.  Overruns are recorded*/
 typedef struct Interval_thread_t {
     char *name;
-    unsigned int interval;
-    uint32_t overruns;
+    dax_udint interval;
+    dax_udint overruns;
+    tag_handle handle;
+    void *tag_data;
     pthread_t thread;
-    unsigned int scriptcount; /* Number of scripts */
+    dax_udint scriptcount; /* Number of scripts */
     script_t **scripts; /* Array of script pointers */
     struct Interval_thread_t *next;
 } interval_thread_t;

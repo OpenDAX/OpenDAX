@@ -49,11 +49,28 @@ kill_function(dax_state *ds, void *ud) {
     dax_default_kill(ds, ud);
 }
 
+static void
+_maintenance_thread(void* val)
+{
+
+    // Make list of files to watch here
+
+    while(!quitsig) {
+        //DF("Here");
+        // Check for changed files here
+
+        usleep(1e6);
+    }
+
+}
+
 
 int
 main(int argc, char *argv[])
 {
     struct sigaction sa;
+    pthread_attr_t attr;
+    pthread_t mthread;
 
     ds = dax_init("daxlua");
     if(ds == NULL) {
@@ -89,12 +106,24 @@ main(int argc, char *argv[])
     dax_set_stop_callback(ds, stop_function);
     dax_set_kill_callback(ds, kill_function);
 
+    /* This starts the maintenance thread */
+    pthread_attr_init(&attr);
+
+    if(pthread_create(&mthread, &attr, (void *)&_maintenance_thread, NULL)) {
+        dax_log(LOG_ERROR, "Unable to start maintenance thread");
+        exit(-1);
+    } else {
+        dax_log(LOG_MAJOR, "Started maintenance Thread");
+    }
+
+
     while(1) {
         dax_event_wait(ds, 1000, NULL);
 
         if(quitsig) {
             dax_log(LOG_MAJOR, "Quitting due to signal %d", quitsig);
             dax_disconnect(ds);
+            pthread_join(mthread, NULL);
             if(quitsig == SIGQUIT) {
                 exit(0);
             } else {

@@ -139,6 +139,14 @@ _interval_thread(void* thread_def) {
             run_script(t->scripts[n]);
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
+        /* This is writing the overruns to the server but it also updates all of the other
+           information in case the tag gets changed by another module.  */
+        // TODO: use an event to determine if it's been changed and a dirty flag for
+        //       when we update the overruns and only write it when appropriate.  The
+        //       event idea can go away if we figure out a way to have module owned tags.
+        *(dax_udint *)(t->tag_data + DAX_TAGNAME_SIZE+ sizeof(dax_udint)*2) = t->overruns;
+        dax_tag_write(ds, t->handle, t->tag_data);
+
         sleep_time = (t->interval * 1000) - ((end.tv_sec - start.tv_sec) * 1e6) + ((end.tv_nsec - start.tv_nsec) / 1e3);
         if(sleep_time < 0) {
             t->overruns++;
@@ -168,6 +176,19 @@ _start_interval_thread(interval_thread_t *t) {
             t->scriptcount++;
         }
     }
+
+    t->tag_data = malloc(t->handle.size);
+    if(t->tag_data == NULL) {
+        dax_log(LOG_ERROR, "Unable to allocate memory for thread tag");
+    } else {
+        bzero(t->tag_data, t->handle.size);
+        strncpy(t->tag_data, t->name, DAX_TAGNAME_SIZE);
+        *(dax_udint *)(t->tag_data + DAX_TAGNAME_SIZE) = t->interval;
+        *(dax_udint *)(t->tag_data + DAX_TAGNAME_SIZE+ sizeof(dax_udint)) = t->scriptcount;
+        *(dax_udint *)(t->tag_data + DAX_TAGNAME_SIZE+ sizeof(dax_udint)*2) = t->overruns;
+        dax_tag_write(ds, t->handle, t->tag_data);
+    }
+
     if(t->scriptcount == 0) {
         dax_log(LOG_WARN, "Interval thread '%s' has no scripts assigned.  Not starting.", t->name);
         return ERR_GENERIC;
@@ -198,7 +219,6 @@ _start_interval_thread(interval_thread_t *t) {
         dax_log(LOG_MAJOR, "Started Interval Thread - %s", t->name);
         return 0;
     }
-
 
     return 0;
 }
@@ -449,6 +469,44 @@ _set_trigger_events(void *x) {
     dax_log(LOG_MINOR, "All script trigger events created successfully");
 }
 
+static int
+_create_thread_types_and_tags(void)
+{
+    int result, tcount;
+    dax_cdt *thread_cdt;
+    tag_type thread_type;
+    char tagname[DAX_TAGNAME_SIZE+1];
+    char tagname2[DAX_TAGNAME_SIZE+20];
+    static interval_thread_t *this;
+
+    // TODO: Handle these errors
+    thread_cdt = dax_cdt_new("lua_thread", &result);
+    result = dax_cdt_member(ds, thread_cdt, "name", DAX_CHAR, DAX_TAGNAME_SIZE);
+    result = dax_cdt_member(ds, thread_cdt, "interval", DAX_UDINT, 1);
+    result = dax_cdt_member(ds, thread_cdt, "scriptcount", DAX_UDINT, 1);
+    result = dax_cdt_member(ds, thread_cdt, "overruns", DAX_UDINT, 1);
+    result = dax_cdt_create(ds, thread_cdt, &thread_type);
+
+    /* Count the number of threads that we have */
+    this = i_threads;
+    tcount = 0;
+    while(this != NULL ) {
+        tcount++;
+        this = this->next;
+    }
+    snprintf(tagname, DAX_TAGNAME_SIZE+1, "%s_threads", dax_get_attr(ds, "name"));
+    result = dax_tag_add(ds, NULL, tagname, thread_type, tcount, 0);
+
+    this = i_threads;
+    for(int n=0;n<tcount;n++) {
+        snprintf(tagname2, sizeof(tagname2), "%s[%d]", tagname, n);
+        result = dax_tag_handle(ds, &this->handle, tagname2, 0);
+        this = this->next;
+    }
+    return 0;
+}
+
+
 /* The main function that fires off all the threads that we need to
    handle all of the script handling */
 int
@@ -459,6 +517,9 @@ thread_start_all(void) {
     pthread_attr_t attr;
 
     dax_log(LOG_DEBUG, "Starting all threads");
+
+    _create_thread_types_and_tags();
+
     this = i_threads;
     while(this != NULL) {
         _start_interval_thread(this);

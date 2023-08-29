@@ -467,7 +467,8 @@ _enable_script(lua_State *L) {
    and reads the file from the filesystem and stores the chunk
    in the registry. */
 static void
-_initialize_script(script_t *s) {
+_initialize_script(script_t *s)
+{
     /* Create a lua interpreter object */
     setup_interpreter(s->L);
     /* load and compile the file */
@@ -542,7 +543,8 @@ start_all_scripts(void)
 }
 
 int
-get_script_count(void) {
+get_script_count(void)
+{
     return scriptcount;
 }
 

@@ -200,6 +200,15 @@ _add_script(lua_State *L) {
     }
     lua_pop(L, 1);
 
+    if(lua_getfield(L, 1, "auto_reload")) {
+        if(lua_toboolean(L, -1)) {
+            si->flags |= CONFIG_AUTO_RELOAD;
+        } else {
+            si->flags &= ~CONFIG_AUTO_RELOAD;
+        }
+    }
+    lua_pop(L, 1);
+
 
     if(si->threadname != NULL && si->script_trigger != NULL) {
         dax_log(LOG_WARN, "Script '%s' is assigned to a trigger as well as an interval.", si->name);
