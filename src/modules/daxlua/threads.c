@@ -139,17 +139,12 @@ _interval_thread(void* thread_def) {
             run_script(t->scripts[n]);
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
-        /* This is writing the overruns to the server but it also updates all of the other
-           information in case the tag gets changed by another module.  */
-        // TODO: use an event to determine if it's been changed and a dirty flag for
-        //       when we update the overruns and only write it when appropriate.  The
-        //       event idea can go away if we figure out a way to have module owned tags.
-        *(dax_udint *)(t->tag_data + DAX_TAGNAME_SIZE+ sizeof(dax_udint)*2) = t->overruns;
-        dax_tag_write(ds, t->handle, t->tag_data);
 
         sleep_time = (t->interval * 1000) - ((end.tv_sec - start.tv_sec) * 1e6) + ((end.tv_nsec - start.tv_nsec) / 1e3);
         if(sleep_time < 0) {
             t->overruns++;
+            *(dax_udint *)(t->tag_data + DAX_TAGNAME_SIZE+ sizeof(dax_udint)*2) = t->overruns;
+            dax_tag_write(ds, t->handle, t->tag_data);
         } else {
             usleep(sleep_time); /* Just for now need to calculate the time */
         }
@@ -495,7 +490,7 @@ _create_thread_types_and_tags(void)
         this = this->next;
     }
     snprintf(tagname, DAX_TAGNAME_SIZE+1, "%s_threads", dax_get_attr(ds, "name"));
-    result = dax_tag_add(ds, NULL, tagname, thread_type, tcount, 0);
+    result = dax_tag_add(ds, NULL, tagname, thread_type, tcount, TAG_ATTR_READONLY | TAG_ATTR_OWNED);
 
     this = i_threads;
     for(int n=0;n<tcount;n++) {

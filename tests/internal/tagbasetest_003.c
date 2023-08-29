@@ -35,11 +35,11 @@ main(int argc, char *argv[])
     char tagname[DAX_TAGNAME_SIZE + 1];
     int n, result;
     dax_time t, x;
-    
+
     initialize_tagbase();
     printf("Tagbase Initialized\n");
     assert(tag_get_name("_time", &tag) == 0);
-    assert(tag_read(tag.idx, 0, &t, sizeof(dax_time)) == 0);
+    assert(tag_read(-1, tag.idx, 0, &t, sizeof(dax_time)) == 0);
     x = time(NULL);
     assert((x-t/1000)<2 && (x-t/1000)>=0);
     return 0;

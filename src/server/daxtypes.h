@@ -26,11 +26,6 @@
 #include <netinet/in.h>
 #include <opendax.h>
 
-/* Module Flags */
-#define MFLAG_RESTART       0x01
-#define MFLAG_OPENPIPES     0x02
-#define MFLAG_REGISTER      0x04
-
 /* Flag bits for the tag data groups */
 #define GRP_FLAG_NOT_EMPTY  0x01
 

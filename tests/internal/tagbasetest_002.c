@@ -34,12 +34,12 @@ main(int argc, char *argv[])
     dax_tag tag;
     char tagname[DAX_TAGNAME_SIZE + 1];
     int n, result;
-    
+
     initialize_tagbase();
-    
+
     for(n=0;n<1000;n++) {
         sprintf(tagname, "TestTag%d", n);
-        assert(tag_add(tagname, DAX_INT, 1, 0) > 0);
+        assert(tag_add(-1, tagname, DAX_INT, 1, 0) > 0);
     }
     for(n=0;n<1000;n++) {
         sprintf(tagname, "TestTag%d", n);

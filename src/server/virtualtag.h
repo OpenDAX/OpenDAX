@@ -25,7 +25,7 @@
 #include "func.h"
 
 /* type definition of the virtual tag function prototype */
-typedef int vfunction(tag_index idx, int offset, void *data, int size, void *userdata);
+typedef int vfunction(int fd, tag_index idx, int offset, void *data, int size, void *userdata);
 
 /* This structure is used to hold the two virtual functions
  * that would define a virtual tag as well as the userdata for
@@ -64,19 +64,19 @@ void virt_set_fd(int fd);
 void special_set_module_type(tag_type t);
 
 /* retrieve the current time on the server */
-int server_time(tag_index idx, int offset, void *data, int size, void *userdata);
+int server_time(int fd, tag_index idx, int offset, void *data, int size, void *userdata);
 
 /* retrieve the calling modules tag name */
-int get_module_tag_name(tag_index idx, int offset, void *data, int size, void *userdata);
+int get_module_tag_name(int fd, tag_index idx, int offset, void *data, int size, void *userdata);
 
 /* queue handling functions */
-int write_queue(tag_index idx, int offset, void *data, int size, void *userdata);
-int read_queue(tag_index idx, int offset, void *data, int size, void *userdata);
+int write_queue(int fd, tag_index idx, int offset, void *data, int size, void *userdata);
+int read_queue(int fd, tag_index idx, int offset, void *data, int size, void *userdata);
 
 /* Special tag hook functions */
-int special_tag_read(tag_index index, int offset, void *data, int size);
-int special_tag_write(tag_index index, int offset, void *data, int size);
-int special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int size);
+int special_tag_read(int fd, tag_index index, int offset, void *data, int size);
+int special_tag_write(int fd, tag_index index, int offset, void *data, int size);
+int special_tag_mask_write(int fd, tag_index index, int offset, void *data, void *mask, int size);
 
 
 #endif  /* !__VIRTUALTAG_H */

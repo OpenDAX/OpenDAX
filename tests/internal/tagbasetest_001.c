@@ -32,12 +32,12 @@ int
 main(int argc, char *argv[])
 {
     dax_tag tag;
-   
+
     initialize_tagbase();
-    tag_add("dummy", DAX_INT, 1, 0);
-    tag_add("dopey", DAX_INT, 1, 0);
-    tag_add("dipey", DAX_INT, 1, 0);
-    
+    tag_add(-1, "dummy", DAX_INT, 1, 0);
+    tag_add(-1, "dopey", DAX_INT, 1, 0);
+    tag_add(-1, "dipey", DAX_INT, 1, 0);
+
     assert(tag_get_name("dummy", &tag) == 0);
     assert(tag_del(tag.idx) == 0);
     assert(tag_get_name("dummy", &tag) == ERR_NOTFOUND);

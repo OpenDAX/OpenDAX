@@ -38,20 +38,10 @@
 #include "message.h"
 #include "module.h"
 
-/* This is the fd of the module of the current request.  This is so
- * that virtual functions in tagbase.c can know which module they are
- * dealing with.  There is probably a better way to do this but this works
- * for now. */
-static int _current_fd;
 static tag_type _module_tag_type;
 
 extern _dax_tag_db *_db;
 
-
-void
-virt_set_fd(int fd) {
-    _current_fd = fd;
-}
 
 void
 special_set_module_type(tag_type t) {
@@ -59,7 +49,7 @@ special_set_module_type(tag_type t) {
 }
 
 int
-server_time(tag_index idx, int offset, void *data, int size, void *userdata)
+server_time(int fd, tag_index idx, int offset, void *data, int size, void *userdata)
 {
     dax_time t;
 
@@ -69,12 +59,12 @@ server_time(tag_index idx, int offset, void *data, int size, void *userdata)
 }
 
 int
-get_module_tag_name(tag_index idx, int offset, void *data, int size, void *userdata) {
+get_module_tag_name(int fd, tag_index idx, int offset, void *data, int size, void *userdata) {
     int result;
     dax_tag tag;
     dax_module *mod;
 
-    mod = module_find_fd(_current_fd);
+    mod = module_find_fd(fd);
     if(mod == NULL) return ERR_NOTFOUND;
     result = tag_get_index(mod->tagindex, &tag);
     if(result) return result;
@@ -86,7 +76,7 @@ get_module_tag_name(tag_index idx, int offset, void *data, int size, void *userd
 
 /* These functions deal with tag based queues */
 int
-write_queue(tag_index idx, int offset, void *data, int size, void *userdata) {
+write_queue(int fd, tag_index idx, int offset, void *data, int size, void *userdata) {
     tag_queue *q;
 
     int next, newqsize;
@@ -123,7 +113,7 @@ write_queue(tag_index idx, int offset, void *data, int size, void *userdata) {
 }
 
 int
-read_queue(tag_index idx, int offset, void *data, int size, void *userdata) {
+read_queue(int fd, tag_index idx, int offset, void *data, int size, void *userdata) {
     tag_queue *q;
 
     q = (tag_queue *)userdata;
@@ -145,13 +135,13 @@ read_queue(tag_index idx, int offset, void *data, int size, void *userdata) {
    call other functions and even manipulate the data before it moves on. */
 
 int
-special_tag_read(tag_index index, int offset, void *data, int size) {
+special_tag_read(int fd, tag_index index, int offset, void *data, int size) {
     /* So far reading is always successful */
     return 0;
 }
 
 int
-special_tag_write(tag_index index, int offset, void *data, int size) {
+special_tag_write(int fd, tag_index index, int offset, void *data, int size) {
     dax_module *mod;
 
     /* If the tag is the module tag of the calling module then it can
@@ -161,7 +151,7 @@ special_tag_write(tag_index index, int offset, void *data, int size) {
         if(offset == MOD_STAT_COMMAND_OFFSET && size == 1) {
             return 0;
         }
-        mod = module_find_fd(_current_fd);
+        mod = module_find_fd(fd);
         if(mod == NULL) return ERR_NOTFOUND;
         if(mod->tagindex != index) {
             return ERR_READONLY;
@@ -172,7 +162,7 @@ special_tag_write(tag_index index, int offset, void *data, int size) {
 }
 
 int
-special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int size) {
+special_tag_mask_write(int fd, tag_index index, int offset, void *data, void *mask, int size) {
     dax_module *mod;
 
     /* If the tag is the module tag of the calling module then it can
@@ -182,7 +172,7 @@ special_tag_mask_write(tag_index index, int offset, void *data, void *mask, int 
         if(offset == MOD_STAT_COMMAND_OFFSET && size == 1) {
             return 0;
         }
-        mod = module_find_fd(_current_fd);
+        mod = module_find_fd(fd);
         if(mod == NULL) return ERR_NOTFOUND;
         if(mod->tagindex != index) {
             return ERR_READONLY;

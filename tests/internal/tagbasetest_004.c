@@ -32,27 +32,27 @@ main(int argc, char *argv[])
     dax_tag tag;
     int result;
     dax_dint temp, n;
-    
+
     initialize_tagbase();
     dax_log_set_default_mask(LOG_ALL);
-    result = tag_add("queue_test", DAX_DINT | DAX_QUEUE, 1, 0);
+    result = tag_add(-1, "queue_test", DAX_DINT | DAX_QUEUE, 1, 0);
     if(result < 0) exit(-1);
     for(temp = 1; temp<25; temp++) {
-        assert(tag_write(result, 0, &temp, sizeof(dax_dint))==0);
+        assert(tag_write(-1, result, 0, &temp, sizeof(dax_dint))==0);
     }
 
     for(n = 1; n<25; n++) {
-        assert(tag_read(result, 0, &temp, sizeof(dax_dint))==0);
+        assert(tag_read(-1, result, 0, &temp, sizeof(dax_dint))==0);
         printf("temp = %d\n", temp);
         assert(temp == n);
     }
 
     for(temp = 10; temp<16; temp++) {
-        assert(tag_write(result, 0, &temp, sizeof(dax_dint))==0);
+        assert(tag_write(-1, result, 0, &temp, sizeof(dax_dint))==0);
     }
 
     for(n = 10; n<16; n++) {
-        assert(tag_read(result, 0, &temp, sizeof(dax_dint))==0);
+        assert(tag_read(-1, result, 0, &temp, sizeof(dax_dint))==0);
         printf("temp = %d\n", temp);
         assert(temp == n);
     }

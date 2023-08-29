@@ -93,7 +93,7 @@ _create_tags(void) {
         data =  sqlite3_column_blob(stmt, 3);
         size =  sqlite3_column_bytes(stmt, 3);
 
-        tag_index = tag_add(name, cdt_get_type(type), count, 0);
+        tag_index = tag_add(-1, name, cdt_get_type(type), count, 0);
 
         if(tag_index < 0) {
             dax_log(LOG_ERROR, "Retained tag not created properly");

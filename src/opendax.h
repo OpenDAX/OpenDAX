@@ -145,6 +145,7 @@ extern "C" {
 #define TAG_ATTR_RETAIN     0x0004 /* Tag will be retained */
 #define TAG_ATTR_OVR_SET    0x0008 /* Tag override is set */
 #define TAG_ATTR_SPECIAL    0x0010 /* Special tags have a read/write hook function */
+#define TAG_ATTR_OWNED      0x0020 /* Module owned tags will be deleted and can be read only */
 #define TAG_ATTR_MAPPING    0x1000 /* Tag is the source of at least one map */
 #define TAG_ATTR_EVENT      0x2000 /* Tag has at least one event */
 #define TAG_ATTR_OVERRIDE   0x4000 /* Tag has override installed */

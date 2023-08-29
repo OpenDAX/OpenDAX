@@ -100,6 +100,7 @@ typedef struct {
     uint16_t attr;
     unsigned int count;
     char *name;
+    int fd;                  /* fd of moduled that created the tag -1 = tagserver created tags*/
     int nextevent;           /* Counter for keeping track of event IDs */
     int nextmap;             /* Counter for keeping track of map IDs */
     _dax_event *events;      /* Linked list of events */
@@ -119,7 +120,7 @@ typedef struct {
 
 /* Tag Database Handling Functions */
 void initialize_tagbase(void);
-tag_index tag_add(char *name, tag_type type, uint32_t count, uint32_t attr);
+tag_index tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr);
 int tag_set_attribute(tag_index index, uint32_t attr);
 int tag_clr_attribute(tag_index index, uint32_t attr);
 
@@ -131,12 +132,13 @@ tag_index get_tagindex(void);
 int is_tag_readonly(tag_index idx);
 int is_tag_virtual(tag_index idx);
 int is_tag_queue(tag_index idx);
+int is_tag_owned(int fd, tag_index idx);
 int tag_get_size(tag_index idx);
 
 /* Database reading and writing functions */
-int tag_read(tag_index handle, int offset, void *data, int size);
-int tag_write(tag_index handle, int offset, void *data, int size);
-int tag_mask_write(tag_index handle, int offset, void *data, void *mask, int size);
+int tag_read(int fd, tag_index handle, int offset, void *data, int size);
+int tag_write(int fd, tag_index handle, int offset, void *data, int size);
+int tag_mask_write(int fd, tag_index handle, int offset, void *data, void *mask, int size);
 
 /* Perform an atomic operation on the data */
 int atomic_op(tag_handle h, void *data, uint16_t op);

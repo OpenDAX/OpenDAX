@@ -206,19 +206,19 @@ module_register(char *name, uint32_t timeout, int fd)
             }
             dax_log(LOG_WARN, "Duplicate module name.  Module tag being modified - %s", tagname);
         }
-        result = tag_add(tagname, cdt_get_type("_module"), 1, 0);
+        result = tag_add(-1, tagname, cdt_get_type("_module"), 1, 0);
         if(result < 0) {
             dax_log(LOG_ERROR, "Unable to add module tag- %s", tagname);
         } else {
             mod->tagindex = result;
         }
         starttime = xtime();
-        tag_write(result, 0, &starttime, sizeof(dax_time));
-        tag_write(result, MOD_ID_OFFSET, &fd, sizeof(int));
+        tag_write(-1, result, 0, &starttime, sizeof(dax_time));
+        tag_write(-1, result, MOD_ID_OFFSET, &fd, sizeof(int));
         /* We wait until after we have written what we want to set the special flag.
            From now on we'll let the special functions handle the tag */
         tag_set_attribute(result, TAG_ATTR_SPECIAL);
-        tag_write(INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
+        tag_write(-1, INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
     } else {
         dax_log(LOG_ERROR, "Major problem registering module - %s:%d", name, fd);
         return NULL;
@@ -233,12 +233,20 @@ void
 module_unregister(int fd)
 {
     dax_module *mod;
+    tag_index tag_count;
 
     mod = _get_module_fd(fd);
     if(mod != NULL) {
         dax_log(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
         events_cleanup(mod);
         groups_cleanup(mod);
+        /* This deletes any tag that is owned by this module. */
+        tag_count = get_tagindex();
+        for(tag_index n=0;n<tag_count;n++) {
+            if(is_tag_owned(fd, n)) {
+                tag_del(n);
+            }
+        }
         tag_del(mod->tagindex);
         module_del(mod);
     } else {

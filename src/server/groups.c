@@ -136,7 +136,7 @@ group_read(dax_module *mod, uint32_t index, uint8_t *buff, int size) {
     if((group->flags & GRP_FLAG_NOT_EMPTY) == 0) return ERR_NOTFOUND;
     if(group->size > size) return ERR_ARG;
     for(n = 0;n<group->count;n++) {
-        result = tag_read(group->members[n].index, group->members[n].byte, &buff[offset], group->members[n].size);
+        result = tag_read(-1, group->members[n].index, group->members[n].byte, &buff[offset], group->members[n].size);
         if(result) return result;
         offset += group->members[n].size;
     }
@@ -153,7 +153,7 @@ group_write(dax_module *mod, uint32_t index, uint8_t *buff) {
     group = &mod->tag_groups[index];
     if((group->flags & GRP_FLAG_NOT_EMPTY) == 0) return ERR_NOTFOUND;
     for(n = 0;n<group->count;n++) {
-        result = tag_write(group->members[n].index, group->members[n].byte, &buff[offset], group->members[n].size);
+        result = tag_write(-1, group->members[n].index, group->members[n].byte, &buff[offset], group->members[n].size);
         if(result) return result;
         offset += group->members[n].size;
     }

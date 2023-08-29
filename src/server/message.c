@@ -357,7 +357,6 @@ msg_dispatcher(int fd, unsigned char *buff)
     message.fd = fd;
     memcpy(message.data, &buff[8], message.size);
     buff_free(fd);
-    virt_set_fd(fd);
     /* Now call the function to deal with it */
     return (*cmd_arr[message.msg_type])(&message);
 }
@@ -437,7 +436,7 @@ msg_tag_add(dax_message *msg)
     if(msg->data[12] == '_') {
         idx = ERR_ILLEGAL;
     } else {
-        idx = tag_add(&msg->data[12], type, count, attr);
+        idx = tag_add(msg->fd, &msg->data[12], type, count, attr);
     }
 
     if(idx >= 0) {
@@ -539,7 +538,7 @@ msg_tag_read(dax_message *msg)
 
     dax_log(LOG_MSG, "Tag Read Message from module %d, index %d, offset %d, size %d", msg->fd, index, offset, size);
 
-    result = tag_read(index, offset, &data, size);
+    result = tag_read(msg->fd, index, offset, &data, size);
     if(result) {
         _message_send(msg->fd, MSG_TAG_READ, &result, sizeof(result), ERROR);
     } else {
@@ -564,10 +563,10 @@ msg_tag_write(dax_message *msg)
     data = &msg->data[8];
 
     dax_log(LOG_MSG, "Tag Write Message from module %d, index %d, offset %d, size %d", msg->fd, idx, offset, size);
-    if(is_tag_readonly(idx)) {
+    if(is_tag_readonly(idx) && ! is_tag_owned(msg->fd, idx)) {
         result = ERR_READONLY;
     } else {
-        result = tag_write(idx, offset, data, size);
+        result = tag_write(msg->fd, idx, offset, data, size);
     }
     if(result) {
         _message_send(msg->fd, MSG_TAG_WRITE, &result, sizeof(result), ERROR);
@@ -597,7 +596,7 @@ msg_tag_mask_write(dax_message *msg)
     if(is_tag_readonly(idx)) {
         result =  ERR_READONLY;
     } else {
-        result = tag_mask_write(idx, offset, data, mask, size);
+        result = tag_mask_write(msg->fd, idx, offset, data, mask, size);
     }
     if(result) {
         _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);

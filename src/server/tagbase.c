@@ -62,7 +62,7 @@ static unsigned int _datatype_size;
 /* These functions are convienience for setting status tags */
 void
 set_dbsize(tag_index x) {
-    assert(tag_write(INDEX_DBSIZE, 0, &x, sizeof(tag_index)) == 0);
+    assert(tag_write(-1, INDEX_DBSIZE, 0, &x, sizeof(tag_index)) == 0);
 }
 
 /* checks whether type is a valid datatype */
@@ -336,7 +336,7 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
     tag_index idx;
     virt_functions vf;
 
-    idx = tag_add(name, type, count, 0);
+    idx = tag_add(-1, name, type, count, 0);
     /* We just allocated this data but that was just for convenience */
     free(_db[idx].data);
     vf.rf = rf;
@@ -395,24 +395,24 @@ initialize_tagbase(void)
 
     /* TODO: instead of using all these constants we should probably just add
      * the tags and store the indexes for the ones that we need. */
-    assert(tag_add("_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
+    assert(tag_add(-1, "_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
     _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_lastindex", DAX_DINT, 1, 0) == INDEX_LASTINDEX);
+    assert(tag_add(-1, "_lastindex", DAX_DINT, 1, 0) == INDEX_LASTINDEX);
     _db[INDEX_LASTINDEX].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_dbsize", DAX_DINT, 1, 0) == INDEX_DBSIZE);
+    assert(tag_add(-1, "_dbsize", DAX_DINT, 1, 0) == INDEX_DBSIZE);
     _db[INDEX_DBSIZE].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_starttime", DAX_TIME, 1, 0) == INDEX_STARTED);
+    assert(tag_add(-1, "_starttime", DAX_TIME, 1, 0) == INDEX_STARTED);
     _db[INDEX_STARTED].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_lastmodule", DAX_CHAR, DAX_TAGNAME_SIZE +1, 0) == INDEX_LASTMODULE);
+    assert(tag_add(-1, "_lastmodule", DAX_CHAR, DAX_TAGNAME_SIZE +1, 0) == INDEX_LASTMODULE);
     _db[INDEX_LASTMODULE].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_overrides_installed", DAX_DINT, 1, 0) == INDEX_OVRD_INSTALLED);
+    assert(tag_add(-1, "_overrides_installed", DAX_DINT, 1, 0) == INDEX_OVRD_INSTALLED);
     _db[INDEX_OVRD_INSTALLED].attr = TAG_ATTR_READONLY;
-    assert(tag_add("_overrides_set", DAX_DINT, 1, 0) == INDEX_OVRD_SET);
+    assert(tag_add(-1, "_overrides_set", DAX_DINT, 1, 0) == INDEX_OVRD_SET);
     _db[INDEX_OVRD_SET].attr = TAG_ATTR_READONLY;
     virtual_tag_add("_time", DAX_TIME, 1, server_time, NULL);
     virtual_tag_add("_my_tagname", DAX_CHAR, DAX_TAGNAME_SIZE +1, get_module_tag_name, NULL);
     starttime = xtime();
-    tag_write(INDEX_STARTED,0,&starttime,sizeof(uint64_t));
+    tag_write(-1, INDEX_STARTED,0,&starttime,sizeof(uint64_t));
     set_dbsize(_dbsize);
 }
 
@@ -423,6 +423,8 @@ _set_attribute(tag_index idx, uint32_t attr) {
         /* TODO: add tag retention */;
         ret_add_tag(idx);
         _db[idx].attr |= TAG_ATTR_RETAIN;
+    } else if(attr & TAG_ATTR_OWNED && attr & TAG_ATTR_READONLY) {
+        _db[idx].attr |= (TAG_ATTR_OWNED | TAG_ATTR_READONLY);
     }
 }
 
@@ -431,7 +433,7 @@ _set_attribute(tag_index idx, uint32_t attr) {
  * count is greater than 1 an array is created.  It returns the index
  * of the newly created tag or an error. */
 tag_index
-tag_add(char *name, tag_type type, uint32_t count, uint32_t attr)
+tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
 {
     int n;
     void *newdata;
@@ -514,6 +516,7 @@ tag_add(char *name, tag_type type, uint32_t count, uint32_t attr)
     }
     _db[n].nextevent = 1;
     _db[n].nextmap = 1;
+    _db[n].fd = fd;
     _db[n].events = NULL;
     _db[n].omask = NULL;
     _db[n].odata = NULL;
@@ -529,12 +532,12 @@ tag_add(char *name, tag_type type, uint32_t count, uint32_t attr)
         _cdt_inc_refcount(type);
     }
     if(_db[INDEX_LASTINDEX].data != NULL) {
-        tag_write(INDEX_LASTINDEX, 0, &_tagnextindex, sizeof(tag_index));
+        tag_write(-1, INDEX_LASTINDEX, 0, &_tagnextindex, sizeof(tag_index));
     }
     _tagnextindex++;
     _tagcount++;
     if(_db[INDEX_TAGCOUNT].data != NULL) {
-        tag_write(INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
+        tag_write(-1, INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
     _set_attribute(n, attr);
     dax_log(LOG_DEBUG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
@@ -665,6 +668,12 @@ is_tag_queue(tag_index idx) {
     return IS_QUEUE(_db[idx].type);
 }
 
+int
+is_tag_owned(int fd, tag_index idx) {
+    return (_db[idx].attr & TAG_ATTR_OWNED && _db[idx].fd == fd);
+}
+
+
 /* These are the low level tag reading / writing interface to the
  * database.
  *
@@ -675,7 +684,7 @@ is_tag_queue(tag_index idx) {
  * The writing functions bypass the read only attribute of the tag
  */
 int
-tag_read(tag_index idx, int offset, void *data, int size)
+tag_read(int fd, tag_index idx, int offset, void *data, int size)
 {
     virt_functions *vf;
     int n, result;
@@ -691,7 +700,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
          * pointed to by the *data pointer */
         vf = (virt_functions *)_db[idx].data;
         if(vf->rf == NULL) return ERR_WRITEONLY;
-        return vf->rf(idx, offset, data, size, vf->userdata);
+        return vf->rf(fd, idx, offset, data, size, vf->userdata);
     } else {
         /* Bounds check size */
         if( (offset + size) > tag_get_size(idx)) {
@@ -705,7 +714,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
         /* If the tag is special then all the hook */
         /* NOTE: Not sure this should be before the override */
         if(_db[idx].attr & TAG_ATTR_SPECIAL) {
-            result = special_tag_read(idx, offset, data, size);
+            result = special_tag_read(fd, idx, offset, data, size);
             if(result) return result;
         }
         if(_db[idx].attr & TAG_ATTR_OVR_SET) {
@@ -725,7 +734,7 @@ tag_read(tag_index idx, int offset, void *data, int size)
 
 /* This function writes data to the _db just like the above function reads it */
 int
-tag_write(tag_index idx, int offset, void *data, int size)
+tag_write(int fd, tag_index idx, int offset, void *data, int size)
 {
     virt_functions *vf;
     int result;
@@ -740,7 +749,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
         * pointed to by the *data pointer */
        vf = (virt_functions *)_db[idx].data;
        if(vf->wf == NULL) return ERR_READONLY;
-       return vf->wf(idx, offset, data, size, vf->userdata);
+       return vf->wf(fd, idx, offset, data, size, vf->userdata);
     } else {
         /* Bounds check size */
         if( (offset + size) > tag_get_size(idx)) {
@@ -750,7 +759,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
             return ERR_DELETED;
         }
         if(_db[idx].attr & TAG_ATTR_SPECIAL) {
-            result = special_tag_write(idx, offset, data, size);
+            result = special_tag_write(fd, idx, offset, data, size);
             if(result) return result;
         }
         /* Copy the data into the right place. */
@@ -768,7 +777,7 @@ tag_write(tag_index idx, int offset, void *data, int size)
 
 /* Writes the data to the tagbase but only if the corresponding mask bit is set */
 int
-tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
+tag_mask_write(int fd, tag_index idx, int offset, void *data, void *mask, int size)
 {
     uint8_t *db, *newdata, *newmask;
     int n, result;
@@ -788,7 +797,7 @@ tag_mask_write(tag_index idx, int offset, void *data, void *mask, int size)
         return ERR_DELETED;
     }
     if(_db[idx].attr & TAG_ATTR_SPECIAL) {
-        result = special_tag_mask_write(idx, offset, data, mask, size);
+        result = special_tag_mask_write(fd, idx, offset, data, mask, size);
         if(result) return result;
     }
 
@@ -1194,7 +1203,7 @@ override_add(tag_index idx, int offset, void *data, void *mask, int size) {
     if(! (_db[idx].attr & TAG_ATTR_OVERRIDE )) {
         _ovrdinstalled++;
         if(_db[INDEX_OVRD_INSTALLED].data != NULL) {
-            tag_write(INDEX_OVRD_INSTALLED, 0, &_ovrdinstalled, sizeof(tag_index));
+            tag_write(-1, INDEX_OVRD_INSTALLED, 0, &_ovrdinstalled, sizeof(tag_index));
         }
     }
 
@@ -1232,7 +1241,7 @@ override_del(tag_index idx, int offset, void *mask, int size) {
      * tag so we'll free the memory */
     _ovrdinstalled--;
     if(_db[INDEX_OVRD_INSTALLED].data != NULL) {
-        tag_write(INDEX_OVRD_INSTALLED, 0, &_ovrdinstalled, sizeof(tag_index));
+        tag_write(-1, INDEX_OVRD_INSTALLED, 0, &_ovrdinstalled, sizeof(tag_index));
     }
     xfree(_db[idx].odata);
     _db[idx].odata = NULL;
@@ -1273,7 +1282,7 @@ override_set(tag_index idx, uint8_t flag) {
         if( !(_db[idx].attr & TAG_ATTR_OVR_SET)) {
             _ovrdset++;
             if(_db[INDEX_OVRD_SET].data != NULL) {
-                tag_write(INDEX_OVRD_SET, 0, &_ovrdset, sizeof(tag_index));
+                tag_write(-1, INDEX_OVRD_SET, 0, &_ovrdset, sizeof(tag_index));
             }
             _db[idx].attr |= TAG_ATTR_OVR_SET;
         }
@@ -1281,7 +1290,7 @@ override_set(tag_index idx, uint8_t flag) {
         if(_db[idx].attr & TAG_ATTR_OVR_SET) {
             _ovrdset--;
             if(_db[INDEX_OVRD_SET].data != NULL) {
-                tag_write(INDEX_OVRD_SET, 0, &_ovrdset, sizeof(tag_index));
+                tag_write(-1, INDEX_OVRD_SET, 0, &_ovrdset, sizeof(tag_index));
             }
             _db[idx].attr &= ~TAG_ATTR_OVR_SET;
         }

@@ -270,7 +270,7 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                 }
 //                printf("data = 0x%X\n", *(uint16_t *)new_data);
 //                printf("mask = 0x%X\n", *(uint16_t *)this->mask);
-                result = tag_mask_write(this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
+                result = tag_mask_write(-1, this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
                 /* If the destination tag has been deleted then delete this map */
                 if(result == ERR_DELETED) {
                     map_del(this->source.index, this->id);
@@ -281,7 +281,7 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                 new_data = &data[offset+this->source.byte];
 
 //                printf("data = 0x%X\n", *(uint16_t *)new_data);
-                result = tag_write(this->dest.index, this->dest.byte, new_data, this->dest.size);
+                result = tag_write(-1, this->dest.index, this->dest.byte, new_data, this->dest.size);
                 /* If the destination tag has been deleted then delete this map */
                 if(result == ERR_DELETED) {
                     map_del(this->source.index, this->id);
