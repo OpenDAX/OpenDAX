@@ -145,6 +145,8 @@
 #define MB_SERIAL  0
 #define MB_NETWORK 1
 
+/* Number of slave nodes allocated */
+#define MB_MAX_SLAVE_NODES 248
 /* Maximum size of the receive buffer */
 #define MB_BUFF_SIZE 256
 /* Starting number of connections in the pool */
@@ -153,12 +155,12 @@
 #define MB_MAX_CONNECTION_SIZE 2048
 
 /* This is used in the port for client connections for the TCP Server */
-struct client_buffer {
+typedef struct client_buffer {
     int fd;                /* File descriptor of the socket */
     int buffindex;         /* index where the next character will be placed */
     unsigned char buff[MB_BUFF_SIZE];   /* data buffer */
     struct client_buffer *next;
-};
+} client_buffer;
 
 /* This structure represents a single connection to a TCP server.
  * There is a dynamic array of these in the port that are basically
@@ -203,20 +205,20 @@ typedef struct mb_cmd {
 } mb_cmd;
 
 /* This holds all of the information to define a register set for a single unit id */
-typedef struct mb_unit_def {
+typedef struct mb_node_def {
     char *hold_name;
-    unsigned int hold_size;    /* size of the internal holding register bank */
-    tag_handle hold_tag;
+    unsigned int hold_size;    /* size of the holding register tag */
+    tag_index hold_idx;
     char *input_name;
-    unsigned int input_size;   /* size of the internal input register bank */
-    tag_handle input_tag;
+    unsigned int input_size;   /* size of the input register tag */
+    tag_index input_idx;
     char *coil_name;
-    unsigned int coil_size;    /* size of the internal bank of coils in 16-bit registers */
-    tag_handle coil_tag;
+    unsigned int coil_size;    /* size of the tag of coils */
+    tag_index coil_idx;
     char *disc_name;
-    unsigned int disc_size;    /* size of the internal bank of coils */
-    tag_handle disc_tag;
-} mb_unit_def;
+    unsigned int disc_size;    /* size of the tag of discretes */
+    tag_index disc_idx;
+} mb_node_def;
 
 
 /* Internal struct that defines a single Modbus(tm) Port */
@@ -228,7 +230,7 @@ typedef struct mb_port {
     unsigned char type;       /* 0=Master, 1=Slave */
     unsigned char devtype;    /* 0=serial, 1=network */
     unsigned char protocol;   /* MB_RTU, MB_ASCII or MB_TCP*/
-    uint8_t slaveid;          /* Slave ID 1-247 (Slave Only) */
+
     int baudrate;
     short databits;
     short stopbits;
@@ -244,22 +246,11 @@ typedef struct mb_port {
     int timeout;     /* Response timeout */
     int maxattempts; /* Number of failed attempts to allow before closing and exiting the port */
 
-    char *hold_name;
-    unsigned int hold_size;    /* size of the internal holding register bank */
-    tag_handle hold_tag;
-    char *input_name;
-    unsigned int input_size;   /* size of the internal input register bank */
-    tag_handle input_tag;
-    char *coil_name;
-    unsigned int coil_size;    /* size of the internal bank of coils in 16-bit registers */
-    tag_handle coil_tag;
-    char *disc_name;
-    unsigned int disc_size;    /* size of the internal bank of coils */
-    tag_handle disc_tag;
+    mb_node_def **nodes; /* Individual node units */
 
     fd_set fdset;
     int maxfd;
-    struct client_buffer *buff_head; /* Head of a linked list of client connection buffers */
+    client_buffer *buff_head; /* Head of a linked list of client connection buffers */
 
     struct mb_cmd *commands;  /* Linked list of Modbus commands */
     int fd;                   /* File descriptor to the port */
@@ -305,14 +296,9 @@ void mb_destroy_port(mb_port *port);
 /* Port Configuration Functions */
 int mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databits, short parity, short stopbits);
 int mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket);
-int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, uint8_t slaveid);
+int mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol);
 int mb_set_scan_rate(mb_port *port, int rate);
 int mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit);
-
-int mb_set_holdreg_size(mb_port *port, unsigned int size);
-int mb_set_inputreg_size(mb_port *port, unsigned int size);
-int mb_set_coil_size(mb_port *port, unsigned int size);
-int mb_set_discrete_size(mb_port *port, unsigned int size);
 
 int mb_open_port(mb_port *port);
 int mb_close_port(mb_port *port);

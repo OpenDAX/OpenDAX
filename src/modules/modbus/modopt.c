@@ -155,64 +155,6 @@ _get_network_config(lua_State *L, mb_port *p)
     return result;
 }
 
-static inline int
-_get_slave_config(lua_State *L, mb_port *p)
-{
-    unsigned int size;
-    int result = 0;
-    dax_log(LOG_ERROR, "Slave functionality is not yet implemented");
-    char *reg_name;
-
-    lua_getfield(L, -1, "holdreg");
-    reg_name = (char *)lua_tostring(L, -1);
-    lua_getfield(L, -2, "holdsize");
-    size = (unsigned int)lua_tonumber(L, -1);
-    if(reg_name && size) {
-        p->hold_name = strdup(reg_name);
-        if(p->hold_name == NULL) return ERR_ALLOC;
-        result = mb_set_holdreg_size(p, size);
-        if(result) return result;
-    }
-    lua_pop(L, 2);
-
-    lua_getfield(L, -1, "inputreg");
-    reg_name = (char *)lua_tostring(L, -1);
-    lua_getfield(L, -2, "inputsize");
-    size = (unsigned int)lua_tonumber(L, -1);
-    if(reg_name && size) {
-        p->input_name = strdup(reg_name);
-        if(p->input_name == NULL) return ERR_ALLOC;
-        result = mb_set_inputreg_size(p, size);
-        if(result) return result;
-    }
-    lua_pop(L, 2);
-
-    lua_getfield(L, -1, "coilreg");
-    reg_name = (char *)lua_tostring(L, -1);
-    lua_getfield(L, -2, "coilsize");
-    size = (unsigned int)lua_tonumber(L, -1);
-    if(reg_name && size) {
-        p->coil_name = strdup(reg_name);
-        if(p->coil_name == NULL) return ERR_ALLOC;
-        result = mb_set_coil_size(p, size);
-        if(result) return result;
-    }
-    lua_pop(L, 2);
-
-    lua_getfield(L, -1, "discreg");
-    reg_name = (char *)lua_tostring(L, -1);
-    lua_getfield(L, -2, "discsize");
-    size = (unsigned int)lua_tonumber(L, -1);
-    if(reg_name && size) {
-        p->disc_name = strdup(reg_name);
-        if(p->disc_name == NULL) return ERR_ALLOC;
-        result = mb_set_discrete_size(p, size);
-        if(result) return result;
-    }
-    lua_pop(L, 2);
-
-    return 0;
-}
 
 /* Lua interface function for adding a port.  It takes a single
    table as an argument and returns the Port's index */
@@ -222,7 +164,7 @@ _add_port(lua_State *L)
     mb_port *p;
     mb_port **newports;
     char *string, *name;
-    int slaveid, tmp, maxfailures, inhibit;
+    int tmp, maxfailures, inhibit;
     unsigned char devtype, protocol, type;
 
     if(!lua_istable(L, -1)) {
@@ -317,16 +259,8 @@ _add_port(lua_State *L)
         type = MB_MASTER;
     }
     lua_pop(L, 1);
-    if(type == MB_SLAVE) {
-        lua_getfield(L, -1, "slaveid");
-        slaveid = (int)lua_tonumber(L, -1);
-        lua_pop(L, 1);
-       _get_slave_config(L, p);
-    } else {
-        slaveid = 0;
-    }
 
-    mb_set_protocol(p, type, protocol, slaveid);
+    mb_set_protocol(p, type, protocol);
 
     /* Have to decide how much of this will really be needed */
     lua_getfield(L, -1, "delay");
@@ -371,6 +305,15 @@ _add_port(lua_State *L)
     }
     lua_pop(L, 1);
 
+    if(p->type == MB_SLAVE) {
+        p->nodes = malloc(sizeof(mb_node_def) * MB_MAX_SLAVE_NODES);
+        if(p->nodes == NULL) {
+            dax_log(LOG_FATAL, "Unable to allocate node definitions for port[%d]", config.portcount);
+            kill(getpid(), SIGQUIT);
+        }
+        bzero(p->nodes, sizeof(mb_node_def) * MB_MAX_SLAVE_NODES);
+    }
+
     /* The lua script gets the index +1 */
     lua_pushnumber(L, config.portcount);
 
@@ -395,7 +338,7 @@ _add_command(lua_State *L)
     p = (int)lua_tonumber(L, 1);
     p--; /* Lua has indexes that are 1+ our actual array indexes */
     if(p < 0 || p >= config.portcount) {
-        luaL_error(L, "Unknown Port ID : %d", p);
+        luaL_error(L, "Unknown Port ID : %d", p+1);
     }
     if(!lua_istable(L, 2)) {
         luaL_error(L, "add_command() received an argument that is not a table");
@@ -526,6 +469,92 @@ _add_command(lua_State *L)
     return 0;
 }
 
+/* Lua interface function for adding a modbus slave register tag
+   to a port.  Accepts five arguments.
+   Arguements:
+      port id
+      node / unit id
+      tag name
+      size (in registers or bits)
+      register type [COIL, DISCRETE, HOLDING or INPUT]. */
+static int
+_add_register(lua_State *L)
+{
+    const char *tagname;
+    int mbreg;
+    unsigned int size;
+    int nodeid;
+    int p;
+    mb_port *port;
+
+    p = lua_tointeger(L, 1);
+    p--; /* Lua has indexes that are 1+ our actual array indexes */
+    if(p < 0 || p >= config.portcount) {
+        luaL_error(L, "Unknown Port ID : %d", p);
+    }
+    port = config.ports[p];
+    if(port->type != MB_SLAVE) {
+        dax_log(LOG_WARN, "Adding registers only makes sense for a Slave or Server port");
+        return 0;
+    }
+    dax_log(LOG_DEBUG, "Adding a register to port %s", port->name);
+
+    nodeid = lua_tointeger(L, 2);
+    if(nodeid <0 || nodeid >= MB_MAX_SLAVE_NODES) {
+        luaL_error(L, "Invalid node id given for register on Port %s", port->name);
+    }
+
+    tagname = (char *)lua_tostring(L, 3);
+    if(tagname == NULL) {
+        luaL_error(L, "No tagname Given for register on Port %s", port->name);
+    }
+
+    size = lua_tointeger(L, 4);
+    if(size == 0 || size > 65535) {
+        luaL_error(L, "Register size must be between 1-65535 on Port %s", port->name);
+    }
+
+    if(port->nodes[nodeid] == NULL) { /* If it hasn't been allocated yet */
+        port->nodes[nodeid] = malloc(sizeof(mb_node_def));
+        if(port->nodes[nodeid] == NULL) {
+            luaL_error(L, "Unable to allocate memory for node on port %s", port->name);
+        }
+        /* Initialize 'name' to NULL so later we can know if it was set */
+        port->nodes[nodeid]->hold_name = NULL;
+        port->nodes[nodeid]->input_name = NULL;
+        port->nodes[nodeid]->coil_name = NULL;
+        port->nodes[nodeid]->disc_name = NULL;
+        port->nodes[nodeid]->hold_size = 0;
+        port->nodes[nodeid]->input_size = 0;
+        port->nodes[nodeid]->coil_size = 0;
+        port->nodes[nodeid]->disc_size = 0;
+
+    }
+
+    mbreg = lua_tointeger(L, 5);
+    switch(mbreg) {
+        case MB_REG_HOLDING:
+            port->nodes[nodeid]->hold_name = strdup(tagname);
+            port->nodes[nodeid]->hold_size = size;
+            break;
+        case MB_REG_INPUT:
+            port->nodes[nodeid]->input_name = strdup(tagname);
+            port->nodes[nodeid]->input_size = size;
+            break;
+        case MB_REG_COIL:
+            port->nodes[nodeid]->coil_name = strdup(tagname);
+            port->nodes[nodeid]->coil_size = size;
+            break;
+        case MB_REG_DISC:
+            port->nodes[nodeid]->disc_name = strdup(tagname);
+            port->nodes[nodeid]->disc_size = size;
+            break;
+        default:
+            luaL_error(L, "Invalid register type given on Port %s", port->name);
+    }
+    return 0;
+}
+
 /* This function should be called from main() to configure the program.
  * First the defaults are set then the configuration file is parsed then
  * the command line is handled.  This gives the command line priority.  */
@@ -533,18 +562,31 @@ int
 modbus_configure(int argc, const char *argv[])
 {
     int flags, result = 0;
+    lua_State *L;
 
     _init_config();
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagname","tagname", 't', flags, "modbus");
 
+    L = dax_get_luastate(ds);
+    lua_pushinteger(L, MB_REG_HOLDING);
+    lua_setglobal(L, "HOLDING");
+    lua_pushinteger(L, MB_REG_INPUT);
+    lua_setglobal(L, "INPUT");
+    lua_pushinteger(L, MB_REG_COIL);
+    lua_setglobal(L, "COIL");
+    lua_pushinteger(L, MB_REG_DISC);
+    lua_setglobal(L, "DISCRETE");
+
     dax_set_luafunction(ds, (void *)_add_port, "add_port");
     dax_set_luafunction(ds, (void *)_add_command, "add_command");
+    dax_set_luafunction(ds, (void *)_add_register, "add_register");
 
     result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
     dax_clear_luafunction(ds, "add_port");
     dax_clear_luafunction(ds, "add_command");
+    dax_clear_luafunction(ds, "add_register");
 
     dax_free_config(ds);
 

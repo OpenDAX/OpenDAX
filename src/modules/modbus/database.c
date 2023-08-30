@@ -23,7 +23,7 @@ extern dax_state *ds;
 
 
 void
-slave_write_database(mb_port *port, int reg, int index, int count, uint16_t *data)
+slave_write_database(tag_index idx, int reg, int offset, int count, uint16_t *data)
 {
     int result;
     tag_handle h;
@@ -33,33 +33,33 @@ slave_write_database(mb_port *port, int reg, int index, int count, uint16_t *dat
      * with bad data. */
     switch(reg) {
         case MB_REG_HOLDING: /* These are the 16 bit registers */
-            h.index = port->hold_tag.index;
-            h.byte = index * 2;
+            h.index = idx;
+            h.byte = offset * 2;
             h.bit = 0;
             h.count = count;
             h.size = count * 2;
             h.type = DAX_UINT;
             break;
         case MB_REG_INPUT:
-            h.index = port->input_tag.index;
-            h.byte = index * 2;
+            h.index = idx;
+            h.byte = offset * 2;
             h.bit = 0;
             h.count = count;
             h.size = count * 2;
             h.type = DAX_UINT;
             break;
         case MB_REG_COIL:
-            h.index = port->coil_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
+            h.index = idx;
+            h.byte = offset / 8;
+            h.bit = offset % 8;
             h.count = count;
             h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
             h.type = DAX_BOOL;
             break;
         case MB_REG_DISC:
-            h.index = port->disc_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
+            h.index = idx;
+            h.byte = offset / 8;
+            h.bit = offset % 8;
             h.count = count;
             h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
             h.type = DAX_BOOL;
@@ -74,7 +74,7 @@ slave_write_database(mb_port *port, int reg, int index, int count, uint16_t *dat
 
 
 void
-slave_read_database(mb_port *port, int reg, int index, int count, uint16_t *data) {
+slave_read_database(tag_index idx, int reg, int offset, int count, uint16_t *data) {
     int result;
     tag_handle h;
 
@@ -83,33 +83,33 @@ slave_read_database(mb_port *port, int reg, int index, int count, uint16_t *data
      * with bad data. */
     switch(reg) {
         case MB_REG_HOLDING: /* These are the 16 bit registers */
-            h.index = port->hold_tag.index;
-            h.byte = index * 2;
+            h.index = idx;
+            h.byte = offset * 2;
             h.bit = 0;
             h.count = count;
             h.size = count * 2;
             h.type = DAX_UINT;
             break;
         case MB_REG_INPUT:
-            h.index = port->input_tag.index;
-            h.byte = index * 2;
+            h.index = idx;
+            h.byte = offset * 2;
             h.bit = 0;
             h.count = count;
             h.size = count * 2;
             h.type = DAX_UINT;
             break;
         case MB_REG_COIL:
-            h.index = port->coil_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
+            h.index = idx;
+            h.byte = offset / 8;
+            h.bit = offset % 8;
             h.count = count;
             h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
             h.type = DAX_BOOL;
             break;
         case MB_REG_DISC:
-            h.index = port->disc_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
+            h.index = idx;
+            h.byte = offset / 8;
+            h.bit = offset % 8;
             h.count = count;
             h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
             h.type = DAX_BOOL;

@@ -26,7 +26,7 @@
 #include <modopt.h>
 #include <modbus.h>
 
-void slave_write_database(mb_port *port, int reg, int index, int count, uint16_t *data);
-void slave_read_database(mb_port *port, int reg, int index, int count, uint16_t *data);
+void slave_write_database(tag_index idx, int reg, int offset, int count, uint16_t *data);
+void slave_read_database(tag_index idx, int reg, int offset, int count, uint16_t *data);
 
 #endif

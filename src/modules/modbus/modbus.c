@@ -747,7 +747,7 @@ _create_exception(unsigned char *buff, uint16_t exception)
 
 /* Handles responses for function codes 1 and 2 */
 static int
-_read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
+_read_bits_response(mb_port *port, int nodeid, unsigned char *buff, int size, int mbreg)
 {
     int n, bit, word, buffbit, buffbyte;
     unsigned int regsize;
@@ -756,11 +756,13 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 
     COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
     COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of disc/coils requested */
-    slave_read_database(port, mbreg, index, count, reg);
+
     if(mbreg == MB_REG_COIL) {
-        regsize = port->coil_size;
+        slave_read_database(port->nodes[nodeid]->coil_idx, mbreg, index, count, reg);
+        regsize = port->nodes[nodeid]->coil_size;
     } else {
-        regsize = port->disc_size;
+        slave_read_database(port->nodes[nodeid]->disc_idx, mbreg, index, count, reg);
+        regsize = port->nodes[nodeid]->disc_size;
     }
 
     if(((count - 1)/8+1) > (size - 3)) { /* Make sure we have enough room */
@@ -795,7 +797,7 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 
 /* Handles responses for function codes 3 and 4 */
 static int
-_read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
+_read_words_response(mb_port *port, int nodeid, unsigned char *buff, int size, int mbreg)
 {
     int n;
     unsigned int regsize;
@@ -804,11 +806,13 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 
     COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
     COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of words/coils */
-    slave_read_database(port, mbreg, index, count, reg);
+
     if(mbreg == MB_REG_HOLDING) {
-        regsize = port->hold_size;
+        slave_read_database(port->nodes[nodeid]->hold_idx, mbreg, index, count, reg);
+        regsize = port->nodes[nodeid]->hold_size;
     } else {
-        regsize = port->input_size;
+        slave_read_database(port->nodes[nodeid]->input_idx, mbreg, index, count, reg);
+        regsize = port->nodes[nodeid]->input_size;
     }
 
     if((count * 2) > (size - 3)) { /* Make sure we have enough room */
@@ -829,23 +833,23 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
  * function code exception.
  */
 int
-_check_function_code_exception(mb_port *port, uint8_t function) {
+_check_function_code_exception(mb_port *port, int nodeid, uint8_t function) {
     switch(function) {
         case 1:
         case 5:
         case 15:/* Read Coils */
-            if(port->coil_size) return 0;
+            if(port->nodes[nodeid]->coil_size) return 0;
             break;
         case 2: /* Read Discrete Inputs */
-            if(port->disc_size) return 0;
+            if(port->nodes[nodeid]->disc_size) return 0;
             break;
         case 3: /* Read Holding Registers */
         case 6:
         case 16:
-            if(port->hold_size) return 0;
+            if(port->nodes[nodeid]->hold_size) return 0;
             break;
         case 4: /* Read Input Registers */
-            if(port->input_size) return 0;
+            if(port->nodes[nodeid]->input_size) return 0;
             break;
         case 8:
             if(port->protocol != MB_TCP) return 0;
@@ -872,28 +876,31 @@ create_response(mb_port *port, unsigned char *buff, int size)
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
 
-    if(_check_function_code_exception(port, function)) {
+    if(port->nodes[node] == NULL) { /* No configuration for this node */
+        if(port->nodes[0] != NULL) { /* We use node 0 as the default */
+            node = 0;
+        } else {
+            return 0; /* Otherwise we ignore */
+        }
+    }
+
+    if(_check_function_code_exception(port, node, function)) {
         return _create_exception(buff, ME_WRONG_FUNCTION);
     }
-    /* If we're TCP then node doesn't matter yet.  Other wise return 0 if
-     * this message isn't for us. */
 
-    if(port->protocol != MB_TCP) {
-        if(node != port->slaveid) return 0;
-    }
     switch(function) {
         case 1: /* Read Coils */
-            return _read_bits_response(port, buff, size, MB_REG_COIL);
+            return _read_bits_response(port, node, buff, size, MB_REG_COIL);
         case 2: /* Read Discrete Inputs */
-            return _read_bits_response(port, buff, size, MB_REG_DISC);
+            return _read_bits_response(port, node, buff, size, MB_REG_DISC);
         case 3: /* Read Holding Registers */
-            return _read_words_response(port, buff, size, MB_REG_HOLDING);
+            return _read_words_response(port, node, buff, size, MB_REG_HOLDING);
         case 4: /* Read Input Registers */
-            return _read_words_response(port, buff, size, MB_REG_INPUT);
+            return _read_words_response(port, node, buff, size, MB_REG_INPUT);
         case 5: /* Write Single Coil */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
-            if(index >= port->coil_size) {
+            if(index >= port->nodes[node]->coil_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             if(value) {
@@ -901,23 +908,23 @@ create_response(mb_port *port, unsigned char *buff, int size)
             } else {
                 data[0] = 0x00;
             }
-            slave_write_database(port, MB_REG_COIL, index, 1, data);
+            slave_write_database(port->nodes[node]->coil_idx, MB_REG_COIL, index, 1, data);
             return 6;
         case 6: /* Write Single Register */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
-            if(index >= port->hold_size) {
+            if(index >= port->nodes[node]->hold_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             data[0] = value;
-            slave_write_database(port, MB_REG_HOLDING, index, 1, data);
+            slave_write_database(port->nodes[node]->hold_idx, MB_REG_HOLDING, index, 1, data);
             return 6;
         case 8:
             return size / 2;
         case 15: /* Write Multiple Coils */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
-            if((index + count) > port->coil_size) {
+            if((index + count) > port->nodes[node]->coil_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             word = 0;
@@ -931,18 +938,18 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 bit++;
                 if(bit == 16) { bit = 0; word++; }
             }
-            slave_write_database(port, MB_REG_COIL, index, count, data);
+            slave_write_database(port->nodes[node]->coil_idx, MB_REG_COIL, index, count, data);
             return 6;
         case 16: /* Write Multiple Registers */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
-            if((index + count) > port->hold_size) {
+            if((index + count) > port->nodes[node]->hold_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             for(n = 0; n < count; n++) {
                 COPYWORD(&data[n], &buff[7 + (n*2)]);
             }
-            slave_write_database(port, MB_REG_HOLDING, index, count, data);
+            slave_write_database(port->nodes[node]->hold_idx, MB_REG_HOLDING, index, count, data);
             return 6;
         default:
             break;

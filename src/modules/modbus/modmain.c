@@ -185,30 +185,59 @@ _setup_port(mb_port *port)
     enable_ud *ud;
     uint8_t *bits;
     mb_cmd *mc;
+    tag_handle h;
+    mb_node_def *node;
 
     if(port->type == MB_SLAVE) {
-        // TODO: check for NULL tagname strings and errors and deal with them appropriately
-        size = port->hold_size;
-        if(size) {
-            result = dax_tag_add(ds, &port->hold_tag, port->hold_name, DAX_UINT, size, 0);
-            if(result) dax_log(LOG_ERROR, "Failed to add holding register tag for port %s", port->name);
+        for(int n=0; n<MB_MAX_SLAVE_NODES; n++) {
+            node = port->nodes[n]; /* Just for convenience */
+            if(node != NULL) {
+                if(node->hold_name != NULL) {
+                    result = dax_tag_add(ds, &h, node->hold_name, DAX_UINT, node->hold_size, 0);
+                    if(result) {
+                        dax_log(LOG_ERROR, "Unable to add tag %s as holding register for port %s", node->hold_name, port->name);
+                        free(node->hold_name);
+                        node->hold_name = NULL; /* so we know we don't have a tag */
+                        node->hold_size = 0;
+                    } else {
+                        node->hold_idx = h.index;
+                    }
+                }
+                if(node->input_name != NULL) {
+                    result = dax_tag_add(ds, &h, node->input_name, DAX_UINT, node->input_size, 0);
+                    if(result) {
+                        dax_log(LOG_ERROR, "Unable to add tag %s as holding register for port %s", node->input_name, port->name);
+                        free(node->input_name);
+                        node->input_name = NULL; /* so we know we don't have a tag */
+                        node->input_size = 0;
+                    } else {
+                        node->input_idx = h.index;
+                    }
+                }
+                if(node->coil_name != NULL) {
+                    result = dax_tag_add(ds, &h, node->coil_name, DAX_BOOL, node->coil_size, 0);
+                    if(result) {
+                        dax_log(LOG_ERROR, "Unable to add tag %s as holding register for port %s", node->coil_name, port->name);
+                        free(node->coil_name);
+                        node->coil_name = NULL; /* so we know we don't have a tag */
+                        node->coil_size = 0;
+                    } else {
+                        node->coil_idx = h.index;
+                    }
+                }
+                if(node->disc_name != NULL) {
+                    result = dax_tag_add(ds, &h, node->disc_name, DAX_BOOL, node->disc_size, 0);
+                    if(result) {
+                        dax_log(LOG_ERROR, "Unable to add tag %s as holding register for port %s", node->disc_name, port->name);
+                        free(node->disc_name);
+                        node->disc_name = NULL; /* so we know we don't have a tag */
+                        node->disc_size = 0;
+                    } else {
+                        node->disc_idx = h.index;
+                    }
+                }
+            }
         }
-        size = port->input_size;
-        if(size) {
-            result = dax_tag_add(ds, &port->input_tag, port->input_name, DAX_UINT, size, 0);
-            if(result) dax_log(LOG_ERROR, "Failed to add input register tag for port %s", port->name);
-        }
-        size = port->coil_size;
-        if(size) {
-            result = dax_tag_add(ds, &port->coil_tag, port->coil_name, DAX_BOOL, size, 0);
-            if(result) dax_log(LOG_ERROR, "Failed to add coil register tag for port %s", port->name);
-        }
-        size = port->disc_size;
-        if(size) {
-            result = dax_tag_add(ds, &port->disc_tag, port->disc_name, DAX_BOOL, size, 0);
-            if(result) dax_log(LOG_ERROR, "Failed to add discrete input tag for port %s", port->name);
-        }
-        /* TODO: We probably don't need these to be callbacks anymore since we got rid of the library */
     } else { /* We must be a master port */
         /* Here we add the command enable tag for the ports */
         mc = port->commands;

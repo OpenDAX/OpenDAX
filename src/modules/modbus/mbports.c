@@ -34,7 +34,6 @@ initport(mb_port *p)
     p->type = 0;
     p->protocol = 0;
     p->devtype = MB_SERIAL;
-    p->slaveid = 1;
     p->baudrate = B9600;
     p->databits = 8;
     p->stopbits = 1;
@@ -45,10 +44,7 @@ initport(mb_port *p)
     p->parity = MB_NONE;
     p->bindport = 5001;
     p->scanrate = 1000;
-    p->hold_size = 0;
-    p->input_size = 0;
-    p->coil_size = 0;
-    p->disc_size = 0;
+    p->nodes = NULL;
     p->buff_head = NULL;
     FD_ZERO(&(p->fdset));
     p->maxfd = 0;
@@ -301,11 +297,9 @@ mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport,
 
 /* This function sets up the modbus protocol.  Type is either MB_MASTER or MB_SLAVE
  * (MB_SERVER and MB_CLIENT are also defined but they are the same).  Protocol is
- * either MB_RTU, MB_ASCII or MB_TCP.  'slaveid' is the node id that the port will
- * use if it is configured as a slave.  It will be ignored if the port is type is
- * set up as a modbus master */
+ * either MB_RTU, MB_ASCII or MB_TCP.*/
 int
-mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, uint8_t slaveid)
+mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol)
 {
     if(type == MB_MASTER || type == MB_SLAVE) {
         port->type = type;
@@ -317,7 +311,6 @@ mb_set_protocol(mb_port *port, unsigned char type, unsigned char protocol, uint8
     } else {
         return MB_ERR_PROTOCOL;
     }
-    port->slaveid = slaveid;
     return 0;
 }
 
@@ -383,50 +376,6 @@ mb_set_maxfailures(mb_port *port, int maxfailures, int inhibit)
 unsigned char
 mb_get_port_protocol(mb_port *port) {
     return port->protocol;
-}
-
-int
-mb_set_holdreg_size(mb_port *port, unsigned int size) {
-    if(size >= 0 && size <=65536) {
-        port->hold_size = size;
-    } else {
-        port->hold_size = 0;
-        return MB_ERR_BAD_ARG;
-    }
-    return 0;
-}
-
-int
-mb_set_inputreg_size(mb_port *port, unsigned int size) {
-    if(size >= 0 && size <=65536) {
-        port->input_size = size;
-    } else {
-        port->input_size = 0;
-        return MB_ERR_BAD_ARG;
-    }
-    return 0;
-}
-
-int
-mb_set_coil_size(mb_port *port, unsigned int size) {
-    if(size >= 0 && size <=65536) {
-        port->coil_size = size;
-    } else {
-        port->coil_size = 0;
-        return MB_ERR_BAD_ARG;
-    }
-    return 0;
-}
-
-int
-mb_set_discrete_size(mb_port *port, unsigned int size) {
-    if(size >= 0 && size <=65536) {
-        port->disc_size = size;
-    } else {
-        port->disc_size = 0;
-        return MB_ERR_BAD_ARG;
-    }
-    return 0;
 }
 
 
@@ -525,6 +474,7 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
 {
     int i;
     mb_cmd *mc;
+    mb_node_def *node;
 
     fprintf(fd, "Port %s\n", mp->name);
     /* Serial Port Specific Configuration */
@@ -594,11 +544,19 @@ mb_print_portconfig(FILE *fd, mb_port *mp)
         }
     }
     if(mp->type == MB_SLAVE) {
-        fprintf(fd, "Slave ID: %d\n", mp->slaveid);
-        fprintf(fd, "Coils: %d\n", mp->coil_size);
-        fprintf(fd, "Discrete Inputs: %d\n", mp->disc_size);
-        fprintf(fd, "Holding Registers: %d\n", mp->hold_size);
-        fprintf(fd, "Input Registers: %d\n", mp->hold_size);
+        for(int n=0; n<MB_MAX_SLAVE_NODES; n++) {
+            node = mp->nodes[n];
+            if(node != NULL) {
+                if(node->coil_name != NULL)
+                    fprintf(fd, "  node[%d] coils %s[%d]\n", n, node->coil_name, node->coil_size);
+                if(node->disc_name != NULL)
+                    fprintf(fd, "  node[%d] discretes %s[%d]\n", n, node->disc_name, node->disc_size);
+                if(node->hold_name != NULL)
+                    fprintf(fd, "  node[%d] holding %s[%d]\n", n, node->hold_name, node->hold_size);
+                if(node->input_name != NULL)
+                    fprintf(fd, "  node[%d] inputs %s[%d]\n", n, node->input_name, node->input_size);
+            }
+        }
     }
     fprintf(fd, "\n");
 }
