@@ -22,3 +22,102 @@
 extern dax_state *ds;
 
 
+void
+slave_write_database(mb_port *port, int reg, int index, int count, uint16_t *data)
+{
+    int result;
+    tag_handle h;
+
+    /* We're going to cheat and build our own tag_handle */
+    /* We're assuming that the server loop won't call this function
+     * with bad data. */
+    switch(reg) {
+        case MB_REG_HOLDING: /* These are the 16 bit registers */
+            h.index = port->hold_tag.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_INPUT:
+            h.index = port->input_tag.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_COIL:
+            h.index = port->coil_tag.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
+        case MB_REG_DISC:
+            h.index = port->disc_tag.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
+    }
+
+    result = dax_write_tag(ds, h, data);
+    if(result) {
+        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
+    }
+}
+
+
+void
+slave_read_database(mb_port *port, int reg, int index, int count, uint16_t *data) {
+    int result;
+    tag_handle h;
+
+    /* We're going to cheat and build our own tag_handle */
+    /* We're assuming that the server loop won't call this function
+     * with bad data. */
+    switch(reg) {
+        case MB_REG_HOLDING: /* These are the 16 bit registers */
+            h.index = port->hold_tag.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_INPUT:
+            h.index = port->input_tag.index;
+            h.byte = index * 2;
+            h.bit = 0;
+            h.count = count;
+            h.size = count * 2;
+            h.type = DAX_UINT;
+            break;
+        case MB_REG_COIL:
+            h.index = port->coil_tag.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
+        case MB_REG_DISC:
+            h.index = port->disc_tag.index;
+            h.byte = index / 8;
+            h.bit = index % 8;
+            h.count = count;
+            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
+            h.type = DAX_BOOL;
+            break;
+    }
+    result = dax_read_tag(ds, h, data);
+    if(result) {
+        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
+    }
+}
+

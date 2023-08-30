@@ -202,6 +202,22 @@ typedef struct mb_cmd {
     struct mb_cmd* next;
 } mb_cmd;
 
+/* This holds all of the information to define a register set for a single unit id */
+typedef struct mb_unit_def {
+    char *hold_name;
+    unsigned int hold_size;    /* size of the internal holding register bank */
+    tag_handle hold_tag;
+    char *input_name;
+    unsigned int input_size;   /* size of the internal input register bank */
+    tag_handle input_tag;
+    char *coil_name;
+    unsigned int coil_size;    /* size of the internal bank of coils in 16-bit registers */
+    tag_handle coil_tag;
+    char *disc_name;
+    unsigned int disc_size;    /* size of the internal bank of coils */
+    tag_handle disc_tag;
+} mb_unit_def;
+
 
 /* Internal struct that defines a single Modbus(tm) Port */
 typedef struct mb_port {
@@ -268,9 +284,6 @@ typedef struct mb_port {
     /* These are callback function pointers for the port message data */
     void (*out_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
     void (*in_callback)(struct mb_port *port, uint8_t *buff, unsigned int);
-    void (*slave_read)(struct mb_port *port, int reg, int index, int size, uint16_t *data);
-    void (*slave_write)(struct mb_port *port, int reg, int index, int size, uint16_t *data);
-    void (*userdata_free)(struct mb_port *port, void *userdata);
 } mb_port;
 
 
@@ -307,14 +320,6 @@ int mb_get_connection(mb_port *mp, struct in_addr address, uint16_t port);
 /* Set callback functions that are called any time data is read or written over the port */
 void mb_set_msgout_callback(mb_port *, void (*outfunc)(mb_port *,uint8_t *,unsigned int));
 void mb_set_msgin_callback(mb_port *, void (*infunc)(mb_port *,uint8_t *,unsigned int));
-
-/* Slave Port callbacks */
-/* Sets the callback that is called when the Slave/Server receives a request to read data from the slave*/
-void mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data));
-/* Sets the callback that is called when the Slave/Server receives a request to write data to the slave*/
-void mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data));
-
-void *mb_get_port_userdata(mb_port *mp);
 
 /* Create a new command and add it to the port */
 mb_cmd *mb_new_cmd(mb_port *port);

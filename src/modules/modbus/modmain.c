@@ -26,7 +26,6 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <modopt.h>
-#include <database.h>
 #include <modbus.h>
 
 extern struct Config config;
@@ -51,108 +50,6 @@ _port_thread(void *port) {
     mb_run_port((mb_port *)port);
 }
 
-
-/* This callback function is assigned as the slave_write callback to the modbus
- * library.  After the library updates the modbus tables with new information this
- * function is called which writes the data back to the OpenDAX server */
-static void
-_slave_write_callback(mb_port *port, int reg, int index, int count, uint16_t *data)
-{
-    int result;
-    tag_handle h;
-
-    /* We're going to cheat and build our own tag_handle */
-    /* We're assuming that the server loop won't call this function
-     * with bad data. */
-    switch(reg) {
-        case MB_REG_HOLDING: /* These are the 16 bit registers */
-            h.index = port->hold_tag.index;
-            h.byte = index * 2;
-            h.bit = 0;
-            h.count = count;
-            h.size = count * 2;
-            h.type = DAX_UINT;
-            break;
-        case MB_REG_INPUT:
-            h.index = port->input_tag.index;
-            h.byte = index * 2;
-            h.bit = 0;
-            h.count = count;
-            h.size = count * 2;
-            h.type = DAX_UINT;
-            break;
-        case MB_REG_COIL:
-            h.index = port->coil_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
-            h.count = count;
-            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
-            h.type = DAX_BOOL;
-            break;
-        case MB_REG_DISC:
-            h.index = port->disc_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
-            h.count = count;
-            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
-            h.type = DAX_BOOL;
-            break;
-    }
-
-    result = dax_write_tag(ds, h, data);
-    if(result) {
-        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
-    }
-}
-
-
-static void
-_slave_read_callback(mb_port *port, int reg, int index, int count, uint16_t *data) {
-    int result;
-    tag_handle h;
-
-    /* We're going to cheat and build our own tag_handle */
-    /* We're assuming that the server loop won't call this function
-     * with bad data. */
-    switch(reg) {
-        case MB_REG_HOLDING: /* These are the 16 bit registers */
-            h.index = port->hold_tag.index;
-            h.byte = index * 2;
-            h.bit = 0;
-            h.count = count;
-            h.size = count * 2;
-            h.type = DAX_UINT;
-            break;
-        case MB_REG_INPUT:
-            h.index = port->input_tag.index;
-            h.byte = index * 2;
-            h.bit = 0;
-            h.count = count;
-            h.size = count * 2;
-            h.type = DAX_UINT;
-            break;
-        case MB_REG_COIL:
-            h.index = port->coil_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
-            h.count = count;
-            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
-            h.type = DAX_BOOL;
-            break;
-        case MB_REG_DISC:
-            h.index = port->disc_tag.index;
-            h.byte = index / 8;
-            h.bit = index % 8;
-            h.count = count;
-            h.size = (h.bit + count - 1) / 8 - (h.bit / 8) + 1;
-            h.type = DAX_BOOL;
-            break;
-    }
-    result = dax_read_tag(ds, h, data);
-    if(result) {
-        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
-    }
-}
 
 static void
 _change_callback(dax_state *_ds, void *ud) {
@@ -312,8 +209,6 @@ _setup_port(mb_port *port)
             if(result) dax_log(LOG_ERROR, "Failed to add discrete input tag for port %s", port->name);
         }
         /* TODO: We probably don't need these to be callbacks anymore since we got rid of the library */
-        mb_set_slave_write_callback(port, _slave_write_callback);
-        mb_set_slave_read_callback(port, _slave_read_callback);
     } else { /* We must be a master port */
         /* Here we add the command enable tag for the ports */
         mc = port->commands;

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
+ *
  * Source file that contains the tag database handline funcitons.
  */
 
@@ -26,6 +26,7 @@
 #include <modopt.h>
 #include <modbus.h>
 
-void setup_command(struct mb_cmd *c, void *userdata, uint8_t *data, int datasize);
+void slave_write_database(mb_port *port, int reg, int index, int count, uint16_t *data);
+void slave_read_database(mb_port *port, int reg, int index, int count, uint16_t *data);
 
 #endif

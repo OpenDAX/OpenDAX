@@ -57,8 +57,6 @@ initport(mb_port *p)
     p->commands = NULL;
     p->out_callback = NULL;
     p->in_callback = NULL;
-    p->slave_read = NULL;
-    p->slave_write = NULL;
     strcpy(p->ipaddress, "0.0.0.0");
     p->connections = malloc(sizeof(tcp_connection) * MB_INIT_CONNECTION_SIZE);
     p->connection_size = MB_INIT_CONNECTION_SIZE;
@@ -448,28 +446,6 @@ mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,uint8_t *buff, u
     mp->in_callback = infunc;
 }
 
-/*
- * The slave_read_callback function is called by the server loop just before the response
- * is built and returned to the requesting client/master.  This would be used to read
- * data from some external source and put it into the affected register area just before
- * the response is sent.
- */
-void
-mb_set_slave_read_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data))
-{
-    mp->slave_read = infunc;
-}
-
-/*
- * The slave_write_callback function is called by the server loop just after the data from
- * the received frame has been written into the register memory.  This function would be
- * used to write the changed data out to an external database.
- */
-void
-mb_set_slave_write_callback(mb_port *mp, void (*infunc)(struct mb_port *port, int reg, int index, int count, uint16_t *data))
-{
-    mp->slave_write = infunc;
-}
 
 /* returns the next connection in the pool unless we are full then
  * reallocate the pool and double it's size */

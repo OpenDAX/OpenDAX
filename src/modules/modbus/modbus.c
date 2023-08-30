@@ -22,6 +22,7 @@
 #include <sys/select.h>
 #include <pthread.h>
 #include "modbus.h"
+#include "database.h"
 
 extern dax_state *ds;
 
@@ -755,9 +756,7 @@ _read_bits_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 
     COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
     COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of disc/coils requested */
-    if(port->slave_read) { /* Call the callback function if it has been set */
-        port->slave_read(port, mbreg, index, count, reg);
-    }
+    slave_read_database(port, mbreg, index, count, reg);
     if(mbreg == MB_REG_COIL) {
         regsize = port->coil_size;
     } else {
@@ -805,9 +804,7 @@ _read_words_response(mb_port *port, unsigned char *buff, int size, int mbreg)
 
     COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
     COPYWORD(&count, (uint16_t *)&buff[4]); /* Number of words/coils */
-    if(port->slave_read) { /* Call the callback function if it has been set */
-        port->slave_read(port, mbreg, index, count, reg);
-    }
+    slave_read_database(port, mbreg, index, count, reg);
     if(mbreg == MB_REG_HOLDING) {
         regsize = port->hold_size;
     } else {
@@ -880,6 +877,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
     }
     /* If we're TCP then node doesn't matter yet.  Other wise return 0 if
      * this message isn't for us. */
+
     if(port->protocol != MB_TCP) {
         if(node != port->slaveid) return 0;
     }
@@ -903,9 +901,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
             } else {
                 data[0] = 0x00;
             }
-            if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_COIL, index, 1, data);
-            }
+            slave_write_database(port, MB_REG_COIL, index, 1, data);
             return 6;
         case 6: /* Write Single Register */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
@@ -914,9 +910,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
             data[0] = value;
-            if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_HOLDING, index, 1, data);
-            }
+            slave_write_database(port, MB_REG_HOLDING, index, 1, data);
             return 6;
         case 8:
             return size / 2;
@@ -937,9 +931,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 bit++;
                 if(bit == 16) { bit = 0; word++; }
             }
-            if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_COIL, index, count, data);
-            }
+            slave_write_database(port, MB_REG_COIL, index, count, data);
             return 6;
         case 16: /* Write Multiple Registers */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
@@ -950,9 +942,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
             for(n = 0; n < count; n++) {
                 COPYWORD(&data[n], &buff[7 + (n*2)]);
             }
-            if(port->slave_write) { /* Call the callback function if it has been set */
-                port->slave_write(port, MB_REG_HOLDING, index, count, data);
-            }
+            slave_write_database(port, MB_REG_HOLDING, index, count, data);
             return 6;
         default:
             break;
