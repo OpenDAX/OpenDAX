@@ -423,8 +423,12 @@ _set_attribute(tag_index idx, uint32_t attr) {
         /* TODO: add tag retention */;
         ret_add_tag(idx);
         _db[idx].attr |= TAG_ATTR_RETAIN;
-    } else if(attr & TAG_ATTR_OWNED && attr & TAG_ATTR_READONLY) {
-        _db[idx].attr |= (TAG_ATTR_OWNED | TAG_ATTR_READONLY);
+    } else {
+        if(attr & TAG_ATTR_OWNED && attr & TAG_ATTR_READONLY) {
+            _db[idx].attr |= (TAG_ATTR_OWNED | TAG_ATTR_READONLY);
+        } else if(attr & TAG_ATTR_OWNED) {
+            _db[idx].attr |= TAG_ATTR_OWNED;
+        }
     }
 }
 
@@ -471,7 +475,10 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
     }
 
     /* Check for an existing tagname in the database */
-    if( (n = _get_by_name(name)) >= 0) {
+    if( (n = _get_by_name(name)) >= 0) { /* The tag already exists */
+        if((_db[n].attr & TAG_ATTR_OWNED) && _db[n].fd != fd) {
+            return ERR_TAG_DUPL;
+        }
         /* If the tag is identical or bigger then just return the handle */
         if(_db[n].type == type && _db[n].count >= count) {
             _set_attribute(n, attr);
@@ -593,6 +600,7 @@ tag_del(tag_index idx)
     xfree(_db[idx].data);
     _db[idx].name = NULL;
     _db[idx].data = NULL;
+    _db[idx].attr = 0;
     _tagcount--;
 
     return 0;

@@ -113,9 +113,6 @@ send_tag(lua_State *L, tag_handle h)
 
 
 
-/* TODO: Stuff to add.
- * give the scripts a way to enable and disable each other
- */
 
 /* Use this function to setup each interpreter with all the right function calls
 and libraries */
@@ -129,15 +126,21 @@ setup_interpreter(lua_State *L)
     daxlua_register_function(L, "tag_handle");
     daxlua_register_function(L, "tag_read");
     daxlua_register_function(L, "tag_write");
+    daxlua_register_function(L, "map_add");
+    daxlua_register_function(L, "map_del");
+    daxlua_register_function(L, "map_get");
     daxlua_register_function(L, "log");
     daxlua_register_function(L, "sleep");
 
     daxlua_set_constants(L);
     /* register the libraries that we need*/
-    luaopen_base(L);
-    luaopen_table(L);
-    luaopen_string(L);
-    luaopen_math(L);
+    //luaL_openlibs(L);
+    luaL_requiref(L, "_G", luaopen_base, 1);
+    luaL_requiref(L, "math", luaopen_math, 1);
+    luaL_requiref(L, "table", luaopen_table, 1);
+    luaL_requiref(L, "string", luaopen_string, 1);
+    luaL_requiref(L, "utf8", luaopen_utf8, 1);
+    lua_pop(L, 5);
 
     return 0; /* I don't think anything returns an error */
 }

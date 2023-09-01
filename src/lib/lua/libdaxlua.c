@@ -235,25 +235,21 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             break;
         case DAX_WORD:
         case DAX_UINT:
-            x = lua_tointeger(L, -1);
-            ((dax_uint *)data)[index] = x;
+            ((dax_uint *)data)[index] = lua_tonumber(L, -1);
             ((dax_uint *)mask)[index] = 0xFFFF;
             break;
         case DAX_INT:
-            x = lua_tointeger(L, -1);
-            ((dax_int *)data)[index] = x;
+            ((dax_int *)data)[index] = lua_tonumber(L, -1);
             ((dax_int *)mask)[index] = 0xFFFF;
             break;
         case DAX_DWORD:
         case DAX_UDINT:
         case DAX_TIME:
-            x = lua_tointeger(L, -1);
-            ((dax_udint *)data)[index] = x;
+            ((dax_udint *)data)[index] = lua_tonumber(L, -1);
             ((dax_udint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_DINT:
-            x = lua_tointeger(L, -1);
-            ((dax_dint *)data)[index] = x;
+            ((dax_dint *)data)[index] = lua_tonumber(L, -1);
             ((dax_dint *)mask)[index] = 0xFFFFFFFF;
             break;
         case DAX_REAL:
@@ -262,13 +258,11 @@ _write_from_stack(lua_State *L, unsigned int type, void *data, void *mask, int i
             break;
         case DAX_LWORD:
         case DAX_ULINT:
-            x = lua_tointeger(L, -1);
-            ((dax_ulint *)data)[index] = x;
+            ((dax_ulint *)data)[index] = lua_tonumber(L, -1);
             ((dax_ulint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LINT:
-            x = lua_tointeger(L, -1);
-            ((dax_lint *)data)[index] = x;
+            ((dax_lint *)data)[index] = lua_tonumber(L, -1);
             ((dax_lint *)mask)[index] = DAX_64_ONES;
             break;
         case DAX_LREAL:
@@ -1668,12 +1662,6 @@ _set_atomic_constants(lua_State *L) {
 }
 
 
-void
-daxlua_set_constants(lua_State *L) {
-    _set_log_constants(L);
-    _set_attr_constants(L);
-    _set_atomic_constants(L);
-}
 
 static int
 _handle_index(lua_State *L) {
@@ -1745,6 +1733,22 @@ luaopen_dax(lua_State *L)
     luaL_newlib(L, daxlib);
 
     return 1;
+}
+
+/* The following two functions are used by c program modules to customize
+   the interpreter setup as far as the functions that will be added. This
+   is different than calling require('dax') from within the lua interpreter
+   which calls the luaopen_dax() function and loads everything. */
+
+/* This function is used by C program modules like 'daxlua' to setup
+   the meta tables and the constants. */
+void
+daxlua_set_constants(lua_State *L) {
+    luaL_newmetatable(L, "OpenDAX.handle");
+    luaL_setfuncs(L, handle_m, 0);
+    _set_log_constants(L);
+    _set_attr_constants(L);
+    _set_atomic_constants(L);
 }
 
 
