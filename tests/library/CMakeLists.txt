@@ -56,6 +56,7 @@ set(test_list event_wait
               strings
               handles
               mapping_basic
+              mapping_bool
               mapping_get
    )
 

@@ -71,6 +71,7 @@ map_add(tag_handle src, tag_handle dest)
     int bit, offset;
     uint8_t *mask;
 
+    DF("map added index1=%d, byte1, %d, size1=%d, index2=%d, byte2=%d, size2=%d", src.index, src.byte, src.size, dest.index, dest.byte, dest.size);
     /* Bounds check handles */
     if(src.index < 0 || src.index >= get_tagindex()) {
        dax_log(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
@@ -225,12 +226,6 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
      * the mapping.  If we chain too many then we'll tell the user which tag started it all. */
     if(_first_tag == -1) _first_tag = idx;
     while(this != NULL) {
-//        printf("src.byte = 0x%X\n", this->source.byte);
-//        printf("src.bit = 0x%X\n", this->source.bit);
-//        printf("src.size = %d\n", this->source.size);
-//        printf("dest.byte = 0x%X\n", this->dest.byte);
-//        printf("dest.bit = 0x%X\n", this->dest.bit);
-//        printf("dest.size = %d\n", this->dest.size);
 
         if(offset <= (this->source.byte + this->source.size - 1) && (offset + size -1 ) >= this->source.byte) {
             /* Mapping Hit */
@@ -253,7 +248,7 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                     return ERR_ALLOC;
                 }
                 bzero(new_data, this->source.size);
-                for(int n=0; n<this->source.count; n++) {
+                for(int n=0; n<MIN(this->source.count, size*8); n++) {
                     if(data[srcByte] & (0x01 << srcBit)) {
                         new_data[destByte] |= (0x01 << destBit);
                     }
@@ -268,8 +263,6 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                         destByte++;
                     }
                 }
-//                printf("data = 0x%X\n", *(uint16_t *)new_data);
-//                printf("mask = 0x%X\n", *(uint16_t *)this->mask);
                 result = tag_mask_write(-1, this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
                 /* If the destination tag has been deleted then delete this map */
                 if(result == ERR_DELETED) {
@@ -277,10 +270,8 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                 }
                 free(new_data);
             } else {
-                //new_data = data;
                 new_data = &data[offset+this->source.byte];
 
-//                printf("data = 0x%X\n", *(uint16_t *)new_data);
                 result = tag_write(-1, this->dest.index, this->dest.byte, new_data, this->dest.size);
                 /* If the destination tag has been deleted then delete this map */
                 if(result == ERR_DELETED) {
