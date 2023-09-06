@@ -872,6 +872,8 @@ create_response(mb_port *port, unsigned char *buff, int size)
     uint16_t index, value, count;
     uint16_t data[128]; /* should be the largest Modbus data size */
     int word, bit, n;
+    int8_t result, retval;
+    lua_State *L;
 
     node = buff[0]; /* Node Number */
     function = buff[1]; /* Modbus Function Code */
@@ -884,6 +886,31 @@ create_response(mb_port *port, unsigned char *buff, int size)
         }
     }
 
+    if(port->nodes[node]->read_callback != LUA_REFNIL) {
+        if(function == 1 || function == 2 || function == 3 || function == 4)  {
+            COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
+            COPYWORD(&count, (uint16_t *)&buff[4]); /* Count */
+            L = dax_get_luastate(ds);
+
+            lua_settop(L, 0); /* Delete the stack */
+            /* Get the filter function from the registry and push it onto the stack */
+            lua_rawgeti(L, LUA_REGISTRYINDEX, port->nodes[node]->read_callback);
+            lua_pushinteger(L, node);     /* First argument is the node number */
+            lua_pushinteger(L, function); /* Second argument is the function code */
+            lua_pushinteger(L, index); /* Third argument is the requested register (0 based)  */
+            lua_pushinteger(L, count); /* fourth argument is the count */
+            if(lua_pcall(L, 4, 1, 0) != LUA_OK) {
+                dax_log(LOG_ERROR, "callback funtion for %s - %d: %s", port->name, node, lua_tostring(L, -1));
+            } else { /* Success */
+                result = lua_tointeger(L, -1);
+            }
+        }
+    }
+    /* If the Lua callback function returns a non-zero integer then create an
+       exception message with that integer */
+    if(result) {
+        return _create_exception(buff, result);
+    }
     if(_check_function_code_exception(port, node, function)) {
         return _create_exception(buff, ME_WRONG_FUNCTION);
     }
@@ -909,7 +936,8 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 data[0] = 0x00;
             }
             slave_write_database(port->nodes[node]->coil_idx, MB_REG_COIL, index, 1, data);
-            return 6;
+            retval = 6;
+            break;
         case 6: /* Write Single Register */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
             COPYWORD(&value, (uint16_t *)&buff[4]); /* Value */
@@ -918,12 +946,13 @@ create_response(mb_port *port, unsigned char *buff, int size)
             }
             data[0] = value;
             slave_write_database(port->nodes[node]->hold_idx, MB_REG_HOLDING, index, 1, data);
-            return 6;
+            retval = 6;
+            break;
         case 8:
             return size / 2;
         case 15: /* Write Multiple Coils */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
+            COPYWORD(&count, (uint16_t *)&buff[4]); /* Count */
             if((index + count) > port->nodes[node]->coil_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
@@ -939,10 +968,11 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 if(bit == 16) { bit = 0; word++; }
             }
             slave_write_database(port->nodes[node]->coil_idx, MB_REG_COIL, index, count, data);
-            return 6;
+            retval = 6;
+            break;
         case 16: /* Write Multiple Registers */
             COPYWORD(&index, (uint16_t *)&buff[2]); /* Starting Address */
-            COPYWORD(&count, (uint16_t *)&buff[4]); /* Value */
+            COPYWORD(&count, (uint16_t *)&buff[4]); /* Count */
             if((index + count) > port->nodes[node]->hold_size) {
                 return _create_exception(buff, ME_BAD_ADDRESS);
             }
@@ -950,10 +980,39 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 COPYWORD(&data[n], &buff[7 + (n*2)]);
             }
             slave_write_database(port->nodes[node]->hold_idx, MB_REG_HOLDING, index, count, data);
-            return 6;
+            retval = 6;
+            break;
         default:
             break;
     }
 
-    return 0;
+    /* We should only get this far if we have had a successful write response created*/
+    if(port->nodes[node]->write_callback != LUA_REFNIL) {
+        if(function == 5 || function == 6 || function == 15 || function == 16)  {
+            L = dax_get_luastate(ds);
+
+            lua_settop(L, 0); /* Delete the stack */
+            /* Get the filter function from the registry and push it onto the stack */
+            lua_rawgeti(L, LUA_REGISTRYINDEX, port->nodes[node]->write_callback);
+            lua_pushinteger(L, node);     /* First argument is the node number */
+            lua_pushinteger(L, function); /* Second argument is the function code */
+            lua_pushinteger(L, index); /* Third argument is the requested register (0 based)  */
+            if(function == 5 || function == 6) {
+                lua_pushinteger(L, 1); /* fourth argument is the count for fc 5&6 it's going to be 1*/
+            } else {
+                lua_pushinteger(L, count); /* fourth argument is the count */
+            }
+            if(lua_pcall(L, 4, 1, 0) != LUA_OK) {
+                dax_log(LOG_ERROR, "callback funtion for %s - %d: %s", port->name, node, lua_tostring(L, -1));
+            } else { /* Success */
+                result = lua_tointeger(L, -1);
+            }
+        }
+    }
+    /* If the write Lua callback returns non-zero then we create an exception for that
+       result.  Otherwise just continue on */
+    if(result) {
+        return _create_exception(buff, result);
+    }
+    return retval;
 }

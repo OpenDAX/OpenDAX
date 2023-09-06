@@ -22,6 +22,8 @@
 #include <common.h>
 #include "modopt.h"
 #include <opendax.h>
+#include <libdaxlua.h>
+
 
 #include <string.h>
 #include <stdio.h>
@@ -469,6 +471,33 @@ _add_command(lua_State *L)
     return 0;
 }
 
+/* This returns a pointer to the node stucture for the given port.
+   Allocates the node if that has not been done yet.  Returns NULL
+   on failure and a valid pointer otherwise */
+static mb_node_def *
+_get_node(mb_port *port, int nodeid) {
+
+    if(port->nodes[nodeid] == NULL) { /* If it hasn't been allocated yet */
+        port->nodes[nodeid] = malloc(sizeof(mb_node_def));
+        if(port->nodes[nodeid] != NULL) {
+
+            /* Initialize 'name' to NULL so later we can know if it was set */
+            port->nodes[nodeid]->hold_name = NULL;
+            port->nodes[nodeid]->input_name = NULL;
+            port->nodes[nodeid]->coil_name = NULL;
+            port->nodes[nodeid]->disc_name = NULL;
+            port->nodes[nodeid]->hold_size = 0;
+            port->nodes[nodeid]->input_size = 0;
+            port->nodes[nodeid]->coil_size = 0;
+            port->nodes[nodeid]->disc_size = 0;
+            port->nodes[nodeid]->read_callback = LUA_REFNIL;
+            port->nodes[nodeid]->write_callback = LUA_REFNIL;
+        }
+    }
+    return port->nodes[nodeid];
+
+}
+
 /* Lua interface function for adding a modbus slave register tag
    to a port.  Accepts five arguments.
    Arguements:
@@ -486,6 +515,7 @@ _add_register(lua_State *L)
     int nodeid;
     int p;
     mb_port *port;
+    mb_node_def *node;
 
     p = lua_tointeger(L, 1);
     p--; /* Lua has indexes that are 1+ our actual array indexes */
@@ -514,46 +544,131 @@ _add_register(lua_State *L)
         luaL_error(L, "Register size must be between 1-65535 on Port %s", port->name);
     }
 
-    if(port->nodes[nodeid] == NULL) { /* If it hasn't been allocated yet */
-        port->nodes[nodeid] = malloc(sizeof(mb_node_def));
-        if(port->nodes[nodeid] == NULL) {
-            luaL_error(L, "Unable to allocate memory for node on port %s", port->name);
-        }
-        /* Initialize 'name' to NULL so later we can know if it was set */
-        port->nodes[nodeid]->hold_name = NULL;
-        port->nodes[nodeid]->input_name = NULL;
-        port->nodes[nodeid]->coil_name = NULL;
-        port->nodes[nodeid]->disc_name = NULL;
-        port->nodes[nodeid]->hold_size = 0;
-        port->nodes[nodeid]->input_size = 0;
-        port->nodes[nodeid]->coil_size = 0;
-        port->nodes[nodeid]->disc_size = 0;
-
+    node = _get_node(port, nodeid);
+    if(node == NULL) {
+        luaL_error(L, "Unable to allocate memory for node on port %s", port->name);
     }
 
     mbreg = lua_tointeger(L, 5);
     switch(mbreg) {
         case MB_REG_HOLDING:
-            port->nodes[nodeid]->hold_name = strdup(tagname);
-            port->nodes[nodeid]->hold_size = size;
+            node->hold_name = strdup(tagname);
+            node->hold_size = size;
             break;
         case MB_REG_INPUT:
-            port->nodes[nodeid]->input_name = strdup(tagname);
-            port->nodes[nodeid]->input_size = size;
+            node->input_name = strdup(tagname);
+            node->input_size = size;
             break;
         case MB_REG_COIL:
-            port->nodes[nodeid]->coil_name = strdup(tagname);
-            port->nodes[nodeid]->coil_size = size;
+            node->coil_name = strdup(tagname);
+            node->coil_size = size;
             break;
         case MB_REG_DISC:
-            port->nodes[nodeid]->disc_name = strdup(tagname);
-            port->nodes[nodeid]->disc_size = size;
+            node->disc_name = strdup(tagname);
+            node->disc_size = size;
             break;
         default:
             luaL_error(L, "Invalid register type given on Port %s", port->name);
     }
     return 0;
 }
+
+/* Lua interface function for adding a modbus slave read callback function
+   to a port.  Accepts five arguments.
+   Arguements:
+      port id
+      node / unit id
+      function
+*/
+static int
+_add_read_callback(lua_State *L)
+{
+    int nodeid;
+    int p;
+    mb_port *port;
+    mb_node_def *node;
+
+    p = lua_tointeger(L, 1);
+    p--; /* Lua has indexes that are 1+ our actual array indexes */
+    if(p < 0 || p >= config.portcount) {
+        luaL_error(L, "Unknown Port ID : %d", p);
+    }
+    port = config.ports[p];
+    if(port->type != MB_SLAVE) {
+        dax_log(LOG_WARN, "Adding registers only makes sense for a Slave or Server port");
+        return 0;
+    }
+    dax_log(LOG_DEBUG, "Adding a register to port %s", port->name);
+
+    nodeid = lua_tointeger(L, 2);
+    if(nodeid <0 || nodeid >= MB_MAX_SLAVE_NODES) {
+        luaL_error(L, "Invalid node id given for register on Port %s", port->name);
+    }
+
+    node = _get_node(port, nodeid);
+    if(node == NULL) {
+        luaL_error(L, "Unable to allocate memory for node on port %s", port->name);
+    }
+
+    lua_settop(L, 3); /*put the function at the top of the stack */
+    if(! lua_isfunction(L, -1)) {
+        luaL_error(L, "filter should be a function ");
+    }
+    /* Pop the function off the stack and write it to the regsitry and assign
+       the reference to .filter */
+    node->read_callback = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    return 0;
+}
+
+/* Lua interface function for adding a modbus slave read callback function
+   to a port.  Accepts five arguments.
+   Arguements:
+      port id
+      node / unit id
+      function
+*/
+static int
+_add_write_callback(lua_State *L)
+{
+    int nodeid;
+    int p;
+    mb_port *port;
+    mb_node_def *node;
+
+    p = lua_tointeger(L, 1);
+    p--; /* Lua has indexes that are 1+ our actual array indexes */
+    if(p < 0 || p >= config.portcount) {
+        luaL_error(L, "Unknown Port ID : %d", p);
+    }
+    port = config.ports[p];
+    if(port->type != MB_SLAVE) {
+        dax_log(LOG_WARN, "Adding registers only makes sense for a Slave or Server port");
+        return 0;
+    }
+    dax_log(LOG_DEBUG, "Adding a register to port %s", port->name);
+
+    nodeid = lua_tointeger(L, 2);
+    if(nodeid <0 || nodeid >= MB_MAX_SLAVE_NODES) {
+        luaL_error(L, "Invalid node id given for register on Port %s", port->name);
+    }
+
+    node = _get_node(port, nodeid);
+    if(node == NULL) {
+        luaL_error(L, "Unable to allocate memory for node on port %s", port->name);
+    }
+
+    lua_settop(L, 3); /*put the function at the top of the stack */
+    if(! lua_isfunction(L, -1)) {
+        luaL_error(L, "filter should be a function ");
+    }
+    /* Pop the function off the stack and write it to the regsitry and assign
+       the reference to .filter */
+    node->write_callback = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    return 0;
+}
+
 
 /* This function should be called from main() to configure the program.
  * First the defaults are set then the configuration file is parsed then
@@ -581,14 +696,36 @@ modbus_configure(int argc, const char *argv[])
     dax_set_luafunction(ds, (void *)_add_port, "add_port");
     dax_set_luafunction(ds, (void *)_add_command, "add_command");
     dax_set_luafunction(ds, (void *)_add_register, "add_register");
+    dax_set_luafunction(ds, (void *)_add_read_callback, "add_read_callback");
+    dax_set_luafunction(ds, (void *)_add_write_callback, "add_write_callback");
 
     result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
 
     dax_clear_luafunction(ds, "add_port");
     dax_clear_luafunction(ds, "add_command");
     dax_clear_luafunction(ds, "add_register");
+    dax_clear_luafunction(ds, "add_read_callback");
+    dax_clear_luafunction(ds, "add_write_callback");
 
-    dax_free_config(ds);
+    /* Add functions that make sense for any callbacks that might be configured.
+       The callback functions will live in the configuration Lua state */
+    daxlua_register_function(L, "tag_get");
+    daxlua_register_function(L, "tag_handle");
+    daxlua_register_function(L, "tag_read");
+    daxlua_register_function(L, "tag_write");
+    /* TODO: Should add atomic operations */
+    daxlua_register_function(L, "log");
+    daxlua_register_function(L, "sleep");
+
+    daxlua_set_constants(L);
+    /* register the libraries that we need*/
+    luaL_requiref(L, "_G", luaopen_base, 1);
+    luaL_requiref(L, "math", luaopen_math, 1);
+    luaL_requiref(L, "table", luaopen_table, 1);
+    luaL_requiref(L, "string", luaopen_string, 1);
+    luaL_requiref(L, "utf8", luaopen_utf8, 1);
+    lua_pop(L, 5);
+
 
     printconfig();
 

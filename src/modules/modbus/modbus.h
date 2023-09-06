@@ -218,6 +218,8 @@ typedef struct mb_node_def {
     char *disc_name;
     unsigned int disc_size;    /* size of the tag of discretes */
     tag_index disc_idx;
+    int read_callback;
+    int write_callback;
 } mb_node_def;
 
 
