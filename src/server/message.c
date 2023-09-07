@@ -567,6 +567,7 @@ msg_tag_write(dax_message *msg)
         result = ERR_READONLY;
     } else {
         result = tag_write(msg->fd, idx, offset, data, size);
+        map_check(idx, offset, size);
     }
     if(result) {
         _message_send(msg->fd, MSG_TAG_WRITE, &result, sizeof(result), ERROR);
@@ -597,6 +598,7 @@ msg_tag_mask_write(dax_message *msg)
         result =  ERR_READONLY;
     } else {
         result = tag_mask_write(msg->fd, idx, offset, data, mask, size);
+        map_check(idx, offset, size);
     }
     if(result) {
         _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);

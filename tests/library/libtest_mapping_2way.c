@@ -17,7 +17,8 @@
  */
 
 /*
- *  This test checks the basic functions of the data mapping
+ *  This test checks two tags that are mapped to one another.  Writing to
+ *  either tag updates the other.
  */
 
 #include <common.h>
@@ -34,9 +35,8 @@ do_test(int argc, char *argv[])
     dax_state *ds;
     int result = 0;
     tag_handle h1, h2;
-    dax_uint temp, n, mask;
+    dax_dint temp, n;
     dax_id id;
-    char tagname[20];
 
     ds = dax_init("test");
 
@@ -46,42 +46,40 @@ do_test(int argc, char *argv[])
         return -1;
     }
     result = 0;
-    result += dax_tag_add(ds, &h1, "TEST1", DAX_BOOL, 16, 0);
+    result += dax_tag_add(ds, &h1, "TEST1", DAX_DINT, 1, 0);
     if(result) return -1;
-    result += dax_tag_add(ds, &h2, "TEST2", DAX_UINT, 1, 0);
+    result += dax_tag_add(ds, &h2, "TEST2", DAX_DINT, 1, 0);
     if(result) return -1;
 
     result = dax_map_add(ds, &h1, &h2, &id);
     if(result) return -1;
+    result = dax_map_add(ds, &h2, &h1, &id);
+    if(result) return -1;
 
-    for(n=0;n<16;n++) {
-        temp = 0x0001;
-        snprintf(tagname, 20, "TEST1[%d]", n);
-        DF("Writing 0x%X to %s", temp,tagname);
-        result = dax_tag_handle(ds, &h1, tagname, 0);
-        if(result) return -1;
-        result = dax_tag_write(ds, h1, &temp);
-        if(result) return -1;
+    temp = 1200;
+    DF("Writing %d to first tag", temp);
+    result = dax_tag_write(ds, h1, &temp);
+    if(result) return -1;
+    /* Read from the second tag */
+    result = dax_tag_read(ds, h2, &temp);
+    if(result) return -1;
 
-        /* Read from the second tag */
-        result = dax_tag_read(ds, h2, &temp);
-        if(result) return -1;
+    if(temp != 1200) {
+        DF("Returned tag does not match - %d", temp);
+        return -1;
+    }
 
-        if(temp != (0x0001 << n)) {
-            DF("Returned tag does not match - 0x%X != 0x%X", temp, (0x0001 << n));
-            return -1;
-        }
-        /* Now we clear the bit */
-        temp = 0x0000;
-        result = dax_tag_write(ds, h1, &temp);
-        if(result) return -1;
-        result = dax_tag_read(ds, h2, &temp);
-        if(result) return -1;
+    temp = 2400;
+    DF("Writing %d to second tag", temp);
+    result = dax_tag_write(ds, h2, &temp);
+    if(result) return -1;
+    /* Read from the second tag */
+    result = dax_tag_read(ds, h1, &temp);
+    if(result) return -1;
 
-        if(temp != 0x0000) {
-            DF("Returned tag does not match - 0x%X != 0", temp);
-            return -1;
-        }
+    if(temp != 2400) {
+        DF("Returned tag does not match - %d", temp);
+        return -1;
     }
 
     dax_disconnect(ds);

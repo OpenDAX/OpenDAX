@@ -773,7 +773,6 @@ tag_write(int fd, tag_index idx, int offset, void *data, int size)
         /* Copy the data into the right place. */
         memcpy(&(_db[idx].data[offset]), data, size);
         event_check(idx, offset, size);
-        map_check(idx, offset, data, size);
     }
 
     if(_db[idx].attr & TAG_ATTR_RETAIN) {
@@ -817,7 +816,6 @@ tag_mask_write(int fd, tag_index idx, int offset, void *data, void *mask, int si
         db[n] = (newdata[n] & newmask[n]) | (db[n] & ~newmask[n]);
     }
     event_check(idx, offset, size);
-    map_check(idx, offset, data, size);
 
     if(_db[idx].attr & TAG_ATTR_RETAIN) {
         ret_tag_write(idx);

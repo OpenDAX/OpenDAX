@@ -25,9 +25,6 @@
 
 extern _dax_tag_db *_db;
 
-static tag_index _first_tag = -1;
-static int _mapping_hops = 0;
-
 /* Allocates and initializes a data map node */
 static _dax_datamap *
 _new_map(tag_handle src, tag_handle dest)
@@ -212,9 +209,9 @@ map_del_all(_dax_datamap *head) {
 }
 
 int
-map_check(tag_index idx, int offset, uint8_t *data, int size) {
+map_check(tag_index idx, int offset, int size) {
     _dax_datamap *this;
-    uint8_t *new_data;
+    uint8_t *new_data, *srcdb;
     int srcByte;
     int srcBit;
     int destByte;
@@ -224,17 +221,11 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
     this = _db[idx].mappings;
     /* If this is the first time we've been called then it means that is is the tag that started
      * the mapping.  If we chain too many then we'll tell the user which tag started it all. */
-    if(_first_tag == -1) _first_tag = idx;
     while(this != NULL) {
 
         if(offset <= (this->source.byte + this->source.size - 1) && (offset + size -1 ) >= this->source.byte) {
+            srcdb = &_db[this->source.index].data[this->source.byte];
             /* Mapping Hit */
-            _mapping_hops++;
-            if(_mapping_hops > MAX_MAP_HOPS) {
-                /* TODO: conditional compilation of program exit */
-                dax_log(LOG_ERROR, "Maximum number of chained mappings has been reached for tag %s", _db[_first_tag].name);
-                return ERR_OVERFLOW;
-            }
             if(this->mask != NULL) {
                 /* Move the bits from their position in the source to
                  * where they should go in the destination */
@@ -248,8 +239,8 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                     return ERR_ALLOC;
                 }
                 bzero(new_data, this->source.size);
-                for(int n=0; n<MIN(this->source.count, size*8); n++) {
-                    if(data[srcByte] & (0x01 << srcBit)) {
+                for(int n=0; n<this->source.count; n++) {
+                    if(srcdb[srcByte] & (0x01 << srcBit)) {
                         new_data[destByte] |= (0x01 << destBit);
                     }
                     srcBit++;
@@ -263,16 +254,15 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
                         destByte++;
                     }
                 }
-                result = tag_mask_write(-1, this->dest.index, this->dest.byte, new_data, this->mask, this->dest.size);
+                result = tag_mask_write(-1, this->dest.index, this->dest.byte, new_data, this->mask, this->source.size);
                 /* If the destination tag has been deleted then delete this map */
                 if(result == ERR_DELETED) {
+                    dax_log(LOG_DEBUG, "Destination tag has been deleted, removing map %d from tag index = %d", this->id, this->source.index);
                     map_del(this->source.index, this->id);
                 }
                 free(new_data);
             } else {
-                new_data = &data[offset+this->source.byte];
-
-                result = tag_write(-1, this->dest.index, this->dest.byte, new_data, this->dest.size);
+                result = tag_write(-1, this->dest.index, this->dest.byte, srcdb, this->source.size);
                 /* If the destination tag has been deleted then delete this map */
                 if(result == ERR_DELETED) {
                     map_del(this->source.index, this->id);
@@ -281,9 +271,5 @@ map_check(tag_index idx, int offset, uint8_t *data, int size) {
         }
         this = this->next;
     }
-    /* if we get here either there were no mapping hits or we are done.  In either case
-     * we reset our tracking variables. */
-    _first_tag = -1;
-    _mapping_hops = 0;
     return 0;
 }

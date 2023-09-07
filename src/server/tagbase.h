@@ -164,7 +164,7 @@ int map_add(tag_handle src, tag_handle dest);
 int map_del(tag_index index, int id);
 int map_get(tag_handle *src, tag_handle *dest, tag_index index, int id);
 int map_del_all(_dax_datamap *head);
-int map_check(tag_index idx, int offset, uint8_t *data, int size);
+int map_check(tag_index idx, int offset, int size);
 
 int override_add(tag_index idx, int offset, void *data, void *mask, int size);
 int override_del(tag_index idx, int offset, void *mask, int size);

@@ -58,6 +58,7 @@ set(test_list event_wait
               mapping_basic
               mapping_bool
               mapping_get
+              mapping_2way
    )
 
 foreach(test IN LISTS test_list)
