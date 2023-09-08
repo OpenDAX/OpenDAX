@@ -59,9 +59,13 @@ main(int argc, const char *argv[])
      * make sure and close the logger before we deamonize and then
      * call logger_init() again afterwards */
     process_init();
-    /* TODO: We should have individual configuration objects that we retrieve
-     * from this function, instead of the global data in the source file. */
-    opt_configure(argc, argv);
+
+    dax_init_logger("opendax", LOG_ERROR | LOG_FATAL);
+    /* Any problems with the configuration are fatal.
+       We can be setuid root so we must be careful */
+    if(opt_configure(argc, argv)) {
+        exit(-1);
+    }
 
     if(opt_daemonize()) {
         daemonize("opendax");

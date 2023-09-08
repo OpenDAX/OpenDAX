@@ -82,6 +82,7 @@ endif()
 # This is for the config.h file
 include_directories(${PROJECT_BINARY_DIR}/src)
 include_directories(src)
+include_directories(src/lib/lua)
 
 find_library(HAVE_READLINE NAMES readline)
 if( NOT HAVE_READLINE )

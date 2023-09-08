@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
+ *
  * Source file for TCP Server functionality
  */
 
@@ -35,9 +35,9 @@ static void
 _del_fd(mb_port *port, int fd)
 {
     int n, tmpfd = 0;
-    
+
     FD_CLR(fd, &(port->fdset));
-    
+
     /* If it's the largest one then we need to re-figure _maxfd */
     if(fd == port->maxfd) {
         for(n = 0; n <= port->maxfd; n++) {
@@ -154,7 +154,7 @@ _mb_read(mb_port *port, int fd)
                 write(cc->fd, cc->buff, result + 6);
                 cc->buffindex = 0;
             } else if(result < 0) {
-                dax_log(LOG_ERROR, "Error Code Returned %d\n", result);
+                dax_log(LOG_ERROR, "Error Code Returned %d", result);
                 return result;
             }
         }
@@ -180,12 +180,12 @@ _server_listen(mb_port *port)
     addr.sin_addr.s_addr = inet_addr(port->ipaddress);
 
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
-        dax_log(LOG_ERROR, "Failed to bind %s:%d\n", port->ipaddress, port->bindport);
+        dax_log(LOG_ERROR, "Failed to bind %s:%d", port->ipaddress, port->bindport);
         close(fd);
         return -1;
     }
     if(listen(fd, 5) < 0) {
-        dax_log(LOG_ERROR, "Failed to listen%s:%d\n", port->ipaddress, port->bindport);
+        dax_log(LOG_ERROR, "Failed to listen%s:%d", port->ipaddress, port->bindport);
         close(fd);
         return -1;
     }

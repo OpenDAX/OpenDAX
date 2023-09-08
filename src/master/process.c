@@ -185,16 +185,16 @@ process_del(dax_process *proc)
     dax_process *last, *this;
 
     if(proc) {
-
         if(proc == _process_list) { /* If this is the first process */
             _process_list = _process_list->next;
+            _free_process(proc);
         } else {
             last = proc;
             while(this != NULL) {
                 this = proc->next;
                 if(this == proc) {
+                    last->next = this->next;
                     _free_process(proc);
-
                     return 0;
                 }
                 last = this;
@@ -237,6 +237,32 @@ process_start_all(void)
     }
 }
 
+static void
+_set_user_group(dax_process *proc)
+{
+    int result;
+    uid_t uid;
+    gid_t gid;
+
+    uid = geteuid();
+    gid = getegid();
+
+    if(proc->uid >= 0 && proc->uid != uid) {
+        dax_log(LOG_MINOR, "Changing user id to %d process %s", proc->uid, proc->name);
+        result = setuid(proc->uid);
+        if(result) {
+            dax_log(LOG_ERROR, "Unable to set uid %d - %s", proc->uid, strerror(errno));
+        }
+    }
+    if(proc->gid >= 0 && proc->gid != gid) {
+        dax_log(LOG_MINOR, "Changing group id to %d process %s", proc->gid, proc->name);
+        result = setgid(proc->gid);
+        if(result) {
+            dax_log(LOG_ERROR, "Unable to set gid %d - %s", proc->gid, strerror(errno));
+        }
+    }
+}
+
 /* This function is used to start a module */
 pid_t
 process_start(dax_process *proc)
@@ -257,7 +283,7 @@ process_start(dax_process *proc)
             return child_pid;
         } else if(child_pid == 0) { /* Child */
             /* TODO: Environment???? */
-            /* TODO: Change the UID of the process */
+            _set_user_group(proc);
             if(execvp(proc->path, proc->arglist)) {
                 dax_log(LOG_ERROR, "start_module exec failed - %s - %s",
                        proc->path, strerror(errno));

@@ -22,6 +22,7 @@
 #include "mstr_config.h"
 #include "process.h"
 #include <getopt.h>
+#include <sys/stat.h>
 
 static char *_pidfile;
 static char *_configfile;
@@ -54,14 +55,13 @@ parsecommandline(int argc, const char *argv[])
         {"logtopics", required_argument, 0, 'T'},
         {"deamonize", no_argument, 0, 'D'},
         {"pidfile", required_argument, 0, 'p'},
-        {"logger", required_argument, 0, 'L'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
     };
 
 /* Get the command line arguments */
-    while ((c = getopt_long (argc, (char * const *)argv, "C:p:L:VvD",options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:p:VvD",options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
@@ -224,9 +224,50 @@ _add_process(lua_State *L)
     return 0;
 }
 
+/* Make sure that if we are running as root, we do not execute
+   a configuration file that is owned or writable by a user
+   other than root.  Since we are setuid and we run arbitraty
+   commands from the configuration file this would be a bit
+   security problem.  If we are not root then we don't care.
+   Returns zero if all is good */
+static int
+_check_config_permissions(char *filename)
+{
+    int result;
+    uid_t euid, ruid;
+    struct stat sb;
+
+    euid = geteuid();
+    ruid = getuid();
+
+    /* If our effective user id is 0 then we have root permissions, if our real user id is 0
+       then we were actually run by the root user.  If we are running as root but were not
+       run by the root user (setuid bit set) then we have to make sure that everything is okay
+       with the configuration file.  If we are not root then none of this matters and we can just
+       let the normal file system permissions deal with it */
+    if(euid == 0 && ruid != 0) {
+        dax_log(LOG_DEBUG, "We are running as root so we much check the config file permissions");
+        result = stat(filename, &sb);
+        if(result) {
+            dax_log(LOG_FATAL, "Unable to retrieve file information for file %s - %s", filename, strerror(errno));
+            return -1;
+        }
+        if(sb.st_uid != 0 || sb.st_gid != 0) {
+            dax_log(LOG_FATAL, "Configuration File %s, is not owned by root", filename);
+            return -1;
+        }
+        if(sb.st_mode & 0x0002) { /* Is the config file writable by others */
+            dax_log(LOG_FATAL, "Configuration File %s, cannot be writable by others if we are run as root", filename);
+            return -1;
+        }
+    }
+    return 0;
+}
+
 static int
 readconfigfile(void)
 {
+    int result;
     lua_State *L;
     int length;
     char *string;
@@ -244,7 +285,8 @@ readconfigfile(void)
             dax_log(LOG_FATAL, "Unable to allocate memory for configuration file");
         }
     }
-
+    result = _check_config_permissions(_configfile);
+    if(result) return result;
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals. */
@@ -317,7 +359,8 @@ opt_configure(int argc, const char *argv[])
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
-        dax_log(LOG_WARN, "Unable to read configuration running with defaults");
+        dax_log(LOG_FATAL, "Problem reading configuration file");
+        return -1;
     }
     setdefaults();
 
