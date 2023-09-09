@@ -21,6 +21,9 @@
 #include "modbus.h"
 
 extern dax_state *ds;
+extern pthread_barrier_t port_barrier;
+extern pthread_mutex_t port_lock;
+
 
 /* These two functions are wrappers to deal with adding and deleting
    file descriptors to the global _fdset and dealing with _maxfd */
@@ -182,8 +185,14 @@ _server_listen(mb_port *port)
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
         dax_log(LOG_ERROR, "Failed to bind %s:%d", port->ipaddress, port->bindport);
         close(fd);
+        pthread_barrier_wait(&port_barrier);
         return -1;
     }
+    /* Wait for all of the ports to bind */
+    pthread_barrier_wait(&port_barrier);
+    /* Wait for the main thread to change our user / group ids */
+    pthread_mutex_lock(&port_lock);
+    pthread_mutex_unlock(&port_lock); /* We don't do anything but wait so unlock here */
     if(listen(fd, 5) < 0) {
         dax_log(LOG_ERROR, "Failed to listen%s:%d", port->ipaddress, port->bindport);
         close(fd);

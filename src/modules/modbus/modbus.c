@@ -25,6 +25,7 @@
 #include "database.h"
 
 extern dax_state *ds;
+extern pthread_barrier_t port_barrier;
 
 int master_loop(mb_port *);
 int client_loop(mb_port *);
@@ -51,7 +52,8 @@ mb_run_port(struct mb_port *m_port)
             result = mb_open_port(m_port);
         }
         if(result) {
-            dax_log(LOG_ERROR, "Failed to open port %s", m_port->name);
+            dax_log(LOG_ERROR, "Failed to open port %s - %s", m_port->name, strerror(errno));
+            pthread_barrier_wait(&port_barrier); /* For clients and masters we just need to get past this */
         } else {
             /* If the port is still not open then we inhibit the port and
              * let the _loop() functions deal with it */
@@ -60,6 +62,7 @@ mb_run_port(struct mb_port *m_port)
             }
 
             if(m_port->type == MB_MASTER) {
+                pthread_barrier_wait(&port_barrier); /* For clients and masters we just need to get past this */
                 if(m_port->protocol == MB_TCP) {
                     dax_log(LOG_MAJOR, "Starting client loop for %s", m_port->name);
                     return client_loop(m_port);
@@ -73,6 +76,7 @@ mb_run_port(struct mb_port *m_port)
                     result = server_loop(m_port);
                     if(result) dax_log(LOG_ERROR, "Server loop exited with error, %d port %s", result, m_port->name);
                 } else {
+                    pthread_barrier_wait(&port_barrier); /* Doesn't matter since the port is already open */
                     dax_log(LOG_MAJOR, "Start Slave Loop for port %s", m_port->name);
                     result = slave_loop(m_port);
                     if(result) dax_log(LOG_ERROR, "Slave loop exited with error, %d port %s", result, m_port->name);

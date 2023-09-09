@@ -83,7 +83,7 @@ _recv_frame(int sock, struct mod_frame *frame) {
 int
 _test_request(int sock, uint16_t addr, uint16_t count, uint8_t *cmp_buff) {
     static uint16_t tid;
-    int result;
+    int result = 0;
     struct mod_frame sframe, rframe;
     uint8_t buff[2];
     uint8_t rbuff[256];
@@ -104,7 +104,7 @@ _test_request(int sock, uint16_t addr, uint16_t count, uint8_t *cmp_buff) {
         printf("rbuff[%d] = 0x%X, cmp_buff[%d] = 0x%X\n", i, rbuff[i], i, cmp_buff[i]);
         if( rbuff[i] != cmp_buff[i] ) return 1;
     }
-    return 0;
+    return result;
 }
 
 int

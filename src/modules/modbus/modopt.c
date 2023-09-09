@@ -681,7 +681,9 @@ modbus_configure(int argc, const char *argv[])
 
     _init_config();
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute(ds, "tagname","tagname", 't', flags, "modbus");
+    result += dax_add_attribute(ds, "tagname", "tagname", 't', flags, "modbus");
+    result += dax_add_attribute(ds, "user", "user", 'u', flags, NULL);
+    result += dax_add_attribute(ds, "group", "group", 'g', flags, NULL);
 
     L = dax_get_luastate(ds);
     lua_pushinteger(L, MB_REG_HOLDING);

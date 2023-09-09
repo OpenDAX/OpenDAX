@@ -23,6 +23,9 @@
 #define _GNU_SOURCE
 #include <signal.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <modopt.h>
@@ -33,6 +36,9 @@ extern struct Config config;
  * point when the luaif library is complete it'll be stored in the
  * Lua_State Registry. */
 dax_state *ds;
+pthread_barrier_t port_barrier;
+pthread_mutex_t port_lock;
+
 static int _caught_signal;
 
 void catchsignal(int sig);
@@ -363,6 +369,57 @@ _setup_master_events(mb_port *port) {
     return result;
 }
 
+static int
+_demote_wait(void)
+{
+    struct passwd *pw;
+    struct group *gr;
+    char *user;
+    char *group;
+    int result;
+    int retval = 0;
+
+    /* All this is to coordinate all of the server ports so that we can
+    demote our uid and gid after we bind to our port and get our
+    serial ports open */
+    pthread_mutex_lock(&port_lock);
+    pthread_barrier_wait(&port_barrier);
+
+    user = dax_get_attr(ds, "user");
+    group = dax_get_attr(ds, "group");
+    if(user != NULL) {
+        pw = getpwnam(user);
+        if(pw != NULL) {
+            dax_log(LOG_MINOR, "Setting user to '%s' %d", user, pw->pw_uid);
+            result = setuid(pw->pw_uid);
+            if(result) {
+                dax_log(LOG_FATAL, "Unable to set uid %d - %s", pw->pw_uid, strerror(errno));
+                retval++;
+            }
+        } else {
+            dax_log(LOG_FATAL, "Unable to find uid for user %s", user);
+            retval++;
+        }
+    }
+    if(group != NULL) {
+        gr = getgrnam(group);
+        if(pw != NULL) {
+            dax_log(LOG_MINOR, "Setting group to '%s' %d", group, gr->gr_gid);
+            result = setgid(gr->gr_gid);
+            if(result) {
+                dax_log(LOG_FATAL, "Unable to set gid %d - %s", gr->gr_gid, strerror(errno));
+                retval++;
+            }
+        } else {
+            dax_log(LOG_FATAL, "Unable to find uid for group %s", group);
+            retval++;
+        }
+    }
+
+    pthread_mutex_unlock(&port_lock);
+    return retval;
+}
+
 int
 main (int argc, const char * argv[]) {
     int result, n, master_errors=-1;
@@ -409,7 +466,8 @@ main (int argc, const char * argv[]) {
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
+    pthread_mutex_init(&port_lock, NULL);
+    pthread_barrier_init(&port_barrier, NULL, config.portcount + 1);
     for(n = 0; n < config.portcount; n++) {
         if(_setup_port(config.ports[n])) {
             dax_log(LOG_ERROR, "Problem setting up port - %s", config.ports[n]->name);
@@ -423,7 +481,7 @@ main (int argc, const char * argv[]) {
             }
         }
     }
-
+    if(_demote_wait()) getout(-1);
     dax_set_running(ds, 1);
 
     while(1) {
