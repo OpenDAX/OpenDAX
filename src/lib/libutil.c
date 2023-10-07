@@ -71,7 +71,7 @@ dax_set_running(dax_state *ds, uint8_t val) {
  * @returns zero on success or other error codes if appropriate.
  */
 int
-dax_set_status(dax_state *ds, char *val) {
+dax_set_status(dax_state *ds, const char *val) {
     tag_handle h;
     char tagname[DAX_TAGNAME_SIZE+1];
     char runtag[DAX_TAGNAME_SIZE+32];

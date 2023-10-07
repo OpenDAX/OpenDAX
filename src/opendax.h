@@ -30,7 +30,11 @@ extern "C" {
 #endif
 
 #include <float.h>
-#include <lua.h>
+#include <stddef.h>
+#include <stdint.h>
+
+/* This is here so modules need not include lua.h if they are not using Lua directly*/
+typedef struct lua_State lua_State;
 
 /* Data type definitions */
 #define DAX_BOOL    0x0010
@@ -99,6 +103,7 @@ extern "C" {
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))
 
 /* Library function errors */
+#define ERR_OK         0
 #define ERR_GENERIC   -1  /* Commenting this out may reveal code that needs work */
 #define ERR_NO_SOCKET -2  /* The Message socket does not exist or cannot be created*/
 #define ERR_2BIG      -3  /* The argument is too big */
@@ -296,7 +301,7 @@ typedef union dax_type_union {
 } dax_type_union;
 
 /* These functions are for module configuration */
-dax_state *dax_init(char *name);
+dax_state *dax_init(const char *name);
 int dax_init_config(dax_state *ds, char *name); /* This function is deprecated and curently does nothing */
 int dax_set_luafunction(dax_state *ds, int (*f)(void *L), char *name);
 int dax_clear_luafunction(dax_state *ds, char *name);
@@ -450,7 +455,7 @@ int dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int in
 
 /* Convenience functions for common tasks*/
 int dax_set_running(dax_state *ds, uint8_t val);
-int dax_set_status(dax_state *ds, char *val);
+int dax_set_status(dax_state *ds, const char *val);
 int dax_set_faulted(dax_state *ds, uint8_t val);
 void dax_default_run(dax_state *ds, void *ud);
 void dax_default_stop(dax_state *ds, void *ud);

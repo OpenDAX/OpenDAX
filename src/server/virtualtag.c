@@ -65,7 +65,7 @@ get_module_tag_name(int fd, tag_index idx, int offset, void *data, int size, voi
     dax_module *mod;
 
     mod = module_find_fd(fd);
-    if(mod == NULL) return ERR_NOTFOUND;
+    if(mod == NULL || mod->tagindex == 0) return ERR_NOTFOUND;
     result = tag_get_index(mod->tagindex, &tag);
     if(result) return result;
     bzero(data, DAX_TAGNAME_SIZE);

@@ -40,6 +40,7 @@ int opt_configure(int argc, const char *argv[]);
 char *opt_socketname(void);
 struct in_addr opt_serverip(void);
 unsigned int opt_serverport(void);
+char *opt_mod_tag_exclude(void);
 /* Minimum number of communication buffers to allocate */
 int opt_min_buffers(void);
 int opt_start_timeout(void);

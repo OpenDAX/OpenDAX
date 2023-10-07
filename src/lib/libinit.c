@@ -36,7 +36,7 @@
  *          tag server.
  */
 dax_state *
-dax_init(char *name)
+dax_init(const char *name)
 {
     dax_state *ds;
     ds = malloc(sizeof(dax_state));

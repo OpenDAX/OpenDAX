@@ -399,6 +399,10 @@ initialize_tagbase(void)
     _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
     assert(tag_add(-1, "_lastindex", DAX_DINT, 1, 0) == INDEX_LASTINDEX);
     _db[INDEX_LASTINDEX].attr = TAG_ATTR_READONLY;
+    assert(tag_add(-1, "_tag_added", DAX_DINT, 1, 0) == INDEX_ADDED_TAG);
+    _db[INDEX_ADDED_TAG].attr = TAG_ATTR_READONLY;
+    assert(tag_add(-1, "_tag_deleted", DAX_DINT, 1, 0) == INDEX_DELETED_TAG);
+    _db[INDEX_DELETED_TAG].attr = TAG_ATTR_READONLY;
     assert(tag_add(-1, "_dbsize", DAX_DINT, 1, 0) == INDEX_DBSIZE);
     _db[INDEX_DBSIZE].attr = TAG_ATTR_READONLY;
     assert(tag_add(-1, "_starttime", DAX_TIME, 1, 0) == INDEX_STARTED);
@@ -547,6 +551,7 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
         tag_write(-1, INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
     _set_attribute(n, attr);
+    tag_write(-1, INDEX_ADDED_TAG, 0, &n, sizeof(tag_index));
     dax_log(LOG_DEBUG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
 
     return n;
@@ -602,6 +607,7 @@ tag_del(tag_index idx)
     _db[idx].data = NULL;
     _db[idx].attr = 0;
     _tagcount--;
+    tag_write(-1, INDEX_DELETED_TAG, 0, &idx, sizeof(tag_index));
 
     return 0;
 }

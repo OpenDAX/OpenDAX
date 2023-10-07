@@ -163,6 +163,64 @@ module_del(dax_module *mod)
     return ERR_ARG;
 }
 
+/* This function checks to see if we have asked for this module to be
+ * excluded from the module tag creation. Returns 0 normally or 1 if
+ * the module tag should NOT be created */
+int
+_check_module_tag_exclusion(char *name) {
+    static int firstrun = 1;
+    static char **x_list; /* The exclusion list */
+    static int list_size;
+    char *temp, *c, *tok;
+    int n;
+
+    if(firstrun) {
+        c = opt_mod_tag_exclude(); /* space delimited list of modules */
+        if(c != NULL) {
+            temp = strdup(c);
+            if(temp == NULL) {
+                dax_log(LOG_ERROR, "Unable to allocate memory to save module tag exclusion list");
+                return 0;
+            }
+            /* Count the number of module names in the string*/
+            tok = strtok(temp, " ");
+            while(tok != NULL) {
+                list_size++;
+                tok = strtok(NULL, " ");
+            }
+            free(temp); /* strtok() mangles this so we need to start over */
+
+            x_list = malloc(sizeof(char *) * list_size);
+            if(x_list == NULL) {
+                dax_log(LOG_ERROR, "Unable to allocate memory for module tag exclusion list");
+                return 0;
+            }
+            temp = strdup(c); /* get another copy */
+            if(temp == NULL) {
+                dax_log(LOG_ERROR, "Unable to allocate memory to save module tag exclusion list");
+                return 0;
+            }
+            tok = strtok(temp, " ");
+            n=0;
+            while(tok != NULL) {
+                dax_log(LOG_DEBUG, "Adding '%s' to the module tag exclusion list", tok);
+                x_list[n++] = tok;
+                tok = strtok(NULL, " ");
+            }
+        }
+    firstrun = 0;
+    }
+
+    /* For now we are just doing a linear search.  This list will probably be pretty
+     * small and module registrations are infrequent*/
+    if(x_list != NULL) { /* We may not have any */
+        for(n=0;n<list_size;n++) {
+            if(strcmp(x_list[n], name) == 0) return 1;
+        }
+    }
+
+    return 0;
+}
 
 /* The dax server will not send messages to modules that are not registered.
  * Also modules that are not started by the core need a way to announce
@@ -189,36 +247,38 @@ module_register(char *name, uint32_t timeout, int fd)
         mod->fd = fd;
         mod->timeout = timeout;
         _get_host(fd, &(mod->host));
-        /* The tagname for the module tag.  It will be the module name with _m
-           prepended.  If there is a duplicate (multiple modules of the same
-           name) then a number will be added to the end of the name and a
-           warning generated */
-        strcpy(tagname, "_m");
-        strncat(tagname, name, DAX_TAGNAME_SIZE - 2);
-        result = tag_get_name(tagname, NULL);
-        if(result==0) {
-            if(_mod_uuid < 1000) {
-                x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -3);
-                sprintf(&tagname[x], "%03d", _mod_uuid++);
-            } else {
-                x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -5);
-                sprintf(&tagname[x], "%05d", _mod_uuid++);
+        if(! _check_module_tag_exclusion(name)) { /* Decide if we are making a tag or not */
+         /* The tagname for the module tag.  It will be the module name with _m
+            prepended.  If there is a duplicate (multiple modules of the same
+            name) then a number will be added to the end of the name and a
+            warning generated */
+            strcpy(tagname, "_m");
+            strncat(tagname, name, DAX_TAGNAME_SIZE - 2);
+            result = tag_get_name(tagname, NULL);
+            if(result==0) {
+                if(_mod_uuid < 1000) {
+                    x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -3);
+                    sprintf(&tagname[x], "%03d", _mod_uuid++);
+                } else {
+                    x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -5);
+                    sprintf(&tagname[x], "%05d", _mod_uuid++);
+                }
+                dax_log(LOG_WARN, "Duplicate module name.  Module tag being modified - %s", tagname);
             }
-            dax_log(LOG_WARN, "Duplicate module name.  Module tag being modified - %s", tagname);
+            result = tag_add(-1, tagname, cdt_get_type("_module"), 1, 0);
+            if(result < 0) {
+                dax_log(LOG_ERROR, "Unable to add module tag- %s", tagname);
+            } else {
+                mod->tagindex = result;
+            }
+            starttime = xtime();
+            tag_write(-1, result, 0, &starttime, sizeof(dax_time));
+            tag_write(-1, result, MOD_ID_OFFSET, &fd, sizeof(int));
+            /* We wait until after we have written what we want to set the special flag.
+            From now on we'll let the special functions handle the tag */
+            tag_set_attribute(result, TAG_ATTR_SPECIAL);
+            tag_write(-1, INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
         }
-        result = tag_add(-1, tagname, cdt_get_type("_module"), 1, 0);
-        if(result < 0) {
-            dax_log(LOG_ERROR, "Unable to add module tag- %s", tagname);
-        } else {
-            mod->tagindex = result;
-        }
-        starttime = xtime();
-        tag_write(-1, result, 0, &starttime, sizeof(dax_time));
-        tag_write(-1, result, MOD_ID_OFFSET, &fd, sizeof(int));
-        /* We wait until after we have written what we want to set the special flag.
-           From now on we'll let the special functions handle the tag */
-        tag_set_attribute(result, TAG_ATTR_SPECIAL);
-        tag_write(-1, INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
     } else {
         dax_log(LOG_ERROR, "Major problem registering module - %s:%d", name, fd);
         return NULL;

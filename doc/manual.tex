@@ -176,6 +176,9 @@
 		Default is 0.0.0.0 which has the effect of listening on all interfaces.
 		\item[\texttt{--serverport, -P}] - The TCP port that the server will bind to.
 		Default is 7777.
+		\item[\texttt{--mod-tag-exclude, -X}] - A space delimited list of module names
+		that will be excluded from the module tag creation feature.  Useful for modules
+		that will start and stop often and the features of the module tag are not needed
 	\end{list}
 
 	Some of this configuration is duplicated in the configuration file.  Here is an
@@ -195,6 +198,12 @@
 	-- The IP address and TCP port that the server will listen on
 	serverip = "0.0.0.0"
 	serverport = 7777
+
+	-- Module tag exclusion list. This is a space delimited list of module names that
+	-- will be excluded from the module tag feature.  This might be useful for modules
+	-- that start and stop often (i.e. modules run from shell scripts) or modules that
+	-- have no need of the module tag features.
+	mod_tag_exclude = "daxc qdax"
 
 	-- The minimum number of communication buffers that will be maintained
 	-- in the system.  The server uses pre-allocated buffers for communication

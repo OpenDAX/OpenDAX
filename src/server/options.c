@@ -35,6 +35,7 @@ static char *_configfile;
 static char *_socketname;
 static struct in_addr _serverip;
 static unsigned int _serverport;
+static char *_mod_tag_exclude;
 static int _min_buffers;
 
 
@@ -45,6 +46,7 @@ static void initconfig(void) {
     _socketname = NULL;
     _serverip.s_addr = 0;
     _serverport = 0;
+    _mod_tag_exclude = NULL;
 }
 
 /* This function sets the defaults if nothing else has been done
@@ -71,13 +73,14 @@ parsecommandline(int argc, const char *argv[])
         {"socketname", required_argument, 0, 'S'},
         {"serverip", required_argument, 0, 'I'},
         {"serverport", required_argument, 0, 'P'},
+        {"mod-tag-exclude", required_argument, 0, 'X'},
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
         {0, 0, 0, 0}
     };
 
 /* Get the command line arguments */
-    while ((c = getopt_long (argc, (char * const *)argv, "C:K:S:I:P:Vv", options, NULL)) != -1) {
+    while ((c = getopt_long (argc, (char * const *)argv, "C:K:S:I:P:X:Vv", options, NULL)) != -1) {
         switch (c) {
         case 'C':
             _configfile = strdup(optarg);
@@ -95,6 +98,9 @@ parsecommandline(int argc, const char *argv[])
             break;
         case 'P':
             _serverport = strtol(optarg, NULL, 0);
+            break;
+        case 'X':
+            _mod_tag_exclude=strdup(optarg);
             break;
         case 'V':
             printf("%s Version %s\n", PACKAGE, VERSION);
@@ -121,10 +127,10 @@ readconfigfile(void)
 {
     lua_State *L;
     int length;
+    char *c;
 
-    dax_log(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
-    
+
     /* If no configuration file was given on the command line we build the default */
     if(_configfile == NULL) {
         length = strlen(ETC_DIR) + strlen("/tagserver.conf") +1;
@@ -135,7 +141,8 @@ readconfigfile(void)
             dax_log(LOG_FATAL, "Unable to allocate memory for configuration file");
         }
     }
-    
+    dax_log(2, "Reading Configuration file %s", _configfile);
+
     /* We don't open any librarires because we don't really want any
      function calls in the configuration file.  It's just for
      setting a few globals. */
@@ -155,6 +162,37 @@ readconfigfile(void)
     lua_getglobal(L, "min_buffers");
     if(_min_buffers == 0) { /* Make sure we didn't get anything on the commandline */
         _min_buffers = (int)lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "socketname");
+    if(_socketname == NULL) {
+        c = (char *)lua_tostring(L, -1);
+        if(c) _socketname = strdup(c);
+    }
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "serverport");
+    if(_serverport == 0) { /* Make sure we didn't get anything on the commandline */
+        _serverport = (int)lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "serverip");
+    if(_serverip.s_addr == 0) {
+        c = (char *)lua_tostring(L, -1);
+        if(c) {
+            if(! inet_aton(c, &_serverip)) {
+                dax_log(LOG_ERROR, "Unknown IP address %s", c);
+            }
+        }
+    }
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "mod_tag_exclude");
+    if(_mod_tag_exclude == NULL) { /* Make sure we didn't get anything on the commandline */
+        c = (char *)lua_tostring(L, -1);
+        if(c) _mod_tag_exclude = strdup(c);
     }
     lua_pop(L, 1);
 
@@ -198,6 +236,14 @@ opt_socketname(void)
 {
     return _socketname;
 }
+
+char *
+opt_mod_tag_exclude(void)
+{
+    return _mod_tag_exclude;
+}
+
+
 
 int
 opt_min_buffers(void)

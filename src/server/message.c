@@ -33,6 +33,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/un.h>
 #include <string.h>
 
@@ -148,7 +149,7 @@ _msg_setup_local_socket(void)
     FD_SET(fd, &_listenfdset);
     msg_add_fd(fd);
 
-    dax_log(LOG_COMM, "Listening on local socket - %d", fd);
+    dax_log(LOG_COMM, "Listening on local socket - %s", opt_socketname());
     return 0;
 }
 
@@ -156,7 +157,7 @@ _msg_setup_local_socket(void)
  * are the ipaddress and the port to listen on.  They should be
  * in host order (will be converted within this function) */
 static int
-_msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
+_msg_setup_remote_socket(struct in_addr ipaddress, in_port_t ipport)
 {
     struct sockaddr_in addr;
     int fd;
@@ -171,7 +172,7 @@ _msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
     /* TODO: Change this to the configuration stuff */
     addr.sin_family = AF_INET;
     addr.sin_port = htons(ipport);
-    addr.sin_addr.s_addr = htonl(ipaddress);
+    addr.sin_addr.s_addr = ipaddress.s_addr;
 
     if(bind(fd, (const struct sockaddr *)&addr, sizeof(addr))) {
         dax_log(LOG_FATAL, "Unable to bind remote socket - %s", strerror(errno));
@@ -187,7 +188,7 @@ _msg_setup_remote_socket(in_addr_t ipaddress, in_port_t ipport)
     FD_SET(fd, &_listenfdset);
     msg_add_fd(fd);
 
-    dax_log(LOG_COMM, "Listening on remote socket - %d", fd);
+    dax_log(LOG_COMM, "Listening on remote socket - %s:%d",inet_ntoa(ipaddress), ipport);
     return 0;
 }
 
@@ -199,14 +200,15 @@ int
 msg_setup(void)
 {
     _maxfd = 0;
+    struct in_addr s;
     FD_ZERO(&_fdset);
     FD_ZERO(&_listenfdset);
 
-    /* TODO: These should be called based on configuration options
-     * for now we'll just listen on the local domain socket and bind
-     * to all interfaces on the default port. */
+    dax_log(LOG_DEBUG, "Opening Local Connection - %s", opt_socketname());
     _msg_setup_local_socket();
-    _msg_setup_remote_socket(INADDR_ANY, DEFAULT_PORT);
+    s = opt_serverip();
+    dax_log(LOG_DEBUG, "Opening Network Connection - %s:%d", inet_ntoa(s), opt_serverport());
+    _msg_setup_remote_socket(s, opt_serverport());
 
     buff_initialize(); /* This initializes the communications buffers */
 

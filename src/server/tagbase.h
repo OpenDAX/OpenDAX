@@ -56,13 +56,15 @@
 #define MAX_MAP_HOPS 128
 
 /* database indexes for status tags. */
-#define INDEX_TAGCOUNT   0
-#define INDEX_LASTINDEX  1
-#define INDEX_DBSIZE     2
-#define INDEX_STARTED    3
-#define INDEX_LASTMODULE 4
-#define INDEX_OVRD_INSTALLED 5
-#define INDEX_OVRD_SET   6
+#define INDEX_TAGCOUNT       0
+#define INDEX_LASTINDEX      1
+#define INDEX_ADDED_TAG      2
+#define INDEX_DELETED_TAG    3
+#define INDEX_DBSIZE         4
+#define INDEX_STARTED        5
+#define INDEX_LASTMODULE     6
+#define INDEX_OVRD_INSTALLED 7
+#define INDEX_OVRD_SET       8
 
 /* Offset for the Module tag */
 #define MOD_ID_OFFSET 8
