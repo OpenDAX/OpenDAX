@@ -126,10 +126,10 @@ del_event(dax_state *ds, dax_id id)
 
     for(n = 0; n < ds->event_count; n++) {
         if(ds->events[n].idx == id.index && ds->events[n].id == id.id) {
-            memmove(&ds->events[n], &ds->events[n+1], sizeof(event_db) * (ds->event_count - n-1));
             if(ds->events[n].free_callback) {
                 ds->events[n].free_callback(ds->events[n].udata);
             }
+            memmove(&ds->events[n], &ds->events[n+1], sizeof(event_db) * (ds->event_count - n-1));
             ds->event_count--;
             return 0;
         }

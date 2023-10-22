@@ -708,6 +708,7 @@ event_del(int index, int id, dax_module *module)
         _db[index].attr &= ~TAG_ATTR_EVENT;
     }
     module->event_count--;
+    dax_log(LOG_DEBUG, "Deleted event index: %d, id: %d, module: %s", index, id, module->name);
     return result;
 }
 

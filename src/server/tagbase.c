@@ -495,6 +495,8 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
                 _db[n].data = newdata;
                 _db[n].count = count;
                 _set_attribute(n, attr);
+                /* Since it changed we update this tag so the write event will trigger */
+                tag_write(-1, INDEX_ADDED_TAG, 0, &n, sizeof(tag_index));
                 return n;
             } else {
                 dax_log(LOG_ERROR, "Unable to allocate memory to grow the size of tag %s", name);
@@ -607,6 +609,9 @@ tag_del(tag_index idx)
     _db[idx].data = NULL;
     _db[idx].attr = 0;
     _tagcount--;
+    if(_db[INDEX_TAGCOUNT].data != NULL) {
+        tag_write(-1, INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
+    }
     tag_write(-1, INDEX_DELETED_TAG, 0, &idx, sizeof(tag_index));
 
     return 0;
@@ -725,7 +730,7 @@ tag_read(int fd, tag_index idx, int offset, void *data, int size)
         }
         /* Copy the data into the right place. */
         memcpy(data, &(_db[idx].data[offset]), size);
-        /* If the tag is special then all the hook */
+        /* If the tag is special then call the hook */
         /* NOTE: Not sure this should be before the override */
         if(_db[idx].attr & TAG_ATTR_SPECIAL) {
             result = special_tag_read(fd, idx, offset, data, size);
@@ -737,9 +742,6 @@ tag_read(int fd, tag_index idx, int offset, void *data, int size)
                  y = _db[idx].data[n+offset] & ~_db[idx].omask[n+offset];
                  ((uint8_t *)data)[n] = x | y;
             }
-        } else {
-            /* Copy the data into the right place. */
-            memcpy(data, &(_db[idx].data[offset]), size);
         }
     }
 
