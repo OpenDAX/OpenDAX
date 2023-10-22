@@ -333,3 +333,14 @@ dax_set_kill_callback(dax_state *ds, void f(dax_state *, void *)) {
     result = dax_event_add(ds, &h, EVENT_SET, NULL, NULL,f, NULL, NULL);
     return result;
 }
+
+/*!
+ * Returns the maximum number of bytes that can be returned in
+ * the data area for a single tag read.  Tags can be larger than
+ * this but they must be read in parts.
+ * @returns the requested size
+ */
+int
+dax_get_max_tag_msg_size(void) {
+    return MSG_DATA_SIZE;
+}

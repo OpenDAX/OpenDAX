@@ -225,20 +225,20 @@ typedef struct lua_State lua_State;
 #define DAX_LREAL_MAX   DBL_MAX
 
 /* typedefs to the basic DAX_? data types */
-typedef uint8_t   dax_byte;
+typedef uint8_t    dax_byte;
 typedef int8_t     dax_sint;
 typedef char       dax_char;
-typedef uint16_t  dax_word;
+typedef uint16_t   dax_word;
 typedef int16_t    dax_int;
-typedef uint16_t  dax_uint;
-typedef uint32_t  dax_dword;
+typedef uint16_t   dax_uint;
+typedef uint32_t   dax_dword;
 typedef int32_t    dax_dint;
-typedef uint32_t  dax_udint;
+typedef uint32_t   dax_udint;
 typedef int64_t    dax_time;
 typedef float      dax_real;
-typedef uint64_t  dax_lword;
+typedef uint64_t   dax_lword;
 typedef int64_t    dax_lint;
-typedef uint64_t  dax_ulint;
+typedef uint64_t   dax_ulint;
 typedef double     dax_lreal;
 
 typedef dax_dint tag_index;
@@ -464,6 +464,7 @@ int dax_set_default_callbacks(dax_state *ds);
 int dax_set_run_callback(dax_state *ds, void f(dax_state *, void *));
 int dax_set_stop_callback(dax_state *ds, void f(dax_state *, void *));
 int dax_set_kill_callback(dax_state *ds, void f(dax_state *, void *));
+int dax_get_max_tag_msg_size(void);
 
 #ifdef __cplusplus
 }
