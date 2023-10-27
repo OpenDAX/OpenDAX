@@ -52,28 +52,28 @@ main(int argc, const char *argv[])
     sa.sa_handler = &catch_signal;
     sigaction(SIGPIPE, &sa, NULL);
 
-    dax_init_logger("tagserver", LOG_ERROR | LOG_FATAL);
+    dax_init_logger("tagserver", DAX_LOG_ERROR | DAX_LOG_FATAL);
     /* Read configuration from defaults, file and command line */
     opt_configure(argc, argv);
 
     result = msg_setup();    /* This creates and sets up the message sockets */
-    if(result) dax_log(LOG_ERROR, "msg_setup() returned %d", result);
+    if(result) dax_log(DAX_LOG_ERROR, "msg_setup() returned %d", result);
     initialize_tagbase(); /* initialize the tag name database */
     /* TODO: Add retention filename from configuration */
     ret_init(NULL);
     /* Start the message handling thread */
     if(pthread_create(&message_thread, NULL, (void *)&messagethread, NULL)) {
-        dax_log(LOG_FATAL, "Unable to create message thread");
+        dax_log(DAX_LOG_FATAL, "Unable to create message thread");
         kill(getpid(), SIGQUIT);
     }
 
-    dax_log(LOG_MAJOR, "OpenDAX Tag Server Started");
+    dax_log(DAX_LOG_MAJOR, "OpenDAX Tag Server Started");
 
     while(1) { /* Main loop */
         sleep(10); /* A signal should interrupt this */
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
-            dax_log(LOG_MAJOR, "Quitting due to signal %d", quitflag);
+            dax_log(DAX_LOG_MAJOR, "Quitting due to signal %d", quitflag);
             msg_destroy(); /* Clean up messaging code */
             ret_close();   /* Clean up tag retention system */
             exit(0);
@@ -90,7 +90,7 @@ messagethread(void)
     while(1) {
         result = msg_receive();
         if(result) {
-            dax_log(LOG_ERROR, "Message received with error: %d", result);
+            dax_log(DAX_LOG_ERROR, "Message received with error: %d", result);
             sleep(1);
         }
     }
@@ -111,5 +111,5 @@ void
 catch_signal(int sig)
 {
     /* TODO: Shouldn't really have printfs in signal handlers */
-    dax_log(LOG_MINOR, "Received signal %d", sig);
+    dax_log(DAX_LOG_MINOR, "Received signal %d", sig);
 }

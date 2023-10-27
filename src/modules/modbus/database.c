@@ -68,7 +68,7 @@ slave_write_database(tag_index idx, int reg, int offset, int count, uint16_t *da
 
     result = dax_write_tag(ds, h, data);
     if(result) {
-        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
+        dax_log(DAX_LOG_ERROR, "Unable to write tag data to server\n");
     }
 }
 
@@ -117,7 +117,7 @@ slave_read_database(tag_index idx, int reg, int offset, int count, uint16_t *dat
     }
     result = dax_read_tag(ds, h, data);
     if(result) {
-        dax_log(LOG_ERROR, "Unable to write tag data to server\n");
+        dax_log(DAX_LOG_ERROR, "Unable to write tag data to server\n");
     }
 }
 

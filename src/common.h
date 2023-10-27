@@ -32,7 +32,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
-#include <assert.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/select.h>
@@ -48,7 +47,6 @@
 #endif /* !PID_FILE_PATH */
 
 #ifndef ETC_DIR
-//  #define ETC_DIR "/etc/opendax"
   #define ETC_DIR "."
 #endif
 
@@ -68,16 +66,13 @@
   #define ABS(a)     (((a) < 0) ? -(a) : (a))
 #endif
 
-/* These are conditionally compiled debug statements. */
+/* This is a conditionally compiled formatted debug macro that also prints
+ * the filename and line number of the function call. */
 #ifdef DEBUG
 # define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 # define DF(...) printf("%s:%d %s() - ", __FILENAME__, __LINE__, __func__); printf(__VA_ARGS__); printf("\n");
-# define DAX_DEBUG(x) dax_debug(5, x);
-# define DAX_DEBUG2(x, y) dax_debug(5, x, y);
 #else
 # define DF(...)
-# define DAX_DEBUG(x)
-# define DAX_DEBUG2(x, y)
 #endif
 
 #endif

@@ -58,7 +58,7 @@ _get_host(int fd, in_addr_t *host)
     sock_len = sizeof(addr);
     result = getpeername(fd, (struct sockaddr *)&addr, &sock_len);
     if(result < 0) {
-        dax_log(LOG_ERROR, "_get_host %s", strerror(errno));
+        dax_log(DAX_LOG_ERROR, "_get_host %s", strerror(errno));
     } else {
         if(addr.ss_family == AF_LOCAL) {
             *host = 0;
@@ -70,7 +70,7 @@ _get_host(int fd, in_addr_t *host)
             /* Now see if it is the same as ours */
             result = getsockname(fd, (struct sockaddr *)&addr, &sock_len);
             if(result < 0) {
-                dax_log(LOG_ERROR, "_get_host %s", strerror(errno));
+                dax_log(DAX_LOG_ERROR, "_get_host %s", strerror(errno));
             } else {
                 addr_in = (struct sockaddr_in *)&addr;
                 if(addr_in->sin_addr.s_addr == *host) {
@@ -79,7 +79,7 @@ _get_host(int fd, in_addr_t *host)
             }
             return 0;
         } else {
-            dax_log(LOG_ERROR, "Unable to identify socket type in module registration");
+            dax_log(DAX_LOG_ERROR, "Unable to identify socket type in module registration");
         }
     }
     return ERR_NOTFOUND;
@@ -111,7 +111,7 @@ module_add(char *name, unsigned int flags)
 
     new = xmalloc(sizeof(dax_module));
     if(new) {
-        dax_log(LOG_MAJOR, "New module '%s' created at %p", name, new);
+        dax_log(DAX_LOG_MAJOR, "New module '%s' created at %p", name, new);
         new->flags = flags;
 
         new->fd = 0;
@@ -179,7 +179,7 @@ _check_module_tag_exclusion(char *name) {
         if(c != NULL) {
             temp = strdup(c);
             if(temp == NULL) {
-                dax_log(LOG_ERROR, "Unable to allocate memory to save module tag exclusion list");
+                dax_log(DAX_LOG_ERROR, "Unable to allocate memory to save module tag exclusion list");
                 return 0;
             }
             /* Count the number of module names in the string*/
@@ -192,18 +192,18 @@ _check_module_tag_exclusion(char *name) {
 
             x_list = malloc(sizeof(char *) * list_size);
             if(x_list == NULL) {
-                dax_log(LOG_ERROR, "Unable to allocate memory for module tag exclusion list");
+                dax_log(DAX_LOG_ERROR, "Unable to allocate memory for module tag exclusion list");
                 return 0;
             }
             temp = strdup(c); /* get another copy */
             if(temp == NULL) {
-                dax_log(LOG_ERROR, "Unable to allocate memory to save module tag exclusion list");
+                dax_log(DAX_LOG_ERROR, "Unable to allocate memory to save module tag exclusion list");
                 return 0;
             }
             tok = strtok(temp, " ");
             n=0;
             while(tok != NULL) {
-                dax_log(LOG_DEBUG, "Adding '%s' to the module tag exclusion list", tok);
+                dax_log(DAX_LOG_DEBUG, "Adding '%s' to the module tag exclusion list", tok);
                 x_list[n++] = tok;
                 tok = strtok(NULL, " ");
             }
@@ -263,11 +263,11 @@ module_register(char *name, uint32_t timeout, int fd)
                     x = MIN(strlen(tagname), DAX_TAGNAME_SIZE -5);
                     sprintf(&tagname[x], "%05d", _mod_uuid++);
                 }
-                dax_log(LOG_WARN, "Duplicate module name.  Module tag being modified - %s", tagname);
+                dax_log(DAX_LOG_WARN, "Duplicate module name.  Module tag being modified - %s", tagname);
             }
             result = tag_add(-1, tagname, cdt_get_type("_module"), 1, 0);
             if(result < 0) {
-                dax_log(LOG_ERROR, "Unable to add module tag- %s", tagname);
+                dax_log(DAX_LOG_ERROR, "Unable to add module tag- %s", tagname);
             } else {
                 mod->tagindex = result;
             }
@@ -280,10 +280,10 @@ module_register(char *name, uint32_t timeout, int fd)
             tag_write(-1, INDEX_LASTMODULE, 0, tagname, DAX_TAGNAME_SIZE);
         }
     } else {
-        dax_log(LOG_ERROR, "Major problem registering module - %s:%d", name, fd);
+        dax_log(DAX_LOG_ERROR, "Major problem registering module - %s:%d", name, fd);
         return NULL;
     }
-    dax_log(LOG_MAJOR,"Added module '%s' at file descriptor %d", name, fd);
+    dax_log(DAX_LOG_MAJOR,"Added module '%s' at file descriptor %d", name, fd);
 
     return mod;
 }
@@ -297,7 +297,7 @@ module_unregister(int fd)
 
     mod = _get_module_fd(fd);
     if(mod != NULL) {
-        dax_log(LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
+        dax_log(DAX_LOG_MAJOR,"Removing module '%s' at file descriptor %d", mod->name, fd);
         events_cleanup(mod);
         groups_cleanup(mod);
         /* This deletes any tag that is owned by this module. */
@@ -310,7 +310,7 @@ module_unregister(int fd)
         tag_del(mod->tagindex);
         module_del(mod);
     } else {
-        dax_log(LOG_ERROR, "module_unregister() - Module File Descriptor %d Not Found", fd);
+        dax_log(DAX_LOG_ERROR, "module_unregister() - Module File Descriptor %d Not Found", fd);
     }
 }
 

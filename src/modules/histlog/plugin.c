@@ -40,12 +40,12 @@ void (*set_timefunc)(double (*f)(void));
 int
 plugin_load(char *file) {
     if(file == NULL) {
-        dax_log(LOG_ERROR, "Plugin not given");
+        dax_log(DAX_LOG_ERROR, "Plugin not given");
         return ERR_GENERIC;
     }
     plugin = dlopen(file, RTLD_LAZY);
     if(!plugin) {
-        dax_log(LOG_ERROR, "plugin loading error: %s", dlerror());
+        dax_log(DAX_LOG_ERROR, "plugin loading error: %s", dlerror());
         return ERR_NOTFOUND;
     }
     /* TODO: Check these for errors and deal appropriately */

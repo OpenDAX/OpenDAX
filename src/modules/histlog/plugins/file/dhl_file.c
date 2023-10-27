@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -80,10 +80,10 @@ init(dax_state *_ds) {
     } else if (ENOENT == errno) {
         result = mkdir(log_directory, 0777);
         if(result) {
-            dax_log(LOG_ERROR, "%s", strerror(errno));
+            dax_log(DAX_LOG_ERROR, "%s", strerror(errno));
         }
     } else {
-        dax_log(LOG_ERROR, "%s", strerror(errno));
+        dax_log(DAX_LOG_ERROR, "%s", strerror(errno));
     }
     _open_file();
     return 0;
@@ -98,7 +98,7 @@ add_tag(const char *tagname, uint32_t type, const char *attributes) {
     if(tag == NULL) return NULL;
     tag->name = tagname;
     tag->type = type;
-    dax_log(LOG_DEBUG, "Added tag %s type = %d", tag->name, tag->type);
+    dax_log(DAX_LOG_DEBUG, "Added tag %s type = %d", tag->name, tag->type);
 
     return tag;
 }
@@ -130,7 +130,7 @@ _add_tags(void) {
 
     result = dax_tag_add(ds, &rotate_handle, rotate_tag, DAX_BOOL, 1, 0);
     if(result) {
-        dax_log(LOG_ERROR, "Unable to add file rotation tag %s", rotate_tag);
+        dax_log(DAX_LOG_ERROR, "Unable to add file rotation tag %s", rotate_tag);
     } else {
         result=  dax_event_add(ds, &rotate_handle, EVENT_SET, NULL, NULL, _rotate_callback, NULL, NULL);
     }

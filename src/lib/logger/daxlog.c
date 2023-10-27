@@ -29,7 +29,7 @@
 
 /* This is the default log topic mask.  This is used if no other
  * logging services are configured. */
-static uint32_t _default_topics = LOG_FATAL | LOG_ERROR;
+static uint32_t _default_topics = DAX_LOG_FATAL | DAX_LOG_ERROR;
 static const char *_name;
 
 static void (*_topic_callback)(char *topic);
@@ -40,35 +40,35 @@ static int _service_count = 0;
 static char *
 _topic_to_string(uint32_t topic) {
     switch(topic) {
-        case LOG_MINOR:
+        case DAX_LOG_MINOR:
             return "MINOR";
-        case LOG_MAJOR:
+        case DAX_LOG_MAJOR:
             return "MAJOR";
-        case LOG_WARN:
+        case DAX_LOG_WARN:
             return "WARN";
-        case LOG_ERROR:
+        case DAX_LOG_ERROR:
             return "ERROR";
-        case LOG_FATAL:
+        case DAX_LOG_FATAL:
             return "FATAL";
-        case LOG_MODULE:
+        case DAX_LOG_MODULE:
             return "MODULE";
-        case LOG_COMM:
+        case DAX_LOG_COMM:
             return "COMM";
-        case LOG_MSG:
+        case DAX_LOG_MSG:
             return "MSG";
-        case LOG_MSGERR:
+        case DAX_LOG_MSGERR:
             return "MSGERR";
-        case LOG_CONFIG:
+        case DAX_LOG_CONFIG:
             return "CONFIG";
-        case LOG_PROTOCOL:
+        case DAX_LOG_PROTOCOL:
             return "PROTOCOL";
-        case LOG_INFO:
+        case DAX_LOG_INFO:
             return "INFO";
-        case LOG_DEBUG:
+        case DAX_LOG_DEBUG:
             return "DEBUG";
-        case LOG_LOGIC:
+        case DAX_LOG_LOGIC:
             return "LOGIC";
-        case LOG_LOGICERR:
+        case DAX_LOG_LOGICERR:
             return "LOGICERR";
         default:
             return "?";
@@ -98,7 +98,7 @@ _add_stdio_service(lua_State *L, service_item *service) {
     lua_getfield(L, -1, "file");
     file = lua_tostring(L, -1);
     if(strcasecmp(file, "stdout")==0) {
-        new->file = stdout;   
+        new->file = stdout;
     } else if(strcasecmp(file, "stderr")==0) {
         new->file = stderr;
     }
@@ -121,27 +121,27 @@ static int
 _add_syslog_service(lua_State *L, service_item *service) {
     syslog_service *new;
     const char *priority;
-    
+
     new = malloc(sizeof(syslog_service));
     lua_getfield(L, -1, "priority");
     priority = lua_tostring(L, -1);
-    
+
     if(strcasecmp(priority, "EMERG") == 0)
-        new->priority = SYSLOG_EMERG;
+        new->priority = LOG_EMERG;
     else if(strcasecmp(priority, "ALERT") == 0)
-        new->priority = SYSLOG_ALERT;
+        new->priority = LOG_ALERT;
     else if(strcasecmp(priority, "CRIT") == 0)
-        new->priority = SYSLOG_CRIT;
+        new->priority = LOG_CRIT;
     else if(strcasecmp(priority, "ERR") == 0)
-        new->priority = SYSLOG_ERR;
+        new->priority = LOG_ERR;
     else if(strcasecmp(priority, "WARNING") == 0)
-        new->priority = SYSLOG_WARNING;
+        new->priority = LOG_WARNING;
     else if(strcasecmp(priority, "NOTICE") == 0)
-        new->priority = SYSLOG_NOTICE;
+        new->priority = LOG_NOTICE;
     else if(strcasecmp(priority, "INFO") == 0)
-        new->priority = SYSLOG_INFO;
+        new->priority = LOG_INFO;
     else if(strcasecmp(priority, "DEBUG") == 0)
-        new->priority = SYSLOG_DEBUG;
+        new->priority = LOG_DEBUG;
     else
         luaL_error(L, "Unknown priority given");
 
@@ -156,7 +156,7 @@ _add_syslog_service(lua_State *L, service_item *service) {
    table as an argument and returns the Port's index */
 static int
 _add_service(lua_State *L)
-{   
+{
     const char *type;
     const char *topics;
     uint32_t mask;
@@ -165,17 +165,17 @@ _add_service(lua_State *L)
     /* Check that we have services available in the list */
     /* TODO: Reallocate the array instead of static */
     if(_service_count >= _service_size) {
-        dax_log(LOG_ERROR, "No more log services available");
+        dax_log(DAX_LOG_ERROR, "No more log services available");
         return ERR_OVERFLOW;
     }
     if(!lua_istable(L, -1)) {
         luaL_error(L, "add_port() received an argument that is not a table");
     }
-    
+
     lua_getfield(L, -1, "topics");
     topics = lua_tostring(L, -1);
     if(topics == NULL) {
-        dax_log(LOG_ERROR, "No Topic list given");
+        dax_log(DAX_LOG_ERROR, "No Topic list given");
         return ERR_ARG;
     }
     mask = dax_parse_log_topics((char *)topics);
@@ -190,7 +190,7 @@ _add_service(lua_State *L)
         lua_pop(L, 1); /* Put the table back at the top of the stack */
         result = _add_syslog_service(L, &_services[_service_count]);
     } else {
-        dax_log(LOG_ERROR, "Unknown log service %s", type);
+        dax_log(DAX_LOG_ERROR, "Unknown log service %s", type);
         return ERR_ARG;
     }
     if(result) {
@@ -239,21 +239,21 @@ dax_parse_log_topics(char *topic_string) {
 
     s = strtok(temp, ",");
     while(s != NULL) {
-        if(strcmp(s,"ALL") == 0) log_mask |= LOG_ALL;
-        if(strcmp(s,"MINOR") == 0) log_mask |= LOG_MINOR;
-        if(strcmp(s,"MAJOR") == 0) log_mask |= LOG_MAJOR;
-        if(strcmp(s,"WARN") == 0) log_mask |= LOG_WARN;
-        if(strcmp(s,"ERROR") == 0) log_mask |= LOG_ERROR;
-        if(strcmp(s,"FATAL") == 0) log_mask |= LOG_FATAL;
-        if(strcmp(s,"MODULE") == 0) log_mask |= LOG_MODULE;
-        if(strcmp(s,"COMM") == 0) log_mask |= LOG_COMM;
-        if(strcmp(s,"MSG") == 0) log_mask |= LOG_MSG;
-        if(strcmp(s,"MSGERR") == 0) log_mask |= LOG_MSGERR;
-        if(strcmp(s,"CONFIG") == 0) log_mask |= LOG_CONFIG;
-        if(strcmp(s,"PROTOCOL") == 0) log_mask |= LOG_PROTOCOL;
-        if(strcmp(s,"INFO") == 0) log_mask |= LOG_INFO;
-        if(strcmp(s,"DEBUG") == 0) log_mask |= LOG_DEBUG;
-        
+        if(strcmp(s,"ALL") == 0) log_mask |= DAX_LOG_ALL;
+        if(strcmp(s,"MINOR") == 0) log_mask |= DAX_LOG_MINOR;
+        if(strcmp(s,"MAJOR") == 0) log_mask |= DAX_LOG_MAJOR;
+        if(strcmp(s,"WARN") == 0) log_mask |= DAX_LOG_WARN;
+        if(strcmp(s,"ERROR") == 0) log_mask |= DAX_LOG_ERROR;
+        if(strcmp(s,"FATAL") == 0) log_mask |= DAX_LOG_FATAL;
+        if(strcmp(s,"MODULE") == 0) log_mask |= DAX_LOG_MODULE;
+        if(strcmp(s,"COMM") == 0) log_mask |= DAX_LOG_COMM;
+        if(strcmp(s,"MSG") == 0) log_mask |= DAX_LOG_MSG;
+        if(strcmp(s,"MSGERR") == 0) log_mask |= DAX_LOG_MSGERR;
+        if(strcmp(s,"CONFIG") == 0) log_mask |= DAX_LOG_CONFIG;
+        if(strcmp(s,"PROTOCOL") == 0) log_mask |= DAX_LOG_PROTOCOL;
+        if(strcmp(s,"INFO") == 0) log_mask |= DAX_LOG_INFO;
+        if(strcmp(s,"DEBUG") == 0) log_mask |= DAX_LOG_DEBUG;
+
         if(_topic_callback != NULL) { /* If there is a callback function assigned */
             _topic_callback(s);       /* Call it */
         }
@@ -293,7 +293,7 @@ dax_log(uint32_t topic, const char *format, ...)
 {
     char output[LOG_STRING_SIZE];
     va_list val;
-    
+
     /* Format the string */
     va_start(val, format);
     vsnprintf(output, LOG_STRING_SIZE, format, val);
@@ -307,6 +307,6 @@ dax_log(uint32_t topic, const char *format, ...)
             if(_services[n].mask & topic) {
                 _services[n].log_func(topic, _services[n].data, output);
             }
-        }   
+        }
     }
 }

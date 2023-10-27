@@ -74,30 +74,30 @@ typedef struct lua_State lua_State;
 /* These are the logging topics.  Each log message is
  * assigned one or more of these topics and will only be logged
  * when the corresponding bit is set in the configuration */
-#define LOG_MINOR     0x00000001  /* Minor Program Milestones */
-#define LOG_MAJOR     0x00000002  /* Major Program Milestones */
-#define LOG_WARN      0x00000004  /* Program warnings */
-#define LOG_ERROR     0x00000008  /* Program errors */
-#define LOG_FATAL     0x00000010  /* Program fatal errors */
-#define LOG_MODULE    0x00000020  /* Module Milestones */
-#define LOG_COMM      0x00000040  /* Communications Milestones */
-#define LOG_MSG       0x00000080  /* Messages */
-#define LOG_MSGERR    0x00000100  /* Message Errors */
-#define LOG_CONFIG    0x00000200  /* Configuration file prints */
-#define LOG_PROTOCOL  0x00000400  /* Protocol Dumps */
-#define LOG_INFO      0x00000800  /* Low priority information */
-#define LOG_DEBUG     0x00001000  /* Debug messages */
-#define LOG_LOGIC     0x00002000  /* Embedded logic messages */
-#define LOG_LOGICERR  0x00004000  /* Embedded logic errors */
-#define LOG_USER1     0x01000000  /* Module specific log topic */
-#define LOG_USER2     0x02000000  /* Module specific log topic */
-#define LOG_USER3     0x04000000  /* Module specific log topic */
-#define LOG_USER4     0x08000000  /* Module specific log topic */
-#define LOG_USER5     0x10000000  /* Module specific log topic */
-#define LOG_USER6     0x20000000  /* Module specific log topic */
-#define LOG_USER7     0x40000000  /* Module specific log topic */
-#define LOG_USER8     0x80000000  /* Module specific log topic */
-#define LOG_ALL       0xFFFFFFFF  /* Log everything */
+#define DAX_LOG_MINOR     0x00000001  /* Minor Program Milestones */
+#define DAX_LOG_MAJOR     0x00000002  /* Major Program Milestones */
+#define DAX_LOG_WARN      0x00000004  /* Program warnings */
+#define DAX_LOG_ERROR     0x00000008  /* Program errors */
+#define DAX_LOG_FATAL     0x00000010  /* Program fatal errors */
+#define DAX_LOG_MODULE    0x00000020  /* Module Milestones */
+#define DAX_LOG_COMM      0x00000040  /* Communications Milestones */
+#define DAX_LOG_MSG       0x00000080  /* Messages */
+#define DAX_LOG_MSGERR    0x00000100  /* Message Errors */
+#define DAX_LOG_CONFIG    0x00000200  /* Configuration file prints */
+#define DAX_LOG_PROTOCOL  0x00000400  /* Protocol Dumps */
+#define DAX_LOG_INFO      0x00000800  /* Low priority information */
+#define DAX_LOG_DEBUG     0x00001000  /* Debug messages */
+#define DAX_LOG_LOGIC     0x00002000  /* Embedded logic messages */
+#define DAX_LOG_LOGICERR  0x00004000  /* Embedded logic errors */
+#define DAX_LOG_USER1     0x01000000  /* Module specific log topic */
+#define DAX_LOG_USER2     0x02000000  /* Module specific log topic */
+#define DAX_LOG_USER3     0x04000000  /* Module specific log topic */
+#define DAX_LOG_USER4     0x08000000  /* Module specific log topic */
+#define DAX_LOG_USER5     0x10000000  /* Module specific log topic */
+#define DAX_LOG_USER6     0x20000000  /* Module specific log topic */
+#define DAX_LOG_USER7     0x40000000  /* Module specific log topic */
+#define DAX_LOG_USER8     0x80000000  /* Module specific log topic */
+#define DAX_LOG_ALL       0xFFFFFFFF  /* Log everything */
 
 /*! Macro to get the size of the datatype in bits*/
 #define TYPESIZE(TYPE) (0x0001 << (TYPE & 0x0F))

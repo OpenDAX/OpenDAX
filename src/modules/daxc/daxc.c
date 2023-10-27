@@ -109,7 +109,7 @@ int main(int argc,char *argv[]) {
 
  /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        dax_log(DAX_LOG_FATAL, "Unable to find OpenDAX");
         getout(-1);
     }
     /* No setup work to do here.  We'll go straight to running */
@@ -154,7 +154,7 @@ int main(int argc,char *argv[]) {
     }
     while(1) {
         if(_quitsignal) {
-            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(DAX_LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
 

@@ -122,7 +122,7 @@ _add_script(lua_State *L) {
     if(lua_istable(L, -1)) {
         si->script_trigger = malloc(sizeof(trigger_t));
         if(si->script_trigger == NULL) {
-            dax_log(LOG_ERROR, "Unable to allocate memory for script trigger event");
+            dax_log(DAX_LOG_ERROR, "Unable to allocate memory for script trigger event");
             return ERR_ALLOC;
         }
         errstr = _set_trigger(L, si->script_trigger);
@@ -140,7 +140,7 @@ _add_script(lua_State *L) {
     if(lua_istable(L, -1)) {
         si->enable_trigger = malloc(sizeof(trigger_t));
         if(si->enable_trigger == NULL) {
-            dax_log(LOG_ERROR, "Unable to allocate memory for script trigger event");
+            dax_log(DAX_LOG_ERROR, "Unable to allocate memory for script trigger event");
             return ERR_ALLOC;
         }
         errstr = _set_trigger(L, si->enable_trigger);
@@ -158,7 +158,7 @@ _add_script(lua_State *L) {
     if(lua_istable(L, -1)) {
         si->disable_trigger = malloc(sizeof(trigger_t));
         if(si->disable_trigger == NULL) {
-            dax_log(LOG_ERROR, "Unable to allocate memory for script trigger event");
+            dax_log(DAX_LOG_ERROR, "Unable to allocate memory for script trigger event");
             return ERR_ALLOC;
         }
         errstr = _set_trigger(L, si->disable_trigger);
@@ -211,7 +211,7 @@ _add_script(lua_State *L) {
 
 
     if(si->threadname != NULL && si->script_trigger != NULL) {
-        dax_log(LOG_WARN, "Script '%s' is assigned to a trigger as well as an interval.", si->name);
+        dax_log(DAX_LOG_WARN, "Script '%s' is assigned to a trigger as well as an interval.", si->name);
     }
 
     return 0;
@@ -331,11 +331,11 @@ configure(int argc, char *argv[])
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "event_thread_count", "event_thread_count", 'n', flags, "8");
     if(result) {
-         dax_log(LOG_FATAL, "Problem with the configuration");
+         dax_log(DAX_LOG_FATAL, "Problem with the configuration");
     }
     result += dax_add_attribute(ds, "event_queue_size", "event_queue_size", 's', flags, "128");
     if(result) {
-         dax_log(LOG_FATAL, "Problem with the configuration");
+         dax_log(DAX_LOG_FATAL, "Problem with the configuration");
     }
 
     L = dax_get_luastate(ds);

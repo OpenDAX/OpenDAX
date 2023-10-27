@@ -22,7 +22,7 @@
  *  library so that we don't have to have a broker installed and so we can
  *  intercept and manipulate the messages.
  *  The idea is that we start a thread on connect and keep track of how many
- *  subscriptions happen 
+ *  subscriptions happen
  */
 
 
@@ -63,7 +63,7 @@ MQTTClient_subscribe(MQTTClient handle, const char* topic, int qos) {
 
 LIBMQTT_API int
 MQTTClient_publish(MQTTClient handle, const char* topicName, int payloadlen, const void* payload, int qos, int retained, MQTTClient_deliveryToken* dt) {
-    
+
     return MQTTCLIENT_SUCCESS;
 }
 
@@ -106,7 +106,7 @@ MQTTClient_connect(MQTTClient handle, MQTTClient_connectOptions* options) {
 
     result = pthread_create(&_test_thread, NULL, test_thread, &thread_args);
     if(result) {
-        dax_log(LOG_ERROR, "Unable to create thread");
+        dax_log(DAX_LOG_ERROR, "Unable to create thread");
     }
     return MQTTCLIENT_SUCCESS;
 }

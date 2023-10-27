@@ -44,7 +44,7 @@ stop_function(dax_state *ds, void *ud) {
 
 static void
 kill_function(dax_state *ds, void *ud) {
-    dax_log(LOG_MAJOR, "Recieved kill signal from tagserver");
+    dax_log(DAX_LOG_MAJOR, "Recieved kill signal from tagserver");
     quitsig = 1;
     dax_default_kill(ds, ud);
 }
@@ -80,13 +80,13 @@ main(int argc, char *argv[])
 
     /* Reads the configuration */
     if(configure(argc,argv)) {
-        dax_log(LOG_FATAL, "Unable to configure");
+        dax_log(DAX_LOG_FATAL, "Unable to configure");
         return -1;
     }
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        dax_log(DAX_LOG_FATAL, "Unable to find OpenDAX");
         kill(getpid(), SIGQUIT);
     }
 
@@ -110,10 +110,10 @@ main(int argc, char *argv[])
     pthread_attr_init(&attr);
 
     if(pthread_create(&mthread, &attr, (void *)&_maintenance_thread, NULL)) {
-        dax_log(LOG_ERROR, "Unable to start maintenance thread");
+        dax_log(DAX_LOG_ERROR, "Unable to start maintenance thread");
         exit(-1);
     } else {
-        dax_log(LOG_MAJOR, "Started maintenance Thread");
+        dax_log(DAX_LOG_MAJOR, "Started maintenance Thread");
     }
 
 
@@ -121,7 +121,7 @@ main(int argc, char *argv[])
         dax_event_wait(ds, 1000, NULL);
 
         if(quitsig) {
-            dax_log(LOG_MAJOR, "Quitting due to signal %d", quitsig);
+            dax_log(DAX_LOG_MAJOR, "Quitting due to signal %d", quitsig);
             dax_disconnect(ds);
             pthread_join(mthread, NULL);
             if(quitsig == SIGQUIT) {

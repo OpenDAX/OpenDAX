@@ -226,7 +226,7 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
     /* At this point we should have the spot for the datatype */
     str = strtok_r(typedesc, ":", &last);
     if(str == NULL) {
-        dax_log(LOG_ERROR, "add_cdt_to_cache(): Something is seriously wrong with the string");
+        dax_log(DAX_LOG_ERROR, "add_cdt_to_cache(): Something is seriously wrong with the string");
         return ERR_ARG;
     }
     result = _insert_type(ds, index, str);
@@ -682,11 +682,11 @@ _dax_tag_handle(dax_state *ds, tag_handle *h, char *str, int strlen, int count)
             return _parse_bit_index(ds, tag.type, h, membername, index, count);
         }
         else if(!IS_CUSTOM(tag.type)) {
-            dax_log(LOG_ERROR, "Tag %s, has no member %s", tagname, membername);
+            dax_log(DAX_LOG_ERROR, "Tag %s, has no member %s", tagname, membername);
             return ERR_ARG;
         }
         if(tag.count > 1 && index == ERR_NOTFOUND) {
-            dax_log(LOG_ERROR, "Ambiguous reference in tag %s", tagname);
+            dax_log(DAX_LOG_ERROR, "Ambiguous reference in tag %s", tagname);
             return ERR_ARBITRARY;
         }
         result = _parse_next_member(ds, tag.type, h, membername, count);

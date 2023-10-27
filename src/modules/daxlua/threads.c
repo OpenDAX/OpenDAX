@@ -101,7 +101,7 @@ add_interval_thread(char *name, long interval) {
 
     new_thread = malloc(sizeof(interval_thread_t));
     if(new_thread == NULL) {
-        dax_log(LOG_FATAL, "Unable to allocate memory for new interval thread %s", name);
+        dax_log(DAX_LOG_FATAL, "Unable to allocate memory for new interval thread %s", name);
         return ERR_ALLOC;
     }
 
@@ -174,7 +174,7 @@ _start_interval_thread(interval_thread_t *t) {
 
     t->tag_data = malloc(t->handle.size);
     if(t->tag_data == NULL) {
-        dax_log(LOG_ERROR, "Unable to allocate memory for thread tag");
+        dax_log(DAX_LOG_ERROR, "Unable to allocate memory for thread tag");
     } else {
         bzero(t->tag_data, t->handle.size);
         strncpy(t->tag_data, t->name, DAX_TAGNAME_SIZE);
@@ -185,13 +185,13 @@ _start_interval_thread(interval_thread_t *t) {
     }
 
     if(t->scriptcount == 0) {
-        dax_log(LOG_WARN, "Interval thread '%s' has no scripts assigned.  Not starting.", t->name);
+        dax_log(DAX_LOG_WARN, "Interval thread '%s' has no scripts assigned.  Not starting.", t->name);
         return ERR_GENERIC;
     }
     /* Now we allocate our array */
     t->scripts = malloc(sizeof(script_t) * t->scriptcount);
     if(t->scripts == NULL) {
-        dax_log(LOG_ERROR, "Unable to allocate script array for thread %s", t->name);
+        dax_log(DAX_LOG_ERROR, "Unable to allocate script array for thread %s", t->name);
         return ERR_ALLOC;
     }
     /* No we go through and assign the scripts to the array */
@@ -208,10 +208,10 @@ _start_interval_thread(interval_thread_t *t) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     if(pthread_create(&t->thread, &attr, (void *)&_interval_thread, (void *)t)) {
-        dax_log(LOG_ERROR, "Unable to start interval thread - %s", t->name);
+        dax_log(DAX_LOG_ERROR, "Unable to start interval thread - %s", t->name);
         return -1;
     } else {
-        dax_log(LOG_MAJOR, "Started Interval Thread - %s", t->name);
+        dax_log(DAX_LOG_MAJOR, "Started Interval Thread - %s", t->name);
         return 0;
     }
 
@@ -310,7 +310,7 @@ _script_event_dispatch(dax_state *d, void *udata) {
     if(q_full) {
         q_overruns++;
         pthread_mutex_unlock(&q_lock);
-        dax_log(LOG_ERROR, "Script Queue is Full");
+        dax_log(DAX_LOG_ERROR, "Script Queue is Full");
     } else {
         _q_push(script);
         pthread_cond_signal(&q_cond);
@@ -461,7 +461,7 @@ _set_trigger_events(void *x) {
         delay = delay * 2; /* we get slower each time */
         if(delay > 5e6) delay = 5e6; /* max 5 seconds */
     } while(fails);
-    dax_log(LOG_MINOR, "All script trigger events created successfully");
+    dax_log(DAX_LOG_MINOR, "All script trigger events created successfully");
 }
 
 static int
@@ -511,7 +511,7 @@ thread_start_all(void) {
     pthread_t t_thread;
     pthread_attr_t attr;
 
-    dax_log(LOG_DEBUG, "Starting all threads");
+    dax_log(DAX_LOG_DEBUG, "Starting all threads");
 
     _create_thread_types_and_tags();
 
@@ -521,10 +521,10 @@ thread_start_all(void) {
         this = this->next;
     }
 
-    dax_log(LOG_DEBUG, "Allocating script queue, size = %d", queue_size);
+    dax_log(DAX_LOG_DEBUG, "Allocating script queue, size = %d", queue_size);
     script_queue = malloc(sizeof(script_t *) * queue_size);
     if(script_queue == NULL) {
-        dax_log(LOG_ERROR, "Unable to allocate memory for script queue");
+        dax_log(DAX_LOG_ERROR, "Unable to allocate memory for script queue");
         return ERR_ALLOC;
     }
 
@@ -540,10 +540,10 @@ thread_start_all(void) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     if(pthread_create(&t_thread, &attr, (void *)&_set_trigger_events, NULL)) {
-        dax_log(LOG_ERROR, "Unable to start trigger create thread");
+        dax_log(DAX_LOG_ERROR, "Unable to start trigger create thread");
         return -1;
     } else {
-        dax_log(LOG_MINOR, "Started trigger event create thread");
+        dax_log(DAX_LOG_MINOR, "Started trigger event create thread");
         return 0;
     }
     return 0;

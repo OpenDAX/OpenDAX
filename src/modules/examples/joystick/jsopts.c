@@ -49,7 +49,7 @@ _set_axis(lua_State *L)
     if(!result) {
         luaL_error(L, "set_axis() - missing or bad scale argument");
     }
-    dax_log(LOG_DEBUG, "axis[%lld] tagname = %s, offset = %lld, scale = %f", index, tagname, offset, scale);
+    dax_log(DAX_LOG_DEBUG, "axis[%lld] tagname = %s, offset = %lld, scale = %f", index, tagname, offset, scale);
     axis_list[index].tagname = malloc(strlen(tagname) + 1);
     if(axis_list[index].tagname == NULL) {
         luaL_error(L, "set_axis() - Unable to allocate memory for tagname");
@@ -75,7 +75,7 @@ _set_button(lua_State *L)
     if(tagname == NULL) {
         luaL_error(L, "set_button() - problem with tagname argument");
     }
-    dax_log(LOG_DEBUG, "button[%lld] tagname = %s", index, tagname);
+    dax_log(DAX_LOG_DEBUG, "button[%lld] tagname = %s", index, tagname);
     button_list[index].tagname = malloc(strlen(tagname) + 1);
     if(button_list[index].tagname == NULL) {
         luaL_error(L, "set_button() - Unable to allocate memory for tagname");

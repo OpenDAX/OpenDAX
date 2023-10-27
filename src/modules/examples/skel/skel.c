@@ -61,7 +61,7 @@ int main(int argc,char *argv[]) {
     if(ds == NULL) {
         /* dax_fatal() logs an errlr and causes a quit
          * signal to be sent to the module */
-        dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
+        dax_log(DAX_LOG_FATAL, "Unable to Allocate DaxState Object\n");
     }
 
     /* These flags will be passed to the dax_add_attribute() function.  They
@@ -79,7 +79,7 @@ int main(int argc,char *argv[]) {
     /* Execute the configuration */
     result = dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
     if(result) {
-        dax_log(LOG_FATAL, "Fatal error in configuration");
+        dax_log(DAX_LOG_FATAL, "Fatal error in configuration");
         exit(result);
     }
 
@@ -100,7 +100,7 @@ int main(int argc,char *argv[]) {
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        dax_log(DAX_LOG_FATAL, "Unable to find OpenDAX");
     }
 
     /* The only thing that skel does right now is manipulate this single
@@ -108,13 +108,13 @@ int main(int argc,char *argv[]) {
      * a handle that we can use to read and write the entire array. */
     result = dax_tag_add(ds, &h_full, tagname, DAX_DINT, 5, 0);
     if(result) {
-        dax_log(LOG_FATAL, "Unable to create tag - %s", tagname);
+        dax_log(DAX_LOG_FATAL, "Unable to create tag - %s", tagname);
     }
     /* This function retrieves a handle for the tag.  This is simply an
      * example of how to retrieve a handle for a single element in the array */
     str = malloc(strlen(tagname) + 3);
     if(str == NULL) {
-        dax_log(LOG_FATAL, "Unable to allocate memory");
+        dax_log(DAX_LOG_FATAL, "Unable to allocate memory");
     }
     strcpy(str, tagname);
     str = strcat(str, "[2]");
@@ -122,16 +122,16 @@ int main(int argc,char *argv[]) {
     /* At this point str should be 'tagname[2]\0' */
     result = dax_tag_handle(ds, &h_part, str, 1);
     if(result) {
-        dax_log(LOG_FATAL, "Unable to retrive Handle for tag - %s", tagname);
+        dax_log(DAX_LOG_FATAL, "Unable to retrive Handle for tag - %s", tagname);
     }
 
     dax_set_running(ds, 1);
     dax_set_default_callbacks(ds);
-    dax_log(LOG_MINOR, "Skeleton Module Starting");
+    dax_log(DAX_LOG_MINOR, "Skeleton Module Starting");
     while(1) {
     	/* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
-            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(DAX_LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
         /* Every ten times though do something with the data */

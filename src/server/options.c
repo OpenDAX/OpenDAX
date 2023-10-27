@@ -93,7 +93,7 @@ parsecommandline(int argc, const char *argv[])
             break;
         case 'I':
             if(! inet_aton(optarg, &_serverip)) {
-                dax_log(LOG_ERROR, "Unknown IP address %s", optarg);
+                dax_log(DAX_LOG_ERROR, "Unknown IP address %s", optarg);
             }
             break;
         case 'P':
@@ -107,7 +107,7 @@ parsecommandline(int argc, const char *argv[])
             exit(0);
             break;
         case 'v':
-            dax_log_set_default_mask(LOG_ALL);
+            dax_log_set_default_mask(DAX_LOG_ALL);
             break;
         case '?':
             printf("Got the big ?\n");
@@ -138,7 +138,7 @@ readconfigfile(void)
         if(_configfile) {
             sprintf(_configfile, "%s%s", ETC_DIR, "/tagserver.conf");
         } else {
-            dax_log(LOG_FATAL, "Unable to allocate memory for configuration file");
+            dax_log(DAX_LOG_FATAL, "Unable to allocate memory for configuration file");
         }
     }
     dax_log(2, "Reading Configuration file %s", _configfile);
@@ -155,7 +155,7 @@ readconfigfile(void)
 
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
-        dax_log(LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_log(DAX_LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return 1;
     }
 
@@ -183,7 +183,7 @@ readconfigfile(void)
         c = (char *)lua_tostring(L, -1);
         if(c) {
             if(! inet_aton(c, &_serverip)) {
-                dax_log(LOG_ERROR, "Unknown IP address %s", c);
+                dax_log(DAX_LOG_ERROR, "Unknown IP address %s", c);
             }
         }
     }
@@ -213,7 +213,7 @@ opt_configure(int argc, const char *argv[])
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
-        dax_log(LOG_WARN, "Unable to read configuration running with defaults");
+        dax_log(DAX_LOG_WARN, "Unable to read configuration running with defaults");
     }
     setdefaults();
     return 0;

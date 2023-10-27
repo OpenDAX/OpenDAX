@@ -321,7 +321,7 @@ _queue_add(int idx, tag_type type, unsigned int count) {
     }
     memcpy(_db[idx].data, &vf, sizeof(virt_functions));
     _db[idx].attr |= TAG_ATTR_VIRTUAL;
-    dax_log(LOG_MINOR, "Add Queue for tag at index %d", idx);
+    dax_log(DAX_LOG_MINOR, "Add Queue for tag at index %d", idx);
     return 0;
 }
 
@@ -360,7 +360,7 @@ initialize_tagbase(void)
 
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
     if(!_db) {
-        dax_log(LOG_FATAL, "Unable to allocate the database");
+        dax_log(DAX_LOG_FATAL, "Unable to allocate the database");
         kill(getpid(), SIGQUIT);
     }
     _dbsize = DAX_TAGLIST_SIZE;
@@ -368,17 +368,17 @@ initialize_tagbase(void)
     _index = (_dax_tag_index *)xmalloc(sizeof(_dax_tag_index)
             * DAX_TAGLIST_SIZE);
     if(!_db) {
-        dax_log(LOG_FATAL, "Unable to allocate the database");
+        dax_log(DAX_LOG_FATAL, "Unable to allocate the database");
         kill(getpid(), SIGQUIT);
     }
 
-    dax_log(LOG_MINOR, "Database created with size = %d", _dbsize);
+    dax_log(DAX_LOG_MINOR, "Database created with size = %d", _dbsize);
     /* Creates the system tags */
 
     /* Allocate the datatype array and set the initial counters */
     _datatypes = xmalloc(sizeof(datatype) * DAX_DATATYPE_SIZE);
     if(!_datatypes) {
-        dax_log(LOG_FATAL, "Unable to allocate array for datatypes");
+        dax_log(DAX_LOG_FATAL, "Unable to allocate array for datatypes");
         kill(getpid(), SIGQUIT);
     }
     _datatype_index = 0;
@@ -388,7 +388,7 @@ initialize_tagbase(void)
     char *_mod_cdt = "_module:starttime,TIME,1:id,DINT,1:running,BOOL,1:faulted,BOOL,1:status,CHAR,64:stop,BOOL,1:run,BOOL,1:reload,BOOL,1:kill,BOOL,1";
     type = cdt_create(_mod_cdt, NULL);
     if(type == 0) {
-        dax_log(LOG_FATAL, "Unable to create default datatypes");
+        dax_log(DAX_LOG_FATAL, "Unable to create default datatypes");
         kill(getpid(), SIGQUIT);
     }
     special_set_module_type(type);
@@ -449,25 +449,25 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
     int result;
 
     if(count == 0) {
-        dax_log(LOG_ERROR, "tag_add() called with count = 0");
+        dax_log(DAX_LOG_ERROR, "tag_add() called with count = 0");
         return ERR_ARG;
     }
 
     if(_tagnextindex >= _dbsize) {
         if(_database_grow()) {
-            dax_log(LOG_ERROR, "Failure to increase database size");
+            dax_log(DAX_LOG_ERROR, "Failure to increase database size");
             return ERR_ALLOC;
         } else {
-            dax_log(LOG_MINOR, "Database increased to %d items", _dbsize);
+            dax_log(DAX_LOG_MINOR, "Database increased to %d items", _dbsize);
         }
     }
     result = _checktype(type);
     if( result ) {
-        dax_log(LOG_MSGERR, "tag_add() passed an unknown datatype %x", type);
+        dax_log(DAX_LOG_MSGERR, "tag_add() passed an unknown datatype %x", type);
         return ERR_BADTYPE; /* is the datatype valid */
     }
     if(_validate_name(name)) {
-        dax_log(LOG_MSGERR, "%s is not a valid tag name", name);
+        dax_log(DAX_LOG_MSGERR, "%s is not a valid tag name", name);
         return ERR_TAG_BAD;
     }
 
@@ -499,11 +499,11 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
                 tag_write(-1, INDEX_ADDED_TAG, 0, &n, sizeof(tag_index));
                 return n;
             } else {
-                dax_log(LOG_ERROR, "Unable to allocate memory to grow the size of tag %s", name);
+                dax_log(DAX_LOG_ERROR, "Unable to allocate memory to grow the size of tag %s", name);
                 return ERR_ALLOC;
             }
         } else {
-            dax_log(LOG_MSGERR, "Duplicate tag name %s", name);
+            dax_log(DAX_LOG_MSGERR, "Duplicate tag name %s", name);
             return ERR_TAG_DUPL;
         }
     } else {
@@ -521,7 +521,7 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
     } else {
         /* Allocate the data area */
         if((_db[n].data = xmalloc(size)) == NULL){
-            dax_log(LOG_ERROR, "Unable to allocate memory for tag %s", name);
+            dax_log(DAX_LOG_ERROR, "Unable to allocate memory for tag %s", name);
             return ERR_ALLOC;
         } else {
             bzero(_db[n].data, size);
@@ -537,7 +537,7 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
     if(_add_index(name, n)) {
         /* free up our previous allocation if we can't put this in the __index */
         free(_db[n].data);
-        dax_log(LOG_ERROR, "Unable to allocate data for the tag database index");
+        dax_log(DAX_LOG_ERROR, "Unable to allocate data for the tag database index");
         return ERR_ALLOC;
     }
     /* Only if everything works will we increment the count */
@@ -554,7 +554,7 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
     }
     _set_attribute(n, attr);
     tag_write(-1, INDEX_ADDED_TAG, 0, &n, sizeof(tag_index));
-    dax_log(LOG_DEBUG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
+    dax_log(DAX_LOG_DEBUG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
 
     return n;
 }
@@ -585,11 +585,11 @@ int
 tag_del(tag_index idx)
 {
     if(idx >= _tagnextindex || idx < 0) {
-        dax_log(LOG_ERROR, "tag_del() pass index out of range %d", idx);
+        dax_log(DAX_LOG_ERROR, "tag_del() pass index out of range %d", idx);
         return ERR_ARG;
     }
     if(_db[idx].data == NULL) { /* We've already deleted this one */
-        dax_log(LOG_ERROR, "tag_del() trying to delete already deleted tag %d", idx);
+        dax_log(DAX_LOG_ERROR, "tag_del() trying to delete already deleted tag %d", idx);
         return ERR_DELETED;
     }
     event_del_check(idx); /* Check to see if we have a deleted event for this tag */
@@ -602,7 +602,7 @@ tag_del(tag_index idx)
     events_del_all(_db[idx].events);
     map_del_all(_db[idx].mappings);
     _del_index(_db[idx].name);
-    dax_log(LOG_DEBUG, "Tag deleted with name = %s", _db[idx].name);
+    dax_log(DAX_LOG_DEBUG, "Tag deleted with name = %s", _db[idx].name);
     xfree(_db[idx].name);
     xfree(_db[idx].data);
     _db[idx].name = NULL;
@@ -648,7 +648,7 @@ int
 tag_get_index(int index, dax_tag *tag)
 {
     if(index < 0 || index >= _tagnextindex) {
-        dax_log(LOG_ERROR, "tag_get_index() called with an index that is out of range");
+        dax_log(DAX_LOG_ERROR, "tag_get_index() called with an index that is out of range");
         return ERR_ARG;
     }
     if(_db[index].data == NULL) {
@@ -882,7 +882,7 @@ cdt_append(datatype *cdt, char *str)
     this = cdt->members;
     while(this != NULL) {
         if( !strcasecmp(name, this->name) ) {
-            dax_log(LOG_ERROR, "cdt_append() Duplicate name given");
+            dax_log(DAX_LOG_ERROR, "cdt_append() Duplicate name given");
             return ERR_DUPL;
         }
         this = this->next;
@@ -891,14 +891,14 @@ cdt_append(datatype *cdt, char *str)
     /* Allocate the new member */
     new = xmalloc(sizeof(cdt_member));
     if(new == NULL) {
-        dax_log(LOG_ERROR, "Unable to allocate memory for new CDT member");
+        dax_log(DAX_LOG_ERROR, "Unable to allocate memory for new CDT member");
         return ERR_ALLOC;
     }
     /* Assign everything to the new datatype member */
     new->name = strdup(name);
     if(new->name == NULL) {
         free(new);
-        dax_log(LOG_ERROR, "Unable to allocate memory for the name of the new CDT member");
+        dax_log(DAX_LOG_ERROR, "Unable to allocate memory for the name of the new CDT member");
         return ERR_ALLOC;
     }
     new->type = type;
@@ -1138,7 +1138,7 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
     }
     /* Check that the type is valid */
     if( _checktype(type) ) {
-        dax_log(LOG_ERROR, "cdt_add_member() - datatype 0x%X does not exist");
+        dax_log(DAX_LOG_ERROR, "cdt_add_member() - datatype 0x%X does not exist");
         return ERR_ARG;
     }
 
@@ -1146,7 +1146,7 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
     this = cdt->members;
     while(this != NULL) {
         if( !strcasecmp(name, this->name) ) {
-            dax_log(LOG_ERROR, "cdt_add_member() - name %s already exists", name);
+            dax_log(DAX_LOG_ERROR, "cdt_add_member() - name %s already exists", name);
             return ERR_DUPL;
         }
         this = this->next;
@@ -1155,14 +1155,14 @@ cdt_add_member(datatype *cdt, char *name, tag_type type, unsigned int count)
     /* Allocate the new member */
     new = xmalloc(sizeof(cdt_member));
     if(new == NULL) {
-        dax_log(LOG_ERROR, "cdt_add_member() - Unable to allocate memory for new datatype member %s", name);
+        dax_log(DAX_LOG_ERROR, "cdt_add_member() - Unable to allocate memory for new datatype member %s", name);
         return ERR_ALLOC;
     }
     /* Assign everything to the new datatype member */
     new->name = strdup(name);
     if(new->name == NULL) {
         free(new);
-        dax_log(LOG_ERROR, "cdt_add_member() - Unable to allocate memory for member name %s", name);
+        dax_log(DAX_LOG_ERROR, "cdt_add_member() - Unable to allocate memory for member name %s", name);
         return ERR_ALLOC;
     }
     new->type = type;

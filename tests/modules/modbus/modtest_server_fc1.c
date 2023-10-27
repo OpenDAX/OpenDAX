@@ -123,7 +123,7 @@ main(int argc, char *argv[])
     /* Connect to the tag server */
     ds = dax_init("test");
     if(ds == NULL) {
-        dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
+        dax_log(DAX_LOG_FATAL, "Unable to Allocate DaxState Object\n");
         kill(getpid(), SIGQUIT);
     }
     dax_init_config(ds, "test");
@@ -183,7 +183,7 @@ main(int argc, char *argv[])
         fprintf(stderr, "Error killing modbus module\n");
     if( waitpid(server_pid, &status, 0) != server_pid )
         fprintf(stderr, "Error killing tag server\n");
-    if(exit_status == 0) 
+    if(exit_status == 0)
         fprintf(stderr, "TEST PASSED\n");
     else
         fprintf(stderr, "***TEST FAILED***\n");

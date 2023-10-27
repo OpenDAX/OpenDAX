@@ -60,7 +60,7 @@ main(int argc, const char *argv[])
      * call logger_init() again afterwards */
     process_init();
 
-    dax_init_logger("opendax", LOG_ERROR | LOG_FATAL);
+    dax_init_logger("opendax", DAX_LOG_ERROR | DAX_LOG_FATAL);
     /* Any problems with the configuration are fatal.
        We can be setuid root so we must be careful */
     if(opt_configure(argc, argv)) {
@@ -85,7 +85,7 @@ main(int argc, const char *argv[])
         }
         /* If the quit flag is set then we clean up and get out */
         if(quitflag) {
-            dax_log(LOG_MAJOR, "Master quiting due to signal %d", quitflag);
+            dax_log(DAX_LOG_MAJOR, "Master quiting due to signal %d", quitflag);
             /* TODO: Should stop all running modules and wait for them
                to exit.  If they fail then kill -9 those rascals*/
             kill(0, SIGTERM); /* ...this'll do for now */
@@ -112,7 +112,7 @@ void
 catch_signal(int sig)
 {
     // TODO: No printfs in signal handlers
-    dax_log(LOG_MINOR, "Master received signal %d", sig);
+    dax_log(DAX_LOG_MINOR, "Master received signal %d", sig);
 }
 
 

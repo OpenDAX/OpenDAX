@@ -76,7 +76,7 @@ parsecommandline(int argc, const char *argv[])
             printf("%s Version %s\n", PACKAGE, VERSION);
             break;
         case 'v':
-            dax_log_set_default_mask(LOG_ALL);
+            dax_log_set_default_mask(DAX_LOG_ALL);
             break;
         case 'D':
             _daemonize = 1;
@@ -112,7 +112,7 @@ _set_uid_gid(dax_process *proc)
         if(pw != NULL) {
             proc->uid = pw->pw_uid;
         } else {
-            dax_log(LOG_ERROR, "Unable to find uid for user %s", proc->user);
+            dax_log(DAX_LOG_ERROR, "Unable to find uid for user %s", proc->user);
         }
     }
     /* Neither the uid or the username were set */
@@ -125,7 +125,7 @@ _set_uid_gid(dax_process *proc)
         if(gr != NULL) {
             proc->gid = gr->gr_gid;
         } else {
-            dax_log(LOG_ERROR, "Unable to find gid for group %s", proc->group);
+            dax_log(DAX_LOG_ERROR, "Unable to find gid for group %s", proc->group);
         }
     }
     /* Neither the gid or the groupname were set */
@@ -151,7 +151,7 @@ _add_process(lua_State *L)
 
     lua_getfield(L, -1, "name");
     if( !(name = (char *)lua_tostring(L, -1)) ) {
-        dax_log(LOG_ERROR, "No process name given");
+        dax_log(DAX_LOG_ERROR, "No process name given");
         return 0;
     }
     lua_pop(L, 1);
@@ -160,7 +160,7 @@ _add_process(lua_State *L)
     lua_getfield(L, -1, "path");
     path = (char *)lua_tostring(L, -1);
     if(path == NULL) {
-        dax_log(LOG_ERROR, "No path given for process %s", name);
+        dax_log(DAX_LOG_ERROR, "No path given for process %s", name);
         return 0;
     }
     lua_pop(L, 1);
@@ -246,18 +246,18 @@ _check_config_permissions(char *filename)
        with the configuration file.  If we are not root then none of this matters and we can just
        let the normal file system permissions deal with it */
     if(euid == 0 && ruid != 0) {
-        dax_log(LOG_DEBUG, "We are running as root so we much check the config file permissions");
+        dax_log(DAX_LOG_DEBUG, "We are running as root so we much check the config file permissions");
         result = stat(filename, &sb);
         if(result) {
-            dax_log(LOG_FATAL, "Unable to retrieve file information for file %s - %s", filename, strerror(errno));
+            dax_log(DAX_LOG_FATAL, "Unable to retrieve file information for file %s - %s", filename, strerror(errno));
             return -1;
         }
         if(sb.st_uid != 0 || sb.st_gid != 0) {
-            dax_log(LOG_FATAL, "Configuration File %s, is not owned by root", filename);
+            dax_log(DAX_LOG_FATAL, "Configuration File %s, is not owned by root", filename);
             return -1;
         }
         if(sb.st_mode & 0x0002) { /* Is the config file writable by others */
-            dax_log(LOG_FATAL, "Configuration File %s, cannot be writable by others if we are run as root", filename);
+            dax_log(DAX_LOG_FATAL, "Configuration File %s, cannot be writable by others if we are run as root", filename);
             return -1;
         }
     }
@@ -282,7 +282,7 @@ readconfigfile(void)
         if(_configfile) {
             sprintf(_configfile, "%s%s", ETC_DIR, "/opendax.conf");
         } else {
-            dax_log(LOG_FATAL, "Unable to allocate memory for configuration file");
+            dax_log(DAX_LOG_FATAL, "Unable to allocate memory for configuration file");
         }
     }
     result = _check_config_permissions(_configfile);
@@ -302,7 +302,7 @@ readconfigfile(void)
 
     /* load and run the configuration file */
     if(luaL_loadfile(L, _configfile)  || lua_pcall(L, 0, 0, 0)) {
-        dax_log(LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
+        dax_log(DAX_LOG_ERROR, "Problem executing configuration file - %s", lua_tostring(L, -1));
         return 1;
     }
 
@@ -359,7 +359,7 @@ opt_configure(int argc, const char *argv[])
     initconfig();
     parsecommandline(argc, argv);
     if(readconfigfile()) {
-        dax_log(LOG_FATAL, "Problem reading configuration file");
+        dax_log(DAX_LOG_FATAL, "Problem reading configuration file");
         return -1;
     }
     setdefaults();

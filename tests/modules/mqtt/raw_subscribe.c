@@ -67,7 +67,7 @@ _publish(char *topic, int len, void *buff) {
     DF("Publish %s", topic);
     result = test_publish(client, topic, len, buff, 0, 0, NULL);
     if(result != MQTTCLIENT_SUCCESS) {
-        dax_log(LOG_FATAL, "Unable to publish data to %s", topic);
+        dax_log(DAX_LOG_FATAL, "Unable to publish data to %s", topic);
         return(-1);
     }
 

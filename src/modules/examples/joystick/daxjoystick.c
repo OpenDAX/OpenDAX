@@ -62,21 +62,21 @@ read_event(int fd, struct js_event *event)
 void
 _run_function(dax_state *ds, void *ud) {
     _runsignal = 1;
-    dax_log(LOG_DEBUG, "Run signal received from tagserver");
+    dax_log(DAX_LOG_DEBUG, "Run signal received from tagserver");
     dax_default_run(ds, ud);
 }
 
 void
 _stop_function(dax_state *ds, void *ud) {
     _runsignal = 0;
-    dax_log(LOG_DEBUG, "Stop signal received from tagserver");
+    dax_log(DAX_LOG_DEBUG, "Stop signal received from tagserver");
     dax_default_stop(ds, ud);
 }
 
 void
 _kill_function(dax_state *ds, void *ud) {
     _quitsignal = 1;
-    dax_log(LOG_MINOR, "Kill signal received from tagserver");
+    dax_log(DAX_LOG_MINOR, "Kill signal received from tagserver");
     dax_default_kill(ds, ud);
 }
 
@@ -100,18 +100,18 @@ int main(int argc,char *argv[]) {
     if(ds == NULL) {
         /* dax_fatal() logs an error and causes a quit
          * signal to be sent to the module */
-        dax_log(LOG_FATAL, "Unable to Allocate DaxState Object\n");
+        dax_log(DAX_LOG_FATAL, "Unable to Allocate DaxState Object\n");
         kill(getpid(), SIGQUIT);
     }
     result = configure(argc, argv);
     if(result) {
-        dax_log(LOG_FATAL, "Fatal error in configuration");
+        dax_log(DAX_LOG_FATAL, "Fatal error in configuration");
         exit(result);
     }
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        dax_log(DAX_LOG_FATAL, "Unable to find OpenDAX");
         kill(getpid(), SIGQUIT);
     }
     /* TODO: instead of creating the tags here, we might add some create_tag() routines and simply
@@ -124,7 +124,7 @@ int main(int argc,char *argv[]) {
         if(axis_list[n].tagname != NULL) {
             result = dax_tag_add(ds, &axis_list[n].handle, axis_list[n].tagname, DAX_REAL, 1, 0);
             if(result) {
-                dax_log(LOG_ERROR, "Unable to add tag '%s'", axis_list[n].tagname);
+                dax_log(DAX_LOG_ERROR, "Unable to add tag '%s'", axis_list[n].tagname);
             }
         }
     }
@@ -133,7 +133,7 @@ int main(int argc,char *argv[]) {
         if(button_list[n].tagname != NULL) {
             result = dax_tag_add(ds, &button_list[n].handle, button_list[n].tagname, DAX_BOOL, 1, 0);
             if(result) {
-                dax_log(LOG_ERROR, "Unable to add tag '%s'", button_list[n].tagname);
+                dax_log(DAX_LOG_ERROR, "Unable to add tag '%s'", button_list[n].tagname);
             }
         }
     }
@@ -144,14 +144,14 @@ int main(int argc,char *argv[]) {
     dax_set_stop_callback(ds, _stop_function);
     dax_set_kill_callback(ds, _kill_function);
     dax_set_status(ds, "OK");
-    
-    dax_log(LOG_MAJOR,"Joystick Module Starting?????");
+
+    dax_log(DAX_LOG_MAJOR,"Joystick Module Starting?????");
 
     while(1) { /* device file open loop */
         if(_runsignal) {
             fd = _open_device();
             if(fd > 0) {
-                dax_log(LOG_MINOR, "Connected to joystick at fd = %d", fd);
+                dax_log(DAX_LOG_MINOR, "Connected to joystick at fd = %d", fd);
                 while(_runsignal && read_event(fd, &event) == 0 && ! _quitsignal) {
                     switch (event.type)
                     {
@@ -177,12 +177,12 @@ int main(int argc,char *argv[]) {
                 dax_event_poll(ds, NULL);
                 }
             }
-            dax_log(LOG_MINOR, "Disconnecting from joystick at fd = %d", fd);
+            dax_log(DAX_LOG_MINOR, "Disconnecting from joystick at fd = %d", fd);
             close(fd);
         }
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
-            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(DAX_LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(_quitsignal);
         }
         dax_event_wait(ds, 1000, NULL);

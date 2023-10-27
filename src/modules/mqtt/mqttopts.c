@@ -42,7 +42,7 @@ _get_new_sub(void)
     if(subscriber_count == 0) {
         subscribers = malloc(sizeof(subscriber_t) * SUB_START_SIZE);
         if(subscribers == NULL) {
-            dax_log(LOG_FATAL, "Cannot allocate memory for the subscription list");
+            dax_log(DAX_LOG_FATAL, "Cannot allocate memory for the subscription list");
             kill(getpid(), SIGQUIT);
         }
         subscriber_size = SUB_START_SIZE;
@@ -51,7 +51,7 @@ _get_new_sub(void)
         if(ns != NULL) {
             subscribers = ns;
         } else {
-            dax_log(LOG_ERROR, "Failure to allocate additional subscriptions");
+            dax_log(DAX_LOG_ERROR, "Failure to allocate additional subscriptions");
             return -1;
         }
     }
@@ -159,7 +159,7 @@ _get_new_pub(void)
     if(publisher_count == 0) {
         publishers = malloc(sizeof(publisher_t) * PUB_START_SIZE);
         if(publishers == NULL) {
-            dax_log(LOG_FATAL, "Cannot allocate memory for the subscription list");
+            dax_log(DAX_LOG_FATAL, "Cannot allocate memory for the subscription list");
         }
         publisher_size = PUB_START_SIZE;
     } else if(publisher_count == publisher_size) {
@@ -167,7 +167,7 @@ _get_new_pub(void)
         if(ns != NULL) {
             publishers = ns;
         } else {
-            dax_log(LOG_ERROR, "Failure to allocate additional publishers");
+            dax_log(DAX_LOG_ERROR, "Failure to allocate additional publishers");
             return -1;
         }
     }
@@ -350,7 +350,7 @@ configure(int argc, char *argv[])
     result += dax_add_attribute(ds, "username", "username", 'u', flags, NULL);
     result += dax_add_attribute(ds, "password", "password", 'w', flags, NULL);
     if(result) {
-        dax_log(LOG_FATAL, "Problem setting attributes");
+        dax_log(DAX_LOG_FATAL, "Problem setting attributes");
     }
 
     dax_set_luafunction(ds, (void *)_add_pub, "add_pub");

@@ -71,12 +71,12 @@ map_add(tag_handle src, tag_handle dest)
     DF("map added index1=%d, byte1, %d, size1=%d, index2=%d, byte2=%d, size2=%d", src.index, src.byte, src.size, dest.index, dest.byte, dest.size);
     /* Bounds check handles */
     if(src.index < 0 || src.index >= get_tagindex()) {
-       dax_log(LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
+       dax_log(DAX_LOG_ERROR, "Source tag index %d for new mapping is out of bounds", src.index);
        return ERR_ARG;
     }
 
     if(dest.index < 0 || dest.index >= get_tagindex()) {
-       dax_log(LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
+       dax_log(DAX_LOG_ERROR, "Destination tag index %d for new mapping is out of bounds", dest.index);
        return ERR_ARG;
     }
     if(is_tag_virtual(src.index)){
@@ -86,28 +86,28 @@ map_add(tag_handle src, tag_handle dest)
         return ERR_ILLEGAL;
     }
     if(is_tag_readonly(dest.index)) {
-        dax_log(LOG_ERROR, "Destination tag is read only");
+        dax_log(DAX_LOG_ERROR, "Destination tag is read only");
        return ERR_READONLY;
     }
     /* Bounds check source size */
     if( (src.byte + src.size) > tag_get_size(src.index)) {
-        dax_log(LOG_ERROR, "Size of the affected source data in the new mapping is too large");
+        dax_log(DAX_LOG_ERROR, "Size of the affected source data in the new mapping is too large");
         return ERR_2BIG;
     }
     /* Bounds check destination size */
     if( (dest.byte + dest.size) > tag_get_size(dest.index)) {
-        dax_log(LOG_ERROR, "Size of the affected destination data in the new mapping is too large");
+        dax_log(DAX_LOG_ERROR, "Size of the affected destination data in the new mapping is too large");
         return ERR_2BIG;
     }
     if( src.size > dest.size ) {
-        dax_log(LOG_ERROR, "Size of the source data in the new mapping is too large");
+        dax_log(DAX_LOG_ERROR, "Size of the source data in the new mapping is too large");
         return ERR_2BIG;
     }
     /* Check for duplicates */
     this = _db[src.index].mappings;
     while(this != NULL) {
         if(_handles_equal(src, this->source) && _handles_equal(dest, this->dest)) {  /* Found a duplicate */
-            dax_log(LOG_WARN, "Duplicate mapping found at index %d, id %d", src.index, this->id);
+            dax_log(DAX_LOG_WARN, "Duplicate mapping found at index %d, id %d", src.index, this->id);
             return this->id;
         }
         this = this->next;
@@ -235,7 +235,7 @@ map_check(tag_index idx, int offset, int size) {
                 destBit = this->dest.bit;
                 new_data = (uint8_t *)malloc(this->source.size);
                 if(new_data == NULL) {
-                    dax_log(LOG_ERROR, "Unable to allocate memory for map mask");
+                    dax_log(DAX_LOG_ERROR, "Unable to allocate memory for map mask");
                     return ERR_ALLOC;
                 }
                 bzero(new_data, this->source.size);
@@ -257,7 +257,7 @@ map_check(tag_index idx, int offset, int size) {
                 result = tag_mask_write(-1, this->dest.index, this->dest.byte, new_data, this->mask, this->source.size);
                 /* If the destination tag has been deleted then delete this map */
                 if(result == ERR_DELETED) {
-                    dax_log(LOG_DEBUG, "Destination tag has been deleted, removing map %d from tag index = %d", this->id, this->source.index);
+                    dax_log(DAX_LOG_DEBUG, "Destination tag has been deleted, removing map %d from tag index = %d", this->id, this->source.index);
                     map_del(this->source.index, this->id);
                 }
                 free(new_data);

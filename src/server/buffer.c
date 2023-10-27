@@ -86,7 +86,7 @@ buff_initialize(void)
     for(n = 0; n < count; n++) {
         node = _new_buffnode();
         if(node == NULL) {
-            dax_log(LOG_FATAL, "Unable to allocate all of the communication buffers");
+            dax_log(DAX_LOG_FATAL, "Unable to allocate all of the communication buffers");
             kill(getpid(), SIGQUIT);
         }
         if(n == 0) {
@@ -152,10 +152,10 @@ buff_read(int fd)
     //--result = xread(fd, &node->buffer[node->index], size);
 
     if(result < 0) {
-        dax_log(LOG_ERROR, "Unable to read data from socket %d", fd);
+        dax_log(DAX_LOG_ERROR, "Unable to read data from socket %d", fd);
         return ERR_MSG_RECV;
     } if(result == 0) { /* EOF means the other guy is closed */
-        dax_log(LOG_COMM, "Received EOF on socket %d", fd);
+        dax_log(DAX_LOG_COMM, "Received EOF on socket %d", fd);
         return ERR_NO_SOCKET;
     }
 

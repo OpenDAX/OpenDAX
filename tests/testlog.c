@@ -20,7 +20,7 @@
 
 /* Since the logging facility is fairly complex and we don't really need all of
    that functionality for testing we have duplicated those functions here that
-   are needed by most of the system.  These simplify the logging system and 
+   are needed by most of the system.  These simplify the logging system and
    simply log everythign to stdout. */
 
 #include <stdio.h>
@@ -30,7 +30,7 @@
 
 #define LOG_STRING_SIZE 256
 
-static uint32_t _default_topics = LOG_ALL;
+static uint32_t _default_topics = DAX_LOG_ALL;
 static const char *_name;
 
 static void (*_topic_callback)(char *topic);
@@ -88,17 +88,17 @@ dax_parse_log_topics(char *topic_string) {
 
     s = strtok(temp, ",");
     while(s != NULL) {
-        if(strcmp(s,"ALL") == 0) _default_topics |= LOG_ALL;
-        if(strcmp(s,"ERROR") == 0) _default_topics |= LOG_ERROR;
-        if(strcmp(s,"FATAL") == 0) _default_topics |= LOG_FATAL;
-        if(strcmp(s,"MAJOR") == 0) _default_topics |= LOG_MAJOR;
-        if(strcmp(s,"MINOR") == 0) _default_topics |= LOG_MINOR;
-        if(strcmp(s,"COMM") == 0) _default_topics |= LOG_COMM;
-        if(strcmp(s,"MSG") == 0) _default_topics |= LOG_MSG;
-        if(strcmp(s,"MSGERR") == 0) _default_topics |= LOG_MSGERR;
-        if(strcmp(s,"CONFIG") == 0) _default_topics |= LOG_CONFIG;
-        if(strcmp(s,"MODULE") == 0) _default_topics |= LOG_MODULE;
-        
+        if(strcmp(s,"ALL") == 0) _default_topics |= DAX_LOG_ALL;
+        if(strcmp(s,"ERROR") == 0) _default_topics |= DAX_LOG_ERROR;
+        if(strcmp(s,"FATAL") == 0) _default_topics |= DAX_LOG_FATAL;
+        if(strcmp(s,"MAJOR") == 0) _default_topics |= DAX_LOG_MAJOR;
+        if(strcmp(s,"MINOR") == 0) _default_topics |= DAX_LOG_MINOR;
+        if(strcmp(s,"COMM") == 0) _default_topics |= DAX_LOG_COMM;
+        if(strcmp(s,"MSG") == 0) _default_topics |= DAX_LOG_MSG;
+        if(strcmp(s,"MSGERR") == 0) _default_topics |= DAX_LOG_MSGERR;
+        if(strcmp(s,"CONFIG") == 0) _default_topics |= DAX_LOG_CONFIG;
+        if(strcmp(s,"MODULE") == 0) _default_topics |= DAX_LOG_MODULE;
+
         if(_topic_callback != NULL) { /* If there is a callback function assigned */
             _topic_callback(s);       /* Call it */
         }

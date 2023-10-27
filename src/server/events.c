@@ -51,11 +51,11 @@ _send_event(tag_index idx, _dax_event *event)
     if(event->options & EVENT_OPT_SEND_DATA) {
         memcpy(&buff[16], &_db[idx].data[event->byte], event->size);
     }
-    dax_log(LOG_MSG, "Sending %d event to module %d",
+    dax_log(DAX_LOG_MSG, "Sending %d event to module %d",
          event->eventtype, event->notify->fd);
     result = xwrite(event->notify->fd, buff, msgsize);
     if(result < 0) {
-        dax_log(LOG_ERROR, "_send_event: %s", strerror(errno));
+        dax_log(DAX_LOG_ERROR, "_send_event: %s", strerror(errno));
         return ERR_MSG_SEND;
     }
     return 0;
@@ -451,7 +451,7 @@ _verify_event_type(tag_type ttype, int etype)
         if(ttype == DAX_BOOL) {
             return 0;
         } else {
-            dax_log(LOG_ERROR, "Only BOOL tags are allowed to use SET or RESET events");
+            dax_log(DAX_LOG_ERROR, "Only BOOL tags are allowed to use SET or RESET events");
             return -1;
         }
     }
@@ -459,7 +459,7 @@ _verify_event_type(tag_type ttype, int etype)
     if(etype == EVENT_EQUAL) {
         if(ttype == DAX_REAL || ttype == DAX_LREAL ||
            ttype == DAX_BOOL || ttype >= DAX_CUSTOM) {
-            dax_log(LOG_ERROR, "EQUAL event not allowed for BOOL, REAL, LREAL or Custom types");
+            dax_log(DAX_LOG_ERROR, "EQUAL event not allowed for BOOL, REAL, LREAL or Custom types");
             return -1;
         } else {
             return 0;
@@ -468,13 +468,13 @@ _verify_event_type(tag_type ttype, int etype)
     /* At this point the only ones left are < > and deadband.  All
      * except Booleans and Custom datatypes can use these */
     if(ttype == DAX_BOOL || ttype >= DAX_CUSTOM) {
-        dax_log(LOG_ERROR, "GREATER, LESS and DEADBAND events not allowed for BOOL and Custom types");
+        dax_log(DAX_LOG_ERROR, "GREATER, LESS and DEADBAND events not allowed for BOOL and Custom types");
         return -1;
     } else {
         return 0;
     }
     /* If we get here then we were given an unknown event type */
-    dax_log(LOG_ERROR, "Unknown datatype in new event");
+    dax_log(DAX_LOG_ERROR, "Unknown datatype in new event");
     return -1;
 }
 
@@ -525,7 +525,7 @@ _set_event_data(_dax_event *event, tag_index index, void *data) {
     if(datasize > 0) {
         event->data = malloc(datasize);
         if(event->data == NULL) {
-            dax_log(LOG_ERROR, "event_add() - Unable to allocate memory for event data");
+            dax_log(DAX_LOG_ERROR, "event_add() - Unable to allocate memory for event data");
             return ERR_ALLOC;
         }
     } else {
@@ -536,7 +536,7 @@ _set_event_data(_dax_event *event, tag_index index, void *data) {
         event->test = malloc(testsize);
         if(event->test == NULL) {
             if(event->data != NULL) free(event->data);
-            dax_log(LOG_ERROR, "event_add() - Unable to allocate memory for event test data");
+            dax_log(DAX_LOG_ERROR, "event_add() - Unable to allocate memory for event test data");
             return ERR_ALLOC;
         }
     } else {
@@ -582,7 +582,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
 
     /* Bounds check handle */
     if(h.index < 0 || h.index >= get_tagindex()) {
-        dax_log(LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
+        dax_log(DAX_LOG_ERROR, "Tag index %d for new event is out of bounds", h.index);
         return ERR_ARG;
     }
     /* No events can be assigned to virtual tags unless it's a queue */
@@ -599,7 +599,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
     }
     /* Bounds check size */
     if( (h.byte + h.size) > tag_get_size(h.index)) {
-        dax_log(LOG_ERROR, "Size of the affected data in the new event is too large");
+        dax_log(DAX_LOG_ERROR, "Size of the affected data in the new event is too large");
         return ERR_2BIG;
     }
     if(_verify_event_type(h.type, event_type)) {
@@ -609,7 +609,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
     /* If everything is okay then allocate the new event. */
     new = xmalloc(sizeof(_dax_event));
     if(new == NULL) {
-        dax_log(LOG_ERROR, "event_add() - Unable to allocate memory for new event");
+        dax_log(DAX_LOG_ERROR, "event_add() - Unable to allocate memory for new event");
         return ERR_ALLOC;
     }
     new->id = _db[h.index].nextevent++;
@@ -675,13 +675,13 @@ event_del(int index, int id, dax_module *module)
     int result = ERR_NOTFOUND;
 
     if(index >= get_tagindex() || index < 0) {
-        dax_log(LOG_ERROR, "event_del() - index %d is out of range\n", index);
+        dax_log(DAX_LOG_ERROR, "event_del() - index %d is out of range\n", index);
     }
     this = _db[index].events;
     if(this == NULL) return ERR_NOTFOUND;
     if(this->id == id) {
         if(this->notify != module) {
-            dax_log(LOG_ERROR, "Module cannot delete another module's event");
+            dax_log(DAX_LOG_ERROR, "Module cannot delete another module's event");
             return ERR_AUTH;
         }
         _db[index].events = this->next;
@@ -692,7 +692,7 @@ event_del(int index, int id, dax_module *module)
     while(this != NULL) {
         if(this->id == id) {
             if(this->notify != module) {
-                dax_log(LOG_ERROR, "Module cannot delete another module's event");
+                dax_log(DAX_LOG_ERROR, "Module cannot delete another module's event");
                 return ERR_AUTH;
             }
             last->next = this->next;
@@ -708,7 +708,7 @@ event_del(int index, int id, dax_module *module)
         _db[index].attr &= ~TAG_ATTR_EVENT;
     }
     module->event_count--;
-    dax_log(LOG_DEBUG, "Deleted event index: %d, id: %d, module: %s", index, id, module->name);
+    dax_log(DAX_LOG_DEBUG, "Deleted event index: %d, id: %d, module: %s", index, id, module->name);
     return result;
 }
 
@@ -731,13 +731,13 @@ event_opt(int index, int id, uint32_t options, dax_module *module) {
     int result;
 
     if(index >= get_tagindex() || index < 0) {
-        dax_log(LOG_ERROR, "event_opt() - index %d is out of range\n", index);
+        dax_log(DAX_LOG_ERROR, "event_opt() - index %d is out of range\n", index);
     }
 
     result = _find_event(&event, index, id);
-    if(result) dax_log(LOG_ERROR, "event_opt() - event not found\n");
+    if(result) dax_log(DAX_LOG_ERROR, "event_opt() - event not found\n");
     if(event->notify != module) {
-    	dax_log(LOG_ERROR, "Module cannot modify another module's event");
+    	dax_log(DAX_LOG_ERROR, "Module cannot modify another module's event");
         return ERR_AUTH;
     }
 

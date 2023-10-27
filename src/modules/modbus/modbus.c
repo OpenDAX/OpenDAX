@@ -52,7 +52,7 @@ mb_run_port(struct mb_port *m_port)
             result = mb_open_port(m_port);
         }
         if(result) {
-            dax_log(LOG_ERROR, "Failed to open port %s - %s", m_port->name, strerror(errno));
+            dax_log(DAX_LOG_ERROR, "Failed to open port %s - %s", m_port->name, strerror(errno));
             pthread_barrier_wait(&port_barrier); /* For clients and masters we just need to get past this */
         } else {
             /* If the port is still not open then we inhibit the port and
@@ -64,22 +64,22 @@ mb_run_port(struct mb_port *m_port)
             if(m_port->type == MB_MASTER) {
                 pthread_barrier_wait(&port_barrier); /* For clients and masters we just need to get past this */
                 if(m_port->protocol == MB_TCP) {
-                    dax_log(LOG_MAJOR, "Starting client loop for %s", m_port->name);
+                    dax_log(DAX_LOG_MAJOR, "Starting client loop for %s", m_port->name);
                     return client_loop(m_port);
                 } else {
-                    dax_log(LOG_MAJOR, "Starting master loop for %s", m_port->name);
+                    dax_log(DAX_LOG_MAJOR, "Starting master loop for %s", m_port->name);
                     return master_loop(m_port);
                 }
             } else if(m_port->type == MB_SLAVE) {
                 if(m_port->protocol == MB_TCP) {
-                    dax_log(LOG_MAJOR, "Start Server Loop for port %s", m_port->name);
+                    dax_log(DAX_LOG_MAJOR, "Start Server Loop for port %s", m_port->name);
                     result = server_loop(m_port);
-                    if(result) dax_log(LOG_ERROR, "Server loop exited with error, %d port %s", result, m_port->name);
+                    if(result) dax_log(DAX_LOG_ERROR, "Server loop exited with error, %d port %s", result, m_port->name);
                 } else {
                     pthread_barrier_wait(&port_barrier); /* Doesn't matter since the port is already open */
-                    dax_log(LOG_MAJOR, "Start Slave Loop for port %s", m_port->name);
+                    dax_log(DAX_LOG_MAJOR, "Start Slave Loop for port %s", m_port->name);
                     result = slave_loop(m_port);
-                    if(result) dax_log(LOG_ERROR, "Slave loop exited with error, %d port %s", result, m_port->name);
+                    if(result) dax_log(DAX_LOG_ERROR, "Slave loop exited with error, %d port %s", result, m_port->name);
                 }
             } else {
                 return MB_ERR_PORTTYPE;
@@ -613,7 +613,7 @@ _get_write_data(mb_cmd *mc) {
          * are the same.  If not then if the tag is smaller it's no big deal but if the command
          * data size is smaller then we'll truncate the size in the tag handle. */
         if(mc->data_h.size != mc->datasize) {
-            dax_log(LOG_ERROR, "Tag size and Modbus request size are different.  Data will be truncated");
+            dax_log(DAX_LOG_ERROR, "Tag size and Modbus request size are different.  Data will be truncated");
             if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
         }
     }
@@ -638,7 +638,7 @@ _send_read_data(mb_cmd *mc) {
          * are the same.  If not then if the tag is smaller it's no big deal but if the command
          * data size is smaller then we'll truncate the size in the tag handle. */
         if(mc->data_h.size != mc->datasize) {
-            dax_log(LOG_ERROR, "Tag size and Modbus request size are different.  Data will be truncated");
+            dax_log(DAX_LOG_ERROR, "Tag size and Modbus request size are different.  Data will be truncated");
             if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
         }
     }
@@ -904,7 +904,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
             lua_pushinteger(L, index); /* Third argument is the requested register (0 based)  */
             lua_pushinteger(L, count); /* fourth argument is the count */
             if(lua_pcall(L, 4, 1, 0) != LUA_OK) {
-                dax_log(LOG_ERROR, "callback funtion for %s - %d: %s", port->name, node, lua_tostring(L, -1));
+                dax_log(DAX_LOG_ERROR, "callback funtion for %s - %d: %s", port->name, node, lua_tostring(L, -1));
             } else { /* Success */
                 result = lua_tointeger(L, -1);
             }
@@ -1007,7 +1007,7 @@ create_response(mb_port *port, unsigned char *buff, int size)
                 lua_pushinteger(L, count); /* fourth argument is the count */
             }
             if(lua_pcall(L, 4, 1, 0) != LUA_OK) {
-                dax_log(LOG_ERROR, "callback funtion for %s - %d: %s", port->name, node, lua_tostring(L, -1));
+                dax_log(DAX_LOG_ERROR, "callback funtion for %s - %d: %s", port->name, node, lua_tostring(L, -1));
             } else { /* Success */
                 result = lua_tointeger(L, -1);
             }

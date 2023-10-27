@@ -40,7 +40,7 @@ writepidfile(char *progname)
     snprintf(filename, 40, "%s/%s", PID_FILE_PATH, progname);
     pidfd=open(filename, O_RDWR | O_CREAT | O_TRUNC,S_IRUSR | S_IWUSR);
     if(!pidfd)
-        dax_log(LOG_ERROR, "Unable to open PID file - %s",filename);
+        dax_log(DAX_LOG_ERROR, "Unable to open PID file - %s",filename);
     else {
         sprintf(pid, "%d", getpid());
         write(pidfd, pid, strlen(pid)); /*writes to the PID file*/
@@ -58,13 +58,13 @@ daemonize(char *progname)
     int n;
     char s[10];
 
-    dax_log(LOG_MAJOR, "Sending process to background");
+    dax_log(DAX_LOG_MAJOR, "Sending process to background");
     /* Call fork() and exit as the parent.  This returns control to the
        command line and guarantees the program is not a process group
        leader. */
     result = fork();
     if(result < 0) {
-        dax_log(LOG_ERROR, "Failed initial process creation");
+        dax_log(DAX_LOG_ERROR, "Failed initial process creation");
         return(-1);
     } else if(result > 0) {
         exit(0);
@@ -74,7 +74,7 @@ daemonize(char *progname)
     result=setsid();
 
     if(result<0) {
-        dax_log(LOG_ERROR, "Unable to dump controlling terminal");
+        dax_log(DAX_LOG_ERROR, "Unable to dump controlling terminal");
         return(-1);
     }
 
@@ -83,7 +83,7 @@ daemonize(char *progname)
        terminal */
     result = fork();
     if(result < 0) {
-        dax_log(LOG_ERROR, "Unable to fork the final fork");
+        dax_log(DAX_LOG_ERROR, "Unable to fork the final fork");
         return (-1);
     } else if(result > 0)
         exit(0);

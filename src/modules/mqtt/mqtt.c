@@ -52,7 +52,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
     subscriber_t *sub;
     lua_State* L;
 
-    dax_log(LOG_PROTOCOL, "Message arrived on topic '%s'", topicName);
+    dax_log(DAX_LOG_PROTOCOL, "Message arrived on topic '%s'", topicName);
 
     sub = get_sub(topicName);
     if(sub != NULL) {
@@ -66,12 +66,12 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
             lua_pushstring(L, topicName); /* First argument is the topic */
             lua_pushlstring(L, message->payload, message->payloadlen);
             if(lua_pcall(L, 2, 1, 0) != LUA_OK) {
-                dax_log(LOG_ERROR, "filter funtion for %s - %s", topicName, lua_tostring(L, -1));
+                dax_log(DAX_LOG_ERROR, "filter funtion for %s - %s", topicName, lua_tostring(L, -1));
             } else { /* Success */
                 if(sub->tag_count == 1) {
                     result = daxlua_lua_to_dax(L, sub->h[0], sub->buff, sub->mask);
                     if(result) {
-                        dax_log(LOG_LOGICERR, "Problem converting Lua value to tag for topic %s: %d", sub->topic, result);
+                        dax_log(DAX_LOG_LOGICERR, "Problem converting Lua value to tag for topic %s: %d", sub->topic, result);
                     }
                 } else if(sub->tag_count > 1) {
                     /* If there is more than one tag then it is assumed that there is
@@ -83,7 +83,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
                             result = daxlua_lua_to_dax(L, sub->h[n], &((uint8_t *)sub->buff)[offset], &((uint8_t *)sub->mask)[offset]);
                             offset += sub->h[n].size;
                         } else {
-                            dax_log(LOG_LOGICERR, "Filter didn't return the right kind of data for %s", sub->topic);
+                            dax_log(DAX_LOG_LOGICERR, "Filter didn't return the right kind of data for %s", sub->topic);
                         }
                         lua_pop(L, 1);
                     }
@@ -93,7 +93,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
             /* No filter function configured so we just do a raw
              * binary copy to the tag or the tag group */
             if(message->payloadlen != sub->buff_size) {
-                dax_log(LOG_WARN, "Message payload is not the same size as the buffer");
+                dax_log(DAX_LOG_WARN, "Message payload is not the same size as the buffer");
             }
             size = MIN(message->payloadlen, sub->buff_size);
             /* TODO we could avoid this memory copy if we know the payload is big enough */
@@ -109,7 +109,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
         /* This is a bad error and it means that we have a problem with how we are finding
          * the subscription topic that matches the one that we received from the broker */
         DF("We received topic '%s' with no subscription match", topicName);
-        dax_log(LOG_ERROR, "We received topic '%s' with no subscription match", topicName);
+        dax_log(DAX_LOG_ERROR, "We received topic '%s' with no subscription match", topicName);
     }
 
     MQTTClient_freeMessage(&message);
@@ -120,7 +120,7 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
 void
 connlost(void *context, char *cause)
 {
-    dax_log(LOG_MINOR, "Connection lost - %s", cause);
+    dax_log(DAX_LOG_MINOR, "Connection lost - %s", cause);
     _connected = 0;
 }
 
@@ -132,7 +132,7 @@ static int
 subscribe(subscriber_t *sub) {
     int result;
     if(sub->tag_count == 0 && sub->filter == 0) {
-        dax_log(LOG_WARN, "No tags or filter function given for topic %s", sub->topic);
+        dax_log(DAX_LOG_WARN, "No tags or filter function given for topic %s", sub->topic);
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
@@ -145,7 +145,7 @@ subscribe(subscriber_t *sub) {
         for(int n=0;n<sub->tag_count;n++) {
             result = dax_tag_handle(ds, &sub->h[n], sub->tagnames[n], 0);
             if(result) {
-                dax_log(LOG_WARN, "Unable to add tag %s as subscription", sub->tagnames[n]);
+                dax_log(DAX_LOG_WARN, "Unable to add tag %s as subscription", sub->tagnames[n]);
                 return 1;
             }
         }
@@ -154,35 +154,35 @@ subscribe(subscriber_t *sub) {
     if(sub->tag_count > 1) {
         sub->group = dax_group_add(ds, &result, sub->h, sub->tag_count, 0);
         if(result) {
-            dax_log(LOG_WARN, "Unable to create tag group - %d", result);
+            dax_log(DAX_LOG_WARN, "Unable to create tag group - %d", result);
         }
         sub->buff = malloc(dax_group_get_size(sub->group));
         if(sub->buff == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data buffer");
         }
         /* Having a mask makes the Lua to Dax conversion easier */
         sub->mask = malloc(dax_group_get_size(sub->group));
         if(sub->mask == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data mask");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data mask");
         }
         sub->buff_size = dax_group_get_size(sub->group);
     } else if(sub->tag_count == 1) { /* We just have the one tag */
         sub->buff = malloc(sub->h[0].size);
         if(sub->buff == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data buffer");
         }sub->mask = malloc(sub->h[0].size);
         if(sub->mask == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data mask");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data mask");
         }
         sub->buff_size = sub->h[0].size;
     }
     result = MQTTClient_subscribe(client, sub->topic, 0);
     if(result != MQTTCLIENT_SUCCESS) {
-        dax_log(LOG_WARN, "Unable to subscribe to %s", sub->topic);
+        dax_log(DAX_LOG_WARN, "Unable to subscribe to %s", sub->topic);
         sub->enabled = ENABLE_FAIL; /* Can't recover from this */
     } else {
         sub->enabled = ENABLE_GOOD; /* We're rolling now */
-        dax_log(LOG_DEBUG, "Subscribed to %s", sub->topic);
+        dax_log(DAX_LOG_DEBUG, "Subscribed to %s", sub->topic);
     }
     return 0;
 }
@@ -220,12 +220,12 @@ publish_callback(dax_state *ds, void *udata) {
     if(pub->tag_count == 1) {
         result = dax_read_tag(ds, pub->h[0], pub->buff);
         if(result) {
-            dax_log(LOG_WARN, "Unable to read tag %s for topic %s", pub->tagnames[0], pub->topic);
+            dax_log(DAX_LOG_WARN, "Unable to read tag %s for topic %s", pub->tagnames[0], pub->topic);
         }
     } else {
         result = dax_group_read(ds, pub->group, pub->buff, pub->buff_size);
         if(result) {
-            dax_log(LOG_WARN, "Unable to read tag group for topic %s", pub->topic);
+            dax_log(DAX_LOG_WARN, "Unable to read tag group for topic %s", pub->topic);
         }
     }
 
@@ -256,22 +256,22 @@ publish_callback(dax_state *ds, void *udata) {
             }
         }
         if(lua_pcall(L, 2, 1, 0) != LUA_OK) {
-            dax_log(LOG_WARN, "filter funtion for %s - %s", pub->topic, lua_tostring(L, -1));
+            dax_log(DAX_LOG_WARN, "filter funtion for %s - %s", pub->topic, lua_tostring(L, -1));
         }
         /* The data that is supposed to be published should have been returned by the filter function */
         data = lua_tolstring(L, 1, &len);
         if(data != NULL) {
             result = MQTTClient_publish(client, pub->topic, len, data, pub->qos, pub->retained, NULL);
             if(result != MQTTCLIENT_SUCCESS) {
-                dax_log(LOG_ERROR, "Unable to publish data to %s", pub->topic);
+                dax_log(DAX_LOG_ERROR, "Unable to publish data to %s", pub->topic);
             }
         } else {
-            dax_log(LOG_WARN, "Bad return value from filter on topic %s", pub->topic);
+            dax_log(DAX_LOG_WARN, "Bad return value from filter on topic %s", pub->topic);
         }
     } else { /* No filter function so we just do a raw binary copy */
         result = MQTTClient_publish(client, pub->topic, pub->buff_size, pub->buff, pub->qos, pub->retained, NULL);
         if(result != MQTTCLIENT_SUCCESS) {
-            dax_log(LOG_ERROR, "Unable to publish data to %s", pub->topic);
+            dax_log(DAX_LOG_ERROR, "Unable to publish data to %s", pub->topic);
         }
     }
 }
@@ -286,7 +286,7 @@ publish(publisher_t *pub) {
     pub->enabled = ENABLE_FAIL;
 
     if(pub->tag_count == 0 && pub->filter == 0) {
-        dax_log(LOG_WARN, "No tags or filter function given for topic %s", pub->topic);
+        dax_log(DAX_LOG_WARN, "No tags or filter function given for topic %s", pub->topic);
         pub->enabled = ENABLE_FAIL; /* Can't recover from this */
         return 0; /* We return zero because there is no need to come back here for this one */
     }
@@ -299,7 +299,7 @@ publish(publisher_t *pub) {
         for(int n=0;n<pub->tag_count;n++) {
             result = dax_tag_handle(ds, &pub->h[n], pub->tagnames[n], 1);
             if(result) {
-                dax_log(LOG_WARN, "Unable to add tag %s to publisher", pub->tagnames[n]);
+                dax_log(DAX_LOG_WARN, "Unable to add tag %s to publisher", pub->tagnames[n]);
                 return 1;
             }
         }
@@ -308,18 +308,18 @@ publish(publisher_t *pub) {
     if(pub->tag_count > 1) {
         pub->group = dax_group_add(ds, &result, pub->h, pub->tag_count, 0);
         if(result) {
-            dax_log(LOG_WARN, "Unable to create tag group - %d", result);
+            dax_log(DAX_LOG_WARN, "Unable to create tag group - %d", result);
             return 1;
         }
         pub->buff = malloc(dax_group_get_size(pub->group));
         if(pub->buff == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data buffer");
             return 1;
         }
         /* Having a mask makes the Lua to Dax conversion easier */
         pub->mask = malloc(dax_group_get_size(pub->group));
         if(pub->mask == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data mask");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data mask");
             return 1;
         }
         pub->buff_size = dax_group_get_size(pub->group);
@@ -327,33 +327,33 @@ publish(publisher_t *pub) {
         DF("pub->h = %p", pub->h);
         pub->buff = malloc(pub->h[0].size);
         if(pub->buff == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data buffer");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data buffer");
             return 1;
         }pub->mask = malloc(pub->h[0].size);
         if(pub->mask == NULL) {
-            dax_log(LOG_WARN, "Unable to allocate tag data mask");
+            dax_log(DAX_LOG_WARN, "Unable to allocate tag data mask");
             return 1;
         }
         pub->buff_size = pub->h[0].size;
     }
     result = dax_tag_handle(ds, &h, pub->trigger_tag, 1);
     if(result) {
-        dax_log(LOG_WARN, "Unable to find trigger tag %s for topic %s", pub->trigger_tag, pub->topic);
+        dax_log(DAX_LOG_WARN, "Unable to find trigger tag %s for topic %s", pub->trigger_tag, pub->topic);
         return 1;
     }
 
     result = dax_string_to_val(pub->trigger_value, h.type, &val, NULL, 0);
     if(result) {
-        dax_log(LOG_WARN, "Problem converting trigger value %s for topic %s", pub->trigger_value, pub->topic);
+        dax_log(DAX_LOG_WARN, "Problem converting trigger value %s for topic %s", pub->trigger_value, pub->topic);
         return 1;
     }
     result = dax_event_add(ds, &h, pub->trigger_type, &val, &pub->trigger_id, publish_callback, pub, NULL);
     if(result) {
-        dax_log(LOG_WARN, "Problem adding event for topic %s", pub->topic);
+        dax_log(DAX_LOG_WARN, "Problem adding event for topic %s", pub->topic);
         return 1;
     }
 
-    dax_log(LOG_DEBUG, "Set to publish to %s", pub->topic);
+    dax_log(DAX_LOG_DEBUG, "Set to publish to %s", pub->topic);
     pub->enabled = ENABLE_GOOD; /* We're rolling now */
     return 0;
 }
@@ -394,13 +394,13 @@ client_loop(void) {
 
     while(1) {
         if(!_connected && cycle_count >= connect_cycle) {
-            dax_log(LOG_COMM, "Attempting to connect to broker at %s", conn_str);
+            dax_log(DAX_LOG_COMM, "Attempting to connect to broker at %s", conn_str);
             if ((result = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
-                dax_log(LOG_MINOR, "Failed to connect, return code %d", result);
+                dax_log(DAX_LOG_MINOR, "Failed to connect, return code %d", result);
                 connect_cycle*=2;
                 if(connect_cycle > 60) connect_cycle = 60; /* We'll try once a minute as a maximum for now */
             } else { /* Connection sucess */
-                dax_log(LOG_MINOR, "Connection successful");
+                dax_log(DAX_LOG_MINOR, "Connection successful");
                 _connected = 1;
                 connect_cycle = 1;
                 //bad_subs = setup_subscribers();
@@ -419,7 +419,7 @@ client_loop(void) {
 
         /* Check to see if the quit flag is set.  If it is then bail */
         if(_quitsignal) {
-            dax_log(LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
+            dax_log(DAX_LOG_MAJOR, "Quitting due to signal %d", _quitsignal);
             getout(0);
         }
         dax_event_wait(ds, 500, NULL);
@@ -444,25 +444,25 @@ main(int argc,char *argv[]) {
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("daxmqtt");
     if(ds == NULL) {
-        dax_log(LOG_FATAL, "Unable to Allocate Dax State Object\n");
+        dax_log(DAX_LOG_FATAL, "Unable to Allocate Dax State Object\n");
         exit(-1);
     }
 
     result = configure(argc, argv);
     if(result) {
-        dax_log(LOG_FATAL, "Fatal error in configuration");
+        dax_log(DAX_LOG_FATAL, "Fatal error in configuration");
         exit(result);
     }
 
 
     /* Check for OpenDAX and register the module */
     if( dax_connect(ds) ) {
-        dax_log(LOG_FATAL, "Unable to find OpenDAX");
+        dax_log(DAX_LOG_FATAL, "Unable to find OpenDAX");
         exit(-1);
     }
 
     dax_set_running(ds, 1);
-    dax_log(LOG_MINOR, "MQTT Module Starting");
+    dax_log(DAX_LOG_MINOR, "MQTT Module Starting");
     client_loop();
 
  /* This is just to make the compiler happy */

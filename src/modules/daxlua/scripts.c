@@ -43,7 +43,7 @@ get_new_script(void)
     if(scriptcount == 0) {
         scripts = malloc(sizeof(script_t) * NUM_SCRIPTS);
         if(scripts == NULL) {
-            dax_log(LOG_FATAL, "Cannot allocate memory for the scripts");
+            dax_log(DAX_LOG_FATAL, "Cannot allocate memory for the scripts");
             kill(getpid(), SIGQUIT);
         }
         scripts_size = NUM_SCRIPTS;
@@ -52,7 +52,7 @@ get_new_script(void)
         if(ns != NULL) {
             scripts = ns;
         } else {
-            dax_log(LOG_ERROR, "Failure to allocate additional scripts");
+            dax_log(DAX_LOG_ERROR, "Failure to allocate additional scripts");
             return NULL;
         }
     }
@@ -133,7 +133,7 @@ add_static(script_t *script, lua_State *L, char* varname) {
         } else if(lt == LUA_TSTRING) {
             lua_pushstring(script->L, lua_tostring(L, -1));
         } else {
-            dax_log(LOG_WARN, "Static variable, '%s', cannot be %s", varname, luaL_typename(L, -1));
+            dax_log(DAX_LOG_WARN, "Static variable, '%s', cannot be %s", varname, luaL_typename(L, -1));
             lua_pushnil(script->L);
         }
         glo->ref = luaL_ref(script->L, LUA_REGISTRYINDEX);
@@ -179,7 +179,7 @@ _receive_globals(script_t *s) {
                     free(data);
                 }
             } else {
-                dax_log(LOG_DEBUG, "Failed to get tag %s.  Will retry.", this->tagname);
+                dax_log(DAX_LOG_DEBUG, "Failed to get tag %s.  Will retry.", this->tagname);
             }
         } else if((this->mode & MODE_STATIC) && this->ref != LUA_NOREF) {
             lua_rawgeti(s->L, LUA_REGISTRYINDEX, this->ref);
@@ -260,7 +260,7 @@ run_script(script_t *s) {
 
     /* Get the configured tags and set the globals for the script */
     if(_receive_globals(s)) {
-        dax_log(LOG_ERROR, "Unable to find all the global tags\n");
+        dax_log(DAX_LOG_ERROR, "Unable to find all the global tags\n");
     } else {
         /* retrieve the funciton and put it on the stack */
         lua_rawgeti(s->L, LUA_REGISTRYINDEX, s->func_ref);
@@ -268,7 +268,7 @@ run_script(script_t *s) {
         s->running = 1;
         /* Run the script that is on the top of the stack */
         if( lua_pcall(s->L, 0, 0, 0) ) {
-            dax_log(LOG_ERROR, "Error Running Script %s - %s",s->name, lua_tostring(s->L, -1));
+            dax_log(DAX_LOG_ERROR, "Error Running Script %s - %s",s->name, lua_tostring(s->L, -1));
             if(s->flags & CONFIG_FAIL_ON_ERROR)s->failed = 1;
         }
         s->running = 0;
@@ -473,7 +473,7 @@ _initialize_script(script_t *s)
     setup_interpreter(s->L);
     /* load and compile the file */
     if(luaL_loadfile(s->L, s->filename) ) {
-        dax_log(LOG_ERROR, "Error Loading Main Script - %s", lua_tostring(s->L, -1));
+        dax_log(DAX_LOG_ERROR, "Error Loading Main Script - %s", lua_tostring(s->L, -1));
         s->failed = 1;
     } else {
         /* Basicaly stores the Lua script */
@@ -535,7 +535,7 @@ start_all_scripts(void)
 
     for(n = 0; n < scriptcount; n++) {
         if(scripts[n].L == NULL) {
-            dax_log(LOG_WARN, "Script '%s' is not assigned to a thread so it will never run!", scripts[n].name);
+            dax_log(DAX_LOG_WARN, "Script '%s' is not assigned to a thread so it will never run!", scripts[n].name);
         }
     }
 

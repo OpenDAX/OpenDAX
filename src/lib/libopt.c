@@ -409,7 +409,7 @@ _config_print(lua_State *L) {
     }
     str = lua_tostring(L, 1);
     if(str!= NULL) {
-        dax_log(LOG_CONFIG, str);
+        dax_log(DAX_LOG_CONFIG, str);
     } else {
         luaL_error(L, "Problem with string passed to print()");
     }
@@ -431,7 +431,7 @@ _logic_print(lua_State *L) {
     }
     str = lua_tostring(L, 1);
     if(str!= NULL) {
-        dax_log(LOG_LOGIC, str);
+        dax_log(DAX_LOG_LOGIC, str);
     } else {
         luaL_error(L, "Problem with string passed to print()");
     }
@@ -475,11 +475,11 @@ _mod_config_file(dax_state *ds) {
 
     /* load and run the configuration file */
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
-        dax_log(LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
+        dax_log(DAX_LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         free(cfile);
         return ERR_GENERIC;
     } else {
-        dax_log(LOG_DEBUG, "Configured using file %s",cfile);
+        dax_log(DAX_LOG_DEBUG, "Configured using file %s",cfile);
         _get_lua_globals(ds);
     }
 
@@ -564,7 +564,7 @@ dax_configure(dax_state *ds, int argc, char **argv, int flags)
             dax_log_set_default_topics(topics);
         }
         if(dax_get_attr(ds, "verbose")) {
-            dax_log_set_default_mask(LOG_ALL);
+            dax_log_set_default_mask(DAX_LOG_ALL);
         }
     }
     /* This sets the confdir parameter to ETC_DIR if it
@@ -665,7 +665,7 @@ opt_lua_init_func(dax_state *ds) {
     result = lua_getglobal(ds->L, "init_hook");
     if(result == LUA_TFUNCTION) {
         if(lua_pcall(ds->L, 0, 0, 0)) {
-            dax_log(LOG_ERROR, "error running init_function: %s", lua_tostring(ds->L, -1));
+            dax_log(DAX_LOG_ERROR, "error running init_function: %s", lua_tostring(ds->L, -1));
         }
     }
     lua_pop(ds->L, 1);

@@ -24,19 +24,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <syslog.h>
-/* We are doing this so that these syslog priorites won't
- * conflict with the ones that we define in opendax.h.  Most
- * are different but this makes it more clear which ones we
- * are dealing with */
-const int SYSLOG_EMERG    = LOG_EMERG;
-const int SYSLOG_ALERT    = LOG_ALERT;
-const int SYSLOG_CRIT     = LOG_CRIT;
-const int SYSLOG_ERR      = LOG_ERR;
-const int SYSLOG_WARNING  = LOG_WARNING;
-const int SYSLOG_NOTICE   = LOG_NOTICE;
-const int SYSLOG_INFO     = LOG_INFO;
-const int SYSLOG_DEBUG    = LOG_DEBUG;
-/* The above must be done before including opendax.h */
+
 #include <opendax.h>
 
 

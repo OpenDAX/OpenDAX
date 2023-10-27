@@ -1,4 +1,4 @@
-/*  OpenDAX - An open source data acquisition and control system 
+/*  OpenDAX - An open source data acquisition and control system
  *  Copyright (c) 2022 Phil Birkelbach
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -42,7 +42,7 @@ _open_file(void) {
     int result;
     result = sqlite3_open(database_filename, &log_db);
     if(result != SQLITE_OK) {
-        dax_log(LOG_ERROR, "Unable to open database file %s", database_filename);
+        dax_log(DAX_LOG_ERROR, "Unable to open database file %s", database_filename);
     }
     return result;
 }
@@ -71,7 +71,7 @@ _build_database(sqlite3 *db) {
 	    "key	TEXT NOT NULL UNIQUE, " \
 	    "val	TEXT NOT NULL, " \
 	    "PRIMARY KEY(id)" \
-	    ");"; 
+	    ");";
     result = sqlite3_exec(db, sql, NULL, 0, &errorMsg);
     if( result != SQLITE_OK ){
         fprintf(stderr, "SQL error: %s - %d\n", errorMsg, result);
@@ -118,7 +118,7 @@ init(dax_state *_ds) {
     } else {
         purge_interval = atof(s);
     }
-    dax_log(LOG_DEBUG, "Purge interval set to %f", purge_interval);
+    dax_log(DAX_LOG_DEBUG, "Purge interval set to %f", purge_interval);
     lua_pop(L, 1);
 
     _open_file();
@@ -145,23 +145,23 @@ add_tag(const char *tagname, uint32_t type, const char *attributes) {
     if(tag == NULL) return NULL;
     tag->name = tagname;
     tag->type = type;
-    
+
     snprintf(sql, 256, "INSERT INTO Tags('tagname', 'type') VALUES ('%s', 2)", tagname);
     result = sqlite3_exec(log_db, sql, NULL, 0, &errorMsg);
     if(result == SQLITE_CONSTRAINT) {
-        dax_log(LOG_DEBUG, "Tag %s already exists in the database", tagname); // TODO: Check that the type is the same and error out otherwise
+        dax_log(DAX_LOG_DEBUG, "Tag %s already exists in the database", tagname); // TODO: Check that the type is the same and error out otherwise
         sqlite3_free(errorMsg);
     } else if( result != SQLITE_OK){
-        dax_log(LOG_ERROR, "SQL: %s - %d", errorMsg, result);
+        dax_log(DAX_LOG_ERROR, "SQL: %s - %d", errorMsg, result);
         sqlite3_free(errorMsg);
     }
-    snprintf(sql, 256, "SELECT id FROM Tags WHERE tagname = '%s';", tagname); 
+    snprintf(sql, 256, "SELECT id FROM Tags WHERE tagname = '%s';", tagname);
     result = sqlite3_exec(log_db, sql, _add_tag_callback, &tag->tag_index, &errorMsg);
     if( result != SQLITE_OK ){
-        dax_log(LOG_ERROR, "SQL: %s - %d", errorMsg, result);
+        dax_log(DAX_LOG_ERROR, "SQL: %s - %d", errorMsg, result);
         sqlite3_free(errorMsg);
     }
-    dax_log(LOG_DEBUG, "Added tag %s type = %d, index = %d", tag->name, tag->type, tag->tag_index);
+    dax_log(DAX_LOG_DEBUG, "Added tag %s type = %d, index = %d", tag->name, tag->type, tag->tag_index);
     return tag;
 }
 
@@ -180,16 +180,16 @@ write_data(tag_object *tag, void *value, double timestamp) {
     char *errorMsg = NULL;
     int result;
     char sql[256];
-    
+
     if(value == NULL) {
-        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp') VALUES (%d, %f);", tag->tag_index, timestamp); 
+        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp') VALUES (%d, %f);", tag->tag_index, timestamp);
     } else {
         dax_val_to_string(val_string, 256, tag->type, value, 0);
-        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp','data') VALUES (%d, %f, %s);", tag->tag_index, timestamp, val_string); 
+        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp','data') VALUES (%d, %f, %s);", tag->tag_index, timestamp, val_string);
     }
     result = sqlite3_exec(log_db, sql, _add_tag_callback, &tag->tag_index, &errorMsg);
     if( result != SQLITE_OK ){
-        dax_log(LOG_ERROR, "Adding Data: %s - %d", errorMsg, result);
+        dax_log(DAX_LOG_ERROR, "Adding Data: %s - %d", errorMsg, result);
         sqlite3_free(errorMsg);
     }
     return 0;
@@ -212,13 +212,13 @@ flush_data(double time) {
         firstrun = 0;
     }
     if(purge_interval > 0.0) {
-        snprintf(sql, 256, "DELETE FROM Data WHERE timestamp < %f;", time - purge_interval); 
+        snprintf(sql, 256, "DELETE FROM Data WHERE timestamp < %f;", time - purge_interval);
 
         result = sqlite3_exec(log_db, sql, NULL, 0, &errorMsg);
         if( result != SQLITE_OK ){
-            dax_log(LOG_ERROR, "Database Purge: %s - %d", errorMsg, result);
+            dax_log(DAX_LOG_ERROR, "Database Purge: %s - %d", errorMsg, result);
             sqlite3_free(errorMsg);
-        }   
+        }
     }
     return 0;
 }
