@@ -417,6 +417,7 @@ typedef struct datatype dax_cdt;
 tag_type dax_string_to_type(dax_state *ds, char *type);
 /* Get a string that is the datatype, i.e. "BOOL" */
 const char *dax_type_to_string(dax_state *ds, tag_type type);
+const char *dax_errstr(int ecode);
 
 dax_cdt *dax_cdt_new(char *name, int *error);
 int dax_cdt_member(dax_state *ds, dax_cdt *cdt, char *name,

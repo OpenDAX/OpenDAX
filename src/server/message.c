@@ -102,7 +102,7 @@ _message_send(int fd, int command, void *payload, size_t size, int response)
     if(response == RESPONSE) {
         ((uint32_t *)buff)[1] = htonl(command | MSG_RESPONSE);
     } else if(response == ERROR) {
-        dax_log(DAX_LOG_MSGERR, "Returning Error %d to Module", *(int *)payload);
+        dax_log(DAX_LOG_MSGERR, "Returning Error '%s' to Module", dax_errstr(*(int *)payload));
         ((uint32_t *)buff)[1] = htonl(command | MSG_ERROR);
     } else {
         ((uint32_t *)buff)[1] = htonl(command);

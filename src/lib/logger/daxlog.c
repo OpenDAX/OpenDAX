@@ -310,3 +310,82 @@ dax_log(uint32_t topic, const char *format, ...)
         }
     }
 }
+
+/*!
+ * Get a string that represents the given error.
+ *
+ * @param ecode error code that we wish to convert
+ * @returns A pointer to a string that describes the given error code
+ */
+
+const char *
+dax_errstr(int ecode) {
+    switch(ecode) {
+        case ERR_OK:
+            return "Ok";
+        case ERR_GENERIC:
+            return "Error";
+        case ERR_NO_SOCKET:
+            return "No Socket";
+        case ERR_2BIG:
+            return "To Big";
+        case ERR_ARG:
+            return "Bad Argument";
+        case ERR_NOTFOUND:
+            return "Not Foudn";
+        case ERR_MSG_SEND:
+            return "Send Message Error";
+        case ERR_MSG_RECV:
+            return "Receive Message Error";
+        case ERR_TAG_BAD:
+            return "Bad Tag";
+        case ERR_TAG_DUPL:
+            return "Duplicate Tag";
+        case ERR_ALLOC:
+            return "Allocation Error";
+        case ERR_MSG_BAD:
+            return "Bad Message";
+        case ERR_DUPL:
+            return "Duplicate";
+        case ERR_NO_INIT:
+            return "Not Initialized";
+        case ERR_TIMEOUT:
+            return "Timeout";
+        case ERR_ILLEGAL:
+            return "Illegal";
+        case ERR_INUSE:
+            return "In Use";
+        case ERR_PARSE:
+            return "Parse Error";
+        case ERR_ARBITRARY:
+            return "Arbitrary";
+        case ERR_NOTNUMBER:
+            return "Not a Number";
+        case ERR_EMPTY:
+            return "Empty";
+        case ERR_BADTYPE:
+            return "Bad Type";
+        case ERR_BADINDEX:
+            return "Bad Index";
+        case ERR_AUTH:
+            return "Not Authorized";
+        case ERR_OVERFLOW:
+            return "Overflow";
+        case ERR_UNDERFLOW:
+            return "Underflow";
+        case ERR_DELETED:
+            return "Deleted";
+        case ERR_READONLY:
+            return "Read Only";
+        case ERR_WRITEONLY:
+            return "Write Only";
+        case ERR_NOTIMPLEMENTED:
+            return "Not Implemented";
+        case ERR_FILE_CLOSED:
+            return "File Closed";
+        case ERR_DISCONNECTED:
+            return "Disconnected";
+        default:
+            return "Unknown";
+    }
+}
