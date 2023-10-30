@@ -45,7 +45,8 @@ static int _quitsignal;
 int main(int argc,char *argv[]) {
     struct sigaction sa;
     int flags, result = 0, scan = 0, n;
-    char *str, *tagname, *event_tag, *event_type;
+    char *str, *tagname;
+    //char *event_tag, *event_type;
     tag_handle h_full, h_part;
     dax_dint data[5];
 
@@ -70,12 +71,12 @@ int main(int argc,char *argv[]) {
      * argument is required */
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
     result += dax_add_attribute(ds, "tagname","tagname", 't', flags, "skel");
-    result += dax_add_attribute(ds, "event_tag","event_tag", 'e', flags, "skel_event");
+    //result += dax_add_attribute(ds, "event_tag","event_tag", 'e', flags, "skel_event");
     /* For these attributes we add the opendax.conf configuration file as a
      * place where the attribute can be set. No good reason for this other than
      * as an illustration. */
     flags = CFG_CMDLINE | CFG_MODCONF | CFG_ARG_REQUIRED;
-    result += dax_add_attribute(ds, "event_type","event_type", 'y', flags, "poll");
+    //result += dax_add_attribute(ds, "event_type","event_type", 'y', flags, "poll");
     /* Execute the configuration */
     result = dax_configure(ds, argc, argv, CFG_CMDLINE | CFG_MODCONF);
     if(result) {
@@ -85,8 +86,8 @@ int main(int argc,char *argv[]) {
 
     /* Get the results of the configuration */
     tagname = strdup(dax_get_attr(ds, "tagname"));
-    event_tag = strdup(dax_get_attr(ds, "event_tag"));
-    event_type = strdup(dax_get_attr(ds, "event_type"));
+    //event_tag = strdup(dax_get_attr(ds, "event_tag"));
+    //event_type = strdup(dax_get_attr(ds, "event_type"));
     /* Copying all of the strings into local variables might not be
      * the most efficient way of doing this.  The pointers returned
      * from dax_get_attr() function point to the strings inside the

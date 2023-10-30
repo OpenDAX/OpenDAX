@@ -665,7 +665,7 @@ dax_tag_byindex(dax_state *ds, dax_tag *tag, tag_index idx)
  *            returned by the dax_tag_add() function.
  * @param offset The byte offset within the data area of the tag
  * @param data Pointer to a data area where the data will be written
- * @size size The number of bytes to read.
+ * @param size The number of bytes to read.
  *
  * @returns Zero upon success or an error code otherwise
  */
