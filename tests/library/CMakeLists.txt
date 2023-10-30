@@ -27,7 +27,10 @@ set(LIB_SOURCE_DIR ../../src/lib)
 set(SERVER_SOURCE_DIR ../../src/server)
 
 
-set(test_list event_wait
+set(test_list read_large
+              write_large
+              mask_large
+              event_wait
               event_write
               event_change
               event_set_simple

@@ -340,7 +340,10 @@ _read_format(dax_state *ds, tag_type type, int count, void *data, int offset)
 /*!
  * Higher level tag reading function.  This function is much more intelligent
  * about what type of data is being read.  It reads the data and then does
- * any conversions necessary.
+ * any conversions necessary.  It will also break up large reads into several
+ * smaller ones if necessary.  Since multiple messages are used to read
+ * large amounts of data there is a race condition where tag data can be
+ * changed by other modules between these read messages.
  *
  * @param ds Pointer to dax state object
  * @param handle The handle that describes the data that we wish to read
@@ -352,14 +355,37 @@ dax_tag_read(dax_state *ds, tag_handle handle, void *data)
 {
     int result, n, i;
     uint8_t *newdata;
+    int rsize, tsize, type_size;
 
-    result = dax_read(ds, handle.index, handle.byte, data, handle.size);
-    if(result) return result;
+    /* If the read can't be done in one message...  */
+    if(handle.size > MSG_DATA_SIZE) {
+        tsize = handle.size;
+        type_size = dax_get_typesize(ds, handle.type);
+        /* We don't want to break individual tag reads to avoid getting
+        bad data if another module updates the tag between reads.  If
+        the size of the data type is larger than our maximum data size
+        then we error out instead of risking bad data. */
+        if(type_size > MSG_DATA_SIZE) return ERR_2BIG;
+        n = 0;
+        while(tsize > 0) {
+            rsize = MIN(tsize, MSG_DATA_SIZE);
+            rsize -= (rsize % type_size); /* This should break accross tag boundaries */
+            result = dax_read(ds, handle.index, handle.byte+n, &((uint8_t *)data)[n], rsize);
+            if(result) return result;
+            tsize -= rsize;
+            n += rsize;
+        }
+    } else {
+        result = dax_read(ds, handle.index, handle.byte, data, handle.size);
+        if(result) return result;
+    }
 
     /* The only time that the bit index should be greater than 0 is if
      * the tag datatype is BOOL.  If not the bytes should be aligned.
      * If there is a bit index then we need to 'realign' the bits so that
      * the bits that the handle point to start at the top of the *data buffer */
+    // TODO: We could optimize this by not doing it if .bit == 0 and also not
+    //       allocating the newdata array, rather making the change in place.
     if(handle.type == DAX_BOOL) {
         i = handle.bit;
         newdata = malloc(handle.size);
@@ -475,6 +501,10 @@ _write_format(dax_state *ds, tag_type type, int count, void *data, int offset)
     return 0;
 }
 
+/* Since a write message needs a couple of words in the header we have
+   to subtract these bytes from the MSG_DATA_SIZE to determine how much
+   room we have to write data.  This is here for convenience and clarity */
+#define WRITE_HEADER_SIZE 8
 
 /*!
  * Higher level tag write function.  This function is much more intelligent
@@ -491,6 +521,7 @@ dax_tag_write(dax_state *ds, tag_handle handle, void *data)
 {
     int i, n, result = 0, size;
     uint8_t *mask, *newdata;
+    int rsize, tsize, type_size;
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         size = handle.size;
@@ -517,7 +548,23 @@ dax_tag_write(dax_state *ds, tag_handle handle, void *data)
             mask[i / 8] |= (1 << (i % 8));
             i++;
         }
-        result = dax_mask(ds, handle.index, handle.byte, newdata, mask, size);
+        /* Determine if the write needs to be broken up into multiple messages */
+        if(handle.size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2) {
+            tsize = size;
+            type_size = dax_get_typesize(ds, handle.type);
+            if(type_size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2) return ERR_2BIG;
+            n = 0;
+            while(tsize > 0) {
+                rsize = MIN(tsize, (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2);
+                rsize -= (rsize % type_size); /* This should break accross tag boundaries */
+                result = dax_mask(ds, handle.index, handle.byte+n, &((uint8_t *)newdata)[n], &mask[n], rsize);
+                if(result) return result;
+                tsize -= rsize;
+                n += rsize;
+            }
+        } else {
+            result = dax_mask(ds, handle.index, handle.byte, newdata, mask, size);
+        }
         free(newdata);
         free(mask);
     } else {
@@ -529,7 +576,23 @@ dax_tag_write(dax_state *ds, tag_handle handle, void *data)
         }
         /* Unlock here because dax_write() has it's own locking */
         pthread_mutex_unlock(&ds->lock);
-        result = dax_write(ds, handle.index, handle.byte, data, handle.size);
+        /* Determine if the write needs to be broken up into multiple messages */
+        if(handle.size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)) {
+            tsize = handle.size;
+            type_size = dax_get_typesize(ds, handle.type);
+            if(type_size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)) return ERR_2BIG;
+            n = 0;
+            while(tsize > 0) {
+                rsize = MIN(tsize, (MSG_DATA_SIZE - WRITE_HEADER_SIZE));
+                rsize -= (rsize % type_size); /* This should break accross tag boundaries */
+                result = dax_write(ds, handle.index, handle.byte+n, &((uint8_t *)data)[n], rsize);
+                if(result) return result;
+                tsize -= rsize;
+                n += rsize;
+            }
+        } else {
+            result = dax_write(ds, handle.index, handle.byte, data, handle.size);
+        }
     }
     return result;
 }
@@ -552,6 +615,7 @@ dax_tag_mask(dax_state *ds, tag_handle handle, void *data, void *mask)
 {
     int i, n, result = 0, size;
     uint8_t *newmask = NULL, *newdata;
+    int rsize, tsize, type_size;
 
     if(handle.type == DAX_BOOL && (handle.bit > 0 || handle.count % 8 )) {
         size = handle.size;
@@ -578,7 +642,23 @@ dax_tag_mask(dax_state *ds, tag_handle handle, void *data, void *mask)
             newmask[i / 8] |= (1 << (i % 8));
             i++;
         }
-        result = dax_mask(ds, handle.index, handle.byte, newdata, newmask, size);
+        /* Determine if the write needs to be broken up into multiple messages */
+        if(handle.size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2) {
+            tsize = size;
+            type_size = dax_get_typesize(ds, handle.type);
+            if(type_size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)) return ERR_2BIG;
+            n = 0;
+            while(tsize > 0) {
+                rsize = MIN(tsize, (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2);
+                rsize -= (rsize % type_size); /* This should break accross tag boundaries */
+                result = dax_mask(ds, handle.index, handle.byte+n, &newdata[n], &newmask[n], rsize);
+                if(result) return result;
+                tsize -= rsize;
+                n += rsize;
+            }
+        } else {
+            result = dax_mask(ds, handle.index, handle.byte, newdata, mask, size);
+        }
         free(newmask);
         free(newdata);
     } else {
@@ -590,7 +670,23 @@ dax_tag_mask(dax_state *ds, tag_handle handle, void *data, void *mask)
         }
         /* Unlock here because dax_mask() has it's own locking */
         pthread_mutex_unlock(&ds->lock);
-        result = dax_mask(ds, handle.index, handle.byte, data, mask, handle.size);
+        /* Determine if the write needs to be broken up into multiple messages */
+        if(handle.size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2) {
+            tsize = handle.size;
+            type_size = dax_get_typesize(ds, handle.type);
+            if(type_size > (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2) return ERR_2BIG;
+            n = 0;
+            while(tsize > 0) {
+                rsize = MIN(tsize, (MSG_DATA_SIZE - WRITE_HEADER_SIZE)/2);
+                rsize -= (rsize % type_size); /* This should break accross tag boundaries */
+                result = dax_mask(ds, handle.index, handle.byte+n, &((uint8_t *)data)[n], &((uint8_t *)mask)[n], rsize);
+                if(result) return result;
+                tsize -= rsize;
+                n += rsize;
+            }
+        } else {
+            result = dax_mask(ds, handle.index, handle.byte, data, mask, handle.size);
+        }
     }
     return result;
 }
