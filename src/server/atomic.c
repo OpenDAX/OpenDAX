@@ -20,6 +20,7 @@
 
 #include <common.h>
 #include "tagbase.h"
+#include "retain.h"
 #include "func.h"
 #include <ctype.h>
 #include <assert.h>
@@ -354,35 +355,69 @@ _atomic_xnor(tag_handle h, void *data) {
 
 int
 atomic_op(tag_handle h, void *data, uint16_t op) {
-
+    int result;
     /* We don't do these on custom data types */
     if(IS_CUSTOM(h.type)) {
         return ERR_BADTYPE;
     }
+    /* Make sure we are a valid tag index*/
+    if(h.index < 0 || h.index >= get_tagindex()) {
+        return ERR_ARG;
+    }
+    /* Bounds Check Size - we can use the TYPESIZE macro here because we have
+       already excluded CDTs */
+    if((h.byte + h.size) > (_db[h.index].count * TYPESIZE(_db[h.index].type))) {
+        return ERR_2BIG;
+    }
+    /* Since we directly manipulate the _db here we can't deal with virtual tags or
+       special tags.*/
+    if(_db[h.index].attr & (TAG_ATTR_VIRTUAL | TAG_ATTR_SPECIAL)) {
+        return ERR_READONLY;
+    }
+    /* If the index is within range but the data area is a NULL pointer then the
+       tag has been deleted */
+    if(_db[h.index].data == NULL) {
+        return ERR_DELETED;
+    }
     switch(op) {
         case ATOMIC_OP_INC:
             if(h.type == DAX_BOOL) return ERR_BADTYPE;
-            return _atomic_inc(h, data);
+            result = _atomic_inc(h, data);
+            break;
         case ATOMIC_OP_DEC:
             if(h.type == DAX_BOOL) return ERR_BADTYPE;
-            return _atomic_dec(h, data);
+            result = _atomic_dec(h, data);
+            break;
         case ATOMIC_OP_NOT:
-            return _atomic_not(h, data);
+            result = _atomic_not(h, data);
+            break;
         case ATOMIC_OP_OR:
-            return _atomic_or(h, data);
+            result = _atomic_or(h, data);
+            break;
         case ATOMIC_OP_AND:
-            return _atomic_and(h, data);
+            result = _atomic_and(h, data);
+            break;
         case ATOMIC_OP_NOR:
-            return _atomic_nor(h, data);
+            result = _atomic_nor(h, data);
+            break;
         case ATOMIC_OP_NAND:
-            return _atomic_nand(h, data);
+            result = _atomic_nand(h, data);
+            break;
         case ATOMIC_OP_XOR:
-            return _atomic_xor(h, data);
+            result = _atomic_xor(h, data);
+            break;
         case ATOMIC_OP_XNOR:
-            return _atomic_xnor(h, data);
-
+            result = _atomic_xnor(h, data);
+            break;
+        default:
+            return ERR_NOTIMPLEMENTED;
     }
-    /* TODO Finish the bitwise operators */
-    return ERR_NOTIMPLEMENTED;
+    if(result) return result;
+    event_check(h.index, h.byte, h.size);
+    if(_db[h.index].attr & TAG_ATTR_RETAIN) {
+        ret_tag_write(h.index);
+    }
+
+    return 0;
 }
 

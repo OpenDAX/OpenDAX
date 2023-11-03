@@ -569,12 +569,12 @@ msg_tag_write(dax_message *msg)
         result = ERR_READONLY;
     } else {
         result = tag_write(msg->fd, idx, offset, data, size);
-        map_check(idx, offset, size);
     }
     if(result) {
         _message_send(msg->fd, MSG_TAG_WRITE, &result, sizeof(result), ERROR);
         dax_log(DAX_LOG_ERROR, "Unable to write tag 0x%X with size %d",idx, size);
     } else {
+        map_check(idx, offset, size);
         _message_send(msg->fd, MSG_TAG_WRITE, NULL, 0, RESPONSE);
     }
     return 0;
@@ -600,12 +600,12 @@ msg_tag_mask_write(dax_message *msg)
         result =  ERR_READONLY;
     } else {
         result = tag_mask_write(msg->fd, idx, offset, data, mask, size);
-        map_check(idx, offset, size);
     }
     if(result) {
         _message_send(msg->fd, MSG_TAG_MWRITE, &result, sizeof(result), ERROR);
         dax_log(DAX_LOG_ERROR, "Unable to write tag 0x%X with size %d: result %d", idx, size, result);
     } else {
+        map_check(idx, offset, size);
         _message_send(msg->fd, MSG_TAG_MWRITE, NULL, 0, RESPONSE);
     }
     return 0;
@@ -962,11 +962,15 @@ msg_atomic_op(dax_message *msg) {
     h.size = msg->size - 21; /* Total message size minus the above data */
 
     dax_log(DAX_LOG_MSG, "Atomic Operation Message from module %d, index %d, offset %d, size %d", msg->fd, h.index, h.byte, h.size);
-
-    result = atomic_op(h, &msg->data[21], operation);
+    if(is_tag_readonly(h.index) && ! is_tag_owned(msg->fd, h.index)) {
+        result = ERR_READONLY;
+    } else {
+        result = atomic_op(h, &msg->data[21], operation);
+    }
     if(result < 0) { /* Send Error */
         _message_send(msg->fd, MSG_ATOMIC_OP, &result, sizeof(int), ERROR);
     } else {
+        map_check(h.index, h.byte, h.size);
         _message_send(msg->fd, MSG_ATOMIC_OP, NULL, 0, RESPONSE);
     }
     return 0;
