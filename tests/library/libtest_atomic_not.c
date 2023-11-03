@@ -36,28 +36,21 @@ _bool_test(dax_state *ds) {
     dax_byte temp[2];
     dax_byte output[2];
 
-    result = dax_tag_add(ds, &h, "bool_test", DAX_BOOL, 16, 0);
-    if(result) return -1;
+    if(dax_tag_add(ds, &h, "bool_test", DAX_BOOL, 16, 0)) return -1;
     /* Here we complement all 16 bits */
     temp[0] = 0xAA; temp[1] = 0x55;
-    result = dax_write_tag(ds, h, &temp);
-    if(result) return -1;
-    result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
-    if(result) return -1;
-    result = dax_read_tag(ds, h, &output);
-    if(result) return -1;
+    if(dax_write_tag(ds, h, &temp)) return -1;
+    if(dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT)) return -1;
+    if(dax_read_tag(ds, h, &output)) return -1;
     DF("in = %X %X", temp[0], temp[1]);
     DF("out= %X %X", output[0], output[1]);
     if(output[0] != 0x55 || output[1] != 0xAA) {
         return -1;
     }
     /* No we do a partial subset of the bits */
-    result = dax_tag_handle(ds, &h2, "bool_test[3]", 10);
-    if(result) return -1;
-    result = dax_atomic_op(ds, h2, NULL, ATOMIC_OP_NOT);
-    if(result) return -1;
-    result = dax_read_tag(ds, h, &output);
-    if(result) return -1;
+    if(dax_tag_handle(ds, &h2, "bool_test[3]", 10)) return -1;
+    if(dax_atomic_op(ds, h2, NULL, ATOMIC_OP_NOT)) return -1;
+    if(dax_read_tag(ds, h, &output)) return -1;
     DF("in = %X %X", temp[0], temp[1]);
     DF("out= %X %X", output[0], output[1]);
     if(output[0] != 0xAD || output[1] != 0xB5) return -1;
@@ -67,20 +60,15 @@ _bool_test(dax_state *ds) {
 
 static int
 _byte_test(dax_state *ds) {
-    int result;
     tag_handle h;
     dax_byte temp[4];
     dax_byte output[4];
 
-    result = dax_tag_add(ds, &h, "byte_test", DAX_BYTE, 4, 0);
-    if(result) return -1;
+    if(dax_tag_add(ds, &h, "byte_test", DAX_BYTE, 4, 0)) return -1;
     temp[0] = 0xAA; temp[1] = 0x55; temp[2] = 0x0F; temp[3] = 0xF0;
-    result = dax_write_tag(ds, h, &temp);
-    if(result) return -1;
-    result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
-    if(result) return -1;
-    result = dax_read_tag(ds, h, &output);
-    if(result) return -1;
+    if(dax_write_tag(ds, h, &temp)) return -1;
+    if(dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT)) return -1;
+    if(dax_read_tag(ds, h, &output)) return -1;
     DF("in = %X %X %X %X", temp[0], temp[1], temp[2], temp[3]);
     DF("out= %X %X %X %X", output[0], output[1], output[2], output[3]);
     if(output[0] != 0x55 || output[1] != 0xAA || output[2] != 0xF0 || output[3] != 0x0F) {
@@ -92,20 +80,15 @@ _byte_test(dax_state *ds) {
 
 static int
 _sint_test(dax_state *ds) {
-    int result;
     tag_handle h;
     dax_sint temp[4];
     dax_sint output[4];
 
-    result = dax_tag_add(ds, &h, "sint_test", DAX_SINT, 4, 0);
-    if(result) return -1;
+    if(dax_tag_add(ds, &h, "sint_test", DAX_SINT, 4, 0)) return -1;
     temp[0] = 0xAA; temp[1] = 0x55; temp[2] = 0x0F; temp[3] = 0xF0;
-    result = dax_write_tag(ds, h, &temp);
-    if(result) return -1;
-    result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
-    if(result) return -1;
-    result = dax_read_tag(ds, h, &output);
-    if(result) return -1;
+    if(dax_write_tag(ds, h, &temp)) return -1;
+    if(dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT)) return -1;
+    if(dax_read_tag(ds, h, &output)) return -1;
     for(int n=0;n<4;n++) {
         if(output[n] != ~temp[n]) {
             DF("WHYYYYYYY");
@@ -117,20 +100,15 @@ _sint_test(dax_state *ds) {
 
 static int
 _dint_test(dax_state *ds) {
-    int result;
     tag_handle h;
     dax_dint temp[4];
     dax_dint output[4];
 
-    result = dax_tag_add(ds, &h, "dint_test", DAX_DINT, 4, 0);
-    if(result) return -1;
+    if(dax_tag_add(ds, &h, "dint_test", DAX_DINT, 4, 0)) return -1;
     temp[0] = 1234; temp[1] = -3453; temp[2] = -1; temp[3] = 0;
-    result = dax_write_tag(ds, h, &temp);
-    if(result) return -1;
-    result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
-    if(result) return -1;
-    result = dax_read_tag(ds, h, &output);
-    if(result) return -1;
+    if(dax_write_tag(ds, h, &temp)) return -1;
+    if(dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT)) return -1;
+    if(dax_read_tag(ds, h, &output)) return -1;
     for(int n=0;n<4;n++) {
         if(output[n] != ~temp[n]) {
             DF("WHYYYYYYY");
@@ -155,7 +133,7 @@ _real_test(dax_state *ds) {
     result = dax_write_tag(ds, h, &temp1);
     if(result) return -1;
     result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
-    if(result != ERR_ILLEGAL) return -1;
+    if(result != ERR_BADTYPE) return -1;
 
     result = dax_tag_add(ds, &h, "lreal_test", DAX_LREAL, 4, 0);
     if(result) return -1;
@@ -163,7 +141,7 @@ _real_test(dax_state *ds) {
     result = dax_write_tag(ds, h, &temp2);
     if(result) return -1;
     result = dax_atomic_op(ds, h, NULL, ATOMIC_OP_NOT);
-    if(result != ERR_ILLEGAL) return -1;
+    if(result != ERR_BADTYPE) return -1;
 
     return 0;
 }
@@ -199,8 +177,10 @@ int
 main(int argc, char *argv[])
 {
     if(run_test(do_test, argc, argv, 0)) {
+        DF("Test Failed");
         exit(-1);
     } else {
+        DF("Test Passed");
         exit(0);
     }
 }

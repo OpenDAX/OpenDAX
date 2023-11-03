@@ -180,6 +180,7 @@ typedef struct lua_State lua_State;
 #define ATOMIC_OP_NOR  0x0006  /* Bitwise NOR */
 #define ATOMIC_OP_NAND 0x0007  /* Bitwise NAND */
 #define ATOMIC_OP_XOR  0x0008  /* Bitwise XOR */
+#define ATOMIC_OP_XNOR 0x0009  /* Bitwise XNOR */
 
 
 /* Defines the maximum length of a tagname */

@@ -50,6 +50,11 @@ set(test_list read_large
               atomic_dec
               atomic_not
               atomic_or
+              atomic_and
+              atomic_nor
+              atomic_nand
+              atomic_xor
+              atomic_xnor
               override_basic
               override_get
               retention_basic

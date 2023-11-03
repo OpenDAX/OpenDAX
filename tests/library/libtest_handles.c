@@ -156,6 +156,7 @@ do_test(int argc, char *argv[])
             {"HandleBool33[7]", 1, 0, 7, 1, 1, "BOOL"},
             {"HandleBool33[3]", 8, 0, 3, 8, 2, "BOOL"},
             {"HandleBool33[3]", 9, 0, 3, 9, 2, "BOOL"},
+            {"HandleBool33[3]",16, 0, 3, 16, 3, "BOOL"},
             {"HandleInt2[1]", 1, 2, 0, 1, 2, "INT"},
             {"HandleInt2", 0, 0, 0, 2, 4, "INT"},
             {"HandleInt", 1, 0, 0, 1, 2, "INT"},

@@ -26,26 +26,15 @@
 
 extern _dax_tag_db *_db;
 
-/* Data type definitions */
-// #define DAX_BOOL    0x0010
-/* 8 Bits */
-// #define DAX_BYTE    0x0003
-// #define DAX_SINT    0x0013
-/* 16 Bits */
-// #define DAX_WORD    0x0004
-// #define DAX_INT     0x0014
-// #define DAX_UINT    0x0024
-/* 32 Bits */
-// #define DAX_DWORD   0x0005
-// #define DAX_DINT    0x0015
-// #define DAX_UDINT   0x0025
-// #define DAX_REAL    0x0035
-/* 64 Bits */
-// #define DAX_LWORD   0x0006
-// #define DAX_LINT    0x0016
-// #define DAX_ULINT   0x0026
-// #define DAX_TIME    0x0036 /* milliseconds since the epoch */
-// #define DAX_LREAL   0x0046
+/* Left shifts a buffer of BOOL data. bit must be less than 8 */
+inline static void
+_left_shift(dax_byte *dest, dax_byte *src, size_t size, uint8_t bit) {
+    for(int n=size-1; n>0; n--) {        /* Start at the high order byte */
+        dest[n] = (src[n-1] >> (8-bit)); /* move the high bits in the lower byte to the right*/
+        dest[n] |= (src[n] << bit);      /* shift the higher byte and mask it on the dest */
+    }
+    dest[0] = (src[0] << bit);           /* Fix the LSB */
+}
 
 
 static int
@@ -89,7 +78,7 @@ _atomic_inc(tag_handle h, void *data) {
             *(dax_lreal *)&_db[h.index].data[h.byte] += *(dax_lreal *)data;
             return 0;
     }
-    return 1;
+    return ERR_ARG; /* Should never get here */
 }
 
 static int
@@ -133,15 +122,16 @@ _atomic_dec(tag_handle h, void *data) {
             *(dax_lreal *)&_db[h.index].data[h.byte] -= *(dax_lreal *)data;
             return 0;
     }
-    return 1;
+    return ERR_ARG; /* Should never get here */
 }
+
 
 static int
 _atomic_not(tag_handle h, void *data) {
     int n;
 
     if(h.type == DAX_REAL || h.type == DAX_LREAL) {
-        return ERR_ILLEGAL;
+        return ERR_BADTYPE;
     } else if(h.type == DAX_BOOL) {
         // There has got to be a more efficient way to do this but we're gonna do it the
         // easy way for now.  Just looping through each bit in turn.
@@ -155,60 +145,211 @@ _atomic_not(tag_handle h, void *data) {
                 bit = 0;
             }
         }
-        return 0;
     } else {
         for(n=0;n<h.size;n++) {
             *(dax_byte *)&_db[h.index].data[h.byte+n] = ~*(dax_byte *)&_db[h.index].data[h.byte+n];
         }
-        return 0;
     }
-    return 1;
+    return 0;
 }
+
 
 static int
 _atomic_or(tag_handle h, void *data) {
     int n;
-    dax_byte *_data;
-    _data = (dax_byte *)data;
-    dax_byte temp, mask ;
+    dax_byte temp[h.size];
+    dax_byte hmask, lmask;
 
     if(h.type == DAX_REAL || h.type == DAX_LREAL) {
-        return ERR_ILLEGAL;
+        return ERR_BADTYPE;
     } else if(h.type == DAX_BOOL && !(h.count % 8 == 0 && h.bit == 0)) {
-        DF("h.count = %d", h.count);
-        DF("h.size = %d", h.size);
-        DF("h.bit = %d", h.bit);
-        DF("h.byte = %d", h.byte);
+        _left_shift(temp, data, h.size, h.bit);
 
-        /* This is a bit mask to clean up the higher order (spare) bits that
-         * may be in data */
-        mask = ~(0xFF << (h.count%8));
-        DF("_data[1] = %X", _data[1]);
-        _data[h.count/8] &= mask;
-        DF("mask = %X", mask);
-        DF("_data[1] = %X", _data[1]);
+        hmask = 0xFF << ((h.bit + (h.count%8))%8);
+        lmask = 0xFF >> (8-h.bit);
+
+        temp[h.size-1] &= ~hmask;
+        temp[0]      &= ~lmask;
+
         for(n=0; n<h.size; n++) {
-            DF("data[%d] = %d", n, _data[n]);
-            temp = 0;
-            if(n != 0) {
-                temp = (_data[n-1] >> (8-h.bit));
-                DF("temp = %X", temp);
-            }
-            temp |= (_data[n] << h.bit);
-            DF("temp = %X", temp);
-            ((dax_byte *)_db[h.index].data)[h.byte+n] |= temp;
+            ((dax_byte *)_db[h.index].data)[h.byte+n] |= temp[n];
         }
-        return 0;
     } else {
-        DF("Easy way!!!!");
-        for(n=0;n<h.size;n++) {
+        for(n=0; n<h.size; n++) {
             *(dax_byte *)&_db[h.index].data[h.byte+n] |= ((dax_byte *)data)[h.byte+n];
         }
-        return 0;
     }
-    return 1;
+    return 0;
 }
 
+
+static int
+_atomic_and(tag_handle h, void *data) {
+    int n;
+    dax_byte temp[h.size];
+    dax_byte hmask, lmask;
+
+    if(h.type == DAX_REAL || h.type == DAX_LREAL) {
+        return ERR_BADTYPE;
+    } else if(h.type == DAX_BOOL && !(h.count % 8 == 0 && h.bit == 0)) {
+        _left_shift(temp, data, h.size, h.bit);
+        hmask = 0xFF << ((h.bit + (h.count%8))%8);
+        lmask = 0xFF >> (8-h.bit);
+
+        temp[h.size-1] |= hmask;
+        temp[0]      |= lmask;
+
+        for(n=0; n<h.size; n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] &= temp[n];
+        }
+    } else {
+        for(n=0; n<h.size; n++) {
+            *(dax_byte *)&_db[h.index].data[h.byte+n] &= ((dax_byte *)data)[h.byte+n];
+        }
+    }
+    return 0;
+}
+
+
+static int
+_atomic_nor(tag_handle h, void *data) {
+    int n;
+    dax_byte temp[h.size];
+    dax_byte hmask, lmask;
+    size_t size;
+
+    if(h.type == DAX_REAL || h.type == DAX_LREAL) {
+        return ERR_BADTYPE;
+    } else if(h.type == DAX_BOOL && !(h.count % 8 == 0 && h.bit == 0)) {
+        size = h.size;
+        _left_shift(temp, data, size, h.bit);
+        hmask = 0xFF << ((h.bit + (h.count%8))%8);
+        lmask = 0xFF >> (8-h.bit);
+
+        temp[size-1] &= ~hmask;
+        temp[0]      &= ~lmask;
+
+        /* To do the NOR with our mask we first apply the mask just like
+           with the OR.  Then XOR the middle bytes with 0xFF to toggle them
+           which makes it a NOR and then we do the same thing to the first
+           and last bytes except with the compliment of the mask.  This
+           keeps the bits that are outside of our range and then toggles
+           the ones that are inside the range. */
+        for(n=0;n< size;n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] |= temp[n];
+        }
+        for(n=1;n<size-1;n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] ^= 0xFF;
+        }
+        ((dax_byte *)_db[h.index].data)[size-1] ^= ~hmask;
+        ((dax_byte *)_db[h.index].data)[0]      ^= ~lmask;
+
+    } else {
+        for(n=0;n<h.size;n++) {
+            *(dax_byte *)&_db[h.index].data[h.byte+n] = ~(*(dax_byte *)&_db[h.index].data[h.byte+n] | ((dax_byte *)data)[h.byte+n]);
+        }
+    }
+    return 0;
+}
+
+
+static int
+_atomic_nand(tag_handle h, void *data) {
+    int n;
+    dax_byte temp[h.size];
+    dax_byte hmask, lmask;
+    size_t size;
+
+    if(h.type == DAX_REAL || h.type == DAX_LREAL) {
+        return ERR_BADTYPE;
+    } else if(h.type == DAX_BOOL && !(h.count % 8 == 0 && h.bit == 0)) {
+        size = h.size;
+        _left_shift(temp, data, size, h.bit);
+        hmask = 0xFF << ((h.bit + (h.count%8))%8);
+        lmask = 0xFF >> (8-h.bit);
+
+        temp[size-1] |= hmask;
+        temp[0]      |= lmask;
+
+        for(n=0;n< size;n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] &= temp[n];
+        }
+        for(n=1;n<size-1;n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] ^= 0xFF;
+        }
+        ((dax_byte *)_db[h.index].data)[size-1] ^= ~hmask;
+        ((dax_byte *)_db[h.index].data)[0]      ^= ~lmask;
+    } else {
+        for(n=0;n<h.size;n++) {
+            *(dax_byte *)&_db[h.index].data[h.byte+n] = ~(*(dax_byte *)&_db[h.index].data[h.byte+n] & ((dax_byte *)data)[h.byte+n]);
+        }
+    }
+    return 0;
+}
+
+
+static int
+_atomic_xor(tag_handle h, void *data) {
+    int n;
+    dax_byte temp[h.size];
+    dax_byte hmask, lmask;
+
+    if(h.type == DAX_REAL || h.type == DAX_LREAL) {
+        return ERR_BADTYPE;
+    } else if(h.type == DAX_BOOL && !(h.count % 8 == 0 && h.bit == 0)) {
+        _left_shift(temp, data, h.size, h.bit);
+
+        hmask = 0xFF << ((h.bit + (h.count%8))%8);
+        lmask = 0xFF >> (8-h.bit);
+
+        temp[h.size-1] &= ~hmask;
+        temp[0]      &= ~lmask;
+
+        for(n=0; n<h.size; n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] ^= temp[n];
+        }
+    } else {
+        for(n=0; n<h.size; n++) {
+            *(dax_byte *)&_db[h.index].data[h.byte+n] ^= ((dax_byte *)data)[h.byte+n];
+        }
+    }
+    return 0;
+}
+
+static int
+_atomic_xnor(tag_handle h, void *data) {
+    int n;
+    dax_byte temp[h.size];
+    dax_byte hmask, lmask;
+    size_t size;
+
+    if(h.type == DAX_REAL || h.type == DAX_LREAL) {
+        return ERR_BADTYPE;
+    } else if(h.type == DAX_BOOL && !(h.count % 8 == 0 && h.bit == 0)) {
+        size = h.size;
+        _left_shift(temp, data, size, h.bit);
+        hmask = 0xFF << ((h.bit + (h.count%8))%8);
+        lmask = 0xFF >> (8-h.bit);
+
+        temp[size-1] &= ~hmask;
+        temp[0]      &= ~lmask;
+
+        for(n=0;n< size;n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] ^= temp[n];
+        }
+        for(n=1;n<size-1;n++) {
+            ((dax_byte *)_db[h.index].data)[h.byte+n] ^= 0xFF;
+        }
+        ((dax_byte *)_db[h.index].data)[size-1] ^= ~hmask;
+        ((dax_byte *)_db[h.index].data)[0]      ^= ~lmask;
+
+    } else {
+        for(n=0;n<h.size;n++) {
+            *(dax_byte *)&_db[h.index].data[h.byte+n] = ~(*(dax_byte *)&_db[h.index].data[h.byte+n] ^ ((dax_byte *)data)[h.byte+n]);
+        }
+    }
+    return 0;
+}
 
 
 int
@@ -216,32 +357,32 @@ atomic_op(tag_handle h, void *data, uint16_t op) {
 
     /* We don't do these on custom data types */
     if(IS_CUSTOM(h.type)) {
-        return ERR_ILLEGAL;
+        return ERR_BADTYPE;
     }
     switch(op) {
         case ATOMIC_OP_INC:
-            if(h.type == DAX_BOOL) return ERR_ILLEGAL;
+            if(h.type == DAX_BOOL) return ERR_BADTYPE;
             return _atomic_inc(h, data);
         case ATOMIC_OP_DEC:
-            if(h.type == DAX_BOOL) return ERR_ILLEGAL;
+            if(h.type == DAX_BOOL) return ERR_BADTYPE;
             return _atomic_dec(h, data);
         case ATOMIC_OP_NOT:
             return _atomic_not(h, data);
         case ATOMIC_OP_OR:
             return _atomic_or(h, data);
         case ATOMIC_OP_AND:
-            return ERR_NOTIMPLEMENTED;
+            return _atomic_and(h, data);
         case ATOMIC_OP_NOR:
-            return ERR_NOTIMPLEMENTED;
+            return _atomic_nor(h, data);
         case ATOMIC_OP_NAND:
-            return ERR_NOTIMPLEMENTED;
+            return _atomic_nand(h, data);
         case ATOMIC_OP_XOR:
-            return ERR_NOTIMPLEMENTED;
+            return _atomic_xor(h, data);
+        case ATOMIC_OP_XNOR:
+            return _atomic_xnor(h, data);
 
     }
-    /* The rest of the data types are not done yet */
     /* TODO Finish the bitwise operators */
     return ERR_NOTIMPLEMENTED;
-    //return 0;
 }
 

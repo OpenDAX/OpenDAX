@@ -39,29 +39,30 @@ _bool_test(dax_state *ds) {
     temp[0] = 0xAA; temp[1] = 0x55;
     if(dax_write_tag(ds, h, &temp)) return -1;
     temp1[0] = 0x55; temp1[1] = 0xAA;
-    if(dax_atomic_op(ds, h, temp1, ATOMIC_OP_OR)) return -1;
+    if(dax_atomic_op(ds, h, temp1, ATOMIC_OP_NOR)) return -1;
     if(dax_read_tag(ds, h, &output)) return -1;
-    if(output[0] != 0xFF || output[1] != 0xFF) {
+    if(output[0] != 0x00 || output[1] != 0x00) {
         return -1;
     }
 
     /* No we do a partial subset of the bits */
     if(dax_tag_handle(ds, &h2, "bool_test[3]", 10)) return -1;
     temp[0] = 0x55; temp[1] = 0x55;
-    if(dax_write_tag(ds, h, &temp)) return -1;
+    if(dax_write_tag(ds, h, temp)) return -1;
     temp1[0] = 0x55; temp1[1] = 0x55;
-    if(dax_atomic_op(ds, h2, temp1, ATOMIC_OP_OR)) return -1;
-    if(dax_read_tag(ds, h, &output)) return -1;
-    if(output[0] != 0xFD || output[1] != 0x5F) return -1;
+    if(dax_atomic_op(ds, h2, temp1, ATOMIC_OP_NOR)) return -1;
+    if(dax_read_tag(ds, h, output)) return -1;
+    DF("0x%02X 0x%02X ", output[1], output[0]);
+    if(output[1] != 0x40 || output[0] != 0x05) return -1;
 
     /* No we do a partial subset of the bits Even %8 but offset by odd amount*/
     if(dax_tag_handle(ds, &h2, "bool_test[5]", 16)) return -1;
-    temp[0] = 0x00; temp[1] = 0x00; temp[2] = 0x00;
-    if(dax_write_tag(ds, h, &temp)) return -1;
-    temp1[0] = 0xFF; temp1[1] = 0xFF; temp1[2] = 0xFF;
-    if(dax_atomic_op(ds, h2, temp1, ATOMIC_OP_OR)) return -1;
-    if(dax_read_tag(ds, h, &output)) return -1;
-    if(output[0] != 0xE0 || output[1] != 0xFF || output[2] != 0x1F) return -1;
+    temp[0] = 0x55; temp[1] = 0x55; temp[2] = 0x55;
+    if(dax_write_tag(ds, h, temp)) return -1;
+    temp1[0] = 0x0F; temp1[1] = 0x0F; temp1[2] = 0x0F;
+    if(dax_atomic_op(ds, h2, temp1, ATOMIC_OP_NOR)) return -1;
+    if(dax_read_tag(ds, h, output)) return -1;
+    if(output[0] != 0x15 || output[1] != 0x0A || output[2] != 0x4A) return -1;
 
     return 0;
 }
@@ -76,10 +77,11 @@ _byte_test(dax_state *ds) {
 
     if(dax_tag_add(ds, &h, "byte_test", DAX_BYTE, 4, 0)) return -1;
     if(dax_write_tag(ds, h, input1)) return -1;
-    if(dax_atomic_op(ds, h, input2, ATOMIC_OP_OR)) return -1;
+    if(dax_atomic_op(ds, h, input2, ATOMIC_OP_NOR)) return -1;
     if(dax_read_tag(ds, h, output)) return -1;
     for(int n=0;n<4;n++) {
-        if(output[n] != (input1[n] | input2[n])) {
+        if(output[n] != (dax_byte)~(input1[n] | input2[n])) {
+            DF("0x%02X 0x%02X", output[n], ~(input1[n] | input2[n]));
             return -1;
         }
     }
@@ -95,11 +97,11 @@ _sint_test(dax_state *ds) {
 
     if(dax_tag_add(ds, &h, "sint_test", DAX_BYTE, 4, 0)) return -1;
     if(dax_write_tag(ds, h, input1)) return -1;
-    if(dax_atomic_op(ds, h, input2, ATOMIC_OP_OR)) return -1;
+    if(dax_atomic_op(ds, h, input2, ATOMIC_OP_NOR)) return -1;
     if(dax_read_tag(ds, h, output)) return -1;
 
     for(int n=0;n<4;n++) {
-        if(output[n] != (input1[n] | input2[n])) {
+        if(output[n] != ~(input1[n] | input2[n])) {
             return -1;
         }
     }
@@ -116,10 +118,10 @@ _dint_test(dax_state *ds) {
 
     if(dax_tag_add(ds, &h, "dint_test", DAX_DINT, 5, 0)) return -1;
     if(dax_write_tag(ds, h, input1)) return -1;
-    if(dax_atomic_op(ds, h, input2, ATOMIC_OP_OR)) return -1;
+    if(dax_atomic_op(ds, h, input2, ATOMIC_OP_NOR)) return -1;
     if(dax_read_tag(ds, h, output)) return -1;
     for(int n=0;n<5;n++) {
-        if(output[n] != (input1[n] | input2[n])) {
+        if(output[n] != ~(input1[n] | input2[n])) {
             return -1;
         }
     }
@@ -140,7 +142,7 @@ _real_test(dax_state *ds) {
     temp1[0] = 3.141592; temp1[1] = -43234.23455; temp1[2] = -1; temp1[3] = 0;
     result = dax_write_tag(ds, h, temp1);
     if(result) return -1;
-    result = dax_atomic_op(ds, h, temp2, ATOMIC_OP_OR);
+    result = dax_atomic_op(ds, h, temp2, ATOMIC_OP_NOR);
     if(result != ERR_BADTYPE) return -1;
 
     result = dax_tag_add(ds, &h, "lreal_test", DAX_LREAL, 4, 0);
@@ -148,7 +150,7 @@ _real_test(dax_state *ds) {
     temp2[0] = 3.141592; temp2[1] = -43234.23455; temp2[2] = -1; temp2[3] = 0;
     result = dax_write_tag(ds, h, temp2);
     if(result) return -1;
-    result = dax_atomic_op(ds, h, temp2, ATOMIC_OP_OR);
+    result = dax_atomic_op(ds, h, temp2, ATOMIC_OP_NOR);
     if(result != ERR_BADTYPE) return -1;
 
     return 0;

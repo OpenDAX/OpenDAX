@@ -213,14 +213,55 @@ int dax_mask_tag(dax_state *ds, Handle handle, void *data,
                  void *mask);
 \end{verbatim}
 
-The \verb|dax_read_tag()| function \index{dax\_read\_tag() function}, as its name suggests is used to read tag data from the server.  The \verb|void *data| pointer should point to data that is formated in the same way that the handle data is formatted.  Usually this simply means that the variables in you module should be of the same type and size as what is pointed to by \emph{handle}.
+The \verb|dax_read_tag()| function \index{dax\_read\_tag() function}, as its
+name suggests is used to read tag data from the server.  The \verb|void
+*data| pointer should point to data that is formatted in the same way that
+the handle data is.  Usually this simply means that the variables
+in you module should be of the same type and size as what is pointed to by
+\emph{handle}.
 
-The \verb|dax_write_tag()| function \index{dax\_write\_tag() function} and the \verb|dax_mask_tag()| function \index{dax\_mask\_tag() function} are both used to write data to the server.  Again the \emph{data} pointer should point to a data area within your module that is of the same type and size as the tag that is represented by the \emph{handle}.  The \verb|dax_mask_tag()| function function adds the ability to only write part of the data.  The \emph{mask} pointer should point to an area of memory that is the same size as the \emph{data} pointer.  The only \emph{data} that will be written to the server will have a '1' set in that bit location in the \emph{mask} memory area.
+The \verb|dax_write_tag()| function \index{dax\_write\_tag() function} and
+the \verb|dax_mask_tag()| function \index{dax\_mask\_tag() function} are both
+used to write data to the server.  Again the \emph{data} pointer should point
+to a data area within your module that is of the same type and size as the
+tag that is represented by the \emph{handle}.  The \verb|dax_mask_tag()|
+function function adds the ability to only write part of the data.  The
+\emph{mask} pointer should point to an area of memory that is the same size
+as the \emph{data} pointer.  The only \emph{data} that will be written to the
+server will have a '1' set in that bit location in the \emph{mask} memory
+area.
+
+It might be important to understand how large tags are read.  If
+the size of the request is larger than the maximum number of bytes that
+can be read in a single message, the request will be split up.
+This causes a race condition because another module could write to the tags
+between these messages.  This will likely, not be an issue for the vast
+majority of cases, but it is worth knowing.
+
+Writing tags is also split up into multiple messages if needed.  The same
+race condition exists here as well.  Also the amount of data that can be
+written is slightly less than can be read.  This is due to the fact that
+the message header is larger for writes.
+Masked writes are half the size of normal writes, since room has to be made
+for the mask.
 
 \section{Compound Data}
 
 See the implementation of the \verb|dax_cdt_iter()| function \index{dax\_cdt\_iter() function} to see how to deal with compound data.  The easiest and least efficient way is to get handles to the individual members of the CDT.
 
-The packing of the CDT is also specified and it's pretty simple.  The members are packed in the same order in which they were added by the  \verb|dax_cdt_member()| function \index{dax\_cdt\_member() function}.  They are single byte aligned and BOOLs are packed into bytes.  One BOOL will take up an entire byte.  Any subsequent BOOL's that are added will occupy that same byte until there are more than 8 in which case another byte will be added.  This continues until the first non-BOOL data type.  The first non-BOOL typed member will occupy the next byte.  For this reason it is more efficient to put the BOOL data types together.  A single BOOL member followed by an INT then followed by another BOOL will occupy 4 bytes, one for the first BOOL, two for the INT and then another byte for the second BOOL.  If we put the two BOOL members first and second, with the INT last, the data type size will only be 3 bytes, and we still have room for 6 more BOOLs before the size would grow.
+The packing of the CDT is also specified and it's pretty simple.  The members
+are packed in the same order in which they were added by the
+\verb|dax_cdt_member()| function \index{dax\_cdt\_member() function}.  They
+are single byte aligned and BOOLs are packed into bytes.  One BOOL will take
+up an entire byte.  Any subsequent BOOL's that are added will occupy that
+same byte until there are more than 8 in which case another byte will be
+added.  This continues until the first non-BOOL data type.  The first
+non-BOOL typed member will occupy the next byte.  For this reason it is more
+efficient to put the BOOL members together.  A single BOOL member followed by
+an INT then followed by another BOOL will occupy 4 bytes, one for the first
+BOOL, two for the INT and then another byte for the second BOOL.  If we put
+the two BOOL members first and second, with the INT last, the data type size
+will only be 3 bytes, and we still have room for 6 more BOOLs before the size
+would grow.
 
 \section{Data Handling Example}
