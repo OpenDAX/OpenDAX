@@ -328,11 +328,11 @@ dax_errstr(int ecode) {
         case ERR_NO_SOCKET:
             return "No Socket";
         case ERR_2BIG:
-            return "To Big";
+            return "Too Big";
         case ERR_ARG:
             return "Bad Argument";
         case ERR_NOTFOUND:
-            return "Not Foudn";
+            return "Not Found";
         case ERR_MSG_SEND:
             return "Send Message Error";
         case ERR_MSG_RECV:

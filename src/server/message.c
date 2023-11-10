@@ -636,7 +636,7 @@ msg_evnt_add(dax_message *msg)
     }
 
     if(event_id < 0) { /* Send Error */
-        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, 0, ERROR);
+        _message_send(msg->fd, MSG_EVNT_ADD, &event_id, sizeof(dax_dint), ERROR);
     } else {
         _message_send(msg->fd, MSG_EVNT_ADD, &event_id, sizeof(dax_dint), RESPONSE);
     }

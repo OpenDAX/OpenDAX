@@ -587,6 +587,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
     }
     /* No events can be assigned to virtual tags unless it's a queue */
     if(is_tag_virtual(h.index) && ! is_tag_queue(h.index)) {
+        dax_log(DAX_LOG_ERROR, "Events cannot be added to virtual events");
         return ERR_ILLEGAL;
     }
     /* If the tag is a queue then we can only do write events for
@@ -594,6 +595,7 @@ event_add(tag_handle h, int event_type, void *data, dax_module *module)
     if(is_tag_queue(h.index)) {
         if(h.byte != 0 || event_type != EVENT_WRITE ||
            h.size != (tag_get_size(_db[h.index].type) * _db[h.index].count)) {
+            dax_log(DAX_LOG_ERROR, "Only write events can be assigned for a queue");
             return ERR_ILLEGAL;
         }
     }
@@ -676,6 +678,7 @@ event_del(int index, int id, dax_module *module)
 
     if(index >= get_tagindex() || index < 0) {
         dax_log(DAX_LOG_ERROR, "event_del() - index %d is out of range\n", index);
+        return ERR_2BIG;
     }
     this = _db[index].events;
     if(this == NULL) return ERR_NOTFOUND;
@@ -731,11 +734,15 @@ event_opt(int index, int id, uint32_t options, dax_module *module) {
     int result;
 
     if(index >= get_tagindex() || index < 0) {
-        dax_log(DAX_LOG_ERROR, "event_opt() - index %d is out of range\n", index);
+        dax_log(DAX_LOG_ERROR, "event_opt() - index %d is out of range", index);
+        return ERR_2BIG;
     }
 
     result = _find_event(&event, index, id);
-    if(result) dax_log(DAX_LOG_ERROR, "event_opt() - event not found\n");
+    if(result) {
+        dax_log(DAX_LOG_ERROR, "event_opt() - event not found");
+        return result;
+    }
     if(event->notify != module) {
     	dax_log(DAX_LOG_ERROR, "Module cannot modify another module's event");
         return ERR_AUTH;

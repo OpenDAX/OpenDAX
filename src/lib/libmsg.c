@@ -87,7 +87,7 @@ _message_get(int fd, dax_message *msg) {
     /* Now we get the rest of the message */
     index = 0;
     while( index < msg->size) {
-    	/* Start by reading the header */
+    	/* Read the rest of the message */
         result = read(fd, &buff[index], msg->size-index);
         if(result < 0) {
             if(errno == EWOULDBLOCK) {
@@ -129,7 +129,7 @@ _message_recv(dax_state *ds, int command, void *payload, size_t *size, int respo
         }
         result = pthread_cond_timedwait(&ds->msg_cond, &ds->msg_lock, &timeout);
         if(result == ETIMEDOUT) {
-            DF("message_recv() Timeout\n");
+            DF("message_recv() Timeout");
             pthread_mutex_unlock(&ds->msg_lock);
             return ERR_TIMEOUT;
         }
