@@ -118,17 +118,17 @@ static int
 _dint_test(dax_state *ds) {
     int result;
     tag_handle h;
-    dax_dint input1[] = {0x55555555, 0xAAAAAAAA, 0x55555555, 0xAAAAAAAA, -2147483648};
-    dax_dint input2[] = {1234,       -3453,      -1,         2151686160, 1};
-    dax_dint output[5];
+    dax_dint input1[] = {0x55555555, 0xAAAAAAAA, 0x55555555, 0xAAAAAAAA, -2147483648, -1};
+    dax_dint input2[] = {1234,       -3453,      -1,         2151686160, 1,            15};
+    dax_dint output[6];
 
-    if(dax_tag_add(ds, &h, "dint_test", DAX_DINT, 5, 0)) return -1;
+    if(dax_tag_add(ds, &h, "dint_test", DAX_DINT, 6, 0)) return -1;
     if(dax_write_tag(ds, h, input1)) return -1;
     if(dax_atomic_op(ds, h, input2, ATOMIC_OP_AND)) return -1;
     if(dax_read_tag(ds, h, output)) return -1;
-    for(int n=0;n<5;n++) {
+    for(int n=0;n<6;n++) {
+        DF("n=%d, output = %d, in1 = %d, in2 = %d, answer = %d", n, output[n], input1[n], input2[n], input1[n] & input2[n]);
         if(output[n] != (input1[n] & input2[n])) {
-            DF("n=%d, output = %d, in1 = %d, in2 = %d, answer = %d", n, output[n], input1[n], input2[n], input1[n] & input2[n]);
             return -1;
         }
     }

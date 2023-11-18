@@ -142,10 +142,11 @@ dax_get_typesize(dax_state *ds, tag_type type)
         if(pos) {
             size = (pos - 1)/8 + 1;
         } else {
-            size = 0;
+            size = 1;
         }
     } else { /* Not IS_CUSTOM() */
         size = TYPESIZE(type) / 8; /* Size in bytes */
+        if(size == 0) size = 1;
     }
     return size;
 }
@@ -837,4 +838,127 @@ dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_ite
         }
     }
     return 0;
+}
+
+/* Used to carry data around for the fqn cdt iteration callback function */
+struct _fqn_data {
+    dax_state *ds;
+    cdt_iter member;
+    uint8_t done;
+    int byte_position;   /* current position within the cdt in bytes*/
+    int bit_position;    /* current position within the cdt in bits*/
+    int final_byte;      /* The final position in bytes*/
+    int final_bit;       /* The final position in bits*/
+
+};
+
+static void _fqn_callback(cdt_iter member, void *udata)
+{
+    int member_size;
+    struct _fqn_data *data = (struct _fqn_data *)udata;
+
+
+    if(! data->done) { /* We use this to indicate whether we've found it or not */
+        if(member.type == DAX_BOOL) {
+            data->byte_position += member.count/8;
+            data->bit_position += member.count % 8;
+            if(data->byte_position >= data->final_byte &&
+               data->bit_position > data->final_bit) {
+                    data->member = member;
+                    data->done = 1;
+            }
+        } else { /* Not BOOL */
+            if(data->bit_position > 0) { /* If we have any bits left over from previous BOOLs */
+                data->bit_position = 0;
+                data->byte_position++;
+            }
+            member_size = member.count * dax_get_typesize(data->ds, member.type);
+            data->byte_position += member_size;
+            if(data->byte_position > data->final_byte) {
+                data->member = member;
+                data->done = 1;
+                //data->member_name = member.name;
+                //DF("found it - %s", data->member_name);
+            }
+        }
+
+    }
+    DF("name=%s, position=%d,%d : final=%d,%d", member.name, data->byte_position, data->bit_position,  data->final_byte, data->final_bit);
+}
+
+static void _fqn_cdt_member(dax_state *ds, tag_type type, struct _fqn_data *data)
+{
+    data->done = 0;
+    //DF("byte = %d, byte = %d, bit = %d", offset, byte, bit);
+    //DF("position = %d, final_bit = %d", data.position, data.final_bit);
+    dax_cdt_iter(ds, type, data, _fqn_callback);
+    DF("Found member %s at position %d,%d > final %d,%d", data->member.name, data->byte_position, data->bit_position, data->final_byte, data->final_bit);
+
+}
+
+/*!
+ * This function determines the 'fully qualified name' of the tag.  It converts
+ * a tag_handle into the name and returns a pointer to that name.  This is basically
+ * then inverse of the dax_tag_handle function.  The count is not determined since
+ * that information is in the handle.
+ *
+ * @param ds Pointer to dax state object
+ * @param h  Handle of the tag description that we want to convert
+ * @returns  A string representing the fully qualified name.  This string is
+ *           allocated in this function and should be ddallocated with free().
+ *           If there is an error then NULL will be returned.
+ */
+char *
+dax_fqn(dax_state *ds, tag_handle h) {
+    char s[1024];
+    char d[64];
+    char *str = NULL;
+    dax_tag tag;
+    int result;
+    int offset;
+    int i;
+    int ts;
+
+    bzero(s, 1024);
+    result = dax_tag_byindex(ds, &tag, h.index);
+    if(result) { return NULL; }
+
+    if(tag.type == DAX_BOOL) {
+        if(h.byte > 0 || h.bit > 0) {
+            int bit = h.byte * 8 + h.bit;
+            snprintf(s, 1024, "%s[%d]", tag.name, bit);
+        } else {
+            strncpy(s, tag.name, 1024);
+        }
+    } else {
+        ts = dax_get_typesize(ds, tag.type);
+        assert(ts != 0);
+        if((tag.count > 1 && ( h.byte > 0 ||  h.count != tag.count))) {
+            i = h.byte / ts;
+            snprintf(s, 1024, "%s[%d]", tag.name, i);
+        } else {
+            i = 0;
+            strncpy(s, tag.name, 1024);
+        }
+        offset = i*ts;
+
+        if( IS_CUSTOM(tag.type) && h.type != tag.type) {
+            struct _fqn_data data;
+            data.ds = ds;
+            data.byte_position = offset;
+            data.bit_position = 0;
+            data.final_byte = h.byte;
+            data.final_bit = h.bit;
+
+            _fqn_cdt_member(ds, tag.type, &data);
+        } else if(h.type == DAX_BOOL) {
+            snprintf(d, 64, ".%d", h.bit + (h.byte - offset)*8);
+            strncat(s, d, 1024);
+        }
+    }
+
+    str = malloc(strlen(s) + 1);
+    if(str != NULL ) strncpy(str, s, strlen(s) + 1);
+
+    return str;
 }

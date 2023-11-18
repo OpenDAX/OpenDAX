@@ -62,7 +62,9 @@ set(test_list read_large
               blank_tagname
               del_system_tag
               strings
+              typesize
               handles
+              fqn
               mapping_basic
               mapping_bool
               mapping_get

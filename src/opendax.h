@@ -439,6 +439,9 @@ typedef struct cdt_iter {
 /* Iterate over the members of a CDT */
 int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
 
+/* Return a fully qualified tag name from a handle */
+char *dax_fqn(dax_state *ds, tag_handle h);
+
 /* Add remove and get data table mapping functions */
 int dax_map_add(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id *id);
 int dax_map_get(dax_state *ds, tag_handle *src, tag_handle *dest, dax_id id);
