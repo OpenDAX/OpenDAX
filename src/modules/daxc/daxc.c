@@ -177,7 +177,7 @@ int
 get_help(char **tokens) {
     if(tokens[0] == NULL) {
         printf("Usage: command <args>...\n");
-        printf("Commands: \n ADD\n DEL\n LIST\n READ\n WRITE\n WAIT\n POLL\n SET\n CLEAR\n EXIT\n");
+        printf("Commands: \n ADD\n DEL\n LIST\n READ\n WRITE\n WAIT\n POLL\n SET\n CLEAR\n OP\n EXIT\n");
         printf("For more information type: help <command>\n");
     } else if(!strncasecmp(tokens[0], "add", 3)) {
         if(tokens[1] == NULL) {
@@ -232,15 +232,15 @@ get_help(char **tokens) {
         }
     } else if(!strncasecmp(tokens[0], "write", 3)) {
         if(tokens[1] == NULL) {
-            printf("Usage: WRITE tag values...\n");
+            printf("Usage: WRITE tag <values> <...>\n");
         }
     } else if(!strncasecmp(tokens[0], "wait", 3)) {
         if(tokens[1] == NULL) {
-            printf("Usage: WAIT tags...\n");
+            printf("Usage: WAIT\n");
         }
     } else if(!strncasecmp(tokens[0], "poll", 3)) {
         if(tokens[1] == NULL) {
-            printf("Usage: POLL tags...\n");
+            printf("Usage: POLL\n");
         }
     } else if(!strncasecmp(tokens[0], "set", 3)) {
         if(tokens[1] == NULL) {
@@ -251,6 +251,11 @@ get_help(char **tokens) {
         if(tokens[1] == NULL) {
             printf("Usage: CLEAR tag...\n\n");
             printf("Clears the override for the tag\n");
+        }
+    } else if(!strncasecmp(tokens[0], "op", 5)) {
+        if(tokens[1] == NULL) {
+            printf("Usage: OP tag operation <values> <...>\n\n");
+            printf("Performs an atomic operation on the tag\n");
         }
     } else if(!strncasecmp(tokens[0], "exit", 3)) {
         printf("Usage: EXIT\n\n");

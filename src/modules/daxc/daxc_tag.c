@@ -809,6 +809,7 @@ _get_atomic_op_type(char *op) {
     else if(!strncasecmp(op, "nor", 3)) return ATOMIC_OP_NOR;
     else if(!strncasecmp(op, "nand", 4)) return ATOMIC_OP_NAND;
     else if(!strncasecmp(op, "xor", 3)) return ATOMIC_OP_XOR;
+    else if(!strncasecmp(op, "xnor", 3)) return ATOMIC_OP_XOR;
     else  return 0;
 }
 
@@ -831,10 +832,10 @@ atomic_op(char **tokens, int count)
         fprintf(stderr, "ERROR: No Tagname Given\n");
         return ERR_NOTFOUND;
     }
-    result = dax_tag_handle(ds, &handle, name, count-1);
+    result = dax_tag_handle(ds, &handle, name, count - 2);
     if(result) {
         /* TODO: More descriptive error messages here based on result */
-        fprintf(stderr, "ERROR: %s Not a Valid Tag\n", tokens[0]);
+        fprintf(stderr, "ERROR: '%s' Not a Valid Tag - %s\n", tokens[0], dax_errstr(result));
         return ERR_ARG;
     }
 
@@ -906,13 +907,13 @@ atomic_op(char **tokens, int count)
             return -1;
         }
     } else {
-        points = count - 1;
+        points = count - 2;
         if(handle.count < points) {
             points = handle.count;
         }
         for(n = 0; n < points; n++) {
             if(strncmp(tokens[n+1], "~", 1)) {
-                dax_string_to_val(tokens[n + 1], handle.type, buff, mask, n);
+                dax_string_to_val(tokens[n + 2], handle.type, buff, mask, n);
             }
         }
     }
@@ -922,7 +923,7 @@ atomic_op(char **tokens, int count)
     free(mask);
 
     if(result) {
-        fprintf(stderr, "ERROR: Atomic operation failed on tag %s code = %d\n", name, result);
+        fprintf(stderr, "ERROR: Atomic operation failed on tag %s - %s\n", name, dax_errstr(result));
     }
     return result;
 
