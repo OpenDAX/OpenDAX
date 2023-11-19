@@ -76,6 +76,7 @@ do_test(int argc, char *argv[])
             DF("%s - PASS\n", tests_pass[n].tagname);
         } else {
             DF("%s != %s FAIL\n", fqn, str);
+            return ERR_GENERIC;
         }
         free(fqn);
     }
