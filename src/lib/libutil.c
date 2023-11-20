@@ -270,7 +270,6 @@ dax_set_run_callback(dax_state *ds, void f(dax_state *, void *)) {
     snprintf(runtag, 256, "%s.run", tagname);
     result = dax_tag_handle(ds, &h, runtag, 0);
     if(result) return result;
-
     result = dax_event_add(ds, &h, EVENT_SET, NULL, NULL,f, NULL, NULL);
     return result;
 }
@@ -299,7 +298,6 @@ dax_set_stop_callback(dax_state *ds, void f(dax_state *, void *)) {
     snprintf(runtag, 256, "%s.stop", tagname);
     result = dax_tag_handle(ds, &h, runtag, 0);
     if(result) return result;
-
     result = dax_event_add(ds, &h, EVENT_SET, NULL, NULL,f, NULL, NULL);
     return result;
 }
@@ -329,7 +327,6 @@ dax_set_kill_callback(dax_state *ds, void f(dax_state *, void *)) {
     snprintf(runtag, 256, "%s.kill", tagname);
     result = dax_tag_handle(ds, &h, runtag, 0);
     if(result) return result;
-
     result = dax_event_add(ds, &h, EVENT_SET, NULL, NULL,f, NULL, NULL);
     return result;
 }

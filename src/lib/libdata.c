@@ -657,7 +657,7 @@ dax_tag_mask(dax_state *ds, tag_handle handle, void *data, void *mask)
                 n += rsize;
             }
         } else {
-            result = dax_mask(ds, handle.index, handle.byte, newdata, mask, size);
+            result = dax_mask(ds, handle.index, handle.byte, newdata, newmask, size);
         }
         free(newmask);
         free(newdata);

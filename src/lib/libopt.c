@@ -477,7 +477,7 @@ _mod_config_file(dax_state *ds) {
     if(luaL_loadfile(ds->L, cfile)  || lua_pcall(ds->L, 0, 0, 0)) {
         dax_log(DAX_LOG_ERROR, "Problem executing configuration file %s - %s",cfile, lua_tostring(ds->L, -1));
         free(cfile);
-        return ERR_GENERIC;
+        return ERR_NOTFOUND;
     } else {
         dax_log(DAX_LOG_DEBUG, "Configured using file %s",cfile);
         _get_lua_globals(ds);

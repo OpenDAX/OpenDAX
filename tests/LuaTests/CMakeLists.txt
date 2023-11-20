@@ -33,6 +33,7 @@ target_link_libraries(run_test_event dax pthread)
 
 add_test(luatest_basic "run_test" "test_basic.lua")
 add_test(luatest_tag_delete "run_test" "test_tag_delete.lua")
+add_test(luatest_bits "run_test" "test_bits.lua")
 add_test(luatest_bit_array "run_test" "test_bit_array.lua")
 add_test(luatest_event_wait "run_test_event" "test_event.lua")
 add_test(luatest_write_string "run_test" "test_write_string.lua")

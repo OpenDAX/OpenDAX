@@ -19,19 +19,30 @@
 -- This makes sure that we only load our recently built version
 package.cpath = "@CMAKE_BINARY_DIR@/src/lib/lua/?.so"
 
+
+
 dax = require("dax")
 
 dax.init("dax_test")
 
 -- Create a tag and write to it
-dax.tag_add("ccc", "char", 12)
+dax.tag_add("bits", "bool", 30)
 
-dax.tag_write("ccc", "This is a string that is way too big to fit")
+dax.tag_write("bits[2]", 1)
 
-x = dax.tag_read("ccc")
+x = dax.tag_read("bits[2]")
 
-if x ~= "This is a st" then
-    error("Does not match")
+if x ~= true then
+  error("fail")
+end
+
+dax.tag_add("dummy", "int")
+dax.tag_write("dummy.2", 1)
+
+x = dax.tag_read("dummy")
+
+if x ~= 4 then
+  error("fail")
 end
 
 print("OK")
