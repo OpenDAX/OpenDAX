@@ -416,7 +416,8 @@ _write_callback(cdt_iter member, void *udata)
  * over to the recursive write_callback() function through the
  * cdt iterator. */
 int
-daxlua_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask){
+daxlua_lua_to_dax(lua_State *L, tag_handle h, void* data, void *mask)
+{
     cdt_iter tag;
     struct iter_udata udata;
     int n, offset;

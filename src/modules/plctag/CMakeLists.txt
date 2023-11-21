@@ -14,28 +14,10 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_subdirectory(daxc)
+include_directories(.)
+add_executable(daxplctag plctag.c)
+set_target_properties(daxplctag PROPERTIES OUTPUT_NAME daxplctag)
+target_link_libraries(daxplctag dax)
+target_link_libraries(daxplctag plctag)
 
-if(BUILD_MODBUS)
-  add_subdirectory(modbus)
-endif()
-
-if(BUILD_DAXLUA)
-  add_subdirectory(daxlua)
-endif()
-
-if(BUILD_MQTT)
-  add_subdirectory(mqtt)
-endif()
-
-if(BUILD_PLCTAG)
-  add_subdirectory(plctag)
-endif()
-
-if(BUILD_HISTLOG)
-  add_subdirectory(histlog)
-endif()
-
-if(BUILD_EXAMPLES)
-   add_subdirectory(examples)
-endif()
+install(TARGETS daxplctag DESTINATION bin)

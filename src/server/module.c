@@ -111,7 +111,7 @@ module_add(char *name, unsigned int flags)
 
     new = xmalloc(sizeof(dax_module));
     if(new) {
-        dax_log(DAX_LOG_MAJOR, "New module '%s' created at %p", name, new);
+        dax_log(DAX_LOG_DEBUG, "New module '%s' created at %p", name, new);
         new->flags = flags;
 
         new->fd = 0;

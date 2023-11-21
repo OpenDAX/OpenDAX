@@ -28,6 +28,7 @@ enable_testing()
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
+option(BUILD_PLCTAG "Build PLCTAG Module" ON)
 option(BUILD_HISTLOG "Build Historical Logging Module" ON)
 option(BUILD_JOYSTICK "Build Joystick Module" ON)
 option(BUILD_EXAMPLES "Build Example Modules" ON)
@@ -95,6 +96,13 @@ if( NOT HAVE_MQTT )
   message("paho-mqtt3c library not found.  Not building MQTT client module.")
   set(BUILD_MQTT OFF)
 endif()
+
+find_library(HAVE_PLCTAG NAMES plctag)
+if( NOT HAVE_PLCTAG )
+  message("plctag library not found.  Not building daxplctag client module.")
+  set(BUILD_PLCTAG OFF)
+endif()
+
 
 add_subdirectory(src)
 
