@@ -63,10 +63,21 @@ _kill_function(dax_state *ds, void *ud) {
 static void
 _read_tag(struct tagdef *tag) {
     int offset;
+    int result;
     dax_type_union val;
 
     switch(tag->h.type) {
         case DAX_BOOL:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                result = plc_tag_get_bit(tag->tag_id, offset);
+                if(result > 0) {
+                    tag->buff[offset/8] |= 0x01 << (offset % 8);
+                } else if(result < 0) {
+                    DF("Error"); // TODO: What to do with this error???
+                } else {
+                    tag->buff[offset/8] &= ~(0x01 << (offset % 8));
+                }
+            }
             break;
         case DAX_BYTE:
             for(offset = 0; offset < tag->h.count; offset++) {
@@ -218,6 +229,13 @@ _event_callback(dax_state *ds, void *udata) {
     dax_event_get_data(ds, tag->buff, tag->h.size);
     switch(tag->h.type) {
         case DAX_BOOL:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                if(tag->buff[offset/8] & 0x01 << (offset % 8)) {
+                    plc_tag_set_bit(tag->tag_id, offset, 1);
+                } else {
+                    plc_tag_set_bit(tag->tag_id, offset, 0);
+                }
+            }
             break;
         case DAX_BYTE:
             for(offset = 0; offset < tag->h.count; offset++) {

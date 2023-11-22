@@ -56,8 +56,55 @@ Features
 The system can handle all the basic data types, including
 arrays and custom designed datatypes.
 
-The database is intended to be dynamic,
-able to grow and shrink as the program runs.
+The database is intended to be dynamic, able to grow and shrink
+while the tag server is running.
+
+Tag data retention the stores data to disk when the tag server
+exits and reloads that data when the server restarts.
+
+Event generation allows client modules to be notified by the tag
+server when certain changes are made to tags.  This frees the module
+from constantly having to poll the tag server for tag changes and
+makes the system very responsive.
+
+Lua is used as the primary configuration language for all of the
+OpneDAX components.  This allows a massive amount of flexibility in
+how the different processes are configured.
+
+Client modules that are part of the base distribution include...
+
+* Modbus Communication Module - Modbus TCP Client/Server and Modbus
+  RTU Master/Slave functionality.  ASCII Master/Slave capability is planned.
+* MQTT Communication Module - Uses the Eclipse Paho library for
+  connection to MQTT broker and uses Lua as filter language so
+  that any arbitrary type of data format can be used.
+* PLCTAG Communication Module - Uses the lipplctag library to communicate
+  to PLCs.  This library usees a tag based abstraction that makes reading
+  and writing to various PLCs consistent.  The main purpose for this
+  module is to cummunicate to Allen Bradley PLCs using EIP/CIP.  The library
+  includes Modbus TCP client capability as well.
+* Lua Scripting Module - Lua is the primary scripting language for OpenDAX.
+  This module is the primary 'Logic' module included in the distribution.
+* Historical Data Logging - Plug-in based historical logging module that
+  can store data to disk files or database servers.  The module is not
+  complete.
+* Command Line Module - Allows the user to connect to the tag server
+  and create, view and edit tags.  Most of the features of the tag
+  server are included in this module.  This module is also the
+  interface to the rest of the system.  It is a properly behaved
+  *nix process that can act interactively as well as be used within
+  shell scripts.  It can also take instructions via STDIN so that it
+  can function as a command interpreter.
+
+There is a Qt based GUI module that is not included in this distribution.
+
+There are also Lua and Python language bindings so that custom client modules
+can be written in those languages.  The Lua bindings are included in this
+distribution but the Python bindings are in a separate repository.
+
+A C++ library is planned.
+
+See the OpenDAX GitHub page for more information. https://github.com/OpenDAX
 
 ---------------------
 Licensing
@@ -74,12 +121,45 @@ licensed with the LGPL v2.  See the COPYING and COPYING.LIB files for details.
 Status
 ---------------------
 
-At this point the code is at best, pre-alpha quality and it is not ready to be
-installed on production systems.
+At this point the code is, at best, alpha quality and it is not ready to be
+installed on mission critical production systems.
 
 All parts of the system are open for modification at this time.  This includes
 the ABI of the libraries as well as the communication protocol itself.  The
 ABI will not be changed unless absolutely necessary.
+
+The tag server and the module interface library are fairly feature complete
+at this point and a lot of testing has been done.  Basic functionality has
+been tested but the edge cases still need to be identified and tested.
+
+The master daemon will launch the processes properly and seems to do a good
+job of restarting failed processes when necessary.  There are still quite
+a few features that need to be added and a lot of testing needs to be done.
+
+The 'daxlua' Lua scripting module is feature complete and seems to work
+well.  It's been used in the wild and a lot of bugs have been found and
+fixed.  More tesing needs to be done.
+
+The Modbus module is feature complete except for the Modbus ASCII protocol.
+There has been a lot of testing on the Modbus module.  It has also been
+used on some fairly large projects and has performed well.
+
+The MQTT module contains basic pub/sub capability but proper QOS handling
+and encrypted connections still have not been implemented.  Very little
+testing has been done on this module.
+
+The plctag module is very young.  It seems to work well on tags of basic
+data types (including BOOLs) but strings and UDTs have not been done yet
+and only ControlLogix PLCs have been tested.
+
+The 'histlog' historical logging module has the basic structure of the
+program done and a couple of simple plugins have been written.  writing
+data to the database seems to work well but there is no code for querying
+the databases.  We are still trying to decide the best way to do this.
+The plugins that are currently working are the SQLite plugin and a comma
+delimited text file plugin.  So the data is still available but the
+user will have to imlement those functions themselves, until the
+other tools are built to abstract the data retrieval.
 
 ---------------------
 Installation
@@ -90,11 +170,18 @@ on your system.
 
 You will also need the Lua development libraries installed.  Most
 distributions have versions of Lua that will work.  The currently supported
-versions of Lua are 5.1, 5.2 and 5.3 at the moment.
+versions of Lua are 5.3 and 5.4.
 If you install Lua from the source files you will need to add -FPIC
 compiler flag to the build.
 
 make MYCFLAGS="-fPIC" linux
+
+Lua is the only required library dependecy for the system to compile but some
+modules require other libraries be installed on the system.  They are detected
+during configuation and messages will be given if these libraries are not found.
+The main ones are SQLite for tag retention and some historical logging
+module plugins. Eclipse Paho is required for the MQTT module and
+libplctag is required for the daxplctag module.
 
 Once you have CMake and the Lua libraries installed you can download and build
 OpenDAX.  First clone the repository...

@@ -3,6 +3,7 @@
 function init_hook()
     tag_add("TestDINT", "DINT", 5)
     tag_add("TestREAL", "REAL", 1)
+    tag_add("TestBOOL", "BOOL", 16)
 end
 
 
@@ -18,7 +19,16 @@ add_plctag(tag)
 tag = {}
 tag.daxtag = "TestREAL"
 tag.plctag = "protocol=ab-eip&gateway=172.16.4.1&path=1,1&cpu=LGX&elem_count=1&name=TestREAL"
-tag.read_update = 500
-tag.write_update = 3500
+tag.read_update = 1000
+tag.write_update = 500
+
+add_plctag(tag)
+
+tag = {}
+tag.daxtag = "TestBOOL"
+tag.count = 16
+tag.plctag = "protocol=ab-eip&gateway=172.16.4.1&path=1,1&cpu=LGX&name=TestBOOL"
+tag.read_update = 1000
+tag.write_update = 500
 
 add_plctag(tag)
