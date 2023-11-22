@@ -15,7 +15,7 @@
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 include_directories(.)
-add_executable(daxplctag plctag.c)
+add_executable(daxplctag plctag.c plcopt.c plcthread.c)
 set_target_properties(daxplctag PROPERTIES OUTPUT_NAME daxplctag)
 target_link_libraries(daxplctag dax)
 target_link_libraries(daxplctag plctag)

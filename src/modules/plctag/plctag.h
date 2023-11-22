@@ -23,17 +23,30 @@
 
 #include <opendax.h>
 #include <common.h>
+#include <pthread.h>
+
+/* This should probably be in the configuration */
+#define QUEUE_SIZE 256
 
 struct tagdef {
-    char *name;
+    char *daxtag;
     char *plctag;
     tag_type type;
+    tag_handle h;
+    uint8_t *buff;
+    char *typestr;
+    int count;
+    int elem_size;
     int read_update;
     int write_update;
+    int32_t tag_id;
+    int status;
     struct tagdef *next;
 };
 
 
 int plctag_configure(int, char **);
+void tag_thread_start(void);
+int tag_queue_push(struct tagdef *tag);
 
 #endif

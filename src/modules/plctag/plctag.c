@@ -17,12 +17,14 @@
  */
 
 /* This is main source file for the the PLCTAG client module.  This module
-   uses the features of libplctag to read/write tags from supported PLCs.
-   See the documentation of libplctag at https://github.com/libplctag/libplctag
-   for supported PLCs. */
+ * uses the features of libplctag to read/write tags from supported PLCs.
+ * See the documentation of libplctag at https://github.com/libplctag/libplctag
+ * for supported PLCs.
+ */
 
 #define _GNU_SOURCE
 #include "plctag.h"
+#include <libplctag.h>
 #include <signal.h>
 #include <libdaxlua.h>
 
@@ -54,144 +56,176 @@ _kill_function(dax_state *ds, void *ud) {
     dax_log(DAX_LOG_MINOR, "Kill signal received from tagserver");
     dax_default_kill(ds, ud);
 }
+/* This reads the data from teh plctag and converts it to the proper type for
+   the opendax dat.  The conversions are made based on the type of opendax
+   tag but the offset for the conversion in the plctag is calculated based
+   on the plctag element size */
+static void
+_read_tag(struct tagdef *tag) {
+    int offset;
+    dax_type_union val;
 
-
-static int
-_add_plctag(lua_State *L)
-{
-    int luatype;
-    char *plctag, *name;
-    int type, read_update, write_update;
-
-    struct tagdef *newtag;
-
-    dax_log(DAX_LOG_DEBUG, "Adding a plc tag");
-
-    if(!lua_istable(L, -1)) {
-        luaL_error(L, "add_plctag() received an argument that is not a table");
+    switch(tag->h.type) {
+        case DAX_BOOL:
+            break;
+        case DAX_BYTE:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_byte = plc_tag_get_uint8(tag->tag_id, offset*tag->elem_size);
+                ((dax_byte *)tag->buff)[offset] = val.dax_byte;
+            }
+            break;
+        case DAX_SINT:
+        case DAX_CHAR:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_sint = plc_tag_get_int8(tag->tag_id, offset*tag->elem_size);
+                ((dax_sint *)tag->buff)[offset] = val.dax_sint;
+            }
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_uint = plc_tag_get_uint16(tag->tag_id, offset*tag->elem_size);
+                ((dax_uint *)tag->buff)[offset] = val.dax_uint;
+            }
+            break;
+        case DAX_INT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_int = plc_tag_get_int16(tag->tag_id, offset*tag->elem_size);
+                ((dax_int *)tag->buff)[offset] = val.dax_int;
+            }
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_udint = plc_tag_get_uint32(tag->tag_id, offset*tag->elem_size);
+                ((dax_udint *)tag->buff)[offset] = val.dax_udint;
+            }
+            break;
+        case DAX_DINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_dint = plc_tag_get_int32(tag->tag_id, offset*tag->elem_size);
+                ((dax_dint *)tag->buff)[offset] = val.dax_dint;
+            }
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_ulint = plc_tag_get_uint64(tag->tag_id, offset*tag->elem_size);
+                ((dax_ulint *)tag->buff)[offset] = val.dax_ulint;
+            }
+            break;
+        case DAX_LINT:
+        case DAX_TIME:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_lint = plc_tag_get_int64(tag->tag_id, offset*tag->elem_size);
+                ((dax_lint *)tag->buff)[offset] = val.dax_lint;
+            }
+            break;
+        case DAX_REAL:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_real = plc_tag_get_float32(tag->tag_id, offset*tag->elem_size);
+                ((dax_real *)tag->buff)[offset] = val.dax_real;
+            }
+            break;
+        case DAX_LREAL:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_lreal = plc_tag_get_float32(tag->tag_id, offset*tag->elem_size);
+                ((dax_lreal *)tag->buff)[offset] = val.dax_lreal;
+            }
+            break;
+        default:
+            /* Any other type will just be a raw transfer */
+            break;
     }
+}
 
-    luatype = lua_getfield(L, -1, "name");
-    if(luatype == LUA_TNIL) {
-        luaL_error(L, "'name' required");
+
+static void
+_tag_callback(int32_t tag_id, int event, int status, void *udata) {
+    struct tagdef *tag = (struct tagdef *)udata;
+
+    /* handle the events. */
+    switch(event) {
+        case PLCTAG_EVENT_ABORTED:
+            dax_log(DAX_LOG_COMM, "%s: Tag operation was aborted with status %s!", tag->daxtag, plc_tag_decode_error(status));
+            break;
+
+        case PLCTAG_EVENT_CREATED:
+            dax_log(DAX_LOG_COMM, "%s: Tag created with status %s.", tag->daxtag, plc_tag_decode_error(status));
+            tag->elem_size = plc_tag_get_int_attribute(tag->tag_id, "elem_size", 0);
+            DF("elem_size = %d", tag->elem_size);
+            break;
+
+        case PLCTAG_EVENT_DESTROYED:
+            dax_log(DAX_LOG_COMM, "%s: Tag was destroyed with status %s.", tag->daxtag, plc_tag_decode_error(status));
+            break;
+
+        case PLCTAG_EVENT_READ_COMPLETED:
+            _read_tag(tag);
+            if(tag_queue_push(tag)) {
+                dax_log(DAX_LOG_ERROR, "Tag read queue is full");
+            }
+            break;
+
+        case PLCTAG_EVENT_READ_STARTED:
+            //DF("%s: Tag read operation started with status %s.", tag->daxtag, plc_tag_decode_error(status));
+            break;
+
+        case PLCTAG_EVENT_WRITE_COMPLETED:
+            DF("%s: Tag write operation completed with status %s!", tag->daxtag, plc_tag_decode_error(status));
+            break;
+
+        case PLCTAG_EVENT_WRITE_STARTED:
+            //DF("%s: Tag write operation started with status %s.", tag->daxtag, plc_tag_decode_error(status));
+            break;
+
+        default:
+            DF("%s: Unexpected event %d!", tag->daxtag, event);
+            break;
     }
-    name = (char *)lua_tostring(L, -1);
-    lua_pop(L, 1);
-
-    luatype = lua_getfield(L, -1, "plctag");
-    if(luatype == LUA_TNIL) {
-        luaL_error(L, "plctag identifier is required for tag '%s'", name);
-    }
-    plctag = (char *)lua_tostring(L, -1);
-    lua_pop(L, 1);
-
-    luatype = lua_getfield(L, -1, "type");
-    if(luatype == LUA_TNIL) {
-        luaL_error(L, "type is required for tag '%s'", name);
-    }
-    type = lua_tointeger(L, -1);
-    lua_pop(L, 1);
-
-    lua_getfield(L, -1, "read_update");
-    read_update = lua_tointeger(L, -1); /* If missing this should be zero which is no update*/
-    lua_pop(L, 1);
-
-    lua_getfield(L, -1, "write_update");
-    write_update = lua_tointeger(L, -1);
-    lua_pop(L, 1);
-
-    newtag = malloc(sizeof(struct tagdef));
-    if(newtag == NULL) {
-        luaL_error(L, "Unable to allocate memory for tag");
-    }
-
-    newtag->name = strdup(name);
-    newtag->plctag = strdup(plctag);
-    newtag->type = type;
-    newtag->read_update = read_update;
-    newtag->write_update = write_update;
-    /* Pushing it onto the top is much easier */
-    newtag->next = taglist;
-    taglist = newtag;
-
-    return 0;
+    //DF("tag = %s, event = %d, status = %d", tag->daxtag, event, status);
 }
 
 static void
-_print_config(void) {
+_create_plctags(void) {
     struct tagdef *this;
 
     this = taglist;
     while(this != NULL) {
-        printf("name:%s, tag:%s, type:%d, read:%d, write:%d\n", this->name, this->plctag, this->type, this->read_update, this->write_update);
+        this->tag_id = plc_tag_create_ex(this->plctag, _tag_callback, this, 0);
+        if(this->tag_id < 0) {
+            dax_log(DAX_LOG_ERROR, "Unable to create tag %s", this->plctag);
+        } else {
+            if(this->read_update > 0) {
+                plc_tag_set_int_attribute(this->tag_id, "auto_sync_read_ms", this->read_update);
+            }
+            if(this->write_update > 0) {
+                plc_tag_set_int_attribute(this->tag_id, "auto_sync_write_ms", this->write_update);
+            }
+        }
         this = this->next;
     }
 }
 
 static void
-_set_constants(lua_State *L) {
-    uint32_t _ints[] = {
-        DAX_BOOL,
-        DAX_BYTE,
-        DAX_SINT,
-        DAX_CHAR,
-        DAX_WORD,
-        DAX_INT,
-        DAX_UINT,
-        DAX_DWORD,
-        DAX_DINT,
-        DAX_UDINT,
-        DAX_REAL,
-        DAX_LWORD,
-        DAX_LINT,
-        DAX_ULINT,
-        DAX_TIME,
-        DAX_LREAL
-    };
-    const char *_str[] = {
-        "BOOL",
-        "BYTE",
-        "SINT",
-        "CHAR",
-        "WORD",
-        "INT",
-        "UINT",
-        "DWORD",
-        "DINT",
-        "UDINT",
-        "REAL",
-        "LWORD",
-        "LINT",
-        "ULINT",
-        "TIME",
-        "LREAL"
-    };
-    for(int n=0;n<16;n++) {
-        lua_pushinteger(L, _ints[n]);
-        lua_setglobal(L, _str[n]);
+_check_tag_status(void) {
+    struct tagdef *this;
+    int result;
+
+    this = taglist;
+    while(this != NULL) {
+        /* If this is NULL then we haven't found the tag in the tagserver yet */
+        if(this->buff == NULL) {
+            result = dax_tag_handle(ds, &this->h, this->daxtag, this->count);
+            if(result == ERR_OK) {
+                this->buff = malloc(this->h.size);
+                // TODO: add event for writable tags
+            }
+        }
+        this = this->next;
     }
 }
 
-/* This function should be called from main() to configure the program.
- * First the defaults are set then the configuration file is parsed then
- * the command line is handled.  This gives the command line priority.  */
-int
-plctag_configure(int argc, char *argv[])
-{
-    int result = 0;
-    lua_State *L;
-
-    L = dax_get_luastate(ds);
-    _set_constants(L);
-    dax_set_luafunction(ds, (void *)_add_plctag, "add_plctag");
-
-    result = dax_configure(ds, argc, (char **)argv, CFG_CMDLINE | CFG_MODCONF);
-
-    dax_clear_luafunction(ds, "add_plctag");
-    _print_config();
-
-    return result;
-}
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -205,6 +239,11 @@ int main(int argc,char *argv[]) {
     sigaction (SIGINT, &sa, NULL);
     sigaction (SIGTERM, &sa, NULL);
 
+    if(plc_tag_check_lib_version(2,5,0) != PLCTAG_STATUS_OK) {
+        dax_log(DAX_LOG_FATAL, "Required compatible plctag library version %d.%d.%d not available!", 2,5,0);
+        exit(-1);
+    }
+
     /* Create and Initialize the OpenDAX library state object */
     ds = dax_init("plctag"); /* Replace 'skel' with your module name */
     if(ds == NULL) {
@@ -213,6 +252,7 @@ int main(int argc,char *argv[]) {
 
     /* Execute the configuration */
     result = plctag_configure(argc, argv);
+    if(result) exit(-1);
 
     dax_free_config (ds);
 
@@ -238,6 +278,9 @@ int main(int argc,char *argv[]) {
     dax_set_status(ds, "OK");
 
     dax_log(DAX_LOG_MINOR, "PLCTAG Module Starting");
+    tag_thread_start();
+    _create_plctags();
+    _check_tag_status();
     dax_set_running(ds, 1);
     while(1) {
     	/* Check to see if the quit flag is set.  If it is then bail */
@@ -246,6 +289,7 @@ int main(int argc,char *argv[]) {
             getout(_quitsignal);
         }
         dax_event_wait(ds, 1000, NULL);
+        _check_tag_status();
     }
 
  /* This is just to make the compiler happy */
