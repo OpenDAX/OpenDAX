@@ -153,7 +153,6 @@ _tag_callback(int32_t tag_id, int event, int status, void *udata) {
         case PLCTAG_EVENT_CREATED:
             dax_log(DAX_LOG_COMM, "%s: Tag created with status %s.", tag->daxtag, plc_tag_decode_error(status));
             tag->elem_size = plc_tag_get_int_attribute(tag->tag_id, "elem_size", 0);
-            DF("elem_size = %d", tag->elem_size);
             break;
 
         case PLCTAG_EVENT_DESTROYED:
@@ -172,7 +171,7 @@ _tag_callback(int32_t tag_id, int event, int status, void *udata) {
             break;
 
         case PLCTAG_EVENT_WRITE_COMPLETED:
-            DF("%s: Tag write operation completed with status %s!", tag->daxtag, plc_tag_decode_error(status));
+            //DF("%s: Tag write operation completed with status %s!", tag->daxtag, plc_tag_decode_error(status));
             break;
 
         case PLCTAG_EVENT_WRITE_STARTED:
@@ -207,10 +206,95 @@ _create_plctags(void) {
     }
 }
 
+
+/* This is the callback that gets called when tags that we are going to write to the PLC are
+   changed in the tag server.*/
+static void
+_event_callback(dax_state *ds, void *udata) {
+    struct tagdef *tag = (struct tagdef *)udata;
+    int offset;
+    dax_type_union val;
+
+    dax_event_get_data(ds, tag->buff, tag->h.size);
+    switch(tag->h.type) {
+        case DAX_BOOL:
+            break;
+        case DAX_BYTE:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_byte = ((dax_byte *)tag->buff)[offset];
+                plc_tag_set_uint8(tag->tag_id, offset*tag->elem_size, val.dax_byte);
+            }
+            break;
+        case DAX_SINT:
+        case DAX_CHAR:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_sint = ((dax_sint *)tag->buff)[offset];
+                plc_tag_set_int8(tag->tag_id, offset*tag->elem_size, val.dax_sint);
+            }
+            break;
+        case DAX_WORD:
+        case DAX_UINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_uint = ((dax_uint *)tag->buff)[offset];
+                plc_tag_set_uint16(tag->tag_id, offset*tag->elem_size, val.dax_uint);
+            }
+            break;
+        case DAX_INT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_int = ((dax_int *)tag->buff)[offset];
+                plc_tag_set_int16(tag->tag_id, offset*tag->elem_size, val.dax_int);
+            }
+            break;
+        case DAX_DWORD:
+        case DAX_UDINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_udint = ((dax_udint *)tag->buff)[offset];
+                plc_tag_set_uint32(tag->tag_id, offset*tag->elem_size, val.dax_udint);
+            }
+            break;
+        case DAX_DINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_dint = ((dax_dint *)tag->buff)[offset];
+                plc_tag_set_int32(tag->tag_id, offset*tag->elem_size, val.dax_dint);
+            }
+            break;
+        case DAX_LWORD:
+        case DAX_ULINT:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_ulint = ((dax_ulint *)tag->buff)[offset];
+                plc_tag_set_uint64(tag->tag_id, offset*tag->elem_size, val.dax_ulint);
+            }
+            break;
+        case DAX_LINT:
+        case DAX_TIME:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_lint = ((dax_lint *)tag->buff)[offset];
+                plc_tag_set_int64(tag->tag_id, offset*tag->elem_size, val.dax_lint);
+            }
+            break;
+        case DAX_REAL:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_real = ((dax_real *)tag->buff)[offset];
+                plc_tag_set_float32(tag->tag_id, offset*tag->elem_size, val.dax_real);
+            }
+            break;
+        case DAX_LREAL:
+            for(offset = 0; offset < tag->h.count; offset++) {
+                val.dax_lreal = ((dax_lreal *)tag->buff)[offset];
+                plc_tag_set_float64(tag->tag_id, offset*tag->elem_size, val.dax_lreal);
+            }
+            break;
+        default:
+            /* Any other type will just be a raw transfer */
+            break;
+    }
+}
+
 static void
 _check_tag_status(void) {
     struct tagdef *this;
     int result;
+    dax_id id;
 
     this = taglist;
     while(this != NULL) {
@@ -219,7 +303,16 @@ _check_tag_status(void) {
             result = dax_tag_handle(ds, &this->h, this->daxtag, this->count);
             if(result == ERR_OK) {
                 this->buff = malloc(this->h.size);
-                // TODO: add event for writable tags
+                if(this->write_update > 0) {
+                    result = dax_event_add(ds, &this->h, EVENT_CHANGE, NULL, &id, _event_callback, this, NULL);
+                    if(result) {
+                        dax_log(DAX_LOG_ERROR, "Unable to add change event to tag %s - %s", this->daxtag, dax_errstr(result));
+                    } else {
+                        dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
+                    }
+                }
+            } else {
+                dax_log(DAX_LOG_ERROR, "Unable to find tag %s - %s", this->daxtag, dax_errstr(result));
             }
         }
         this = this->next;

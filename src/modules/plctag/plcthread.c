@@ -17,6 +17,7 @@
  */
 
 #include "plctag.h"
+#include <signal.h>
 
 extern dax_state *ds;
 
@@ -89,6 +90,9 @@ __tag_queue_thread(void *num) {
                 result = dax_tag_write(ds, tag->h, tag->buff);
                 if(result) {
                     dax_log(DAX_LOG_ERROR, "Failed to write tag to tagserver - %s", dax_errstr(result));
+                }
+                if(result == ERR_DISCONNECTED) {
+                    kill(getpid(), SIGQUIT);
                 }
             }
             //DF("Got tag %s", tag->daxtag);

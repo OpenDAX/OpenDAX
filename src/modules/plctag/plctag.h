@@ -31,10 +31,8 @@
 struct tagdef {
     char *daxtag;
     char *plctag;
-    tag_type type;
     tag_handle h;
     uint8_t *buff;
-    char *typestr;
     int count;
     int elem_size;
     int read_update;
