@@ -8,14 +8,20 @@ end
 
 
 tag = {}
-tag.daxtag = "TestDINT"
-tag.count = 5
+tag.daxtag = "TestDINT" -- Name of the tag in OpenDAX.
+tag.count = 5  -- Number of elements in the above tag
+-- This is the string that defines a tag in libplctag  See the libplctag documentation for details
 tag.plctag = "protocol=ab-eip&gateway=172.16.4.1&path=1,1&cpu=LGX&elem_count=5&name=TestDINT"
-tag.read_update = 1000
-tag.write_update = 500
-
+-- These are the auto sync times in milliseconds.  If auto_sync_read_ms or auto_sync_write_ms are
+-- set in the above tag definition string they will be overwritten by these.  These also control
+-- whether or not the tag will be read or written to the PLC.  If they are set to zero then
+-- the tag will not be scheduled for that particular operation.
+tag.read_update = 1000  -- amount of time between reads from the PLC
+tag.write_update = 500  -- amount of time between writes to the PLC
+-- This function actually adds the tag to the PLC definition
 add_plctag(tag)
 
+-- we can repeat for as many tags as we have.
 tag = {}
 tag.daxtag = "TestREAL"
 tag.plctag = "protocol=ab-eip&gateway=172.16.4.1&path=1,1&cpu=LGX&elem_count=1&name=TestREAL"

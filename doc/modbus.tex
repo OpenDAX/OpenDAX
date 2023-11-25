@@ -1,0 +1,33 @@
+The Modbus Client module is a very powerful \modbus{} Protocol communication module.
+It is capable of Modbus TCP Client and Server as well as Modbus RTU Master and
+Slave.
+
+The basic functional unit of the Modbus module is the \textit{port}.  A port is
+associated with a single communication mechanism.  Either a TCP socket or a serial
+port.  The port can be configured as either a Master/Client or a Server/Slave.
+Multiple ports can be configured so that many serial ports can be used or Multiple
+servers can be each assigned a different IP address or port number.  There is no
+arbitrary limit on the number of ports that can be configured.
+
+When a port is configured as a master or a client, a list of commands can be
+configured that will be sent periodically to access the data in the server or
+slave node.  A tag can be created as well that allows other modules in the
+system to manually send a modbus request on the port.
+
+When the port is configured as a server or slave, tags are set up that represent
+the different register tables (holding, inputs, etc).  These tags would either be arrays
+of bits in the case of inputs and coils or 16 bit integers in the case of holding
+registers or analog inputs.  Multiple sets of these register tags can be configured
+so that multiple nodes or units can be represented with different sets of registers.
+If a register is not defined for a specific unit
+or node then requests to access those registers will cause unknown function code
+errors to be returned to the master/client.
+
+There are also hooks in the server/slave ports that call Lua functions at certain
+points in the communication.  This allows the user to intercept a message and
+return errors or modify the data on the fly or write tags to synchronize
+logic with modbus requests.
+
+
+\section{Configuration}
+

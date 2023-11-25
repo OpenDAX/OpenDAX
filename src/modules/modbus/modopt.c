@@ -575,7 +575,7 @@ _add_register(lua_State *L)
 
 /* Lua interface function for adding a modbus slave read callback function
    to a port.  Accepts five arguments.
-   Arguements:
+   Arguments:
       port id
       node / unit id
       function
@@ -612,10 +612,10 @@ _add_read_callback(lua_State *L)
 
     lua_settop(L, 3); /*put the function at the top of the stack */
     if(! lua_isfunction(L, -1)) {
-        luaL_error(L, "filter should be a function ");
+        luaL_error(L, "callback should be a function ");
     }
     /* Pop the function off the stack and write it to the regsitry and assign
-       the reference to .filter */
+       the reference to read_callback */
     node->read_callback = luaL_ref(L, LUA_REGISTRYINDEX);
 
     return 0;
@@ -660,10 +660,10 @@ _add_write_callback(lua_State *L)
 
     lua_settop(L, 3); /*put the function at the top of the stack */
     if(! lua_isfunction(L, -1)) {
-        luaL_error(L, "filter should be a function ");
+        luaL_error(L, "callback should be a function ");
     }
     /* Pop the function off the stack and write it to the regsitry and assign
-       the reference to .filter */
+       the reference to .write_callback */
     node->write_callback = luaL_ref(L, LUA_REGISTRYINDEX);
 
     return 0;

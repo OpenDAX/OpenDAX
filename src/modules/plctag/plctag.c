@@ -144,8 +144,11 @@ _read_tag(struct tagdef *tag) {
                 ((dax_lreal *)tag->buff)[offset] = val.dax_lreal;
             }
             break;
-        default:
-            /* Any other type will just be a raw transfer */
+        default: /* This should be a CDT */
+            for(offset = 0; offset < tag->h.count; offset++) {
+                int i = offset * tag->elem_size;
+                plc_tag_get_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+            }
             break;
     }
 }
@@ -163,7 +166,9 @@ _tag_callback(int32_t tag_id, int event, int status, void *udata) {
 
         case PLCTAG_EVENT_CREATED:
             dax_log(DAX_LOG_COMM, "%s: Tag created with status %s.", tag->daxtag, plc_tag_decode_error(status));
-            tag->elem_size = plc_tag_get_int_attribute(tag->tag_id, "elem_size", 0);
+            if(tag->elem_size == -1) { /* -1 if not set yet */
+                tag->elem_size = plc_tag_get_int_attribute(tag->tag_id, "elem_size", 0);
+            }
             break;
 
         case PLCTAG_EVENT_DESTROYED:
@@ -304,6 +309,10 @@ _event_callback(dax_state *ds, void *udata) {
             break;
         default:
             /* Any other type will just be a raw transfer */
+            for(offset = 0; offset < tag->h.count; offset++) {
+                int i = offset * tag->elem_size;
+                plc_tag_set_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+            }
             break;
     }
 }
@@ -337,6 +346,18 @@ _check_tag_status(void) {
     }
 }
 
+
+static void
+_log_callback(int32_t tag_id, int debug_level, char *message) {
+    message[strlen(message)-1] = '\0'; /* Remove the newline that is passed */
+    if(debug_level == PLCTAG_DEBUG_ERROR) {
+        dax_log(DAX_LOG_ERROR, "tag:%d - %s", tag_id, message);
+    } else if(debug_level == PLCTAG_DEBUG_WARN) {
+        dax_log(DAX_LOG_WARN, "tag:%d - %s", tag_id, message);
+    } else {
+        dax_log(DAX_LOG_DEBUG, "tag:%d - %s", tag_id, message);
+    }
+}
 
 /* main inits and then calls run */
 int main(int argc,char *argv[]) {
@@ -389,6 +410,8 @@ int main(int argc,char *argv[]) {
     dax_set_status(ds, "OK");
 
     dax_log(DAX_LOG_MINOR, "PLCTAG Module Starting");
+    plc_tag_set_debug_level(PLCTAG_DEBUG_WARN);
+    plc_tag_register_logger(_log_callback);
     tag_thread_start();
     _create_plctags();
     _check_tag_status();

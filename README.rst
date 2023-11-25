@@ -79,7 +79,7 @@ Client modules that are part of the base distribution include...
   connection to MQTT broker and uses Lua as filter language so
   that any arbitrary type of data format can be used.
 * PLCTAG Communication Module - Uses the lipplctag library to communicate
-  to PLCs.  This library usees a tag based abstraction that makes reading
+  to PLCs.  This library uses a tag based abstraction that makes reading
   and writing to various PLCs consistent.  The main purpose for this
   module is to cummunicate to Allen Bradley PLCs using EIP/CIP.  The library
   includes Modbus TCP client capability as well.

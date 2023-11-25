@@ -32,6 +32,7 @@ _add_plctag(lua_State *L)
     int luatype;
     char *plctag, *daxtag;
     int count, read_update, write_update;
+    int elem_size;
 
     struct tagdef *newtag;
 
@@ -55,19 +56,14 @@ _add_plctag(lua_State *L)
     plctag = (char *)lua_tostring(L, -1);
     lua_pop(L, 1);
 
-    // luatype = lua_getfield(L, -1, "type");
-    // if(luatype == LUA_TNIL) {
-    //     luaL_error(L, "type is required for tag '%s'", daxtag);
-    // } else if(luatype == LUA_TSTRING) {
-    //     typestr = (char *)lua_tostring(L, -1);
-    // } else {
-    //     type = lua_tointeger(L, -1);
-    // }
-    // lua_pop(L, 1);
-
     lua_getfield(L, -1, "count");
     count = lua_tointeger(L, -1); /* If missing this should be zero which is no update*/
     if(count == 0) count = 1;
+    lua_pop(L, 1);
+
+    lua_getfield(L, -1, "elem_size");
+    elem_size = lua_tointeger(L, -1); /* If missing this should be zero which is no update*/
+    if(elem_size == 0) elem_size = -1;
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "read_update");
@@ -85,13 +81,8 @@ _add_plctag(lua_State *L)
     bzero(newtag, sizeof(struct tagdef));
     newtag->daxtag = strdup(daxtag);
     newtag->plctag = strdup(plctag);
-    // newtag->type = type;
-    // if(typestr != NULL) {
-    //     newtag->typestr = strdup(typestr);
-    // } else {
-    //     newtag->typestr = NULL;
-    // }
     newtag->count = count;
+    newtag->elem_size = elem_size;
     newtag->read_update = read_update;
     newtag->write_update = write_update;
     /* Pushing it onto the top is much easier */

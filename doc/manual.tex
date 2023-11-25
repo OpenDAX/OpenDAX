@@ -133,8 +133,8 @@
 
 	\chapter{The OpenDAX Master Server}
 
-    The \opendax Master Server is a program that manages all of the
-    other programs in the \opendax system.  It can be configured to
+    The \opendax{} Master Server is a program that manages all of the
+    other programs in the \opendax{} system.  It can be configured to
     start and monitor all of the process that are needed for any
     given application.
 
@@ -223,9 +223,9 @@
 
 
 	\chapter{Modules}
-	Modules are where all the real work gets done on an \opendax system.  The server
+	Modules are where all the real work gets done on an \opendax{} system.  The server
 	is the glue that holds all the modules together but the modules are where it all
-	happens.  The \opendax distribution comes with a few included modules.  They are
+	happens.  The \opendax{} distribution comes with a few included modules.  They are
 	described in this chapter.  If you have received modules from other sources
 	you'll have to consult the documentation that came with that module.
 
@@ -324,10 +324,10 @@
 
 	\chapter{Command Line Client Module}
 	The command line client module is called 'daxc'.  It is useful for debugging and
-	examining or manipulating OpenDAX data in real time.  It can also be used for
-	automating some OpenDAX tasks from a shell script.  It can be run interactively,
+	examining or manipulating \opendax{} data in real time.  It can also be used for
+	automating some \opendax{} tasks from a shell script.  It can be run interactively,
 	it can read input from STDIN or a filename can be passed to it that has lists of
-	daxc commands to execute.
+	\texttt{daxc} commands to execute.
 
 	\section{Configuration}
 	There is very little configuration that needs to be done to the \texttt{daxc}
@@ -352,7 +352,7 @@
 
 	\begin{list}{}{daxc Command Line Options}
 		\item[--execute, -x] - The execute options should be followed by a command
-		that is to be executed by daxc.
+		that is to be executed by \texttt{daxc}.
 		\item[--interactive, -i] - When the module is started with the -f or -x
 		options the default behavior of the module is to exit when finished with those
 		commands.  If this option is used the program will enter interactive mode after
@@ -410,11 +410,7 @@
 	daxc>read tagname [count]
 	\end{verbatim}
 
-	The read command should be followed by the tag that is to be read.  At this
-	point in time the tag should be a base data type tag.  This means that if you
-	enter the name of a tag that resolves to a CDT, then read will fail with an
-	error.  At some point the ability to read the entire tag will be implemented but
-	at this point the string passed to read should resolve to a base type.  The
+	The read command should be followed by the tag that is to be read.  The
 	count argument can be given if only a subset of the tags are to be read.
 
 	\subsection{write}
@@ -447,6 +443,10 @@
 	The \textit{exit} command simply exits the daxc module.
 
 	\chapter{Modbus Communications Module}
+	\input{modbus.tex}
+
+	\chapter{PLCTag Communication Module}
+	\input{plctag.tex}
 
 	\chapter{Lua Scripting Module}
 	\input{daxlua.tex}
