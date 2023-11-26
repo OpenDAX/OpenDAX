@@ -22,6 +22,9 @@ tag.count = 5  -- Number of elements in the above tag
 -- elem_size overrides the size of the element in the PLC.
 tag.elem_size = 4
 
+-- Used for rearranging bytes when access to PLC tags is raw
+tag.raw_byte_order = {1, 0, 3, 2}
+
 -- plctag is the attribute definition of the PLC tag that defines the
 -- tag in the libplctag library.  See the libplctag documentation for
 -- a complete description. 
@@ -42,7 +45,7 @@ add_plctag(tag)
 The main configuration of the PLCTag module is based around the 
 definition of 'tags.'  This can be a little confusing since we
 use the name \textit{tag} as the definition of a single unit of
-data within \opendax.  Here we differentiate between a \textit{PLC tag} and
+data within \opendax{}.  Here we differentiate between a \textit{PLC tag} and
 an \opendax{} \textit{tag}.
 
 Tags are defined in the configuration with a table that uses
@@ -51,7 +54,7 @@ strings as the index.  This table is set up and then passed to
 be reused or another table can be defined.
 
 A PLC tag is defined with a URL like string that defines the tag
-for the libplctag library.  \opendax  simply passes this string to
+for the libplctag library.  \opendax{} simply passes this string to
 the libplctag library.  See the libplctag documentation at...
 
 \texttt{https://github.com/libplctag/libplctag/wiki/Tag-String-Attributes}
@@ -59,7 +62,7 @@ the libplctag library.  See the libplctag documentation at...
 This string is configured by setting the \texttt{plctag}
 member of the tag table in the Lua configuration file.
 
-The \opendax tag is defined with the \texttt{daxtag} member of the
+The \opendax{} tag is defined with the \texttt{daxtag} member of the
 tag table.  The PLCTag module does not create this tag.  It can
 be created in an \texttt{init\_hook()} function or in another module.
 The tag need not exist when the PLCTag module first starts but errors
@@ -79,6 +82,18 @@ larger than the tag in the PLC.  One use for this would be in the case
 where a 32 bit floating point number is being represented with two
 consecutive 16 bit numbers in the PLC.  In this case the element size
 can be overridden to 4 and this will work as expected.
+
+The \texttt{raw\_byte\_order} member is an optional definition
+of the requested byte ordering when the conversion is done raw.
+\texttt{elem\_size} must be defined for this to work and the byte ordering
+array will be set equal to the element size and either truncated if too
+large or filled in with values equal to the index.  The value being 
+the same as the index has the same effect as no byte ordering at all.
+Each number in the byte order array represents the byte in the PLC buffer
+that will be written into the byte of the \opendax{} tag buffer for
+that place in the array.  For example if the data that is read from the plc
+is 11, 22, 33, 44 and the byte order array is {1,0,3,2} then the data that
+will be written to the \opendax{} tag buffer will be 22, 11, 44, 33.
 
 The \texttt{read\_update} member defines the read polling time
 for the tag in milliseconds.  The libplctag library will poll this

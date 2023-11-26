@@ -65,6 +65,7 @@ _read_tag(struct tagdef *tag) {
     int offset;
     int result;
     dax_type_union val;
+    uint8_t rawbuff[tag->elem_size];
 
     switch(tag->h.type) {
         case DAX_BOOL:
@@ -145,9 +146,19 @@ _read_tag(struct tagdef *tag) {
             }
             break;
         default: /* This should be a CDT */
-            for(offset = 0; offset < tag->h.count; offset++) {
-                int i = offset * tag->elem_size;
-                plc_tag_get_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+            if(tag->byte_order != NULL) {
+                for(offset = 0; offset < tag->h.count; offset++) {
+                    int i = offset * tag->elem_size;
+                    plc_tag_get_raw_bytes(tag->tag_id, i, rawbuff, tag->h.size / tag->h.count);
+                    for(int n=0;n<tag->elem_size;n++) {
+                        tag->buff[i+n] = rawbuff[tag->byte_order[n]];
+                    }
+                }
+            } else {
+                for(offset = 0; offset < tag->h.count; offset++) {
+                    int i = offset * tag->elem_size;
+                    plc_tag_get_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+                }
             }
             break;
     }
@@ -230,6 +241,7 @@ _event_callback(dax_state *ds, void *udata) {
     struct tagdef *tag = (struct tagdef *)udata;
     int offset;
     dax_type_union val;
+    uint8_t rawbuff[tag->elem_size];
 
     dax_event_get_data(ds, tag->buff, tag->h.size);
     switch(tag->h.type) {
@@ -308,10 +320,20 @@ _event_callback(dax_state *ds, void *udata) {
             }
             break;
         default:
-            /* Any other type will just be a raw transfer */
-            for(offset = 0; offset < tag->h.count; offset++) {
-                int i = offset * tag->elem_size;
-                plc_tag_set_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+            if(tag->byte_order != NULL) {
+                for(offset = 0; offset < tag->h.count; offset++) {
+                    int i = offset * tag->elem_size;
+                    for(int n=0;n<tag->elem_size;n++) {
+                        rawbuff[tag->byte_order[n]] = tag->buff[i+n];
+                    }
+                    plc_tag_set_raw_bytes(tag->tag_id, i, rawbuff, tag->h.size / tag->h.count);
+                }
+            } else {
+                /* Any other type will just be a raw transfer */
+                for(offset = 0; offset < tag->h.count; offset++) {
+                    int i = offset * tag->elem_size;
+                    plc_tag_set_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+                }
             }
             break;
     }

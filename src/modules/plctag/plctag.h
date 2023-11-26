@@ -35,10 +35,10 @@ struct tagdef {
     uint8_t *buff;
     int count;
     int elem_size;
+    uint16_t *byte_order;
     int read_update;
     int write_update;
     int32_t tag_id;
-    int status;
     struct tagdef *next;
 };
 
