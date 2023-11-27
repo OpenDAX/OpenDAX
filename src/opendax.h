@@ -274,7 +274,7 @@ typedef struct dax_tag {
  */
 typedef struct dax_id {
     tag_index index;     /* The Index of the Tag */
-    dax_dint id;         /* The byte offset where the data block starts */
+    dax_dint id;         /* The ID of the event */
 } dax_id;
 
 /*! Opaque pointer for storing a dax_state object in the library */

@@ -146,18 +146,18 @@ _read_tag(struct tagdef *tag) {
             }
             break;
         default: /* This should be a CDT */
-            if(tag->byte_order != NULL) {
+            if(tag->byte_map != NULL) {
                 for(offset = 0; offset < tag->h.count; offset++) {
                     int i = offset * tag->elem_size;
-                    plc_tag_get_raw_bytes(tag->tag_id, i, rawbuff, tag->h.size / tag->h.count);
+                    plc_tag_get_raw_bytes(tag->tag_id, i, rawbuff, tag->elem_size);
                     for(int n=0;n<tag->elem_size;n++) {
-                        tag->buff[i+n] = rawbuff[tag->byte_order[n]];
+                        tag->buff[i+n] = rawbuff[tag->byte_map[n]];
                     }
                 }
             } else {
                 for(offset = 0; offset < tag->h.count; offset++) {
                     int i = offset * tag->elem_size;
-                    plc_tag_get_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+                    plc_tag_get_raw_bytes(tag->tag_id, i, &tag->buff[offset * tag->h.size / tag->h.count], tag->elem_size);
                 }
             }
             break;
@@ -176,10 +176,11 @@ _tag_callback(int32_t tag_id, int event, int status, void *udata) {
             break;
 
         case PLCTAG_EVENT_CREATED:
-            dax_log(DAX_LOG_COMM, "%s: Tag created with status %s.", tag->daxtag, plc_tag_decode_error(status));
             if(tag->elem_size == -1) { /* -1 if not set yet */
                 tag->elem_size = plc_tag_get_int_attribute(tag->tag_id, "elem_size", 0);
             }
+            dax_log(DAX_LOG_COMM, "%s: Tag created with status %s - element size = %d.",
+                                   tag->daxtag, plc_tag_decode_error(status), tag->elem_size);
             break;
 
         case PLCTAG_EVENT_DESTROYED:
@@ -320,19 +321,19 @@ _event_callback(dax_state *ds, void *udata) {
             }
             break;
         default:
-            if(tag->byte_order != NULL) {
+            if(tag->byte_map != NULL) {
                 for(offset = 0; offset < tag->h.count; offset++) {
                     int i = offset * tag->elem_size;
                     for(int n=0;n<tag->elem_size;n++) {
-                        rawbuff[tag->byte_order[n]] = tag->buff[i+n];
+                        rawbuff[tag->byte_map[n]] = tag->buff[i+n];
                     }
-                    plc_tag_set_raw_bytes(tag->tag_id, i, rawbuff, tag->h.size / tag->h.count);
+                    plc_tag_set_raw_bytes(tag->tag_id, i, rawbuff, tag->elem_size);
                 }
             } else {
                 /* Any other type will just be a raw transfer */
                 for(offset = 0; offset < tag->h.count; offset++) {
                     int i = offset * tag->elem_size;
-                    plc_tag_set_raw_bytes(tag->tag_id, i, &tag->buff[i], tag->h.size / tag->h.count);
+                    plc_tag_set_raw_bytes(tag->tag_id, i, &tag->buff[offset * tag->h.size / tag->h.count], tag->elem_size);
                 }
             }
             break;

@@ -190,15 +190,15 @@ git clone https://github.com/OpenDAX/OpenDAX.git
 
 This should create the OpenDAX directory.  Now do the following...
 
-| mkdir build
-| cd build
-| cmake ..
-| make
-| make test
+  | mkdir build
+  | cd build
+  | cmake ..
+  | make
+  | make test
 
 If all the tests pass you can install with...
 
-| sudo make install
-| sudo ldconfig
+  | sudo make install
+  | sudo ldconfig
 
 

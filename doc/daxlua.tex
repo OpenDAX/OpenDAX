@@ -227,7 +227,7 @@ configured value.
 Using Lua as our configuration language makes this a very powerful system.  Any Lua language
 feature can be used to generate the tables and call the functions that configure the module.
 Including loops, flow control, functions and file inclusions.
-This is true of all the modules in \opendax and it is the 'killer feature' of
+This is true of all the modules in \opendax{} and it is the 'killer feature' of
 the system.  It can be confusing but such is the case for many things that are this powerful
 and flexible.
 
@@ -264,13 +264,13 @@ the actual tags that they are being triggered from or do any other
 initialization that needs to be done before the system gets
 started.\footnote{We may make this configurable in the future}
 
-\subsection{\opendax Interface Functions}
+\subsection{\opendax{} Interface Functions}
 
-There is a Lua package included with \opendax that can be used to write entire \opendax
+There is a Lua package included with \opendax{} that can be used to write entire \opendax{}
 modules in Lua.
 In that package is a set of functions and constants that allow the programmer to access
 and manipulate data in the tagserver.  The library that comprises that package is also
-used in this module to give the Lua script access to the \opendax data.  Not all of
+used in this module to give the Lua script access to the \opendax{} data.  Not all of
 the functions are available however.  For example, it does not make sense to create
 a connection to the server since that has already been done.  Waiting on events also
 does not make sense because we don't want our scripts to run very long.

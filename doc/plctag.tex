@@ -23,7 +23,7 @@ tag.count = 5  -- Number of elements in the above tag
 tag.elem_size = 4
 
 -- Used for rearranging bytes when access to PLC tags is raw
-tag.raw_byte_order = {1, 0, 3, 2}
+tag.raw_byte_map = {1, 0, 3, 2}
 
 -- plctag is the attribute definition of the PLC tag that defines the
 -- tag in the libplctag library.  See the libplctag documentation for
@@ -83,16 +83,16 @@ where a 32 bit floating point number is being represented with two
 consecutive 16 bit numbers in the PLC.  In this case the element size
 can be overridden to 4 and this will work as expected.
 
-The \texttt{raw\_byte\_order} member is an optional definition
+The \texttt{raw\_byte\_map} member is an optional definition
 of the requested byte ordering when the conversion is done raw.
-\texttt{elem\_size} must be defined for this to work and the byte ordering
+\texttt{elem\_size} must be defined for this to work and the byte mapping
 array will be set equal to the element size and either truncated if too
 large or filled in with values equal to the index.  The value being 
-the same as the index has the same effect as no byte ordering at all.
-Each number in the byte order array represents the byte in the PLC buffer
+the same as the index has the same effect as no byte mapping at all.
+Each number in the byte map array represents the byte in the PLC buffer
 that will be written into the byte of the \opendax{} tag buffer for
 that place in the array.  For example if the data that is read from the plc
-is 11, 22, 33, 44 and the byte order array is {1,0,3,2} then the data that
+is 11, 22, 33, 44 and the byte map array is {1,0,3,2} then the data that
 will be written to the \opendax{} tag buffer will be 22, 11, 44, 33.
 
 The \texttt{read\_update} member defines the read polling time
@@ -166,7 +166,8 @@ the PLC that are represented by CDTs in \opendax{} and the reverse is
 also true.  Byte ordering is an issue here and we are working on a way
 to deal with this problem.  Byte ordering for other types works fine
 within libplctag but the raw byte copy that happens for CDTs does not
-deal with byte ordering properly.
+deal with byte ordering properly.  See the raw byte mapping feature
+for a way to fix byte ordering issues in CDT conversions.
 
 The offset into the PLC tag buffer is based on the element size and the 
 \opendax{} tag count.  Each iteration through the \opendax{} tag
@@ -185,3 +186,38 @@ the count given by the tag will represent bits.  This will behave as expected
 if the PLC tag is a single 32 bit unsigned integer and the \opendax{} tag is
 an array of 32 bits.  Each \opendax{} BOOL will represent each bit position
 within the PLC integer.
+
+\section{Notes}
+
+When reading structured data from AB PLCs is will usually be helpful to
+put padding bits and bytes in the CDT that you use in \opendax{}.  If it's
+just a matter or rearranging the bytes then the byte ordering feature can
+be used but sometimes it's just easier to pad the bytes and not worry about
+it.
+
+For example, to read a timer from a ControLogix PLC the following CDT can 
+be used.
+
+\begin{verbatim}
+cdt_create("lgx_timer", {{"pad", "BYTE", 3},
+                         {"pad2", "BOOL", 5},
+                         {"DN", "BOOL", 1},
+                         {"TT", "BOOL", 1},
+                         {"EN", "BOOL", 1},
+                         {"PRE", "DINT", 1},
+                         {"ACC", "DINT", 1}})
+\end{verbatim}
+
+You can see that we padded the beginning of the CDT with three bytes because
+the AB PLC uses these internally and almost everything in ControlLogix is
+aligned on 32 bit boundaries.  Then we pad with 5 bits because the three
+bits that we are interested in are the high order bits in that fourth byte.
+
+It takes some experimentation to get these correct.  A good place ot start
+is to watch the daxplctag module logs and pay attention to the line where
+the PLC tag is created.  The size of the PLC element will be displayed.  Create
+the \opendax{} CDT with that many bytes and do some testing.  Then adjust the
+CDT until the data is read properly.
+
+If it becomes apparent that the byte ordering is wrong (usually the case with
+\modbus{}) then byte ordering can be used to fix it all.

@@ -33,7 +33,7 @@ _add_plctag(lua_State *L)
     char *plctag, *daxtag;
     int count, read_update, write_update;
     int elem_size;
-    uint16_t *byte_order;
+    uint16_t *byte_map;
 
     struct tagdef *newtag;
 
@@ -67,29 +67,29 @@ _add_plctag(lua_State *L)
     if(elem_size == 0) elem_size = -1;
     lua_pop(L, 1);
 
-    lua_getfield(L, -1, "raw_byte_order");
+    lua_getfield(L, -1, "raw_byte_map");
     if(lua_istable(L, -1)) {
         if(elem_size == -1) {
             luaL_error(L, "elem_size must be set for byte_order to make any sense");
         }
-        byte_order = malloc(sizeof(uint16_t) * elem_size);
-        if(byte_order == NULL) {
+        byte_map = malloc(sizeof(uint16_t) * elem_size);
+        if(byte_map == NULL) {
             luaL_error(L, "Unable to allocate memory for byte_order");
         }
         for(int n=0;n<elem_size;n++) {
             lua_rawgeti(L, -1, n+1);
             if(lua_isnil(L, -1)) {
-                byte_order[n] = n;
+                byte_map[n] = n;
             } else {
-                byte_order[n] = lua_tointeger(L, -1);
-                if(byte_order[n] >= elem_size) {
+                byte_map[n] = lua_tointeger(L, -1);
+                if(byte_map[n] >= elem_size) {
                     luaL_error(L, "Illegal value in byte order.  Must be less than element size");
                 }
             }
             lua_pop(L, 1);
         }
     } else {
-        byte_order = NULL;
+        byte_map = NULL;
     }
     lua_pop(L, 1);
 
@@ -110,7 +110,7 @@ _add_plctag(lua_State *L)
     newtag->plctag = strdup(plctag);
     newtag->count = count;
     newtag->elem_size = elem_size;
-    newtag->byte_order = byte_order;
+    newtag->byte_map = byte_map;
     newtag->read_update = read_update;
     newtag->write_update = write_update;
     /* Pushing it onto the top is much easier */
