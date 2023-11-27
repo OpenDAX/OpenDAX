@@ -56,7 +56,7 @@ do_test(int argc, char *argv[])
     count = sizeof(tests_pass) / sizeof(struct handle_test_t);
     printf("Testing for passing handles\n");
     for(n=0;n<count;n++) {
-        //printf("Testing %s\n", tests_pass[n].tagname);
+        DF("Testing %s", tests_pass[n].tagname);
         type = dax_string_to_type(ds, tests_pass[n].type);
         result = dax_tag_handle(ds, &h, tests_pass[n].tagname, tests_pass[n].count_request);
         if(result) {

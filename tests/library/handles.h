@@ -36,6 +36,7 @@ tag_type test2;
 tag_type test3;
 tag_type test4;
 tag_type test5;
+tag_type test6;
 
     /*
      Each tag entry contains...
@@ -111,7 +112,9 @@ tag_type test5;
             {"HandleInt.15", 0, 1, 7, 1, 1, "BOOL", NULL},
             {"HandleTest1.Int5[0].5", 0, 0, 5, 1, 1, "BOOL", NULL},
             {"HandleTest1.Dint3[0].5", 0, 16, 5, 1, 1, "BOOL", NULL},
-            {"HandleTest1.Dint3[0].15", 0, 17, 7, 1, 1, "BOOL", NULL}
+            {"HandleTest1.Dint3[0].15", 0, 17, 7, 1, 1, "BOOL", NULL},
+            {"HandleTest6", 0, 0, 0, 1, 5, "Test6", NULL},
+            {"HandleTest6.Dint1", 0, 1, 0, 1, 4, "DINT", NULL}
     };
     struct handle_test_t tests_fail[] = {
             /* Tag          N  B  b  c  s   type */
@@ -156,6 +159,7 @@ _create_tags(dax_state *ds) {
     result += dax_tag_add(ds, &h, "HandleTestIV", test4, 1, 0);
     result += dax_tag_add(ds, &h, "HandleTest5", test5, 1, 0);
     result += dax_tag_add(ds, &h, "HandleTest5_10", test5, 10, 0);
+    result += dax_tag_add(ds, &h, "HandleTest6", test6, 1, 0);
 
     return result;
 }
@@ -209,5 +213,14 @@ _create_types(dax_state *ds) {
     result += dax_cdt_member(ds, cdt, "Bool3", DAX_BOOL, 3);  // 0
     result += dax_cdt_create(ds, cdt, &test5); // size = 2
     if(result) return result;
+
+    cdt = dax_cdt_new("Test6", NULL);
+    if(cdt == NULL) return 1;
+    result += dax_cdt_member(ds, cdt, "Bool5", DAX_BOOL, 5);  // 1
+    result += dax_cdt_member(ds, cdt, "Bool3", DAX_BOOL, 3);  // 0
+    result += dax_cdt_member(ds, cdt, "Dint1", DAX_DINT, 1);  // 4
+    result += dax_cdt_create(ds, cdt, &test6); // size = 5
+    if(result) return result;
     return result;
+
 }

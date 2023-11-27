@@ -575,7 +575,6 @@ _parse_next_member(dax_state *ds, tag_type lasttype, tag_handle *h, char *str, i
     while(this != NULL) {
         /* Start by adding all the bytes of the members before the
          * one we are looking for */
-
         if(strcmp(name, this->name)) {
             if(this->type == DAX_BOOL) {
                 h->bit += this->count;
@@ -585,7 +584,7 @@ _parse_next_member(dax_state *ds, tag_type lasttype, tag_handle *h, char *str, i
                 }
             } else {
                 /* Gotta step up one if the last member was a bool */
-                if(h->type == DAX_BOOL) h->byte++;
+                if(h->type == DAX_BOOL && h->bit > 0) { h->byte++; }
                 h->byte += dax_get_typesize(ds, this->type) * this->count;
                 h->bit = 0;
             }
@@ -614,7 +613,7 @@ _parse_next_member(dax_state *ds, tag_type lasttype, tag_handle *h, char *str, i
             h->byte += dax_get_typesize(ds, this->type) * index;
         }
     } else { /* We are the last item */
-        if(h->type == DAX_BOOL && this->type != DAX_BOOL) {
+        if(h->type == DAX_BOOL && this->type != DAX_BOOL && h->bit > 0) {
             h->byte++;
             h->bit = 0;
         }
