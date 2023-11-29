@@ -271,7 +271,7 @@ dax_cdt_new(char *name, int *error)
             }
         }
     }
-    if(result != 0 && error != NULL) {
+    if(error != NULL) {
         *error = result;
     }
 
