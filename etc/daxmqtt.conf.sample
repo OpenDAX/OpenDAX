@@ -43,7 +43,7 @@ end
 s = {}
 s.topic = "dax_topic_2"
 s.tags = "tag_4"
-s.filterter = filter_1
+s.filter = filter_1
 s.qos = 0
 --add_sub(s)
 
@@ -57,7 +57,7 @@ function filter_2(topic, payload)
     for num in string.gmatch(payload, '([^,]+)') do
         table.insert(x, tonumber(num))
     end
-    -- The list that is returned should correspond to the number and 
+    -- The list that is returned should correspond to the number and
     -- types of the associated tags given in s.tags
     return x
 end
@@ -66,7 +66,7 @@ s = {}
 s.topic = "dax_topic_3"
 s.tags = {"tag_1", "tag_2", "tag_3"}
 s.qos = 0
-s.filterter = filter_2
+s.filter = filter_2
 --add_sub(s)
 
 
@@ -77,7 +77,7 @@ end
 
 p = {}
 p.topic = "dax_topic_4"
-p.filterter = filter_3
+p.filter = filter_3
 p.trigger_tag = "tag_4"
 p.trigger_type = CHANGE
 --p.trigger_value = 12
@@ -107,7 +107,7 @@ p.tagname = "tag_7"
 -- tag.  The message will be sent when this tags change events
 -- is fired
 p.update_mode = CHANGE  -- send on tag's change event
---p.update_tag = "tag_5_update" -- if this is set then use this tag for the event instead 
+--p.update_tag = "tag_5_update" -- if this is set then use this tag for the event instead
 p.event_data = 2345.432 -- If the update event needs data
 
 --add_pub(p)

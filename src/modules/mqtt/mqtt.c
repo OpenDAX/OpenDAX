@@ -108,7 +108,6 @@ msgarrived(void *context, char *topicName, int topicLen, MQTTClient_message *mes
     } else {
         /* This is a bad error and it means that we have a problem with how we are finding
          * the subscription topic that matches the one that we received from the broker */
-        DF("We received topic '%s' with no subscription match", topicName);
         dax_log(DAX_LOG_ERROR, "We received topic '%s' with no subscription match", topicName);
     }
 

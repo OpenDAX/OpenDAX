@@ -73,6 +73,7 @@ typedef struct Trigger_t {
 typedef struct Script_t {
     lua_State *L;
     pthread_mutex_t lock;
+    tag_handle handle;
     unsigned char enabled;
     unsigned char failed;
     unsigned char command;
@@ -88,7 +89,7 @@ typedef struct Script_t {
     unsigned char running;
     uint64_t lastscan;
     uint64_t thisscan;
-    long executions;
+    dax_ulint executions;
     long interval;
     global_t *globals;
 } script_t;
@@ -122,6 +123,7 @@ script_t *get_script(int index);
 script_t *get_script_name(char *name);
 int add_global(script_t *script, char *varname, char* tagname, unsigned char mode);
 int add_static(script_t *script, lua_State *L, char* varname);
+int write_script_tag(script_t *script);
 
 
 /* luaif.c - Lua Interface functions */

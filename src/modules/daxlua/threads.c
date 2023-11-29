@@ -476,11 +476,15 @@ _create_thread_types_and_tags(void)
 
     // TODO: Handle these errors
     thread_cdt = dax_cdt_new("lua_thread", &result);
-    result = dax_cdt_member(ds, thread_cdt, "name", DAX_CHAR, DAX_TAGNAME_SIZE);
-    result = dax_cdt_member(ds, thread_cdt, "interval", DAX_UDINT, 1);
-    result = dax_cdt_member(ds, thread_cdt, "scriptcount", DAX_UDINT, 1);
-    result = dax_cdt_member(ds, thread_cdt, "overruns", DAX_UDINT, 1);
-    result = dax_cdt_create(ds, thread_cdt, &thread_type);
+    result += dax_cdt_member(ds, thread_cdt, "name", DAX_CHAR, DAX_TAGNAME_SIZE);
+    result += dax_cdt_member(ds, thread_cdt, "interval", DAX_UDINT, 1);
+    result += dax_cdt_member(ds, thread_cdt, "scriptcount", DAX_UDINT, 1);
+    result += dax_cdt_member(ds, thread_cdt, "overruns", DAX_UDINT, 1);
+    result += dax_cdt_create(ds, thread_cdt, &thread_type);
+    if(result) {
+        dax_log(DAX_LOG_ERROR, "Unable to create lua_thread data type");
+        return result;
+    }
 
     /* Count the number of threads that we have */
     this = i_threads;
@@ -491,6 +495,10 @@ _create_thread_types_and_tags(void)
     }
     snprintf(tagname, DAX_TAGNAME_SIZE+1, "%s_threads", dax_get_attr(ds, "name"));
     result = dax_tag_add(ds, NULL, tagname, thread_type, tcount, TAG_ATTR_READONLY | TAG_ATTR_OWNED);
+    if(result) {
+        dax_log(DAX_LOG_ERROR, "Unable to create threads tag");
+        return result;
+    }
 
     this = i_threads;
     for(int n=0;n<tcount;n++) {

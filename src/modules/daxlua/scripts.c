@@ -19,6 +19,7 @@
  * Source file for handling the scripts
  */
 
+#define _XOPEN_SOURCE 600
 #include "daxlua.h"
 #include <pthread.h>
 #include <signal.h>
@@ -280,6 +281,7 @@ run_script(script_t *s) {
         _send_globals(s);
         s->executions++;
         s->firstrun = 0;
+        write_script_tag(s);
     }
     pthread_mutex_unlock(&s->lock); /* Make sure we only run one at a time. */
 }
@@ -522,20 +524,72 @@ _initialize_script(script_t *s)
 
 }
 
+#define SCRIPT_TAG_LEN (DAX_TAGNAME_SIZE + 1 + sizeof(dax_ulint))
+
+static void
+_script_tag_callback(dax_state *ds, void *udata) {
+    script_t *script = (script_t *)udata;
+    uint8_t buff[SCRIPT_TAG_LEN];
+
+    dax_event_get_data(ds, buff, SCRIPT_TAG_LEN);
+
+    if(buff[DAX_TAGNAME_SIZE] & 0x01) { /* check enable bit */
+        script->enabled = 1;
+    } else {
+        script->enabled = 0;
+    }
+
+    write_script_tag(script);
+}
+
 int
 start_all_scripts(void)
 {
     int n;
+    int result;
+    dax_cdt *script_cdt;
+    tag_type script_type;
+    char tagname[DAX_TAGNAME_SIZE+1];
+    char tagname2[DAX_TAGNAME_SIZE+12];
+    dax_id id;
+
+    script_cdt = dax_cdt_new("lua_script", &result);
+    result += dax_cdt_member(ds, script_cdt, "name", DAX_CHAR, DAX_TAGNAME_SIZE);
+    result += dax_cdt_member(ds, script_cdt, "enable", DAX_BOOL, 1);
+    result += dax_cdt_member(ds, script_cdt, "failed", DAX_BOOL, 1);
+    result += dax_cdt_member(ds, script_cdt, "executions", DAX_ULINT, 1);
+    result += dax_cdt_create(ds, script_cdt, &script_type);
+
+    if(result) {
+        dax_log(DAX_LOG_ERROR, "Unable to add lua_script data type");
+    } else {
+        snprintf(tagname, DAX_TAGNAME_SIZE+1, "%s_scripts", dax_get_attr(ds, "name"));
+        result = dax_tag_add(ds, NULL, tagname, script_type, scriptcount, TAG_ATTR_OWNED);
+        if(result) {
+            dax_log(DAX_LOG_ERROR, "Unable to add script tag");
+        }
+
+    }
 
     for(n = 0; n < scriptcount; n++) {
+
         _initialize_script(&scripts[n]);
+
+        snprintf(tagname2, sizeof(tagname2), "%s[%d]", tagname, n);
+        result = dax_tag_handle(ds, &scripts[n].handle, tagname2, 0);
+        if(result == ERR_OK) {
+            result = dax_event_add(ds, &scripts[n].handle, EVENT_CHANGE, NULL , &id, _script_tag_callback, &scripts[n], NULL);
+            result = dax_event_options(ds, id, EVENT_OPT_SEND_DATA);
+        }
+        write_script_tag(&scripts[n]);
     }
 
     thread_start_all();
 
     for(n = 0; n < scriptcount; n++) {
         if(scripts[n].L == NULL) {
-            dax_log(DAX_LOG_WARN, "Script '%s' is not assigned to a thread so it will never run!", scripts[n].name);
+            dax_log(DAX_LOG_WARN, "Script '%s' is not assigned to a thread or trigger so it will never run!",
+                                  scripts[n].name);
         }
     }
 
@@ -566,3 +620,18 @@ get_script_name(char *name)
     return NULL;
 }
 
+int
+write_script_tag(script_t *script) {
+    uint8_t buff[SCRIPT_TAG_LEN];
+
+    bzero(buff, SCRIPT_TAG_LEN);
+    memccpy(buff, script->name, '\0', DAX_TAGNAME_SIZE);
+    if(script->enabled) {
+        buff[DAX_TAGNAME_SIZE] = 0x01;
+    }
+    if(script->failed) {
+        buff[DAX_TAGNAME_SIZE] |= 0x02;
+    }
+    *(dax_ulint *)&buff[DAX_TAGNAME_SIZE + 1] = script->executions;
+    return dax_tag_write(ds, script->handle, buff);
+}
