@@ -30,6 +30,7 @@ option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
 option(BUILD_PLCTAG "Build PLCTAG Module" ON)
 option(BUILD_HISTLOG "Build Historical Logging Module" ON)
+option(BUILD_OPCUA "Build OPC UA Module" ON)
 option(BUILD_JOYSTICK "Build Joystick Module" ON)
 option(BUILD_EXAMPLES "Build Example Modules" ON)
 option(INTERNAL_TESTS "Build and Run Internal System Tests" ON)
@@ -103,6 +104,12 @@ if( NOT HAVE_PLCTAG )
   set(BUILD_PLCTAG OFF)
 endif()
 
+find_library(HAVE_OPEN62541 NAMES open62541)
+if( NOT HAVE_OPEN62541 )
+  message("OPEN62541 library not found.  Not building OPC UA module.")
+  set(BUILD_OPCUA OFF)
+endif()
+
 
 add_subdirectory(src)
 
@@ -111,6 +118,7 @@ add_subdirectory(src)
 #foreach(file ${files})
 #  install(FILES ${file} DESTINATION etc/opendax)
 #endforeach()
+
 
 add_subdirectory(tests)
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 2020 Phil Birkelbach
+#  Copyright (c) 2024 Phil Birkelbach
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,32 +14,9 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-add_subdirectory(daxc)
+add_executable(daxopcua daxopcua.c)
+target_link_libraries(daxopcua dax)
+target_link_libraries(daxopcua ${LUA_LIBRARIES})
+target_link_libraries(daxopcua open62541)
 
-if(BUILD_MODBUS)
-  add_subdirectory(modbus)
-endif()
-
-if(BUILD_DAXLUA)
-  add_subdirectory(daxlua)
-endif()
-
-if(BUILD_MQTT)
-  add_subdirectory(mqtt)
-endif()
-
-if(BUILD_PLCTAG)
-  add_subdirectory(plctag)
-endif()
-
-if(BUILD_HISTLOG)
-  add_subdirectory(histlog)
-endif()
-
-if(BUILD_OPCUA)
-  add_subdirectory(opcua)
-endif()
-
-if(BUILD_EXAMPLES)
-   add_subdirectory(examples)
-endif()
+install(TARGETS daxopcua DESTINATION bin)

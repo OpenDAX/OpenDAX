@@ -267,17 +267,17 @@
 		\texttt{NETWORK}.  If set to \texttt{NETWORK} a TCP connection will be made to
 		the tag server.  Otherwise the unix domain socket will be used.  Default is
 		\texttt{LOCAL}
-		\item[--name, -N] - Module name.  The name of the module is used for
+		\item[\texttt{--name, -N}] - Module name.  The name of the module is used for
 		determining the default configuration file, it's sent to the server to identify
 		the module to the server and it's passed to the modules configuration file as
 		the \texttt{calling\_module} global variable.  It's also used in the message
 		logging system for some services.
-		\item[--cachesize, -Z] - The \texttt{libdax} library maintains a cache of
+		\item[\texttt{--cachesize, -Z}] - The \texttt{libdax} library maintains a cache of
 		recently used tag definitions so that it does not have to constantly query the
 		server for this information every time tags need to be accessed.  The higher
 		this number is the less the module will have to query the server but the more
 		memory will be used.
-		\item[--msgtimeout, -O] - The time before a timeout error will be generated for
+		\item[\texttt{--msgtimeout, -O}] - The time before a timeout error will be generated for
 		communication with the tag server.  Other timeouts may need to be set for
 		specific client module communications, but this one is specifically for the
 		client module / tag server communications.
@@ -351,13 +351,13 @@
 	lines that start with '\#' are ignored.
 
 	\begin{list}{}{daxc Command Line Options}
-		\item[--execute, -x] - The execute options should be followed by a command
+		\item[\texttt{--execute, -x}] - The execute options should be followed by a command
 		that is to be executed by \texttt{daxc}.
-		\item[--interactive, -i] - When the module is started with the -f or -x
+		\item[\texttt{--interactive, -i}] - When the module is started with the -f or -x
 		options the default behavior of the module is to exit when finished with those
 		commands.  If this option is used the program will enter interactive mode after
 		those commands are issued.
-		\item[--quiet, -q] - Suppresses some output of the program while it is
+		\item[\texttt{--quiet, -q}] - Suppresses some output of the program while it is
 		executing a file or a command line option.  It does nothing for interactive
 		mode.  This is useful for running the module from shell scripts.
 	\end{list}
