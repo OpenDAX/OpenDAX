@@ -180,11 +180,19 @@ _add_process(lua_State *L)
     /* for some reason not doing this strdup() would cause the username
      * 'opendax' to be read as 'openda'???*/
     lua_getfield(L, -1, "user");
-    proc->user = strdup((char *)lua_tostring(L, -1));
+    if(! lua_isnil(L, -1)) {
+        proc->user = strdup((char *)lua_tostring(L, -1));
+    } else {
+        proc->user = "opendax";
+    }
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "group");
-    proc->group = strdup((char *)lua_tostring(L, -1));
+    if(! lua_isnil(L, -1)) {
+        proc->group = strdup((char *)lua_tostring(L, -1));
+    } else {
+        proc->group = "opendax";
+    }
     lua_pop(L, 1);
 
     lua_getfield(L, -1, "uid");
@@ -272,7 +280,6 @@ readconfigfile(void)
     int length;
     char *string;
 
-    dax_log(2, "Reading Configuration file %s", _configfile);
     L = luaL_newstate();
 
     /* If no configuration file was given on the command line we build the default */
@@ -285,6 +292,7 @@ readconfigfile(void)
             dax_log(DAX_LOG_FATAL, "Unable to allocate memory for configuration file");
         }
     }
+    dax_log(2, "Reading Configuration file %s", _configfile);
     result = _check_config_permissions(_configfile);
     if(result) return result;
     /* We don't open any librarires because we don't really want any
