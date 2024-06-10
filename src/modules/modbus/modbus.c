@@ -442,7 +442,7 @@ sendTCPrequest(mb_port *mp, mb_cmd *cmd)
              check the last checksum against the current datatable[] */
             if(cmd->enable == MB_CONTINUOUS || (temp != cmd->lastcrc)) {
                 COPYWORD(&buff[8], &cmd->m_register);
-                COPYWORD(&buff[10], &temp);
+                COPYWORD(&buff[10], cmd->data);
                 cmd->lastcrc = temp; /* Since it's a single just store the word */
                 length = 6;
                 break;
@@ -613,7 +613,7 @@ _get_write_data(mb_cmd *mc) {
          * are the same.  If not then if the tag is smaller it's no big deal but if the command
          * data size is smaller then we'll truncate the size in the tag handle. */
         if(mc->data_h.size != mc->datasize) {
-            dax_log(DAX_LOG_ERROR, "Tag size and Modbus request size are different.  Data will be truncated");
+            dax_log(DAX_LOG_ERROR, "Tag size and Modbus request size are different.  Data may be truncated");
             if(mc->datasize < mc->data_h.size) mc->data_h.size = mc->datasize;
         }
     }

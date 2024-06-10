@@ -450,11 +450,11 @@ _mod_config_file(dax_state *ds) {
      * We add 2 for the NULL character and the '/' */
     cfile = dax_get_attr(ds, "config");
     //--printf("dax_get_attr(\"config\") returned %s\n", cfile);
+    cdir = dax_get_attr(ds, "confdir");
     if(cfile == NULL) {
         /* No configuration file in the attribute list then we'll
          * build the path from the default config directory and
          * the module name that was passed to dax_init_config() */
-        cdir = dax_get_attr(ds, "confdir");
         length = strlen(cdir) + strlen(ds->modulename) + strlen("/.conf") + 1;
         cfile = malloc(sizeof(char) * length);
         if(cfile) {

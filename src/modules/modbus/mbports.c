@@ -267,13 +267,7 @@ mb_set_serial_port(mb_port *port, const char *device, int baudrate, short databi
     return 0;
 }
 
-/* This function sets the port up as a network port instead of a serial port.  Normally this would be
- * used for Modbus TCP but with this library it can also be used for the RTU and ASCII protocols
- * as well.  Using a network port for these protocols will allow this library to talk to device
- * servers over the network. 'ipaddress' is a string representing the ipaddress i.e. "10.10.10.2"
- * 'port' is an integer representing the port to connect too, and 'socket' is either UDP_SOCK or
- * TCP_SOCK.  If the port is a master or client the ipaddress is the server/slave to connect too
- * otherwise it is the address of the local interface to listen on.  port is used similarly. */
+/* This function sets the port up as a network port instead of a serial port. */
 int
 mb_set_network_port(mb_port *port, const char *ipaddress, unsigned int bindport, unsigned char socket)
 {
@@ -399,8 +393,12 @@ mb_set_msgin_callback(mb_port *mp, void (*infunc)(mb_port *port,uint8_t *buff, u
 /* returns the next connection in the pool unless we are full then
  * reallocate the pool and double it's size */
 static inline int
-_get_next_connection(mb_port *mp) {
+_get_unused_connection(mb_port *mp) {
     tcp_connection *new;
+
+    for(int n = 0;n < mp->connection_count; n++) {
+        if(mp->connections[n].fd == 0) return n;
+    }
 
     if(mp->connection_count == mp->connection_size) {
         /* need to grow the connections array */
@@ -432,9 +430,9 @@ mb_get_connection(mb_port *mp, struct in_addr address, uint16_t port) {
         }
     }
     /* If we get here we didn't find one */
-    n = _get_next_connection(mp);
     fd = openIPport(mp, address, port);
     if(fd>=0) {
+        n = _get_unused_connection(mp);
         mp->connections[n].addr = address;
         mp->connections[n].port = port;
         mp->connections[n].fd = fd;

@@ -500,7 +500,7 @@ _get_node(mb_port *port, int nodeid) {
 
 /* Lua interface function for adding a modbus slave register tag
    to a port.  Accepts five arguments.
-   Arguements:
+   Arguments:
       port id
       node / unit id
       tag name
