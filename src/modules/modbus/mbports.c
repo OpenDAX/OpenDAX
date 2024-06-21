@@ -104,9 +104,11 @@ openport(mb_port *m_port)
     struct termios options;
 
     /* the port is opened RW and reads will not block */
+    dax_log(DAX_LOG_COMM, "Opening Port %s", m_port->device);
     fd = open(m_port->device, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
     if(fd == -1)  {
+        dax_log(DAX_LOG_ERROR, "Failed to Open Port - Error Code %d", errno);
         return(-1);
     } else  {
         fcntl(fd, F_SETFL, 0);
@@ -339,6 +341,7 @@ mb_close_port(mb_port *port)
 
     if(port->devtype == MB_NETWORK) {
         for(int n=0; n<port->connection_count; n++) {
+            dax_log(DAX_LOG_COMM, "Closing Connection %d", port->connections[n].fd);
             result = close(port->connections[n].fd);
             port->connections[n].addr.s_addr = 0x0000;
             port->connections[n].port = 0;
@@ -349,11 +352,12 @@ mb_close_port(mb_port *port)
         }
         port->connection_count = 0;
     } else {
-         result = close(port->fd);
-         port->fd = 0;
-         if(result) {
-              dax_log(DAX_LOG_ERROR, "Error closing file descriptor %d", port->fd);
-         }
+        dax_log(DAX_LOG_COMM, "Closing Port %s", port->device);
+        result = close(port->fd);
+        port->fd = 0;
+        if(result) {
+            dax_log(DAX_LOG_ERROR, "Error closing file descriptor %d", port->fd);
+        }
     }
     return 0;
 }

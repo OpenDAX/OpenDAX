@@ -1,0 +1,65 @@
+-- modbus.conf
+
+-- Configuration file for OpenDAX Modbus module
+
+-- Configuration files that are common for all programs
+dofile(configdir .. "/log.conf")
+--dofile(configdir .. "/common.conf")
+
+p = {}
+c = {}
+
+p.name = "sample_slave"
+p.enable = true       -- enable port for scanning
+p.devtype = "SERIAL"  -- device type SERIAL, NETWORK
+p.type = "SLAVE"       -- modbus master
+p.protocol = "RTU"      -- RTU, ASCII, TCP
+
+-- Serial Port Configuration
+p.device = "/dev/tty.usbserial"
+--p.device = "/dev/ttyS0"
+--p.device = "/dev/tty.usbserial-FT3Q9XETA"
+p.baudrate = 9600
+p.databits = 8
+p.stopbits = 1
+p.parity = "NONE"     -- NONE, EVEN, ODD
+
+-- General Configuration
+p.scanrate = 1000     -- rate at which this port is scanned in mSec
+p.timeout = 1000      -- timeout period in mSec for response from slave
+p.frame = 30          -- frame time for the interbyte timeout
+p.delay = 0           -- delay between response and the next request
+p.retries = 2         -- number of times to retry the command
+p.maxfailures = 20    -- total number of consecutive timeouts before the port is restarted
+p.inhibit = 10        -- number of seconds to wait until a restart is tried
+
+portid = add_port(p)
+
+-- Adds the register definitions to the given port.  Each server / slave
+-- port can represent multiple nodes each with their own set of registers.
+-- The tags given here will be created at startup
+
+-- Arguments:
+--   port id
+--   node / unit id
+--   tag name
+--   size (in registers or bits)
+--   register type [COIL, DISCRETE, HOLDING or INPUT]
+add_register(portid, 1, "mb_hreg", 16, HOLDING)
+add_register(portid, 1, "mb_ireg", 16, INPUT)
+add_register(portid, 1, "mb_creg", 32, COIL)
+add_register(portid, 1, "mb_dreg", 32, DISCRETE)
+
+-- Multiple nodes can be created and the same tags or different
+-- tags can be used
+--add_register(portid, 2, "mb_hreg", 16, HOLDING)
+--add_register(portid, 2, "mb_ireg", 16, INPUT)
+--add_register(portid, 2, "mb_creg", 32, COIL)
+--add_register(portid, 2, "mb_dreg", 32, DISCRETE)
+
+-- Using a node id of zero will cause the server/slave to answer for
+-- all node requests
+--add_register(portid, 0, "mb_hreg", 16, HOLDING)
+--add_register(portid, 0, "mb_ireg", 16, INPUT)
+--add_register(portid, 0, "mb_creg", 32, COIL)
+--add_register(portid, 0, "mb_dreg", 32, DISCRETE)

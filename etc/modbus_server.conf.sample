@@ -7,6 +7,8 @@ dofile(configdir .. "/log.conf")
 --dofile(configdir .. "/common.conf")
 
 
+
+
 -- To configure a port simply create a table and assign the port
 -- configuration options to each member.  Then pass that table to
 -- the add_port() function.
@@ -51,3 +53,25 @@ add_register(portid, 1, "mb_dreg", 32, DISCRETE)
 --add_register(portid, 0, "mb_ireg", 16, INPUT)
 --add_register(portid, 0, "mb_creg", 32, COIL)
 --add_register(portid, 0, "mb_dreg", 32, DISCRETE)
+
+-- These are callback functions that can be assigned to a port / node
+-- The read callback will be called just before the tag is read from
+-- the tagserver to be sent to the client.  If the read callback function
+-- returns a value other than zero then it will be used as the error
+-- response code instead of the data.
+function read_callback(node, fcode, index, count)
+    print("read callback function called")
+end
+
+-- The write callback is called right after the tag data is written
+-- to the tagserver
+function write_callback(node, fcode, index, count)
+    print("write callback function called")
+end
+
+-- Arguments:
+--    port id
+--    node / unit id
+--    function
+add_read_callback(portid, 1, read_callback)
+add_write_callback(portid, 1, write_callback)

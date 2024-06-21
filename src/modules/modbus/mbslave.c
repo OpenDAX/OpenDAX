@@ -71,7 +71,7 @@ _mb_read(mb_port *port, int fd)
                 break; /* One way or another we are at the end of our frame */
             }
             // TODO: Need to calculate this based on serial parameters.
-            usleep(port->frame); /* Inter byte timeout */
+            usleep(port->frame*1000); /* Inter byte timeout */
         }
     }
     if(buffindex > 0) {

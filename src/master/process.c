@@ -285,12 +285,12 @@ process_start(dax_process *proc)
             /* TODO: Environment???? */
             _set_user_group(proc);
             if(execvp(proc->path, proc->arglist)) {
-                dax_log(DAX_LOG_ERROR, "start_module exec failed - %s - %s",
+                dax_log(DAX_LOG_ERROR, "process_start exec failed - %s - %s",
                        proc->path, strerror(errno));
                 exit(errno);
             }
         } else { /* Error on the fork */
-            dax_log(DAX_LOG_ERROR, "start_module fork failed - %s - %s", proc->path, strerror(errno));
+            dax_log(DAX_LOG_ERROR, "process_start fork failed - %s - %s", proc->path, strerror(errno));
         }
     } else {
         return 0;
