@@ -106,8 +106,8 @@ struct dax_state {
     char* modulename;
     int error_code; /* Last error code of the connection */
     int msgtimeout;
-    int id;     /* ID uniquely identifies the module to the server */
-    int sfd;   /* Server's File Descriptor */
+    uint32_t id;           /* ID uniquely identifies the server instance */
+    int sfd;               /* Server's File Descriptor */
     unsigned int reformat; /* Flags to show how to reformat the incoming data */
     int logflags;
     tag_cnode *cache_head; /* First node in the cache list */
@@ -129,6 +129,7 @@ struct dax_state {
     int emsg_queue_size;     /* Total size of the Event Message Queue */
     int emsg_queue_count;    /* number of entries in the event message queue */
     dax_message *last_msg;   /* The last message received on the socket */
+    void (*disconnect_callback)(int result);
 };
 
 #define MIN_TIMEOUT      500

@@ -112,6 +112,7 @@ int main(int argc,char *argv[]) {
         dax_log(DAX_LOG_FATAL, "Unable to find OpenDAX");
         getout(-1);
     }
+    dax_set_disconnect_callback(ds, getout);
     /* No setup work to do here.  We'll go straight to running */
     dax_set_running(ds, 1);
     /* We don't mess with the run/stop/kill callbacks */

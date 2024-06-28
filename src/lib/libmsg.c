@@ -369,9 +369,13 @@ _connection_thread(void *arg)
         /* This basically let's the dax_connect function return success */
         ds->error_code = 0;
         pthread_barrier_wait(&ds->connect_barrier);
+        /* dax_disconnect() will set this to zero to get us out of this loop */
         while(ds->sfd >= 0) { /* Main connection loop */
             result = _read_next_message(ds);
             if(result == ERR_DISCONNECTED) {
+                if(ds->disconnect_callback) {
+                    ds->disconnect_callback(result);
+                }
                 break;
                 //_connection_cleanup(ds);
             }

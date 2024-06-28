@@ -381,6 +381,7 @@ msg_mod_register(dax_message *msg)
     int flags, result;
     char buff[DAX_MSGMAX];
     dax_module *mod;
+    dax_time starttime;
 
     if(msg->size > 0) {
         /* The first parameter is the timeout if the first registration and
@@ -397,7 +398,8 @@ msg_mod_register(dax_message *msg)
                 _message_send(msg->fd, MSG_MOD_REG, &result, sizeof(result) , ERROR);
                 return result;
             } else {
-            	*((uint32_t *)&buff[0]) = msg->fd;   /* The fd of the module is the unique ID sent back */
+                tag_read(-1, INDEX_STARTED, 0, &starttime, 4);
+                *((uint32_t *)&buff[0]) = (uint32_t)starttime;   /* The lower 32 bits of the servers start time is the ID */
                 /* This puts the test data into the buffer for sending. */
                 *((uint16_t *)&buff[4]) = REG_TEST_INT;    /* 16 bit test data */
                 *((uint32_t *)&buff[6]) = REG_TEST_DINT;   /* 32 bit integer test data */

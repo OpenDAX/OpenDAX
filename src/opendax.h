@@ -328,6 +328,8 @@ void dax_log(uint32_t topic, const char *format, ...);
 int dax_connect(dax_state *ds);      /* Connect to the server */
 int dax_disconnect(dax_state *ds);   /* Disconnect from the server */
 
+void dax_set_disconnect_callback(dax_state *ds, void (*f)(int result));
+
 /* Adds a tag to the opendax server database. */
 int dax_tag_add(dax_state *ds, tag_handle *h, char *name, tag_type type, int count, uint32_t attr);
 

@@ -1709,11 +1709,12 @@ _handle_tostring(lua_State *L) {
 }
 
 
-static const struct luaL_Reg handle_m [] = {
+const luaL_Reg handle_m [] = {
     {"__index", _handle_index},
     {"__tostring", _handle_tostring},
     {NULL, NULL}
 };
+
 
 /* This registers all of the functions that are defined in the above array
  * to the Lua script given by L.  It places them in a table named 'dax' and

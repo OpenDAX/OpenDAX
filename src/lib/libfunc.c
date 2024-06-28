@@ -33,7 +33,7 @@
 /*!
  * Convert an OpenDAX value to a readable string.  Only a single value will be
  * converted even though val can be an entire array.
- * 
+ *
  * @param buff Pointer to the string buffer that will be filled in by this function.
  * @param size Size of the buffer.  This is passed to prevent overflow.
  * @param type The data type of the value in buff
@@ -110,19 +110,19 @@ dax_val_to_string(char *buff, int size, tag_type type, void *val, int index)
 
 /*!
  * Convert the given string into an OpenDAX value.
- * 
+ *
  * @param instr Pointer to the string that we wish to convert
  * @param type The data type of the value that we want returned
  * @param buff Pointer to the location where we want this function
  *             to put the value.  The caller should take care to make
  *             sure that this buffer is large enough to store the value.
- * @params mask If the type is a BOOL we can have this function set 
+ * @param mask If the type is a BOOL we can have this function set
  *              this to be a mask suitable for use in writing the
  *              correct bit based on the index.  If set to NULL it
  *              will be ignored.
- * @params index The index into buff where the value will be written.
+ * @param index The index into buff where the value will be written.
  *               buff is first cast into the appropriate type and then
- *               indexed with this value to find the location that the 
+ *               indexed with this value to find the location that the
  *               converted value will be written.
  */
 int
@@ -133,7 +133,7 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
     int retval = 0;
     int result, ms, year;
     struct tm tm = {0,0,0,0,0,0,0,0,0};
-   
+
     switch (type) {
         case DAX_BOOL:
             temp = strtol(instr, NULL, 0);
@@ -270,7 +270,7 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
             break;
         case DAX_TIME:
             /* We use sscanf because strptime doesn't do the milliseconds */
-            result = sscanf(instr, "%d-%d-%dT%d:%d:%d.%d", &year, &tm.tm_mon, &tm.tm_mday, 
+            result = sscanf(instr, "%d-%d-%dT%d:%d:%d.%d", &year, &tm.tm_mon, &tm.tm_mday,
                                                            &tm.tm_hour, &tm.tm_min, &tm.tm_sec, &ms);
             if(result < 6) { /* It didnt' work */
                 errno = 0;
@@ -299,3 +299,15 @@ dax_string_to_val(char *instr, tag_type type, void *buff, void *mask, int index)
     return retval;
 }
 
+
+/*!
+ * Set the callback function that will be called when the server disconnects
+ *
+ * @param ds   Pointer to DAX State object
+ * @param f    The function to assign to the callback
+ */
+
+void
+dax_set_disconnect_callback(dax_state *ds, void (*f)(int result)) {
+    ds->disconnect_callback = f;
+}

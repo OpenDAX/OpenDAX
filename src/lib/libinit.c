@@ -50,6 +50,7 @@ dax_init(const char *name)
     if(ds->modulename == NULL) return NULL;
 
     ds->msgtimeout = 0;
+    ds->id = 0;
     ds->sfd = -1;       /* Server's File Descriptor */
     ds->reformat = 0;  /* Flags to show how to reformat the incoming data */
     ds->logflags = 0;
@@ -74,6 +75,7 @@ dax_init(const char *name)
     ds->emsg_queue = malloc(sizeof(dax_message *)*EVENT_QUEUE_SIZE);
     ds->emsg_queue_size = EVENT_QUEUE_SIZE;     /* Total size of the Event Message Queue */
     ds->emsg_queue_count = 0;    /* number of entries in the event message queue */
+    ds->disconnect_callback = NULL;
     /* Initialize locks and condition variables */
     pthread_mutex_init(&ds->lock, NULL);
     pthread_mutex_init(&ds->event_lock, NULL);
