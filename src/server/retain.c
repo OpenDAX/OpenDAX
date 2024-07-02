@@ -291,7 +291,7 @@ ret_close(void) {
 
 int
 ret_init(char *filename) {
-   dax_log(LOG_WARN, "No SQLite3 available so tag retention will not work");
+   dax_log(DAX_LOG_WARN, "No SQLite3 available so tag retention will not work");
    return 0;
 }
 

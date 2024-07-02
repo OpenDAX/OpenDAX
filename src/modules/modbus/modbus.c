@@ -353,7 +353,7 @@ getRTUresponse(uint8_t *buff, mb_port *mp)
     gettimeofday(&oldtime, NULL);
 
     while(1) {
-        usleep(mp->frame);
+        usleep(mp->frame * 1000);
         result = read(mp->fd, &buff[buffptr], MB_FRAME_LEN);
         if(result > 0) { /* Get some data */
             buffptr += result; // TODO: WE NEED A BOUNDS CHECK HERE.  Seg Fault Commin'

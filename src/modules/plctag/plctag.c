@@ -371,8 +371,8 @@ _check_tag_status(void) {
 
 
 static void
-_log_callback(int32_t tag_id, int debug_level, char *message) {
-    message[strlen(message)-1] = '\0'; /* Remove the newline that is passed */
+_log_callback(int32_t tag_id, int debug_level, const char *message) {
+    ((char *)message)[strlen(message)-1] = '\0'; /* Remove the newline that is passed */
     if(debug_level == PLCTAG_DEBUG_ERROR) {
         dax_log(DAX_LOG_ERROR, "tag:%d - %s", tag_id, message);
     } else if(debug_level == PLCTAG_DEBUG_WARN) {

@@ -128,7 +128,6 @@ init(dax_state *_ds) {
 
 static int
 _add_tag_callback(void *userdata, int count, char** val, char** key) {
-    int n;
     uint32_t *tag_index = (uint32_t*)userdata;
     *tag_index = atoll(val[0]);
     return 0;
@@ -176,7 +175,7 @@ free_tag(tag_object *tag) {
 
 int
 write_data(tag_object *tag, void *value, double timestamp) {
-    char val_string[256];
+    char val_string[128];
     char *errorMsg = NULL;
     int result;
     char sql[256];
@@ -184,8 +183,8 @@ write_data(tag_object *tag, void *value, double timestamp) {
     if(value == NULL) {
         snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp') VALUES (%d, %f);", tag->tag_index, timestamp);
     } else {
-        dax_val_to_string(val_string, 256, tag->type, value, 0);
-        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp','data') VALUES (%d, %f, %s);", tag->tag_index, timestamp, val_string);
+        dax_val_to_string(val_string, 128, tag->type, value, 0);
+        snprintf(sql, 256, "INSERT INTO Data ('tagid', 'timestamp', 'data') VALUES (%d, %f, %s);", tag->tag_index, timestamp, val_string);
     }
     result = sqlite3_exec(log_db, sql, _add_tag_callback, &tag->tag_index, &errorMsg);
     if( result != SQLITE_OK ){
