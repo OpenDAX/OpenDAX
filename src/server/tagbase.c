@@ -355,7 +355,7 @@ virtual_tag_add(char *name, tag_type type, unsigned int count, vfunction *rf, vf
 void
 initialize_tagbase(void)
 {
-    tag_type type;
+    tag_type type, tag_type;
     uint64_t starttime;
 
     _db = xmalloc(sizeof(_dax_tag_db) * DAX_TAGLIST_SIZE);
@@ -393,15 +393,23 @@ initialize_tagbase(void)
     }
     special_set_module_type(type);
 
+    char tag_type_cdt[256];
+    snprintf(tag_type_cdt, 256, "_tag_desc:index,DINT,1:type,UDINT,1:count,UDINT,1:attributes,UINT,1:name,CHAR,%d", DAX_TAGNAME_SIZE + 1);
+    tag_type = cdt_create(tag_type_cdt, NULL);
+    if(tag_type == 0) {
+        dax_log(DAX_LOG_FATAL, "Unable to create default datatypes");
+        kill(getpid(), SIGQUIT);
+    }
+
     /* TODO: instead of using all these constants we should probably just add
      * the tags and store the indexes for the ones that we need. */
     assert(tag_add(-1, "_tagcount", DAX_DINT, 1, 0) == INDEX_TAGCOUNT);
     _db[INDEX_TAGCOUNT].attr = TAG_ATTR_READONLY;
     assert(tag_add(-1, "_lastindex", DAX_DINT, 1, 0) == INDEX_LASTINDEX);
     _db[INDEX_LASTINDEX].attr = TAG_ATTR_READONLY;
-    assert(tag_add(-1, "_tag_added", DAX_DINT, 1, 0) == INDEX_ADDED_TAG);
+    assert(tag_add(-1, "_tag_added", tag_type, 1, 0) == INDEX_ADDED_TAG);
     _db[INDEX_ADDED_TAG].attr = TAG_ATTR_READONLY;
-    assert(tag_add(-1, "_tag_deleted", DAX_DINT, 1, 0) == INDEX_DELETED_TAG);
+    assert(tag_add(-1, "_tag_deleted", tag_type, 1, 0) == INDEX_DELETED_TAG);
     _db[INDEX_DELETED_TAG].attr = TAG_ATTR_READONLY;
     assert(tag_add(-1, "_dbsize", DAX_DINT, 1, 0) == INDEX_DBSIZE);
     _db[INDEX_DBSIZE].attr = TAG_ATTR_READONLY;
@@ -447,6 +455,7 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
     void *newdata;
     unsigned int size;
     int result;
+    uint8_t tag_desc[47];
 
     if(count == 0) {
         dax_log(DAX_LOG_ERROR, "tag_add() called with count = 0");
@@ -553,7 +562,16 @@ tag_add(int fd, char *name, tag_type type, uint32_t count, uint32_t attr)
         tag_write(-1, INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
     _set_attribute(n, attr);
-    tag_write(-1, INDEX_ADDED_TAG, 0, &n, sizeof(tag_index));
+
+    /* Update the '_tag_added' system tag */
+    memset(&tag_desc, 0, sizeof(dax_tag));
+    *((tag_index *)tag_desc) = n;
+    *((tag_type *)&tag_desc[4]) = type;
+    *((dax_udint *)&tag_desc[8]) = count;
+    *((uint16_t *)&tag_desc[12]) = attr;
+    memcpy(&tag_desc[14], name, DAX_TAGNAME_SIZE + 1);
+    tag_write(-1, INDEX_ADDED_TAG, 0, tag_desc, 47);
+
     dax_log(DAX_LOG_DEBUG, "Tag added with name = %s, type = 0x%X, count = %d", name, type, count);
 
     return n;
@@ -584,6 +602,8 @@ tag_clr_attribute(tag_index index, uint32_t attr) {
 int
 tag_del(tag_index idx)
 {
+    uint8_t tag_desc[47];
+
     if(idx >= _tagnextindex || idx < 0) {
         dax_log(DAX_LOG_ERROR, "tag_del() pass index out of range %d", idx);
         return ERR_ARG;
@@ -603,6 +623,16 @@ tag_del(tag_index idx)
     map_del_all(_db[idx].mappings);
     _del_index(_db[idx].name);
     dax_log(DAX_LOG_DEBUG, "Tag deleted with name = %s", _db[idx].name);
+
+    /* Update the '_tag_deleted' system tag */
+    memset(&tag_desc, 0, sizeof(dax_tag));
+    *((tag_index *)tag_desc) = idx;
+    *((tag_type *)&tag_desc[4]) = _db[idx].type;
+    *((dax_udint *)&tag_desc[8]) = _db[idx].count;
+    *((uint16_t *)&tag_desc[12]) = _db[idx].attr;
+    memcpy(&tag_desc[14], _db[idx].name, DAX_TAGNAME_SIZE + 1);
+    tag_write(-1, INDEX_DELETED_TAG, 0, tag_desc, 47);
+
     xfree(_db[idx].name);
     xfree(_db[idx].data);
     _db[idx].name = NULL;
@@ -612,7 +642,8 @@ tag_del(tag_index idx)
     if(_db[INDEX_TAGCOUNT].data != NULL) {
         tag_write(-1, INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
-    tag_write(-1, INDEX_DELETED_TAG, 0, &idx, sizeof(tag_index));
+
+    //tag_write(-1, INDEX_DELETED_TAG, 0, &idx, sizeof(tag_index));
 
     return 0;
 }

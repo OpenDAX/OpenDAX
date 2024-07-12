@@ -263,7 +263,7 @@ typedef struct tag_handle {
 typedef struct dax_tag {
     tag_index idx;        /* Unique tag index */
     tag_type type;        /* Tags data type */
-    unsigned int count;   /* The number of items in the tag array */
+    dax_udint count;   /* The number of items in the tag array */
     uint16_t attr;
     char name[DAX_TAGNAME_SIZE + 1];
 } dax_tag;
