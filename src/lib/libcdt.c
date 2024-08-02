@@ -839,6 +839,36 @@ dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_ite
     return 0;
 }
 
+
+/*!
+ * Returns the number of members in the given compound data type
+ *
+ * @param ds Pointer to dax state object
+ * @param type The data type
+ * @returns On success the positive number of members in the data
+ *          type or error if failed.
+ */
+int
+dax_cdt_member_count(dax_state *ds, tag_type type)
+{
+    int result;
+    datatype *dt;
+    cdt_member *this;
+    int count = 0;
+
+    dt = get_cdt_pointer(ds, type, &result);
+    if(dt == NULL) {
+        return result;
+    }
+    this = dt->members;
+    while(this != NULL) {
+        count++;
+        this = this->next;
+    }
+    return count;
+}
+
+
 #define FQN_TAG_SIZE 1024
 
 /* Used to carry data around for the fqn cdt iteration callback function */

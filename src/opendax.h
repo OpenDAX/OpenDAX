@@ -440,6 +440,7 @@ typedef struct cdt_iter {
 
 /* Iterate over the members of a CDT */
 int dax_cdt_iter(dax_state *ds, tag_type type, void *udata, void (*callback)(cdt_iter member, void *udata));
+int dax_cdt_member_count(dax_state *ds, tag_type type);
 
 /* Return a fully qualified tag name from a handle */
 char *dax_fqn(dax_state *ds, tag_handle h);

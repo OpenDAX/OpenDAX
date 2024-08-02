@@ -63,6 +63,7 @@ set(test_list read_large
               del_system_tag
               strings
               typesize
+              type_mem_count
               handles
               fqn
               mapping_basic
