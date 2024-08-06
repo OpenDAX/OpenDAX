@@ -1,0 +1,148 @@
+== Lua API Reference
+
+=== Introduction
+
+The Lua API is a wrapper around the _libdax_ library for use in Lua
+scripts. Lua scripts can either be run by the _daxlua_ module or they
+can run as stand alone Lua scripts.
+
+If the script is run from the _daxlua_ the functions will have been
+loaded and the connection to the tag server will have already been made
+and initialized.
+
+If the script is run as a stand alone interpreter then the _dax_ module
+will have to be loaded and the connection to the server initialized.
+
+=== General
+
+....
+dax.init(modulename)
+....
+
+Initialize the internal library and attempt to connect to the tagserver.
+The function takes one arguement, _modulename_, which is a string that
+represents the name that will be used to register this module with the
+server.
+
+This function is only needed for stand alone Lua client modules. For
+scripts that are run within the _daxlua_ module this initialization has
+already been done.
+
+This function returns nothing and will raise errors if something fails.
+
+....
+dax.free()
+....
+
+Disconnects from the server and frees the internal library data
+structures.
+
+This function is only needed for stand alone Lua client modules. For
+scripts that are run within the _daxlua_ module this initialization has
+already been done.
+
+This function returns nothing and should never fail.
+
+....
+dax.cdt_create(typename, cdt_table)
+....
+
+The function is used to create a _Compound Datatype_. The first argument
+should be a string that will be used as the name of the CDT. The second
+argument is a table of tables that defines the members of the CDT.
+
+....
+members = {{"Name", "DataType", count},
+           {"AnotherNmae", "DataType", count}}
+....
+
+This function raises errors on failure and returns a single integer that
+represents the datatype and can be used to create tags.
+
+....
+dax.tag_add(name, type, <count>)
+....
+
+Adds a tag to the tagserver database. The first argument is a string
+that represents the name of the new tag. The second argument can either
+be an integer or a string that represents the data type of the tag. The
+third argument is represents the number of items created for the
+datatype. If this number is greater than 1 then an array is created. If
+the count is not given then 1 is assumed.
+
+This function returns nothing on success and raises errors otherwise.
+
+....
+dax.tag_get(tag)
+....
+
+Retrieve the definition of the given tag. The function takes a single
+argument that can either be the tagname as a string or the tag index as
+an integer.
+
+The function returns three values that represent the tag. They are name,
+type and count.
+
+....
+dax.tag_read(tag, <count>)
+....
+
+Read and return the value(s) of the given tag. The first argument is a
+string representing the tag that we wish to read. The second, optional,
+argument is the number of members that we want to read.
+
+The return value depends the type and size of the tag.
+
+....
+dax.event_add(tagname, count, type, data, callback, userdata)
+....
+
+Add an event to the system. The function takes six arguments.
+
+tagname - The first argument is the tagname of the tag that we wish to
+monitor with this event.
+
+count - The number of items in the tag we wish to monitor.
+
+type - A string representing the event type. i.e. WRITE, CHANGE, LESS
+
+data - A number that is used for the comparison events EQUAL, GREATER
+and LESS
+
+callback - The function that we wish to be called when the event is
+triggered
+
+userdata - This data will be stored by the system and passed to the
+callback function when this event is triggered
+
+On sucess the function returns a table that represents this event. On
+failure errors are raised.
+
+....
+dax.event_del(event)
+....
+
+Removes the event from the system. The single argument to this function
+is the table that was returned by the _event_add_ function.
+
+This function returns nothing on success and raises errors on failure.
+
+....
+dax.event_wait(<timeout>)
+....
+
+Blocks and waits for any event to happen and then dispatches that event.
+Timeout represents how long the fuction will wait for an event. If
+timeout is not given or is set to 0 the function will block forever.
+
+Only a single event will be handled by this function.
+
+The function returns 0 on timeout and 1 if an event was dispatched.
+
+....
+dax.event_poll()
+....
+
+Similar to _event_wait_ except that it does not wait. If there is an
+event that is ready to be handled then it will be handled and 1 is
+returned. Otherwise it returns 0 immediately.

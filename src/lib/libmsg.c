@@ -458,6 +458,7 @@ dax_disconnect(dax_state *ds)
  *           the caller is not interested in the tag handle
  * @param name Pointer to the name of the new name
  * @param type Data type.
+ * @param attr A bit field set of attributes for the tag
  * @param count If count is greater than 1 then an array is created.
  *
  * @returns Zero on success and an error code otherwise
@@ -1619,7 +1620,7 @@ dax_map_del(dax_state *ds, dax_id id) {
  * @param result  Pointer to the result 0 = success
  * @param h       Pointer to an array of tag_handles that define the group
  * @param count   Number of handles in the array
- * @param options Options Flags <Not Implemented set to zero>
+ * @param options Options Flags - Not Implemented set to zero
  * @returns       A pointer to a tag group object.  This will be filled in
  *                with all the information necessary to access this group.
  *                This will be used in all the functions that access the group.

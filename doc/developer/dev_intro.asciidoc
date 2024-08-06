@@ -1,0 +1,128 @@
+== Introduction
+
+OpenDAX is an open source, modular, data acquisition and control system. It is
+licensed under the GPL (GNU General Public License) and therefore is
+completely free to use and modify.
+
+This book is a tutorial for developing modules for OpenDAX as well as a
+reference for experienced module developers. It should be noted that, as
+of this writing, OpenDAX is very immature and much of the information in
+this book may have changed. The developers attempt to keep the interface
+constant, but at this stage of development it will make sense from time
+to time to make changes that would break existing module code as well as
+conflict with information in this book. The current source code is the
+ultimate authority on the API.
+
+=== OpenDAX Basics
+
+Before we get started, it would be good to discuss how OpenDAX works.
+OpenDAX is made up of three main parts, the tag server, the library and
+the modules.
+
+The OpenDAX tag server is the heart and soul of the OpenDAX system. It
+sits at the center of the OpenDAX universe and coordinates all of the
+data and communications of the system. The libdax library abstracts the
+communication interface to the modules and the modules are where all the
+work is done.
+
+If the server is the heart and soul of the OpenDAX application then
+modules are the arms and legs. Modules do all of the work. They are
+separate processes. Modern operating systems do a great job of managing
+processes and the OpenDAX developers did not see any need to reinvent
+that wheel.
+
+Client Modules handle all of interface to the outside world. The
+application logic, any storage or logging functions and the human
+interface are all handled by modules. The modules all communicate to the
+OpenDAX server through an API that is exposed in the libdax library. The
+libdax library API is what the OpenDAX module developer will see of
+OpenDAX.
+
+The low level communications to the OpenDAX server takes place through a
+BSD Socket interface. There is no requirement that the module be running
+on the same machine as the server. The entire application can be
+distributed however the application developer desires. If the module is
+on the same machine, it can communicate to the server via UNIX Domain
+Socket. If the module is on a remote host then it will have to use a TCP
+Socket. The UNIX Domain sockets are considerably faster than TCP since
+they are really nothing more than a memory copy within the kernel.
+
+The exact nature of the communication is subject to change at this point
+so I won’t go into that in too much detail here
+
+At some point in the future we hope to implement some server-to-server
+communication that might facilitate redundancy or an even better ability
+to distribute the system. Right now there is only one server in any
+application and all the modules communicate to that single server.
+
+The server contains the tag database. A tag is the atomic unit of data
+in the system. These tags are analogous to variables in a programming
+language. There are many different data types in OpenDAX and the user or
+module programmer can create compound data types that are collections of
+other types. Compound data types are similar to a structure in C. We
+will discuss compound data types later in this text.
+
+The tag database contains the names of these tags, their data type, the
+actual real time value and the events that the tag responds too. It is
+the central store house of information in OpenDAX. Different modules
+work with tags in different ways. For instance, the module reads data
+from one or more devices and stores that information in tags within the
+server. The tags are arrays of type UINT or BOOLfootnote:[UINT is an
+unsigned 16 bit data type, BOOL is a single bit data type] depending on
+the command. The names of these tags are a configurable parameter of the
+module. If and HMI or Logic module need the information from the module
+they would read these tags to get it.
+
+The server also contains information about the currently connected
+modules. Modules must register with the server when they are started
+before the server will answer any queries by the module. This
+registration step is how the module and the server learn what they need
+to learn about each other to properly communicate. Once registered the
+server can keep track of that module through the file descriptor of the
+socket on which the the connection is made. This information can be made
+available to other modules that may need it. All of this information is
+made available to the system via system tags that are created when the
+module connects and deleted when the module disconnects.
+
+There is another program that is included in the OpenDAX distribution
+that is optional for the system to function but it’s very useful. It is
+the master program. (This is the program that we actuall call ’opendax’)
+Modules can be started by the OpenDAX master or by any other means that
+the operating system has for starting processes (i.e. shell prompt,
+scripts etc). If the module is to be started by the master there are a
+few advantages. First the master will know if the module dies for some
+reason because the operating system will send it a signal. This allows
+the master to restart the module or alert the user that a part of the
+system is down.
+
+=== Setting up the Build Environment
+
+The build environment for developing modules is pretty simple. If you
+have installed OpenDAX then you should have everything that you need to
+compile and run OpenDAX modules.
+
+There is no separate development package for . All the files that you
+need to develop modules should be installed when you install from the
+distribution.
+
+The library should be installed in a typical place (usually
+/usr/local/lib) and the _opendax.h_ header file should be in a place
+where your compiler can find it (usually /usr/local/include). For
+writing a module in C this should be all that you need. If you have
+problems with the installation, see the _OpenDAX User’s Manual_, it has
+much more detailed information on what is needed to get OpenDAX up and
+running on your system.
+
+You should be able to use any C compiler to build modules for OpenDAX,
+but we have been using GCC for the main development.
+
+For all intents and purposes your modules sole interaction with the
+system is through the libdax library. You should include the _opendax.h_
+header file in your module’s source code file and you should link the
+libdax library with your module with the `-ldax` option to the
+compiler.footnote:[This is for `gcc`. Other compilers may have different
+options for linking shared libraries.]
+
+Lua and Python bingings also exist for OpenDAX. The Lua library is
+distributed with OpenDAX and the Python bindings called _PyDax_ are in a
+separate repository.

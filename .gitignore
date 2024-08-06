@@ -37,8 +37,6 @@ stamp-h1
 .project
 .vscode
 .settings/
-doc/*
-!doc/*.tex
 doc/doxygen/*
 *.pyc
 build/

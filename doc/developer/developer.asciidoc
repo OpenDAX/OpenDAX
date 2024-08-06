@@ -1,0 +1,340 @@
+= OpenDAX Module Developer’s Guide
+Phil Birkelbach
+:revdate: August 5, 2024
+:sectnums:
+:toc: left
+
+
+include::dev_intro.asciidoc[]
+include::dev_config.asciidoc[]
+include::dev_data.asciidoc[]
+
+
+== Handling Events
+
+Event Notification is a feature of OpenDAX that allows a module to be
+notified immediately when a newly written tag meets some criteria. For
+instance you may have an I/O module that wants to know the instant that
+some tag changes so that you can update the hardware outputs with that
+tag data.
+
+There are 8 types of events that can be assigned to a tag. Figure
+link:#Event Matrix[[Event Matrix]] depicts which event types are allowed
+for each data type. Event types are allowed on arrays if they are
+allowed on the base types. The event can be defined over a subset of the
+range of the tag. Let’s say that you have an array of Integers named
+_MyInts_ you only want to know if the 3rd, 4th or 5th values become
+greater than 12. You would add an event for _MyInts[2]_ with a count of
+3, a type of _Greater Than_ and the number 12. Then the server will
+notify your module when any of those values became greater than 12.
+
+A _Write_ event happens anytime the tag is written to weather the data
+is different or not. The server does not check the data that is written
+just that the range of the write overlaps with the range that the event
+is associated with.
+
+The _Change_ event will fire anytime the tag data changes.
+
+The _Write_ and _Change_ events are the only two events that will work
+with every type of data.
+
+The _Set_ and _Reset_ events happen when a Boolean is Set or Reset,
+respectively. It will only fire when the bit makes the transition. In
+the case of the _Set_ event the module will be notified only when the
+bit makes the transition from 0 to 1. After that the event will not fire
+no matter how many times the bit is written to 1. The _Reset_ event is
+the same way except that it will only fire when the bit transitions from
+1 to 0.
+
+If the event corresponds to an array of bits it will only fire once per
+write operation. So if a single write operation results in multiple bits
+being set (or reset) there will be only one event sent to the module.
+
+The _Equal_ event fires when a tag’s value equals the value stored in
+the events `data` parameter.
+
+The _Greater Than_ and _Less Than_ events are just what you would
+expect. They fire each time the new tag value is greater than or less
+than the event’s `data` parameter.
+
+The _Deadband_ event fires when the data has changed by the amount given
+in the `data` parameter. For instance if the tag’s value is 4 and the
+data value is 2 the event will not fire if the tag value is written as 3
+or 5 but it will fire when the tag’s value becomes 2 or 6. To put it
+mathematically the event fires once the absolute value of the tag’s old
+value minus the tag’s new value is greater than or equal to data.
+
+The _Equal_, _Greater Than_, _Less Than_ and _Deadband_ events all have
+a `data` parameter associated with them. This is a single data parameter
+regardless of how many items within the tag the event is associated
+with. For example, if you have an array of DINT’s and you would like to
+know if any one of them were to become greater than 7 you would create a
+_Greater Than_ event with data = 7 for the entire array. The event will
+fire once per write cycle so even if more than one item in the array
+exceeds 7 the module will only be notified once. If you would like to be
+notified when some items exceed 7 but others exceed 9 then you will have
+to create multiple events to handle this.
+
+Also, the _Equal_, _Greater Than_ and _Less Than_ events will only fire
+once when they are satisfied. They must become untrue and then true
+again before another event will be fired.
+
+The _Deadband_ event will reset the "old value" when it fires. So in the
+above example when the value is 4 and the deadband data is 2 the event
+will fire when the value becomes 6 but it won’t fire again until the
+value changes by 2 from that 6. Now the value must either fall back to 4
+or become 8 to get this event again. 2
+
+[cols="<,^,^,^,^,^,^,^,^",options="header",]
+|===
+| |Write |Change |Set |Reset |= |< |> |Deadband
+|BOOL |&#x2022; |&#x2022;
+|&#x2022; |&#x2022; | | | |
+
+|BYTE |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|SINT |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|WORD |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|INT |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|UINT |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|DWORD |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|DINT |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|UDINT |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|TIME |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|LWORD |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|LINT |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|ULINT |&#x2022; |&#x2022; | |
+|&#x2022; |&#x2022; |&#x2022;
+|&#x2022;
+
+|REAL |&#x2022; |&#x2022; | | |
+|&#x2022; |&#x2022; |&#x2022;
+
+|LREAL |&#x2022; |&#x2022; | | |
+|&#x2022; |&#x2022; |&#x2022;
+
+|Compound |&#x2022; |&#x2022; | | | | | |
+|===
+
+The functions that we will need are...
+
+....
+int dax_event_add(dax_state *ds, tag_handle *handle, int event_type,
+                  void *data, dax_event_id *id,
+                  void (*callback)(void *udata), void *udata);
+....
+
+....
+int dax_event_del(dax_state *ds, dax_event_id id);
+....
+
+....
+int dax_event_select(dax_state *ds, int timeout, dax_event_id *id);
+....
+
+....
+int dax_event_poll(dax_state *ds, dax_event_id *id);
+....
+
+....
+int dax_event_get_fd(dax_state *ds);
+....
+
+....
+int dax_event_dispatch(dax_state *ds, dax_event_id *id);
+....
+
+=== Adding Events
+
+The function is used to add a new event to the server. It is a pretty
+involved function with a lot of arguments but it is actually pretty
+simple. The first argument is the | that we are very familiar with, the
+second argument is a pointer to a handle that represents the tag that we
+would like the event to be associated with.
+
+....
+int dax_event_add(dax_state *ds, tag_handle *handle, int event_type,
+                  void *data, dax_event_id *id,
+                  void (*callback)(void *udata), void *udata);
+....
+
+The `event_type` argument is one of the following...
+
+....
+EVENT_WRITE
+EVENT_CHANGE
+EVENT_SET
+EVENT_RESET
+EVENT_EQUAL
+EVENT_GREATER
+EVENT_LESS
+EVENT_DEADBAND
+....
+
+These are defined in _opendax.h_ and represent each of the events, and
+should be obvious which events they represent. The `void *data`
+parameter is a void pointer to a data point that matches the datatype of
+the handle. It is only needed for `EVENT_EQUAL`, `EVENT_GREATER`,
+`EVENT_LESS` and `EVENT_DEADBAND`. It will be ignored for the rest and
+can be set to NULL. It is important that the programmer make sure that
+this pointer points to the correct type of data. If the data does not
+match the datatype of the handle there might be trouble. The library has
+no way to verify that the programmer has done this correctly.
+
+The next argument, `dax_event_id *id` is a pointer to a `dax_event_id`
+structure. This structure is defined in _opendax.h_ and contains the
+data that would be necessary to uniquely identify this particular event
+to the server. If this argument is set to NULL then nothing will be set
+here. If you ever want to modify or delete this event you will have to
+have this identifier.
+
+The `callback` argument is the callback function that you would like to
+have the event dispatching system call when this event is received by
+your module. The prototype for the function should be...
+
+....
+void function_name(void *udata)
+....
+
+The `udata` that the event dispatcher will pass is the same pointer you
+supply as the last argument to . The system doesn’t look at the data,
+doesn’t care about the data, will not free the data when the event is
+deleted or do anything other than simply pass this same pointer to your
+callback function. If you have one callback function per event you may
+not need it but if you have a single callback function that handles
+multiple events you will need to have the event dispatcher pass some
+information to that callback function, that it can use to differentiate
+between the different events.
+
+I suspect it will be very common for the `udata` parameter to be a
+pointer to the same handle of the tag that the event is associated with.
+The callback function will most likely then go to the server read the
+data from that handle and do whatever it is that the module does.
+
+Once you are finished with an event you can delete it with .
+
+....
+int dax_event_del(dax_state *ds, dax_event_id id);
+....
+
+The second argument is simply the `id` structure that was returned by .
+The function will not free the data pointed to by `udata` so you must be
+careful to take care of that detail yourself.
+
+=== Handling Events
+
+There are basically three ways to receive and handle events. The first
+way is with the function. This function blocks and waits for the event
+to happen. The second way is with the `dax_event_poll()` function, that
+checks for an event and immediately returns whether it deals with the
+event or not. The last way to deal with events is to get the file
+descriptor of the socket that is being used to receive events and handle
+them yourself.
+
+....
+int dax_event_wait(dax_state *ds, int timeout, dax_event_id *id);
+int dax_event_poll(dax_state *ds, dax_event_id *id);
+....
+
+The `dax_event_wait()` function takes a couple of arguments in addition
+to the normal argument. The first is `timeout`. This is how long you
+would like to wait for the event before the function returns. If the
+function returns a `0` then it dispatched and event. If it returns
+`ERR_TIMEOUT` then it did not dispatch an event and has timed out. This
+gives you the ability to block waiting for events but occasionally exit
+and handle some other details. will only handle one event and then
+return. Even if there are more events in the buffer to deal with.
+
+The last parameter to is a pointer to a `dax_event_id` structure. This
+will be filled in by with the information that identifies this event.
+
+If you passed a pointer to a callback function to the function,
+`dax_event_wait()` will call that function and pass the `udata` pointer
+that you passed to when you created the event.
+
+The function is very similar to `dax_event_wait()` except that it will
+not wait. It returns immediately if there is no event to dispatch. If it
+dispatches an event it returns 0 and `ERR_NOTFOUND` if there was no
+event. Both functions might return another error code if there was some
+other problem.
+
+....
+int dax_event_poll(dax_state *ds, dax_event_id *id);
+....
+
+The final method of dealing with events allows your program to have
+complete control over the file descriptor. This is more complex, but it
+might be necessary if your program needs to deal with other events.
+First use `dax_event_get_fd()` function to retrieve the file descriptor
+that the library is using to wait on events to come from the server. You
+can use other system calls such as `system()` or `poll()` to determine
+if there is a read pending. If there is any information to read your
+module would then call
+`int dax_event_dispatch(dax_state *ds, dax_event_id *id)` function. This
+function carries out the same tasks as `dax_event_wait()` and
+`dax_event_poll()`. In fact these two functions call
+`dax_event_dispatch()` from within the library.
+
+It is important that your module not read any of the data from the
+socket that the file descriptor represents. Also, the data is one way so
+you only need to detect that the socket is ready for reading.
+
+== Lua Modules
+
+It is possible to write an OpenDAX module entirely in Lua. Included in
+the OpenDAX distribution is a Lua module for interfacing to the OpenDAX
+API from Lua.
+
+See the Lua API documentation in the appendix for details.
+
+=== Using the Lua Interface in C Modules
+
+include::lua_api.asciidoc[]
+
+== Skeleton Module
+
+The Skeleton module is included in the distribution as a starting place
+for building new modules. It includes just enough code to function as an
+OpenDAX module. The code is well documented and when used with this
+manual it will, hopefully, make writing a new module for OpenDAX a
+fairly simple and straight forward process. The Skeleton module is
+located in the /modules/skel subdirectory of the distribution.
+
+[source,c]
+----
+
+include::../../src/modules/examples/skel/skel.c[]
+
+----

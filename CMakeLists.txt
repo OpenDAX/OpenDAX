@@ -25,6 +25,7 @@ set(BUILD_SHARED_LIBS ON)
 
 enable_testing()
 
+option(BUILD_DOC "build documentation." OFF)
 option(BUILD_DAXLUA "Build Lua Module" ON)
 option(BUILD_MODBUS "Build Modbus Module" ON)
 option(BUILD_MQTT "Build MQTT Module" ON)
@@ -123,3 +124,14 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 
+find_program (ASCIIDOCTOR_EXE asciidoctor)
+if (NOT ASCIIDOCTOR_EXE)
+    message (WARNING "Could not find asciidoctor: skipping docs")
+    set (BUILD_DOC OFF)
+else ()
+    message (STATUS "Using asciidoctor at ${ASCIIDOCTOR_EXE}")
+endif ()
+
+if (BUILD_DOC)
+    add_subdirectory(doc)
+endif ()

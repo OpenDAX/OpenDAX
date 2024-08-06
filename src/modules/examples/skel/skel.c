@@ -29,7 +29,10 @@
  * example of everything that can be done with the API.
  */
 
-#include "skel.h"
+#define _GNU_SOURCE
+#include <common.h>
+#include <opendax.h>
+#include <signal.h>
 
 void quit_signal(int sig);
 static void getout(int exitstatus);

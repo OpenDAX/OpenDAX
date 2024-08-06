@@ -244,7 +244,7 @@ add_cdt_to_cache(dax_state *ds, tag_type type, char *typedesc)
  * Creates an empty Custom Datatype
  *
  * @param name The name that will be given to the new type
- * @param errors a pointer to an integer that will contain
+ * @param error  a pointer to an integer that will contain
  *               any errors that we encounter
  * @returns NULL on error or a pointer to the new
  *          datatype if successful.

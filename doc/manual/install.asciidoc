@@ -1,0 +1,38 @@
+=== Installation
+
+OpenDAX uses the CMake build system generator. You’ll need to install
+CMake on your system.
+
+You will also need the Lua development libraries installed. Most
+distributions have versions of Lua that will work. The currently
+supported versions of Lua are 5.3 and greater. If you compile and
+install Lua from the source files you will need to add -FPIC compiler
+flag to the build.
+
+....
+make MYCFLAGS="-fPIC" linux
+....
+
+Once you have CMake and the Lua libraries installed you can download and
+build OpenDAX. First clone the repository...
+
+....
+git clone https://github.com/OpenDAX/OpenDAX.git
+....
+
+This should create the OpenDAX directory. Now do the following...
+
+....
+mkdir build
+cd build
+cmake ..
+make
+make test
+....
+
+If all the tests pass you can install with …
+
+....
+sudo make install
+sudo ldconfig
+....
