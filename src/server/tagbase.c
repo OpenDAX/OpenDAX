@@ -620,7 +620,9 @@ tag_del(tag_index idx)
         ret_del_tag(idx);
     }
     events_del_all(_db[idx].events);
+    _db[idx].events = NULL;
     map_del_all(_db[idx].mappings);
+    _db[idx].mappings = NULL;
     _del_index(_db[idx].name);
     dax_log(DAX_LOG_DEBUG, "Tag deleted with name = %s", _db[idx].name);
 
@@ -642,8 +644,6 @@ tag_del(tag_index idx)
     if(_db[INDEX_TAGCOUNT].data != NULL) {
         tag_write(-1, INDEX_TAGCOUNT, 0, &_tagcount, sizeof(tag_index));
     }
-
-    //tag_write(-1, INDEX_DELETED_TAG, 0, &idx, sizeof(tag_index));
 
     return 0;
 }
